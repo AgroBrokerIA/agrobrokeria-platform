@@ -172,23 +172,6 @@ export default function LoginPage() {
           Ingresá a tu cuenta de AgroBroker IA.
         </p>
 
-        <button
-          type="button"
-          onClick={recuperarPassword}
-          disabled={loading}
-          style={{
-            marginBottom: 20,
-            padding: 10,
-            border: "none",
-            background: "transparent",
-            color: "#2563eb",
-            cursor: loading ? "not-allowed" : "pointer",
-            textDecoration: "underline",
-          }}
-        >
-          ¿Olvidaste tu contraseña?
-        </button>
-
         <div
           style={{
             display: "flex",
@@ -221,6 +204,24 @@ export default function LoginPage() {
                 boxSizing: "border-box",
               }}
             />
+
+            <button
+              type="button"
+              onClick={recuperarPassword}
+              disabled={loading}
+              style={{
+                marginTop: 8,
+                padding: 0,
+                border: "none",
+                background: "transparent",
+                color: "#2563eb",
+                cursor: loading ? "not-allowed" : "pointer",
+                textDecoration: "underline",
+                fontSize: 14,
+              }}
+            >
+              ¿Olvidaste tu contraseña?
+            </button>
           </div>
 
           <div>
