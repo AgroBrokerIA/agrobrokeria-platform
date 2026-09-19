@@ -55,8 +55,9 @@ export default function Home() {
             gap: "20px",
           }}
         >
-          <Link href="/login">
+          <Link href="/login" style={{ textDecoration: "none" }}>
             <button
+              type="button"
               style={{
                 padding: "15px 30px",
                 background: "#22c55e",
@@ -71,19 +72,22 @@ export default function Home() {
             </button>
           </Link>
 
-          <button
-            style={{
-              padding: "15px 30px",
-              background: "#2563eb",
-              color: "white",
-              border: "none",
-              borderRadius: "10px",
-              cursor: "pointer",
-              fontSize: "18px",
-            }}
-          >
-            Registrarse
-          </button>
+          <Link href="/register" style={{ textDecoration: "none" }}>
+            <button
+              type="button"
+              style={{
+                padding: "15px 30px",
+                background: "#2563eb",
+                color: "white",
+                border: "none",
+                borderRadius: "10px",
+                cursor: "pointer",
+                fontSize: "18px",
+              }}
+            >
+              Registrarse
+            </button>
+          </Link>
         </div>
       </div>
     </main>
