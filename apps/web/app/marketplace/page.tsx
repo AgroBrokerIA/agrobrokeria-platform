@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
 import MarketplaceHeader from "../../components/marketplace/MarketplaceHeader";
@@ -213,10 +214,14 @@ export default function MarketplacePage() {
           >
             {publicacionesFiltradas.map(
               (publicacion) => (
-                <MarketplaceCard
+                <div
                   key={publicacion.id}
-                  publicacion={publicacion}
-                />
+                  id={`publicacion-${publicacion.id}`}
+                >
+                  <MarketplaceCard
+                    publicacion={publicacion}
+                  />
+                </div>
               )
             )}
           </div>

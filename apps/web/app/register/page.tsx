@@ -100,6 +100,7 @@ export default function RegisterPage() {
           <option value="Exportador">Exportador</option>
           <option value="Acopio">Acopio</option>
           <option value="Industria">Industria</option>
+          <option value="Intermediario">Intermediario</option>
         </select>
 
         <input

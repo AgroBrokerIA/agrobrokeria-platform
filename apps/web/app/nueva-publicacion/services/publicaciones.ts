@@ -26,9 +26,40 @@ export async function obtenerIncoterms() {
 export async function crearPublicacion(
   publicacion: Publicacion
 ) {
-  return supabase
+  const { data, error } = await supabase
     .from("publicaciones")
     .insert(publicacion)
     .select()
     .single();
+
+  if (error || !data) {
+    return { data, error };
+  }
+
+  void (async () => {
+    const { data: { session } } = await supabase.auth.getSession();
+
+    if (!session?.access_token) {
+      console.error("No se pudo iniciar IA: no hay sesión activa.");
+      return;
+    }
+
+    await fetch("/api/ia/procesar-publicacion", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session.access_token}`,
+      },
+      body: JSON.stringify({
+        publicacionId: data.id,
+      }),
+    });
+  })().catch((iaError) => {
+    console.error(
+      "Error iniciando procesamiento IA:",
+      iaError
+    );
+  });
+
+  return { data, error: null };
 }

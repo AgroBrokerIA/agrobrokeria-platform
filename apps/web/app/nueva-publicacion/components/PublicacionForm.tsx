@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { crearPublicacion } from "@/app/nueva-publicacion/services/publicaciones";
+import { Publicacion } from "@/types/publicacion";
 
 import {
   obtenerProductos,
@@ -46,8 +48,78 @@ type Formulario = {
   observaciones: string;
 };
 
-const EMPRESA_DEMO_ID =
-  "63ff29e0-a444-4d6a-a057-70aeffc89dfc";
+async function obtenerEmpresaDelUsuario() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("No hay un usuario autenticado.");
+  }
+
+  const { data: companyUser, error: companyUserError } =
+    await supabase
+      .from("company_users")
+      .select("company_id")
+      .eq("profile_id", user.id)
+      .eq("activo", true)
+      .limit(1)
+      .maybeSingle();
+
+  if (companyUserError) {
+    throw new Error(
+      `No se pudo obtener la empresa del usuario: ${companyUserError.message}`
+    );
+  }
+
+  if (!companyUser?.company_id) {
+    throw new Error(
+      "Tu usuario no tiene una empresa vinculada."
+    );
+  }
+
+  const { data: company, error: companyError } =
+    await supabase
+      .from("companies")
+      .select("id, cuit")
+      .eq("id", companyUser.company_id)
+      .single();
+
+  if (companyError) {
+    throw new Error(
+      `No se pudo obtener la empresa: ${companyError.message}`
+    );
+  }
+
+  if (!company?.cuit) {
+    throw new Error(
+      "La empresa del usuario no tiene CUIT registrado."
+    );
+  }
+
+  const { data: empresa, error: empresaError } =
+    await supabase
+      .from("empresas")
+      .select("id, nombre_comercial, razon_social, cuit")
+      .eq("cuit", company.cuit)
+      .eq("activa", true)
+      .single();
+
+  if (empresaError) {
+    throw new Error(
+      `No se pudo encontrar la empresa operativa: ${empresaError.message}`
+    );
+  }
+
+  if (!empresa?.id) {
+    throw new Error(
+      "No se encontró una empresa operativa asociada al CUIT del usuario."
+    );
+  }
+
+  return empresa.id;
+}
 
 export default function PublicationForm(props: any) {
   const [productos, setProductos] = useState<Producto[]>([]);
@@ -222,16 +294,20 @@ export default function PublicationForm(props: any) {
       setGuardando(true);
 
       /*
-       * DATOS QUE SE VAN A GUARDAR
-       *
-       * La tabla publicaciones utiliza empresa_id,
-       * no usuario_id.
+       * OBTENER EMPRESA REAL DEL USUARIO
        */
 
-      const nuevaPublicacion = {
-        empresa_id: EMPRESA_DEMO_ID,
+      const empresaId =
+        await obtenerEmpresaDelUsuario();
 
-        tipo: form.tipo,
+      /*
+       * DATOS QUE SE VAN A GUARDAR
+       */
+
+      const nuevaPublicacion: Publicacion = {
+        empresa_id: empresaId,
+
+        tipo: form.tipo as "VENTA" | "COMPRA",
 
         producto_id: form.producto_id,
 
@@ -283,11 +359,7 @@ export default function PublicationForm(props: any) {
       const {
         data,
         error: errorInsertar,
-      } = await supabase
-        .from("publicaciones")
-        .insert(nuevaPublicacion)
-        .select()
-        .single();
+      } = await crearPublicacion(nuevaPublicacion);
 
       if (errorInsertar) {
         console.error(

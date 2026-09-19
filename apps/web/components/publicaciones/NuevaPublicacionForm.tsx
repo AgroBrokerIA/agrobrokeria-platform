@@ -10,13 +10,12 @@ import {
 } from "@/app/nueva-publicacion/services/publicaciones";
 
 import { supabase } from "@/lib/supabase/client";
+import { crearPublicacion } from "@/app/nueva-publicacion/services/publicaciones";
+import { Publicacion } from "@/types/publicacion";
 
 import { Producto } from "@/types/producto";
 import { Moneda } from "@/types/moneda";
 import { Incoterm } from "@/types/incoterm";
-
-const EMPRESA_DEMO_ID =
-  "63ff29e0-a444-4d6a-a057-70aeffc89dfc";
 
 type Formulario = {
   tipo: "VENTA" | "COMPRA";
@@ -33,6 +32,39 @@ type Formulario = {
   proteina: string;
   observaciones: string;
 };
+
+async function obtenerEmpresaDelUsuario() {
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (userError || !user) {
+    throw new Error("No hay un usuario autenticado.");
+  }
+
+  const { data, error } = await supabase
+    .from("empresas")
+    .select("id")
+    .eq("cuenta_id", user.id)
+    .eq("activa", true)
+    .limit(1)
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(
+      `No se pudo obtener la empresa: ${error.message}`
+    );
+  }
+
+  if (!data?.id) {
+    throw new Error(
+      "Tu usuario no tiene una empresa activa vinculada."
+    );
+  }
+
+  return data.id;
+}
 
 export default function NuevaPublicacionForm() {
   const router = useRouter();
@@ -62,9 +94,7 @@ export default function NuevaPublicacionForm() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
 
-  const [modoEdicion, setModoEdicion] =
-    useState(false);
-
+  const [modoEdicion, setModoEdicion] = useState(false);
   const [publicacionId, setPublicacionId] =
     useState<string | null>(null);
 
@@ -77,13 +107,11 @@ export default function NuevaPublicacionForm() {
       setCargando(true);
       setError("");
 
-      const parametros =
-        new URLSearchParams(
-          window.location.search
-        );
+      const parametros = new URLSearchParams(
+        window.location.search
+      );
 
-      const id =
-        parametros.get("id");
+      const id = parametros.get("id");
 
       if (id) {
         setModoEdicion(true);
@@ -109,48 +137,28 @@ export default function NuevaPublicacionForm() {
       setMonedas(monedasData);
       setIncoterms(incotermsData);
 
-      const maiz =
-        productosData.find(
-          (producto) =>
-            producto.codigo === "MAIZ"
-        );
+      const maiz = productosData.find(
+        (producto) => producto.codigo === "MAIZ"
+      );
 
-      const usd =
-        monedasData.find(
-          (moneda) =>
-            moneda.codigo === "USD"
-        );
+      const usd = monedasData.find(
+        (moneda) => moneda.codigo === "USD"
+      );
 
-      const fob =
-        incotermsData.find(
-          (incoterm) =>
-            incoterm.codigo === "FOB"
-        );
-
-      /*
-       * NUEVA PUBLICACIÓN
-       */
+      const fob = incotermsData.find(
+        (incoterm) => incoterm.codigo === "FOB"
+      );
 
       if (!id) {
         setForm((anterior) => ({
           ...anterior,
-
-          producto_id:
-            maiz?.id ?? 1,
-
-          moneda_id:
-            usd?.id ?? 2,
-
-          incoterm_id:
-            fob?.id ?? 1,
+          producto_id: maiz?.id ?? 1,
+          moneda_id: usd?.id ?? 2,
+          incoterm_id: fob?.id ?? 1,
         }));
 
         return;
       }
-
-      /*
-       * EDICIÓN
-       */
 
       const {
         data: publicacion,
@@ -177,14 +185,9 @@ export default function NuevaPublicacionForm() {
         .single();
 
       if (errorPublicacion) {
-        console.error(
-          errorPublicacion
-        );
-
         setError(
           `No se pudo cargar la publicación: ${errorPublicacion.message}`
         );
-
         return;
       }
 
@@ -192,7 +195,6 @@ export default function NuevaPublicacionForm() {
         setError(
           "No se encontró la publicación."
         );
-
         return;
       }
 
@@ -203,29 +205,19 @@ export default function NuevaPublicacionForm() {
             : "VENTA",
 
         producto_id:
-          Number(
-            publicacion.producto_id
-          ),
+          Number(publicacion.producto_id),
 
         cantidad_tn:
-          String(
-            publicacion.cantidad_tn ?? ""
-          ),
+          String(publicacion.cantidad_tn ?? ""),
 
         precio_tn:
-          String(
-            publicacion.precio_tn ?? ""
-          ),
+          String(publicacion.precio_tn ?? ""),
 
         moneda_id:
-          Number(
-            publicacion.moneda_id
-          ),
+          Number(publicacion.moneda_id),
 
         incoterm_id:
-          Number(
-            publicacion.incoterm_id
-          ),
+          Number(publicacion.incoterm_id),
 
         provincia:
           publicacion.provincia ?? "",
@@ -241,16 +233,12 @@ export default function NuevaPublicacionForm() {
 
         humedad:
           publicacion.humedad != null
-            ? String(
-                publicacion.humedad
-              )
+            ? String(publicacion.humedad)
             : "",
 
         proteina:
           publicacion.proteina != null
-            ? String(
-                publicacion.proteina
-              )
+            ? String(publicacion.proteina)
             : "",
 
         observaciones:
@@ -260,7 +248,9 @@ export default function NuevaPublicacionForm() {
       console.error(e);
 
       setError(
-        "No se pudieron cargar los datos."
+        e instanceof Error
+          ? e.message
+          : "No se pudieron cargar los datos."
       );
     } finally {
       setCargando(false);
@@ -285,14 +275,8 @@ export default function NuevaPublicacionForm() {
     setMensaje("");
     setError("");
 
-    /*
-     * VALIDACIONES
-     */
-
     if (!form.producto_id) {
-      setError(
-        "Seleccioná un producto."
-      );
+      setError("Seleccioná un producto.");
       return;
     }
 
@@ -317,103 +301,60 @@ export default function NuevaPublicacionForm() {
     }
 
     if (!form.provincia.trim()) {
-      setError(
-        "Ingresá la provincia."
-      );
+      setError("Ingresá la provincia.");
       return;
     }
 
     if (!form.localidad.trim()) {
-      setError(
-        "Ingresá la localidad."
-      );
+      setError("Ingresá la localidad.");
       return;
     }
 
     if (!form.puerto.trim()) {
-      setError(
-        "Ingresá el puerto."
-      );
+      setError("Ingresá el puerto.");
       return;
     }
 
     try {
       setGuardando(true);
 
-      /*
-       * DATOS A GUARDAR
-       */
-
       const datos = {
         tipo: form.tipo,
-
-        producto_id:
-          form.producto_id,
-
-        cantidad_tn:
-          Number(form.cantidad_tn),
-
-        precio_tn:
-          Number(form.precio_tn),
-
-        moneda_id:
-          form.moneda_id,
-
-        incoterm_id:
-          form.incoterm_id,
-
-        provincia:
-          form.provincia.trim(),
-
-        localidad:
-          form.localidad.trim(),
-
-        puerto:
-          form.puerto.trim(),
-
-        calidad:
-          form.calidad.trim(),
-
-        humedad:
-          form.humedad
-            ? Number(form.humedad)
-            : null,
-
-        proteina:
-          form.proteina
-            ? Number(form.proteina)
-            : null,
-
-        observaciones:
-          form.observaciones.trim(),
+        producto_id: form.producto_id,
+        cantidad_tn: Number(form.cantidad_tn),
+        precio_tn: Number(form.precio_tn),
+        moneda_id: form.moneda_id,
+        incoterm_id: form.incoterm_id,
+        provincia: form.provincia.trim(),
+        localidad: form.localidad.trim(),
+        puerto: form.puerto.trim(),
+        calidad: form.calidad.trim(),
+        humedad: form.humedad
+          ? Number(form.humedad)
+          : null,
+        proteina: form.proteina
+          ? Number(form.proteina)
+          : null,
+        observaciones: form.observaciones.trim(),
       };
 
       /*
-       * EDITAR
+       * EDITAR PUBLICACIÓN
        */
 
-      if (
-        modoEdicion &&
-        publicacionId
-      ) {
+      if (modoEdicion && publicacionId) {
         const {
           data,
-          error:
-            errorActualizacion,
+          error: errorActualizacion,
         } = await supabase
           .from("publicaciones")
           .update(datos)
-          .eq(
-            "id",
-            publicacionId
-          )
+          .eq("id", publicacionId)
           .select()
           .single();
 
         if (errorActualizacion) {
-          console.error(
-            errorActualizacion
-          );
+          console.error(errorActualizacion);
 
           setError(
             `No se pudieron guardar los cambios: ${errorActualizacion.message}`
@@ -432,44 +373,45 @@ export default function NuevaPublicacionForm() {
         );
 
         setTimeout(() => {
-          router.push(
-            "/mis-publicaciones"
-          );
+          router.push("/mis-publicaciones");
         }, 700);
 
         return;
       }
 
       /*
-       * CREAR NUEVA
+       * CREAR NUEVA PUBLICACIÓN
+       *
+       * Se obtiene la empresa REAL vinculada
+       * al usuario autenticado.
        */
 
-      const nuevaPublicacion = {
-        empresa_id:
-          EMPRESA_DEMO_ID,
+      const empresaId =
+        await obtenerEmpresaDelUsuario();
 
+      console.log(
+        "Empresa utilizada para publicar:",
+        empresaId
+      );
+
+      const nuevaPublicacion: Publicacion = {
+        empresa_id: empresaId,
         ...datos,
-
-        estado:
-          "PUBLICADA",
+        estado: "PUBLICADA",
       };
+
+      console.log(
+        "Datos de nueva publicación:",
+        nuevaPublicacion
+      );
 
       const {
         data,
-        error:
-          errorInsertar,
-      } = await supabase
-        .from("publicaciones")
-        .insert(
-          nuevaPublicacion
-        )
-        .select()
-        .single();
+        error: errorInsertar,
+      } = await crearPublicacion(nuevaPublicacion);
 
       if (errorInsertar) {
-        console.error(
-          errorInsertar
-        );
+        console.error(errorInsertar);
 
         setError(
           `No se pudo publicar: ${errorInsertar.message}`
@@ -487,35 +429,22 @@ export default function NuevaPublicacionForm() {
         "✅ Publicación creada correctamente."
       );
 
-      /*
-       * LIMPIAR
-       */
-
       setForm({
         tipo: "VENTA",
-
         producto_id:
           productos.find(
-            (p) =>
-              p.codigo === "MAIZ"
+            (p) => p.codigo === "MAIZ"
           )?.id ?? 1,
-
         cantidad_tn: "",
-
         precio_tn: "",
-
         moneda_id:
           monedas.find(
-            (m) =>
-              m.codigo === "USD"
+            (m) => m.codigo === "USD"
           )?.id ?? 2,
-
         incoterm_id:
           incoterms.find(
-            (i) =>
-              i.codigo === "FOB"
+            (i) => i.codigo === "FOB"
           )?.id ?? 1,
-
         provincia: "",
         localidad: "",
         puerto: "",
@@ -524,11 +453,17 @@ export default function NuevaPublicacionForm() {
         proteina: "",
         observaciones: "",
       });
+
+      setTimeout(() => {
+        router.push("/mis-publicaciones");
+      }, 700);
     } catch (e) {
       console.error(e);
 
       setError(
-        "Ocurrió un error al guardar la publicación."
+        e instanceof Error
+          ? e.message
+          : "Ocurrió un error al publicar."
       );
     } finally {
       setGuardando(false);
@@ -537,16 +472,8 @@ export default function NuevaPublicacionForm() {
 
   if (cargando) {
     return (
-      <div
-        style={{
-          background: "white",
-          borderRadius: 12,
-          padding: 30,
-        }}
-      >
-        <p>
-          Cargando formulario...
-        </p>
+      <div style={{ padding: 20 }}>
+        Cargando formulario...
       </div>
     );
   }
@@ -555,47 +482,20 @@ export default function NuevaPublicacionForm() {
     <form
       onSubmit={guardar}
       style={{
-        background: "white",
-        borderRadius: 12,
-        padding: 30,
-        boxShadow:
-          "0 5px 15px rgba(0,0,0,.08)",
+        display: "flex",
+        flexDirection: "column",
+        gap: 16,
       }}
     >
-      <h1
-        style={{
-          fontSize: 34,
-          marginBottom: 30,
-        }}
-      >
-        {modoEdicion
-          ? "✏️ Editar Publicación"
-          : "🌾 Nueva Publicación"}
-      </h1>
-
-      {modoEdicion && (
-        <div
-          style={{
-            background: "#eff6ff",
-            color: "#1e40af",
-            padding: 14,
-            borderRadius: 8,
-            marginBottom: 20,
-          }}
-        >
-          Estás editando una
-          publicación existente.
-        </div>
-      )}
+      <h1>Nueva publicación</h1>
 
       {mensaje && (
         <div
           style={{
+            padding: 12,
+            borderRadius: 8,
             background: "#dcfce7",
             color: "#166534",
-            padding: 14,
-            borderRadius: 8,
-            marginBottom: 20,
           }}
         >
           {mensaje}
@@ -605,375 +505,244 @@ export default function NuevaPublicacionForm() {
       {error && (
         <div
           style={{
+            padding: 12,
+            borderRadius: 8,
             background: "#fee2e2",
             color: "#991b1b",
-            padding: 14,
-            borderRadius: 8,
-            marginBottom: 20,
           }}
         >
           {error}
         </div>
       )}
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "1fr 1fr",
-          gap: 20,
-        }}
-      >
-        <div>
-          <label>Tipo</label>
-
-          <select
-            className="input"
-            value={form.tipo}
-            onChange={(e) =>
-              actualizarCampo(
-                "tipo",
-                e.target.value
-              )
-            }
-          >
-            <option value="VENTA">
-              VENTA
-            </option>
-
-            <option value="COMPRA">
-              COMPRA
-            </option>
-          </select>
-        </div>
-
-        <div>
-          <label>Producto</label>
-
-          <select
-            className="input"
-            value={form.producto_id}
-            onChange={(e) =>
-              actualizarCampo(
-                "producto_id",
-                Number(
-                  e.target.value
-                )
-              )
-            }
-          >
-            {productos.map((p) => (
-              <option
-                key={p.id}
-                value={p.id}
-              >
-                {p.nombre}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>Moneda</label>
-
-          <select
-            className="input"
-            value={form.moneda_id}
-            onChange={(e) =>
-              actualizarCampo(
-                "moneda_id",
-                Number(
-                  e.target.value
-                )
-              )
-            }
-          >
-            {monedas.map((m) => (
-              <option
-                key={m.id}
-                value={m.id}
-              >
-                {m.codigo}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>Incoterm</label>
-
-          <select
-            className="input"
-            value={form.incoterm_id}
-            onChange={(e) =>
-              actualizarCampo(
-                "incoterm_id",
-                Number(
-                  e.target.value
-                )
-              )
-            }
-          >
-            {incoterms.map((i) => (
-              <option
-                key={i.id}
-                value={i.id}
-              >
-                {i.codigo}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        <div>
-          <label>
-            Cantidad (TN)
-          </label>
-
-          <input
-            className="input"
-            type="number"
-            min="0"
-            step="0.01"
-            value={
-              form.cantidad_tn
-            }
-            onChange={(e) =>
-              actualizarCampo(
-                "cantidad_tn",
-                e.target.value
-              )
-            }
-            placeholder="Ej: 25000"
-          />
-        </div>
-
-        <div>
-          <label>
-            Precio por TN
-          </label>
-
-          <input
-            className="input"
-            type="number"
-            min="0"
-            step="0.01"
-            value={
-              form.precio_tn
-            }
-            onChange={(e) =>
-              actualizarCampo(
-                "precio_tn",
-                e.target.value
-              )
-            }
-            placeholder="Ej: 230"
-          />
-        </div>
-
-        <div>
-          <label>
-            Provincia
-          </label>
-
-          <input
-            className="input"
-            value={
-              form.provincia
-            }
-            onChange={(e) =>
-              actualizarCampo(
-                "provincia",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Santa Fe"
-          />
-        </div>
-
-        <div>
-          <label>
-            Localidad
-          </label>
-
-          <input
-            className="input"
-            value={
-              form.localidad
-            }
-            onChange={(e) =>
-              actualizarCampo(
-                "localidad",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Rosario"
-          />
-        </div>
-
-        <div>
-          <label>
-            Puerto
-          </label>
-
-          <input
-            className="input"
-            value={form.puerto}
-            onChange={(e) =>
-              actualizarCampo(
-                "puerto",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Puerto Rosario"
-          />
-        </div>
-
-        <div>
-          <label>
-            Calidad
-          </label>
-
-          <input
-            className="input"
-            value={form.calidad}
-            onChange={(e) =>
-              actualizarCampo(
-                "calidad",
-                e.target.value
-              )
-            }
-            placeholder="Especificaciones de calidad"
-          />
-        </div>
-
-        <div>
-          <label>
-            Humedad (%)
-          </label>
-
-          <input
-            className="input"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.humedad}
-            onChange={(e) =>
-              actualizarCampo(
-                "humedad",
-                e.target.value
-              )
-            }
-            placeholder="Ej: 14"
-          />
-        </div>
-
-        <div>
-          <label>
-            Proteína (%)
-          </label>
-
-          <input
-            className="input"
-            type="number"
-            min="0"
-            step="0.01"
-            value={form.proteina}
-            onChange={(e) =>
-              actualizarCampo(
-                "proteina",
-                e.target.value
-              )
-            }
-            placeholder="Ej: 11"
-          />
-        </div>
-      </div>
-
-      <div
-        style={{
-          marginTop: 20,
-        }}
-      >
-        <label>
-          Observaciones
-        </label>
-
-        <textarea
-          className="input"
-          rows={5}
-          value={
-            form.observaciones
+      <label>
+        Tipo
+        <select
+          value={form.tipo}
+          onChange={(e) =>
+            actualizarCampo(
+              "tipo",
+              e.target.value as
+                | "VENTA"
+                | "COMPRA"
+            )
           }
+        >
+          <option value="VENTA">Venta</option>
+          <option value="COMPRA">Compra</option>
+        </select>
+      </label>
+
+      <label>
+        Producto
+        <select
+          value={form.producto_id}
+          onChange={(e) =>
+            actualizarCampo(
+              "producto_id",
+              Number(e.target.value)
+            )
+          }
+        >
+          {productos.map((producto) => (
+            <option
+              key={producto.id}
+              value={producto.id}
+            >
+              {producto.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        Cantidad (TN)
+        <input
+          type="number"
+          value={form.cantidad_tn}
+          onChange={(e) =>
+            actualizarCampo(
+              "cantidad_tn",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Precio por TN
+        <input
+          type="number"
+          value={form.precio_tn}
+          onChange={(e) =>
+            actualizarCampo(
+              "precio_tn",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Moneda
+        <select
+          value={form.moneda_id}
+          onChange={(e) =>
+            actualizarCampo(
+              "moneda_id",
+              Number(e.target.value)
+            )
+          }
+        >
+          {monedas.map((moneda) => (
+            <option
+              key={moneda.id}
+              value={moneda.id}
+            >
+              {moneda.codigo} -{" "}
+              {moneda.nombre}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        Incoterm
+        <select
+          value={form.incoterm_id}
+          onChange={(e) =>
+            actualizarCampo(
+              "incoterm_id",
+              Number(e.target.value)
+            )
+          }
+        >
+          {incoterms.map((incoterm) => (
+            <option
+              key={incoterm.id}
+              value={incoterm.id}
+            >
+              {incoterm.codigo} -{" "}
+              {incoterm.descripcion}
+            </option>
+          ))}
+        </select>
+      </label>
+
+      <label>
+        Provincia
+        <input
+          value={form.provincia}
+          onChange={(e) =>
+            actualizarCampo(
+              "provincia",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Localidad
+        <input
+          value={form.localidad}
+          onChange={(e) =>
+            actualizarCampo(
+              "localidad",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Puerto
+        <input
+          value={form.puerto}
+          onChange={(e) =>
+            actualizarCampo(
+              "puerto",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Calidad
+        <input
+          value={form.calidad}
+          onChange={(e) =>
+            actualizarCampo(
+              "calidad",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Humedad
+        <input
+          type="number"
+          value={form.humedad}
+          onChange={(e) =>
+            actualizarCampo(
+              "humedad",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Proteína
+        <input
+          type="number"
+          value={form.proteina}
+          onChange={(e) =>
+            actualizarCampo(
+              "proteina",
+              e.target.value
+            )
+          }
+        />
+      </label>
+
+      <label>
+        Observaciones
+        <textarea
+          value={form.observaciones}
           onChange={(e) =>
             actualizarCampo(
               "observaciones",
               e.target.value
             )
           }
-          placeholder="Información adicional..."
         />
-      </div>
+      </label>
 
-      <div
+      <button
+        type="submit"
+        disabled={guardando}
         style={{
-          display: "flex",
-          justifyContent:
-            "flex-end",
-          gap: 12,
-          marginTop: 25,
+          padding: 14,
+          borderRadius: 8,
+          border: "none",
+          cursor: guardando
+            ? "wait"
+            : "pointer",
+          background: "#16a34a",
+          color: "white",
+          fontSize: 16,
         }}
       >
-        {modoEdicion && (
-          <button
-            type="button"
-            onClick={() =>
-              router.push(
-                "/mis-publicaciones"
-              )
-            }
-            style={{
-              background: "#e5e7eb",
-              color: "#111827",
-              border: "none",
-              padding:
-                "14px 24px",
-              borderRadius: 8,
-              fontSize: 16,
-              fontWeight: 600,
-              cursor: "pointer",
-            }}
-          >
-            Cancelar
-          </button>
-        )}
-
-        <button
-          type="submit"
-          disabled={guardando}
-          style={{
-            background: guardando
-              ? "#86efac"
-              : "#16a34a",
-            color: "white",
-            border: "none",
-            padding:
-              "14px 28px",
-            borderRadius: 8,
-            fontSize: 16,
-            fontWeight: 700,
-            cursor: guardando
-              ? "not-allowed"
-              : "pointer",
-          }}
-        >
-          {guardando
-            ? "Guardando..."
-            : modoEdicion
-            ? "💾 Guardar cambios"
-            : "🚀 Publicar"}
-        </button>
-      </div>
+        {guardando
+          ? "Guardando..."
+          : modoEdicion
+          ? "Guardar cambios"
+          : "Publicar"}
+      </button>
     </form>
   );
 }
