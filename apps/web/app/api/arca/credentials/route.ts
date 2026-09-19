@@ -1,8 +1,24 @@
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase/server";
 import { obtenerCredencialesWSCPE } from "@/lib/arca/credentials";
 
 export async function GET() {
   try {
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser();
+
+    if (authError || !user) {
+      return NextResponse.json(
+        {
+          ok: false,
+          error: "No autorizado.",
+        },
+        { status: 401 }
+      );
+    }
+
     const credenciales = await obtenerCredencialesWSCPE();
 
     return NextResponse.json({
