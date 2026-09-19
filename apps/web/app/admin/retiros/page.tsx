@@ -34,6 +34,7 @@ type MedioCobro = {
   cbu: string | null;
   alias: string | null;
   moneda_id: number | null;
+  es_predeterminado: boolean;
   estado: string;
 };
 
