@@ -76,6 +76,10 @@ export default function AdminRetirosPage() {
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [medios, setMedios] = useState<MedioCobro[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [mediosAdmin, setMediosAdmin] = useState<Array<MedioCobro & { empresa_id: string; empresa_razon_social: string | null; empresa_cuit: string | null; profile_id: string | null; motivo_rechazo: string | null; creado_at: string; actualizado_at: string }>>([]);
+  const [medioSeleccionado, setMedioSeleccionado] = useState<(MedioCobro & { empresa_id: string; empresa_razon_social: string | null; empresa_cuit: string | null; profile_id: string | null; motivo_rechazo: string | null; creado_at: string; actualizado_at: string }) | null>(null);
+  const [motivoRechazoMedio, setMotivoRechazoMedio] = useState("");
+  const [guardandoMedio, setGuardandoMedio] = useState(false);
 
   const [filtroEstado, setFiltroEstado] = useState("TODOS");
   const [retiroSeleccionado, setRetiroSeleccionado] =
@@ -167,6 +171,40 @@ export default function AdminRetirosPage() {
       pagado_por: string | null;
       observaciones: string | null;
     }>;
+
+    const { data: mediosAdminDB, error: mediosAdminError } = await supabase.rpc(
+      "admin_listar_medios_cobro"
+    );
+
+    if (mediosAdminError) {
+      setError(
+        `No se pudieron cargar los medios de cobro administrativos: ${mediosAdminError.message}`
+      );
+    }
+
+    const mediosAdminMap = ((mediosAdminDB || []) as Array<{
+      id: string;
+      empresa_id: string;
+      empresa_razon_social: string | null;
+      empresa_cuit: string | null;
+      profile_id: string | null;
+      tipo: string;
+      nombre: string;
+      titular: string | null;
+      cuit_cuil: string | null;
+      banco: string | null;
+      tipo_cuenta: string | null;
+      cbu: string | null;
+      alias: string | null;
+      moneda_id: number | null;
+      es_predeterminado: boolean;
+      estado: string;
+      motivo_rechazo: string | null;
+      creado_at: string;
+      actualizado_at: string;
+    }>);
+
+    setMediosAdmin(mediosAdminMap);
 
     const retirosDB = filas.map((fila) => ({
       id: fila.retiro_id,
@@ -300,6 +338,40 @@ export default function AdminRetirosPage() {
     setGuardando(false);
   }
 
+  async function resolverMedioCobro(nuevoEstado: "VALIDADO" | "RECHAZADO") {
+    if (!medioSeleccionado) return;
+
+    if (nuevoEstado === "RECHAZADO" && !motivoRechazoMedio.trim()) {
+      setError("Ingresá el motivo del rechazo del medio de cobro.");
+      return;
+    }
+
+    setGuardandoMedio(true);
+    setError("");
+    setMensaje("");
+
+    const { error: rpcError } = await supabase.rpc(
+      "admin_resolver_medio_cobro",
+      {
+        p_medio_id: medioSeleccionado.id,
+        p_estado: nuevoEstado,
+        p_motivo_rechazo: motivoRechazoMedio.trim() || null,
+      }
+    );
+
+    if (rpcError) {
+      setError(`No se pudo actualizar el medio de cobro: ${rpcError.message}`);
+      setGuardandoMedio(false);
+      return;
+    }
+
+    setMensaje(`Medio de cobro actualizado a ${nuevoEstado}.`);
+    setMedioSeleccionado(null);
+    setMotivoRechazoMedio("");
+    await cargar();
+    setGuardandoMedio(false);
+  }
+
   function obtenerMedio(id: string) {
     return medios.find((medio) => medio.id === id);
   }
@@ -417,6 +489,70 @@ export default function AdminRetirosPage() {
           {mensaje}
         </div>
       )}
+
+      <section
+        style={{
+          background: "#fff",
+          border: "1px solid #e2e8f0",
+          borderRadius: 14,
+          padding: 20,
+          marginBottom: 18,
+        }}
+      >
+        <h2 style={{ marginTop: 0 }}>🏦 Medios de cobro pendientes</h2>
+        <p style={{ color: "#64748b" }}>
+          Revisá y validá los medios de cobro antes de habilitarlos para retiros.
+        </p>
+
+        {mediosAdmin.filter((medio) => medio.estado === "PENDIENTE").length === 0 ? (
+          <div style={{ color: "#64748b", padding: 12 }}>
+            No hay medios de cobro pendientes.
+          </div>
+        ) : (
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", minWidth: 900 }}>
+              <thead>
+                <tr style={{ background: "#f8fafc" }}>
+                  {["Empresa", "Medio", "Titular", "Moneda", "Predeterminado", "Estado", "Acción"].map((titulo) => (
+                    <th key={titulo} style={{ textAlign: "left", padding: 10, fontSize: 12, color: "#475569" }}>
+                      {titulo}
+                    </th>
+                  ))}
+                </tr>
+              </thead>
+              <tbody>
+                {mediosAdmin.filter((medio) => medio.estado === "PENDIENTE").map((medio) => (
+                  <tr key={medio.id} style={{ borderTop: "1px solid #f1f5f9" }}>
+                    <td style={{ padding: 10 }}>
+                      <strong>{medio.empresa_razon_social || "—"}</strong>
+                      {medio.empresa_cuit && <div style={{ color: "#64748b", fontSize: 12 }}>CUIT: {medio.empresa_cuit}</div>}
+                    </td>
+                    <td style={{ padding: 10 }}>{medio.nombre}</td>
+                    <td style={{ padding: 10 }}>{medio.titular || "—"}</td>
+                    <td style={{ padding: 10 }}>{monedaNombre[medio.moneda_id || 0] || "—"}</td>
+                    <td style={{ padding: 10 }}>{medio.es_predeterminado ? "Sí" : "No"}</td>
+                    <td style={{ padding: 10 }}><strong>{medio.estado}</strong></td>
+                    <td style={{ padding: 10 }}>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setMedioSeleccionado(medio);
+                          setMotivoRechazoMedio(medio.motivo_rechazo || "");
+                          setError("");
+                          setMensaje("");
+                        }}
+                        style={{ padding: "8px 12px", borderRadius: 8, border: "1px solid #cbd5e1", background: "#fff", fontWeight: 700 }}
+                      >
+                        Revisar
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
 
       <section
         style={{
@@ -596,6 +732,55 @@ export default function AdminRetirosPage() {
           </table>
         )}
       </section>
+
+      {medioSeleccionado && (
+        <div style={{ position: "fixed", inset: 0, background: "rgba(15,23,42,.55)", display: "flex", alignItems: "center", justifyContent: "center", padding: 20, zIndex: 1100 }}>
+          <section style={{ width: "100%", maxWidth: 700, maxHeight: "90vh", overflowY: "auto", background: "#fff", borderRadius: 16, padding: 24 }}>
+            <div style={{ display: "flex", justifyContent: "space-between", gap: 15 }}>
+              <div>
+                <h2 style={{ marginTop: 0 }}>Revisar medio de cobro</h2>
+                <p style={{ color: "#64748b" }}>{medioSeleccionado.nombre}</p>
+              </div>
+              <button type="button" onClick={() => setMedioSeleccionado(null)} style={{ border: "none", background: "transparent", fontSize: 22 }}>✕</button>
+            </div>
+
+            <div style={{ display: "grid", gap: 10, marginBottom: 20 }}>
+              <div><strong>Empresa:</strong> {medioSeleccionado.empresa_razon_social || "—"}</div>
+              <div><strong>CUIT:</strong> {medioSeleccionado.empresa_cuit || "—"}</div>
+              <div><strong>Tipo:</strong> {medioSeleccionado.tipo}</div>
+              <div><strong>Titular:</strong> {medioSeleccionado.titular || "—"}</div>
+              <div><strong>CUIT/CUIL:</strong> {medioSeleccionado.cuit_cuil || "—"}</div>
+              {medioSeleccionado.banco && <div><strong>Banco:</strong> {medioSeleccionado.banco}</div>}
+              {medioSeleccionado.tipo_cuenta && <div><strong>Tipo de cuenta:</strong> {medioSeleccionado.tipo_cuenta}</div>}
+              <div><strong>CBU:</strong> {mascaraCBU(medioSeleccionado.cbu)}</div>
+              <div><strong>Alias:</strong> {medioSeleccionado.alias || "—"}</div>
+              <div><strong>Moneda:</strong> {monedaNombre[medioSeleccionado.moneda_id || 0] || "—"}</div>
+              <div><strong>Predeterminado:</strong> {medioSeleccionado.es_predeterminado ? "Sí" : "No"}</div>
+              <div><strong>Estado:</strong> {medioSeleccionado.estado}</div>
+            </div>
+
+            <label style={{ display: "block", marginBottom: 15 }}>
+              <div style={{ fontSize: 12, fontWeight: 700, marginBottom: 6 }}>Motivo de rechazo</div>
+              <textarea
+                value={motivoRechazoMedio}
+                onChange={(e) => setMotivoRechazoMedio(e.target.value)}
+                rows={3}
+                placeholder="Obligatorio para rechazar"
+                style={{ width: "100%", padding: 10, borderRadius: 8, border: "1px solid #cbd5e1" }}
+              />
+            </label>
+
+            <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+              <button type="button" disabled={guardandoMedio} onClick={() => resolverMedioCobro("VALIDADO")} style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#166534", color: "#fff", fontWeight: 800 }}>
+                ✅ Validar medio
+              </button>
+              <button type="button" disabled={guardandoMedio} onClick={() => resolverMedioCobro("RECHAZADO")} style={{ padding: "10px 14px", borderRadius: 8, border: "none", background: "#991b1b", color: "#fff", fontWeight: 800 }}>
+                ❌ Rechazar medio
+              </button>
+            </div>
+          </section>
+        </div>
+      )}
 
       {retiroSeleccionado && (
         <div
