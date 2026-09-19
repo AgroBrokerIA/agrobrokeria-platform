@@ -126,40 +126,99 @@ export default function AdminRetirosPage() {
 
     setAutorizado(true);
 
-    const [
-      { data: retirosDB, error: retirosError },
-      { data: mediosDB, error: mediosError },
-      { data: empresasDB, error: empresasError },
-    ] = await Promise.all([
-      supabase
-        .from("retiros_comisiones")
-        .select(
-          "id,empresa_id,profile_id,medio_cobro_id,moneda_id,importe,estado,referencia,comprobante_url,fecha_solicitud,fecha_aprobacion,fecha_pago,fecha_rechazo,motivo_rechazo,aprobado_por,pagado_por,observaciones"
-        )
-        .order("fecha_solicitud", { ascending: false }),
+    const { data: adminDB, error: adminError } = await supabase.rpc(
+      "admin_listar_retiros_comisiones"
+    );
 
-      supabase
-        .from("medios_cobro")
-        .select(
-          "id,tipo,nombre,titular,cuit_cuil,banco,tipo_cuenta,cbu,alias,moneda_id,estado"
-        ),
-
-      supabase
-        .from("companies")
-        .select("id,razon_social,cuit"),
-    ]);
-
-    if (retirosError) {
-      setError(`No se pudieron cargar los retiros: ${retirosError.message}`);
+    if (adminError) {
+      setError(
+        `No se pudieron cargar los retiros administrativos: ${adminError.message}`
+      );
     }
 
-    if (mediosError) {
-      setError(`No se pudieron cargar los medios: ${mediosError.message}`);
+    const filas = (adminDB || []) as Array<{
+      retiro_id: string;
+      empresa_id: string;
+      empresa_razon_social: string | null;
+      empresa_cuit: string | null;
+      profile_id: string | null;
+      medio_cobro_id: string;
+      medio_tipo: string | null;
+      medio_nombre: string | null;
+      medio_titular: string | null;
+      medio_cuit_cuil: string | null;
+      medio_banco: string | null;
+      medio_tipo_cuenta: string | null;
+      medio_cbu: string | null;
+      medio_alias: string | null;
+      medio_moneda_id: number | null;
+      medio_estado: string | null;
+      retiro_moneda_id: number;
+      importe: number;
+      estado: string;
+      referencia: string | null;
+      comprobante_url: string | null;
+      fecha_solicitud: string;
+      fecha_aprobacion: string | null;
+      fecha_pago: string | null;
+      fecha_rechazo: string | null;
+      motivo_rechazo: string | null;
+      aprobado_por: string | null;
+      pagado_por: string | null;
+      observaciones: string | null;
+    }>;
+
+    const retirosDB = filas.map((fila) => ({
+      id: fila.retiro_id,
+      empresa_id: fila.empresa_id,
+      profile_id: fila.profile_id,
+      medio_cobro_id: fila.medio_cobro_id,
+      moneda_id: fila.retiro_moneda_id,
+      importe: fila.importe,
+      estado: fila.estado,
+      referencia: fila.referencia,
+      comprobante_url: fila.comprobante_url,
+      fecha_solicitud: fila.fecha_solicitud,
+      fecha_aprobacion: fila.fecha_aprobacion,
+      fecha_pago: fila.fecha_pago,
+      fecha_rechazo: fila.fecha_rechazo,
+      motivo_rechazo: fila.motivo_rechazo,
+      aprobado_por: fila.aprobado_por,
+      pagado_por: fila.pagado_por,
+      observaciones: fila.observaciones,
+    }));
+
+    const mediosMap = new Map<string, MedioCobro>();
+    const empresasMap = new Map<string, Empresa>();
+
+    for (const fila of filas) {
+      if (!mediosMap.has(fila.medio_cobro_id)) {
+        mediosMap.set(fila.medio_cobro_id, {
+          id: fila.medio_cobro_id,
+          tipo: fila.medio_tipo || "",
+          nombre: fila.medio_nombre || "",
+          titular: fila.medio_titular,
+          cuit_cuil: fila.medio_cuit_cuil,
+          banco: fila.medio_banco,
+          tipo_cuenta: fila.medio_tipo_cuenta,
+          cbu: fila.medio_cbu,
+          alias: fila.medio_alias,
+          moneda_id: fila.medio_moneda_id,
+          estado: fila.medio_estado || "",
+        });
+      }
+
+      if (!empresasMap.has(fila.empresa_id)) {
+        empresasMap.set(fila.empresa_id, {
+          id: fila.empresa_id,
+          razon_social: fila.empresa_razon_social || "—",
+          cuit: fila.empresa_cuit,
+        });
+      }
     }
 
-    if (empresasError) {
-      setError(`No se pudieron cargar las empresas: ${empresasError.message}`);
-    }
+    const mediosDB = Array.from(mediosMap.values());
+    const empresasDB = Array.from(empresasMap.values());
 
     setRetiros((retirosDB || []) as Retiro[]);
     setMedios((mediosDB || []) as MedioCobro[]);
