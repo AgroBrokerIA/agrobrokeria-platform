@@ -231,23 +231,13 @@ export default function MediosCobroPage() {
       return;
     }
 
-    const { error: errorQuitar } = await supabase
-      .from("medios_cobro")
-      .update({ es_predeterminado: false })
-      .eq("empresa_id", perfil.active_company_id);
+    const { error: errorPredeterminado } = await supabase.rpc(
+      "establecer_medio_cobro_predeterminado",
+      { p_medio_id: id }
+    );
 
-    if (errorQuitar) {
-      setError(errorQuitar.message);
-      return;
-    }
-
-    const { error: errorMarcar } = await supabase
-      .from("medios_cobro")
-      .update({ es_predeterminado: true })
-      .eq("id", id);
-
-    if (errorMarcar) {
-      setError(errorMarcar.message);
+    if (errorPredeterminado) {
+      setError(errorPredeterminado.message);
       return;
     }
 
