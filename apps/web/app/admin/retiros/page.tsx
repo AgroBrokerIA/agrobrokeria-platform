@@ -243,6 +243,7 @@ export default function AdminRetirosPage() {
           cbu: fila.medio_cbu,
           alias: fila.medio_alias,
           moneda_id: fila.medio_moneda_id,
+          es_predeterminado: false,
           estado: fila.medio_estado || "",
         });
       }
