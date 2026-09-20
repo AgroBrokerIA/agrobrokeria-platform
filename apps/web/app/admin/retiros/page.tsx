@@ -118,9 +118,10 @@ export default function AdminRetirosPage() {
       .eq("profile_id", user.id)
       .eq("activo", true);
 
-    const esAdmin = (membresias || []).some(
-      (membresia) => String(membresia.rol).toLowerCase() === "admin"
-    );
+    const esAdmin = (membresias || []).some((membresia) => {
+      const rol = String(membresia.rol).toLowerCase();
+      return rol === "administrador" || rol === "admin";
+    });
 
     if (membresiaError || !esAdmin) {
       setAutorizado(false);
