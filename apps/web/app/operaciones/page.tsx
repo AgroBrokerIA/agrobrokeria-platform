@@ -2910,6 +2910,20 @@ Firma: ______________________________
       return false;
     }
 
+    const { error: errorEconomico } = await supabase.rpc(
+      "confirmar_liquidacion_y_cerrar_operacion",
+      {
+        p_operacion_id: operacionId,
+      }
+    );
+
+    if (errorEconomico) {
+      setError(
+        `No se pudo confirmar económicamente la liquidación: ${errorEconomico.message}`
+      );
+      return false;
+    }
+
     const { error: errorAvance } =
       await supabase
         .from("operacion_workflow")
@@ -2922,13 +2936,13 @@ Firma: ______________________________
 
     if (errorAvance) {
       setError(
-        `La liquidación fue registrada, pero no se pudo cerrar la operación: ${errorAvance.message}`
+        `La liquidación y la comisión fueron registradas, pero no se pudo actualizar el workflow: ${errorAvance.message}`
       );
       return false;
     }
 
     setMensaje(
-      "✅ Liquidación confirmada. La operación pasó a Cerrada."
+      "✅ Liquidación confirmada. Comisión AgroBroker IA registrada y operación cerrada."
     );
 
     await cargarOperaciones();
