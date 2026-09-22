@@ -3,12 +3,9 @@ import os from "node:os";
 import path from "node:path";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
-import { arcaConfig } from "./config";
+import { arcaConfig, getArcaCertificateMaterial } from "./config";
 
 const execFileAsync = promisify(execFile);
-
-const WSAA_DESTINATION =
-  "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
 
 function generarUniqueId(): number {
   return Math.floor(Date.now() / 1000) % 4294967295;
@@ -30,13 +27,15 @@ function escaparXml(valor: string): string {
 function generarTRA(): string {
   const ahora = new Date();
   const expiracion = new Date(ahora.getTime() + 10 * 60 * 1000);
-
   const uniqueId = generarUniqueId();
+  const destination = arcaConfig.environment === "PRODUCCION"
+    ? "cn=wsaa,o=afip,c=ar,serialNumber=CUIT 33693450239"
+    : "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <loginTicketRequest version="1.0">
   <header>
-    <destination>${escaparXml(WSAA_DESTINATION)}</destination>
+    <destination>${escaparXml(destination)}</destination>
     <uniqueId>${uniqueId}</uniqueId>
     <generationTime>${fechaARCA(ahora)}</generationTime>
     <expirationTime>${fechaARCA(expiracion)}</expirationTime>
@@ -45,10 +44,7 @@ function generarTRA(): string {
 </loginTicketRequest>`;
 }
 
-async function generarCMS(
-  traPath: string,
-  cmsPath: string
-): Promise<void> {
+async function generarCMS(traPath: string, cmsPath: string, certificatePath: string, privateKeyPath: string) {
   await execFileAsync("openssl", [
     "cms",
     "-sign",
@@ -56,31 +52,23 @@ async function generarCMS(
     "-in",
     traPath,
     "-signer",
-    arcaConfig.certificatePath,
+    certificatePath,
     "-inkey",
-    arcaConfig.privateKeyPath,
+    privateKeyPath,
     "-outform",
     "DER",
     "-out",
     cmsPath,
     "-nodetach",
     "-md",
-    "sha256",
+    "sha1",
   ]);
 }
 
 function extraerXmlRespuesta(soap: string): string {
-  const match = soap.match(
-    /<loginCmsReturn[^>]*>([\s\S]*?)<\/loginCmsReturn>/
-  );
-
+  const match = soap.match(/<loginCmsReturn[^>]*>([\s\S]*?)<\/loginCmsReturn>/i);
   if (!match) {
-    throw new Error(
-      `ARCA WSAA no devolvió loginCmsReturn. Respuesta: ${soap.slice(
-        0,
-        1000
-      )}`
-    );
+    throw new Error("ARCA WSAA no devolvió una respuesta de autenticación válida.");
   }
 
   return match[1]
@@ -92,47 +80,38 @@ function extraerXmlRespuesta(soap: string): string {
 }
 
 function extraerCredenciales(xml: string) {
-  const token = xml.match(/<token>([\s\S]*?)<\/token>/)?.[1];
-  const sign = xml.match(/<sign>([\s\S]*?)<\/sign>/)?.[1];
-  const expirationTime = xml.match(
-    /<expirationTime>([\s\S]*?)<\/expirationTime>/
-  )?.[1];
+  const token = xml.match(/<token>([\s\S]*?)<\/token>/i)?.[1];
+  const sign = xml.match(/<sign>([\s\S]*?)<\/sign>/i)?.[1];
+  const expirationTime = xml.match(/<expirationTime>([\s\S]*?)<\/expirationTime>/i)?.[1];
 
   if (!token || !sign) {
-    throw new Error(
-      `ARCA no devolvió Token/Sign. Respuesta: ${xml.slice(0, 1500)}`
-    );
+    throw new Error("ARCA no devolvió Token/Sign.");
   }
 
   return {
-    token,
-    sign,
-    expirationTime: expirationTime ?? null,
+    token: token.trim(),
+    sign: sign.trim(),
+    expirationTime: expirationTime?.trim() ?? null,
   };
 }
 
 export async function solicitarTicketWSCPE() {
-  const tmpDir = await fs.promises.mkdtemp(
-    path.join(os.tmpdir(), "agrobrokeria-wsaa-")
-  );
-
+  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "agrobrokeria-wsaa-"));
   const traPath = path.join(tmpDir, "LoginTicketRequest.xml");
   const cmsPath = path.join(tmpDir, "LoginTicketRequest.xml.cms");
+  const certPath = path.join(tmpDir, "arca.crt");
+  const keyPath = path.join(tmpDir, "arca.key");
 
   try {
-    const tra = generarTRA();
+    const material = getArcaCertificateMaterial();
+    await fs.promises.writeFile(certPath, material.certificate, { encoding: "utf8", mode: 0o600 });
+    await fs.promises.writeFile(keyPath, material.privateKey, { encoding: "utf8", mode: 0o600 });
+    await fs.promises.writeFile(traPath, generarTRA(), "utf8");
+    await generarCMS(traPath, cmsPath, certPath, keyPath);
 
-    await fs.promises.writeFile(traPath, tra, "utf8");
-
-    await generarCMS(traPath, cmsPath);
-
-    const cms = await fs.promises.readFile(cmsPath);
-    const cmsBase64 = cms.toString("base64");
-
+    const cmsBase64 = (await fs.promises.readFile(cmsPath)).toString("base64");
     const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
-  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:ser="https://wsaa.afip.gov.ar/ws/services/LoginCms">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="https://wsaa.afip.gov.ar/ws/services/LoginCms">
   <soapenv:Header/>
   <soapenv:Body>
     <ser:loginCms>
@@ -143,36 +122,26 @@ export async function solicitarTicketWSCPE() {
 
     const response = await fetch(arcaConfig.wsaaUrl, {
       method: "POST",
-      headers: {
-        "Content-Type": "text/xml; charset=utf-8",
-        SOAPAction: "",
-      },
+      headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: "" },
       body: soap,
+      signal: AbortSignal.timeout(30000),
     });
 
     const responseText = await response.text();
-
     if (!response.ok) {
-      throw new Error(
-        `WSAA HTTP ${response.status}: ${responseText.slice(0, 1500)}`
-      );
+      throw new Error(`WSAA HTTP ${response.status}`);
     }
 
-    const loginTicketXml = extraerXmlRespuesta(responseText);
-    const credentials = extraerCredenciales(loginTicketXml);
-
+    const credentials = extraerCredenciales(extraerXmlRespuesta(responseText));
     return {
       ok: true,
-      ambiente: "HOMOLOGACION",
+      ambiente: arcaConfig.environment,
       servicio: "wscpe",
       token: credentials.token,
       sign: credentials.sign,
       expirationTime: credentials.expirationTime,
     };
   } finally {
-    await fs.promises.rm(tmpDir, {
-      recursive: true,
-      force: true,
-    });
+    await fs.promises.rm(tmpDir, { recursive: true, force: true });
   }
 }
