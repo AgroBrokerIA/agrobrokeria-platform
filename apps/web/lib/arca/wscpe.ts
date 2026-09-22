@@ -1,6 +1,8 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
+const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
+
 function enviarSOAP(soap: string): Promise<{
   status: number;
   contentType: string | null;
@@ -8,7 +10,6 @@ function enviarSOAP(soap: string): Promise<{
 }> {
   return new Promise((resolve, reject) => {
     const url = new URL(arcaConfig.wscpeUrl);
-
     const request = https.request(
       {
         protocol: url.protocol,
@@ -26,29 +27,19 @@ function enviarSOAP(soap: string): Promise<{
       },
       (response) => {
         const chunks: Buffer[] = [];
-
-        response.on("data", (chunk) => {
-          chunks.push(Buffer.from(chunk));
-        });
-
-        response.on("end", () => {
-          resolve({
-            status: response.statusCode ?? 0,
-            contentType: response.headers["content-type"] ?? null,
-            body: Buffer.concat(chunks).toString("utf8"),
-          });
-        });
+        response.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+        response.on("end", () => resolve({
+          status: response.statusCode ?? 0,
+          contentType: response.headers["content-type"] ?? null,
+          body: Buffer.concat(chunks).toString("utf8"),
+        }));
       }
     );
 
     request.on("error", reject);
-
     request.setTimeout(30000, () => {
-      request.destroy(
-        new Error("Timeout comunicando con WSCPE ARCA.")
-      );
+      request.destroy(new Error("Timeout comunicando con WSCPE ARCA."));
     });
-
     request.write(soap);
     request.end();
   });
@@ -59,40 +50,25 @@ function validarRespuesta(
   operacion: string
 ) {
   if (response.status < 200 || response.status >= 300) {
-    throw new Error(
-      `${operacion}: HTTP ${response.status}: ${response.body.slice(0, 3000)}`
-    );
+    throw new Error(`${operacion}: HTTP ${response.status}`);
   }
-
-  if (
-    !response.body.includes("<soap:Envelope") &&
-    !response.body.includes(":Envelope")
-  ) {
-    throw new Error(
-      `${operacion}: ARCA no devolvió SOAP. Content-Type=${response.contentType ?? "desconocido"}`
-    );
+  if (!response.body.includes("Envelope")) {
+    throw new Error(`${operacion}: ARCA no devolvió una respuesta SOAP válida.`);
   }
 }
 
 export async function probarWSCPE() {
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
-  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:wsl="https://serviciosjava.afip.gob.ar/wscpe/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
   <soapenv:Header/>
   <soapenv:Body>
-    <wsl:dummy/>
+    <wsc:dummy/>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
-
   validarRespuesta(response, "WSCPE Dummy");
-
-  return {
-    ok: true,
-    respuestaXml: response.body,
-  };
+  return { ok: true, respuestaXml: response.body };
 }
 
 export async function probarWSCPEAutenticado() {
@@ -100,29 +76,22 @@ export async function probarWSCPEAutenticado() {
   const credenciales = await obtenerCredencialesWSCPE();
 
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
-  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:wsl="https://serviciosjava.afip.gob.ar/wscpe/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
   <soapenv:Header/>
   <soapenv:Body>
-    <wsl:dummy>
-      <wsl:auth>
-        <wsl:token>${credenciales.token}</wsl:token>
-        <wsl:sign>${credenciales.sign}</wsl:sign>
-        <wsl:cuitRepresentada>27400363817</wsl:cuitRepresentada>
-      </wsl:auth>
-    </wsl:dummy>
+    <wsc:dummy>
+      <wsc:auth>
+        <wsc:token>${credenciales.token}</wsc:token>
+        <wsc:sign>${credenciales.sign}</wsc:sign>
+        <wsc:cuitRepresentada>${arcaConfig.cuit}</wsc:cuitRepresentada>
+      </wsc:auth>
+    </wsc:dummy>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
-
   validarRespuesta(response, "WSCPE Dummy autenticado");
-
-  return {
-    ok: true,
-    respuestaXml: response.body,
-  };
+  return { ok: true, respuestaXml: response.body };
 }
 
 export async function consultarProvinciasWSCPE() {
@@ -130,27 +99,20 @@ export async function consultarProvinciasWSCPE() {
   const credenciales = await obtenerCredencialesWSCPE();
 
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope
-  xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
-  xmlns:wsc="https://serviciosjava.afip.gob.ar/wscpe/">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
   <soapenv:Header/>
   <soapenv:Body>
     <wsc:ConsultarProvinciasReq>
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuitRepresentada>27400363817</cuitRepresentada>
+        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
-
   validarRespuesta(response, "WSCPE ConsultarProvincias");
-
-  return {
-    ok: true,
-    respuestaXml: response.body,
-  };
+  return { ok: true, respuestaXml: response.body };
 }
