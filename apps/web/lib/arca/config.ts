@@ -2,39 +2,71 @@ import fs from "node:fs";
 import path from "node:path";
 
 const ARCA_DIR = path.join(process.cwd(), ".secrets", "arca");
+const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").toUpperCase();
+const isProduction = environment === "PRODUCCION";
 
 export const arcaConfig = {
-  cuit: "27400363817",
+  cuit: process.env.ARCA_CUIT ?? "27400363817",
+  environment: isProduction ? "PRODUCCION" : "HOMOLOGACION",
 
   certificatePath: path.join(
     ARCA_DIR,
-    "agrobrokeria-wscpe-homo.crt"
+    isProduction ? "agrobrokeria-wscpe.crt" : "agrobrokeria-wscpe-homo.crt"
   ),
 
   privateKeyPath: path.join(
     ARCA_DIR,
-    "agrobrokeria-wscpe-homo.key"
+    isProduction ? "agrobrokeria-wscpe.key" : "agrobrokeria-wscpe-homo.key"
   ),
 
-  wsaaUrl:
-    "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+  certificatePem: process.env.ARCA_CERTIFICATE_PEM ?? null,
+  privateKeyPem: process.env.ARCA_PRIVATE_KEY_PEM ?? null,
+  certificateBase64: process.env.ARCA_CERTIFICATE_BASE64 ?? null,
+  privateKeyBase64: process.env.ARCA_PRIVATE_KEY_BASE64 ?? null,
 
-  wscpeUrl:
-    "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
+  wsaaUrl: isProduction
+    ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
+    : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+
+  wscpeUrl: isProduction
+    ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"
+    : "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
 };
 
-export function verificarCredencialesARCA() {
-  if (!fs.existsSync(arcaConfig.certificatePath)) {
-    throw new Error("No se encontró el certificado de ARCA.");
+export function getArcaCertificateMaterial() {
+  const certificate = arcaConfig.certificateBase64
+    ? Buffer.from(arcaConfig.certificateBase64, "base64").toString("utf8")
+    : arcaConfig.certificatePem;
+
+  const privateKey = arcaConfig.privateKeyBase64
+    ? Buffer.from(arcaConfig.privateKeyBase64, "base64").toString("utf8")
+    : arcaConfig.privateKeyPem;
+
+  if (certificate && privateKey) {
+    return { certificate, privateKey, source: "environment" as const };
   }
 
-  if (!fs.existsSync(arcaConfig.privateKeyPath)) {
-    throw new Error("No se encontró la clave privada de ARCA.");
+  if (fs.existsSync(arcaConfig.certificatePath) && fs.existsSync(arcaConfig.privateKeyPath)) {
+    return {
+      certificate: fs.readFileSync(arcaConfig.certificatePath, "utf8"),
+      privateKey: fs.readFileSync(arcaConfig.privateKeyPath, "utf8"),
+      source: "filesystem" as const,
+    };
   }
+
+  throw new Error(
+    "Faltan las credenciales X.509 de ARCA. Configurá ARCA_CERTIFICATE_BASE64 y ARCA_PRIVATE_KEY_BASE64 en el servidor."
+  );
+}
+
+export function verificarCredencialesARCA() {
+  const material = getArcaCertificateMaterial();
 
   return {
-    certificado: true,
-    clavePrivada: true,
+    certificado: Boolean(material.certificate),
+    clavePrivada: Boolean(material.privateKey),
     cuit: arcaConfig.cuit,
+    ambiente: arcaConfig.environment,
+    origen: material.source,
   };
 }
