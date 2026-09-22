@@ -1,8 +1,15 @@
 import { NextResponse } from "next/server";
+import { supabase } from "@/lib/supabase/server";
 import { solicitarTicketWSCPE } from "@/lib/arca/wsaa";
 
 export async function GET() {
   try {
+    const { data: { user } } = await supabase.auth.getUser();
+
+    if (!user) {
+      return NextResponse.json({ ok: false, error: "No autorizado." }, { status: 401 });
+    }
+
     const resultado = await solicitarTicketWSCPE();
 
     return NextResponse.json({
@@ -13,18 +20,10 @@ export async function GET() {
       mensaje: "Autenticación WSAA realizada correctamente.",
     });
   } catch (error) {
-    console.error("Error WSAA ARCA:", error);
-
+    console.error("ARCA WSAA:", error);
     return NextResponse.json(
-      {
-        ok: false,
-        mensaje: "Error autenticando contra ARCA WSAA.",
-        error:
-          error instanceof Error
-            ? error.message
-            : "Error desconocido",
-      },
-      { status: 500 }
+      { ok: false, mensaje: "No fue posible autenticar contra ARCA WSAA." },
+      { status: 502 }
     );
   }
 }
