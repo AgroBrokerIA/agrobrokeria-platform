@@ -58,6 +58,24 @@ type OfertaDB = {
     | null;
 };
 
+function estadoTexto(estado: string) {
+  const estados: Record<string, string> = {
+    PENDIENTE: "Pendiente",
+    ACEPTADA: "Aceptada",
+    RECHAZADA: "Rechazada",
+    CANCELADA: "Cancelada",
+    NEGOCIACION: "En negociación",
+  };
+  return estados[estado] ?? estado;
+}
+
+function formatoNumero(valor: number | string | null | undefined) {
+  const n = Number(valor ?? 0);
+  return Number.isFinite(n)
+    ? n.toLocaleString("es-AR", { maximumFractionDigits: 2 })
+    : "0";
+}
+
 type PublicacionDB = {
   id: string;
   empresa_id: string;
