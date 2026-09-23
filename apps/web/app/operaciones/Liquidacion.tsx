@@ -190,18 +190,21 @@ export default function Liquidacion({
       updated_at: new Date().toISOString(),
     };
 
-    const resultado = datos.id
-      ? await supabase
-          .from("operacion_liquidacion")
-          .update(payload)
-          .eq("id", datos.id)
-          .select()
-          .single()
-      : await supabase
-          .from("operacion_liquidacion")
-          .insert(payload)
-          .select()
-          .single();
+    const { data: nueva, error: errorLiquidacion } = await supabase.rpc(
+      "guardar_liquidacion_operacion",
+      {
+        p_operacion_id: operacionId,
+        p_datos: {
+          id: datos.id || null,
+          ...payload,
+        },
+      }
+    );
+
+    const resultado = {
+      data: nueva,
+      error: errorLiquidacion,
+    };
 
     if (resultado.error) {
       setError(
