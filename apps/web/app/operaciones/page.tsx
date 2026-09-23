@@ -1460,7 +1460,7 @@ export default function OperacionesPage() {
       return;
     }
 
-    const { data: participanteId, error: errorAsignacion } = await supabase.rpc("asignar_intermediario_operacion", {
+    const { error: errorAsignacion } = await supabase.rpc("asignar_intermediario_operacion", {
       p_operacion_id: operacionId,
       p_empresa_id: empresaId,
     });
