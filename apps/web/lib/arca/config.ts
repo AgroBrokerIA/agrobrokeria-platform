@@ -5,7 +5,7 @@ const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").toUpperCase
 const isProduction = environment === "PRODUCCION";
 
 export const arcaConfig = {
-  cuit: process.env.ARCA_CUIT ?? "27400363817",
+  cuit: process.env.ARCA_CUIT ?? "",
   environment: isProduction ? "PRODUCCION" : "HOMOLOGACION",
 
   certificatePath: path.join(
