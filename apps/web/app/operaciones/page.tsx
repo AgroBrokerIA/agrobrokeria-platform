@@ -642,14 +642,7 @@ export default function OperacionesPage() {
             continue;
           }
 
-          const { error: errorAvanceFondos } =
-            await supabase
-              .from("operacion_workflow")
-              .update({
-                etapa_actual_id: etapaFondos.id,
-              })
-              .eq("id", workflow.id)
-              .eq("etapa_actual_id", workflow.etapa_actual_id);
+          const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
 
           if (errorAvanceFondos) {
             console.error(
@@ -809,14 +802,7 @@ export default function OperacionesPage() {
       return false;
     }
 
-    const { error: errorWorkflow } =
-      await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id: etapaAcuerdo.id,
-        })
-        .eq("id", workflow.id)
-        .eq("etapa_actual_id", workflow.etapa_actual_id);
+    const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, etapaAcuerdo.id);
 
     if (errorWorkflow) {
       setError(
@@ -2082,13 +2068,7 @@ Firma: ______________________________
         return;
       }
 
-      const { error: errorWorkflow } =
-        await supabase
-          .from("operacion_workflow")
-          .update({
-            etapa_actual_id: siguienteEtapa.id,
-          })
-          .eq("id", workflow.id);
+      const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, siguienteEtapa.id);
 
       if (errorWorkflow) {
         setMensaje("");
@@ -2581,13 +2561,7 @@ Firma: ______________________________
         return false;
       }
 
-      const { error: errorAvance } =
-        await supabase
-          .from("operacion_workflow")
-          .update({
-            etapa_actual_id: etapaContrato.id,
-          })
-          .eq("id", workflow.id);
+      const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaContrato.id);
 
       if (errorAvance) {
         setError(
@@ -2671,13 +2645,7 @@ Firma: ______________________________
           return false;
         }
 
-        const { error: errorAvanceFondos } =
-          await supabase
-            .from("operacion_workflow")
-            .update({
-              etapa_actual_id: etapaFondos.id,
-            })
-            .eq("id", workflow.id);
+        const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
 
         if (errorAvanceFondos) {
           setError(
@@ -2778,14 +2746,7 @@ Firma: ______________________________
       return false;
     }
 
-    const { error: errorAvance } =
-      await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id: etapaLogistica.id,
-        })
-        .eq("id", workflow.id)
-        .eq("etapa_actual_id", workflow.etapa_actual_id);
+    const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaLogistica.id);
 
     if (errorAvance) {
       setError(
@@ -2848,14 +2809,7 @@ Firma: ______________________________
       return false;
     }
 
-    const { error: errorAvance } =
-      await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id: etapaLiquidacion.id,
-        })
-        .eq("id", workflow.id)
-        .eq("etapa_actual_id", workflow.etapa_actual_id);
+    const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaLiquidacion.id);
 
     if (errorAvance) {
       setError(
@@ -2932,15 +2886,7 @@ Firma: ______________________________
       return false;
     }
 
-    const { error: errorAvance } =
-      await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id: etapaCerrada.id,
-          estado: "CERRADA",
-        })
-        .eq("id", workflow.id)
-        .eq("etapa_actual_id", workflow.etapa_actual_id);
+    const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaCerrada.id, "CERRADA");
 
     if (errorAvance) {
       setError(
@@ -3049,14 +2995,7 @@ Firma: ______________________________
       return false;
     }
 
-    const { error: errorWorkflow } =
-      await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id: etapaLiberacion.id,
-        })
-        .eq("id", workflow.id)
-        .eq("etapa_actual_id", workflow.etapa_actual_id);
+    const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, etapaLiberacion.id);
 
     if (errorWorkflow) {
       // Si el workflow falla, volvemos a proteger los datos.
