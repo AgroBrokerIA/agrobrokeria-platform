@@ -54,8 +54,8 @@ function validarRespuesta(
   }
   if (!response.body.includes("Envelope")) {
     const cuerpo = response.body
-      .replace(/<token>[\\s\\S]*?<\\/token>/gi, "<token>[REDACTED]</token>")
-      .replace(/<sign>[\\s\\S]*?<\\/sign>/gi, "<sign>[REDACTED]</sign>")
+      .replace(/<token>[\s\S]*?<\/token>/gi, "<token>[REDACTED]</token>")
+      .replace(/<sign>[\s\S]*?<\/sign>/gi, "<sign>[REDACTED]</sign>")
       .slice(0, 1200);
     throw new Error(
       `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
