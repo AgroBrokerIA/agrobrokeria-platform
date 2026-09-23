@@ -125,7 +125,13 @@ export async function solicitarTicketWSCPE() {
 
     const responseText = await response.text();
     if (!response.ok) {
-      throw new Error(`WSAA HTTP ${response.status}`);
+      const cuerpo = responseText
+        .replace(/<in0>[\s\S]*?<\/in0>/gi, "<in0>[REDACTED]</in0>")
+        .replace(/<loginCmsReturn>[\s\S]*?<\/loginCmsReturn>/gi, "<loginCmsReturn>[REDACTED]</loginCmsReturn>")
+        .slice(0, 2000);
+      throw new Error(
+        `WSAA HTTP ${response.status}; Content-Type ${response.headers.get("content-type") ?? "desconocido"}; Respuesta: ${cuerpo || "[vacía]"}`
+      );
     }
 
     const credentials = extraerCredenciales(extraerXmlRespuesta(responseText));
