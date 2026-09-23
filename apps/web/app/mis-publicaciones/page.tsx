@@ -85,12 +85,10 @@ export default function MisPublicacionesPage() {
     try {
       setProcesando(publicacion.id);
 
-      const { error } = await supabase
-        .from("publicaciones")
-        .update({
-          estado: nuevoEstado,
-        })
-        .eq("id", publicacion.id);
+      const { error } = await supabase.rpc("cambiar_estado_publicacion", {
+        p_publicacion_id: publicacion.id,
+        p_nuevo_estado: nuevoEstado,
+      });
 
       if (error) {
         console.error(error);
@@ -137,10 +135,9 @@ export default function MisPublicacionesPage() {
     try {
       setProcesando(id);
 
-      const { error } = await supabase
-        .from("publicaciones")
-        .delete()
-        .eq("id", id);
+      const { error } = await supabase.rpc("eliminar_publicacion", {
+        p_publicacion_id: id,
+      });
 
       if (error) {
         console.error(error);
