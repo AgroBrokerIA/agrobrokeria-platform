@@ -5765,37 +5765,33 @@ Firma: ______________________________
                                       }
 
                                       const { data, error } =
-                                        await supabase
-                                          .from(
-                                            "comisiones_intermediarios"
-                                          )
-                                          .insert({
-                                            operacion_id:
-                                              operacion.id,
-                                            contacto_id: null,
-                                            parte_operacion_id:
-                                              participanteIntermediario.id,
-                                            lado: "VENDEDOR",
-                                            tipo_comision: tipo,
-                                            valor_comision: valor,
-                                            moneda: "USD",
-                                            quien_abona: quien,
-                                            acuerdo_previo:
-                                              acuerdoPrevio,
-                                            acuerdo_previo_detalle:
-                                              detalle || null,
-                                            estado: acuerdoPrevio
-                                              ? "ACORDADA"
-                                              : "PENDIENTE",
-                                            fecha_acuerdo:
-                                              acuerdoPrevio
-                                                ? new Date().toISOString()
-                                                : null,
-                                            observaciones:
-                                              detalle || null,
-                                          })
-                                          .select("*")
-                                          .single();
+                                        await supabase.rpc(
+                                          "guardar_comision_intermediario",
+                                          {
+                                            p_operacion_id: operacion.id,
+                                            p_datos: {
+                                              contacto_id: null,
+                                              parte_operacion_id:
+                                                participanteIntermediario.id,
+                                              lado: "VENDEDOR",
+                                              tipo_comision: tipo,
+                                              valor_comision: valor,
+                                              moneda: "USD",
+                                              quien_abona: quien,
+                                              acuerdo_previo: acuerdoPrevio,
+                                              acuerdo_previo_detalle:
+                                                detalle || null,
+                                              estado: acuerdoPrevio
+                                                ? "ACORDADA"
+                                                : "PENDIENTE",
+                                              fecha_acuerdo:
+                                                acuerdoPrevio
+                                                  ? new Date().toISOString()
+                                                  : null,
+                                              observaciones: detalle || null,
+                                            },
+                                          }
+                                        );
 
                                       if (error) {
                                         console.error(error);
