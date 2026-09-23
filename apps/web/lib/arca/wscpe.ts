@@ -53,7 +53,15 @@ function validarRespuesta(
     throw new Error(`${operacion}: HTTP ${response.status}`);
   }
   if (!response.body.includes("Envelope")) {
-    throw new Error(`${operacion}: ARCA no devolvió una respuesta SOAP válida.`);
+    const cuerpo = response.body
+      .replace(/<token>[\\s\\S]*?<\\/token>/gi, "<token>[REDACTED]</token>")
+      .replace(/<sign>[\\s\\S]*?<\\/sign>/gi, "<sign>[REDACTED]</sign>")
+      .slice(0, 1200);
+    throw new Error(
+      `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
+      `HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
+      `Respuesta: ${cuerpo || "[vacía]"}`
+    );
   }
 }
 
