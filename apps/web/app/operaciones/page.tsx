@@ -1923,44 +1923,27 @@ Firma: ______________________________
         }
       }
 
-      const { data: contratoGuardado, error: errorContrato } =
-        await supabase
-          .from("contratos")
-          .upsert(
-            {
-              operacion_id: operacion.id,
-              acuerdo_id: contrato.acuerdo_id || null,
-              numero_contrato: contrato.numero_contrato,
-              tipo_contrato:
-                operacion.tipo_operacion === "F1"
-                  ? "F1"
-                  : "F2 - ABASTECIMIENTO DE GRANOS",
-              estado,
-              cantidad_tn: operacion.cantidad_tn,
-              precio_tn: operacion.precio_tn,
-              importe_total: operacion.importe_total,
-              lugar_carga: acuerdo.lugar_carga || null,
-              destino: acuerdo.destino || null,
-              condicion_entrega:
-                acuerdo.condicion_entrega || null,
-              forma_pago: acuerdo.forma_pago || null,
-              plazo_pago: acuerdo.plazo_pago || null,
-              flete: acuerdo.flete || null,
-              calidad: acuerdo.calidad || null,
-              observaciones:
-                acuerdo.observaciones || null,
-              contenido: contenidoContrato,
-              confirmado_at: confirmar
-                ? new Date().toISOString()
-                : null,
-              updated_at: new Date().toISOString(),
-            },
-            {
-              onConflict: "operacion_id",
-            }
-          )
-          .select()
-          .single();
+      const { data: contratoGuardado, error: errorContrato } = await supabase.rpc("guardar_contrato_comercial", {
+        p_operacion_id: operacion.id,
+        p_datos: {
+          acuerdo_id: contrato.acuerdo_id || null,
+          numero_contrato: contrato.numero_contrato,
+          tipo_contrato: operacion.tipo_operacion === "F1" ? "F1" : "F2 - ABASTECIMIENTO DE GRANOS",
+          estado,
+          cantidad_tn: operacion.cantidad_tn,
+          precio_tn: operacion.precio_tn,
+          importe_total: operacion.importe_total,
+          lugar_carga: acuerdo.lugar_carga || null,
+          destino: acuerdo.destino || null,
+          condicion_entrega: acuerdo.condicion_entrega || null,
+          forma_pago: acuerdo.forma_pago || null,
+          plazo_pago: acuerdo.plazo_pago || null,
+          flete: acuerdo.flete || null,
+          calidad: acuerdo.calidad || null,
+          observaciones: acuerdo.observaciones || null,
+          contenido: contenidoContrato,
+        },
+      });
 
       if (errorContrato) {
         console.error(errorContrato);
@@ -2259,16 +2242,10 @@ Firma: ______________________________
         datosAcuerdo
       );
 
-      const {
-        data: acuerdoGuardado,
-        error: errorAcuerdo,
-      } = await supabase
-        .from("acuerdos_comerciales")
-        .upsert(datosAcuerdo, {
-          onConflict: "operacion_id",
-        })
-        .select()
-        .single();
+      const { data: acuerdoGuardado, error: errorAcuerdo } = await supabase.rpc("guardar_acuerdo_comercial", {
+        p_operacion_id: operacion.id,
+        p_datos: datosAcuerdo,
+      });
 
       if (errorAcuerdo) {
         console.error(
