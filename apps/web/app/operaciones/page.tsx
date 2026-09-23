@@ -716,14 +716,13 @@ export default function OperacionesPage() {
         }
 
         const { error: errorActualizarComision } =
-          await supabase
-            .from("operacion_control_comercial")
-            .update({
+          await supabase.rpc("guardar_control_comercial", {
+            p_operacion_id: operacion.id,
+            p_cambios: {
               comision_monto: montoComision,
               comision_moneda: "USD",
-              updated_at: new Date().toISOString(),
-            })
-            .eq("operacion_id", operacion.id);
+            },
+          });
 
         if (!errorActualizarComision) {
           setControlesComerciales((actual) => ({
@@ -1280,23 +1279,21 @@ export default function OperacionesPage() {
 
     if (!controlExistente) {
       const { error: errorCrearControl } =
-        await supabase
-          .from("operacion_control_comercial")
-          .insert({
-            operacion_id: operacion.id,
+        await supabase.rpc("guardar_control_comercial", {
+          p_operacion_id: operacion.id,
+          p_cambios: {
             comision_estado: "PENDIENTE",
             fondos_estado: "PENDIENTES",
             visado_estado: "PENDIENTE",
             vendedor_firma_estado: "PENDIENTE",
             comprador_firma_estado: "PENDIENTE",
             intermediario_firma_estado:
-              operacion.tipo_operacion === "F1"
-                ? "PENDIENTE"
-                : "NO_CORRESPONDE",
+              operacion.tipo_operacion === "F1" ? "PENDIENTE" : "NO_CORRESPONDE",
             datos_operativos_estado: "PROTEGIDOS",
             no_elusion_aceptada: false,
             cancelacion_estado: "NO_CANCELADA",
-          });
+          },
+        });
 
       if (errorCrearControl) {
         setError(
@@ -3768,9 +3765,9 @@ Firma: ______________________________
                                   }
 
                                   const { data, error } =
-                                    await supabase
-                                      .from("comisiones_intermediarios")
-                                      .insert({
+                                    await supabase.rpc("guardar_comision_intermediario", {
+  p_operacion_id: operacion.id,
+  p_datos: {
                                         operacion_id: operacion.id,
                                         contacto_id: null,
                                         parte_operacion_id:
@@ -3787,9 +3784,8 @@ Firma: ______________________________
                                         fecha_acuerdo:
                                           new Date().toISOString(),
                                         observaciones: detalle || null,
-                                      })
-                                      .select("*")
-                                      .single();
+                                      }
+});
 
                                   
                                   if (error) {
