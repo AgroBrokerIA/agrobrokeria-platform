@@ -1460,63 +1460,14 @@ export default function OperacionesPage() {
       return;
     }
 
-    // Buscar si ya existe un intermediario.
-    const { data: existente, error: errorExistente } =
-      await supabase
-        .from("operacion_participantes")
-        .select("id")
-        .eq("operacion_id", operacionId)
-        .eq("rol", "INTERMEDIARIO")
-        .maybeSingle();
+    const { data: participanteId, error: errorAsignacion } = await supabase.rpc("asignar_intermediario_operacion", {
+      p_operacion_id: operacionId,
+      p_empresa_id: empresaId,
+    });
 
-    if (errorExistente) {
-      setError(
-        `No se pudo verificar el intermediario de la operación: ${errorExistente.message}`
-      );
+    if (errorAsignacion) {
+      setError(`No se pudo registrar el intermediario: ${errorAsignacion.message}`);
       return;
-    }
-
-    let participanteId = existente?.id || null;
-
-    if (existente?.id) {
-      const { error: errorUpdate } =
-        await supabase
-          .from("operacion_participantes")
-          .update({
-            empresa_id: empresaId,
-          })
-          .eq("id", existente.id);
-
-      if (errorUpdate) {
-        setError(
-          `No se pudo actualizar el intermediario: ${errorUpdate.message}`
-        );
-        return;
-      }
-    } else {
-      const { data: nuevoParticipante, error: errorInsert } =
-        await supabase
-          .from("operacion_participantes")
-          .insert({
-            operacion_id: operacionId,
-            empresa_id: empresaId,
-            rol: "INTERMEDIARIO",
-            porcentaje_comision: null,
-            monto_comision: null,
-            factura_presentada: false,
-            factura_aprobada: false,
-          })
-          .select("id")
-          .single();
-
-      if (errorInsert) {
-        setError(
-          `No se pudo registrar el intermediario en la operación: ${errorInsert.message}`
-        );
-        return;
-      }
-
-      participanteId = nuevoParticipante.id;
     }
 
     setIntermediariosSeleccionados((actual) => ({
