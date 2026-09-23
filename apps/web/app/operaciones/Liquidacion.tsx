@@ -190,7 +190,7 @@ export default function Liquidacion({
       updated_at: new Date().toISOString(),
     };
 
-    const { data: nueva, error: errorLiquidacion } = await supabase.rpc(
+    const resultado = await supabase.rpc(
       "guardar_liquidacion_operacion",
       {
         p_operacion_id: operacionId,
@@ -200,11 +200,6 @@ export default function Liquidacion({
         },
       }
     );
-
-    const resultado = {
-      data: nueva,
-      error: errorLiquidacion,
-    };
 
     if (resultado.error) {
       setError(
