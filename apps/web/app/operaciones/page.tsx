@@ -952,9 +952,13 @@ export default function OperacionesPage() {
       return;
     }
 
-    const { data, error } = await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacion.id, p_cambios: { comision_monto: montoComision, comision_moneda: "USD" } })
-      .select("*")
-      .single();
+    const { data, error } = await supabase.rpc("guardar_control_comercial", {
+      p_operacion_id: operacion.id,
+      p_cambios: {
+        comision_monto: montoComision,
+        comision_moneda: "USD",
+      },
+    });
 
     if (error) {
       console.error(error);
