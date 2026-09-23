@@ -952,14 +952,7 @@ export default function OperacionesPage() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("operacion_control_comercial")
-      .update({
-        comision_monto: montoComision,
-        comision_moneda: "USD",
-        updated_at: new Date().toISOString(),
-      })
-      .eq("operacion_id", operacion.id)
+    const { data, error } = await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacion.id, p_cambios: { comision_monto: montoComision, comision_moneda: "USD" } })
       .select("*")
       .single();
 
@@ -2895,14 +2888,7 @@ Firma: ______________________________
     const ahora = new Date().toISOString();
 
     const { error: errorActualizacionControl } =
-      await supabase
-        .from("operacion_control_comercial")
-        .update({
-          datos_operativos_estado: "HABILITADOS",
-          datos_operativos_liberados_at: ahora,
-          updated_at: ahora,
-        })
-        .eq("operacion_id", operacionId);
+      await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacionId, p_cambios: { datos_operativos_estado: "HABILITADOS", datos_operativos_liberados_at: ahora } });
 
     if (errorActualizacionControl) {
       setError(
@@ -2915,14 +2901,7 @@ Firma: ______________________________
 
     if (errorWorkflow) {
       // Si el workflow falla, volvemos a proteger los datos.
-      await supabase
-        .from("operacion_control_comercial")
-        .update({
-          datos_operativos_estado: "PROTEGIDOS",
-          datos_operativos_liberados_at: null,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("operacion_id", operacionId);
+      await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacionId, p_cambios: { datos_operativos_estado: "PROTEGIDOS", datos_operativos_liberados_at: null } });
 
       setError(
         `No se pudo avanzar a Liberación operativa: ${errorWorkflow.message}`
