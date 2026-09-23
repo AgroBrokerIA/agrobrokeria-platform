@@ -1,4 +1,3 @@
-import fs from "node:fs";
 import path from "node:path";
 
 const ARCA_DIR = path.join(process.cwd(), ".secrets", "arca");
@@ -46,13 +45,7 @@ export function getArcaCertificateMaterial() {
     return { certificate, privateKey, source: "environment" as const };
   }
 
-  if (fs.existsSync(arcaConfig.certificatePath) && fs.existsSync(arcaConfig.privateKeyPath)) {
-    return {
-      certificate: fs.readFileSync(arcaConfig.certificatePath, "utf8"),
-      privateKey: fs.readFileSync(arcaConfig.privateKeyPath, "utf8"),
-      source: "filesystem" as const,
-    };
-  }
+
 
   throw new Error(
     "Faltan las credenciales X.509 de ARCA. Configurá ARCA_CERTIFICATE_BASE64 y ARCA_PRIVATE_KEY_BASE64 en el servidor."
