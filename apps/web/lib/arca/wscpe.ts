@@ -21,7 +21,7 @@ function enviarSOAP(soap: string): Promise<{
           "Content-Type": "text/xml; charset=utf-8",
           Accept: "text/xml",
           "User-Agent": "AgroBrokerIA/1.0",
-          SOAPAction: "",
+          SOAPAction: '""',
           "Content-Length": Buffer.byteLength(soap, "utf8"),
         },
       },
