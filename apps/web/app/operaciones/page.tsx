@@ -438,7 +438,8 @@ export default function OperacionesPage() {
       p_estado: estado ?? null,
     });
   }
-\n  async function cargarOperaciones() {
+
+  async function cargarOperaciones() {
     try {
       setLoading(true);
       setError("");
