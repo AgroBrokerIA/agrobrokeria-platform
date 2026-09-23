@@ -62,7 +62,7 @@ function generarCMS(tra: string, certificatePem: string, privateKeyPem: string):
       },
       {
         type: forge.pki.oids.signingTime,
-        value: new Date(),
+        value: fechaARCA(new Date()),
       },
     ],
   });
