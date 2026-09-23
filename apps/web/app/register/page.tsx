@@ -1,138 +1,83 @@
 "use client";
 
 import { useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase/client";
+
+const roles = [
+  ["Comprador", "comprador"],
+  ["Vendedor", "vendedor"],
+  ["Corredor", "corredor"],
+  ["Exportador", "exportador"],
+  ["Acopio", "acopio"],
+  ["Industria", "industria"],
+  ["Intermediario", "intermediario"],
+];
 
 export default function RegisterPage() {
-  const [nombre, setNombre] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [cuit, setCuit] = useState("");
-  const [telefono, setTelefono] = useState("");
-  const [provincia, setProvincia] = useState("");
-  const [tipoUsuario, setTipoUsuario] = useState("Comprador");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+  const [form, setForm] = useState({
+    nombre: "", empresa: "", cuit: "", telefono: "", provincia: "",
+    tipoUsuario: "comprador", email: "", password: "",
+  });
+  const [loading, setLoading] = useState(false);
+
+  function update(field: keyof typeof form, value: string) {
+    setForm((current) => ({ ...current, [field]: value }));
+  }
 
   async function registrarse() {
-    const { error } = await supabase.auth.signUp({
-      email,
-      password,
-    });
-
-    if (error) {
-      alert(error.message);
+    if (!form.nombre.trim() || !form.email.trim() || form.password.length < 8) {
+      alert("Completá nombre, correo y una contraseña de al menos 8 caracteres.");
       return;
     }
-
-    alert(
-      "Cuenta creada correctamente. Revisá tu correo electrónico para confirmar la cuenta."
-    );
-
+    setLoading(true);
+    const { error } = await supabase.auth.signUp({
+      email: form.email.trim(),
+      password: form.password,
+      options: { data: {
+        nombre: form.nombre.trim(), empresa: form.empresa.trim(), cuit: form.cuit.trim(),
+        telefono: form.telefono.trim(), provincia: form.provincia.trim(),
+        tipo_usuario: form.tipoUsuario,
+      }},
+    });
+    setLoading(false);
+    if (error) { alert(error.message); return; }
+    alert("Cuenta creada correctamente. Revisá tu correo para confirmar la cuenta.");
     window.location.href = "/login";
   }
 
   return (
-    <main
-      style={{
-        display: "flex",
-        justifyContent: "center",
-        alignItems: "center",
-        minHeight: "100vh",
-        background: "#0f172a",
-        color: "white",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div
-        style={{
-          width: "420px",
-          display: "flex",
-          flexDirection: "column",
-          gap: "12px",
-        }}
-      >
-        <h1 style={{ textAlign: "center", marginBottom: "10px" }}>
-          Registro AgroBroker IA
-        </h1>
-
-        <input
-          type="text"
-          placeholder="Nombre y apellido"
-          value={nombre}
-          onChange={(e) => setNombre(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="Empresa"
-          value={empresa}
-          onChange={(e) => setEmpresa(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="CUIT"
-          value={cuit}
-          onChange={(e) => setCuit(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="Teléfono"
-          value={telefono}
-          onChange={(e) => setTelefono(e.target.value)}
-        />
-
-        <input
-          type="text"
-          placeholder="Provincia"
-          value={provincia}
-          onChange={(e) => setProvincia(e.target.value)}
-        />
-
-        <select
-          value={tipoUsuario}
-          onChange={(e) => setTipoUsuario(e.target.value)}
-        >
-          <option value="Comprador">Comprador</option>
-          <option value="Vendedor">Vendedor</option>
-          <option value="Corredor">Corredor</option>
-          <option value="Exportador">Exportador</option>
-          <option value="Acopio">Acopio</option>
-          <option value="Industria">Industria</option>
-          <option value="Intermediario">Intermediario</option>
+    <main style={{ minHeight: "100vh", display: "grid", placeItems: "center", padding: 24, background: "#0f172a", color: "white" }}>
+      <form onSubmit={(event) => { event.preventDefault(); void registrarse(); }}
+        style={{ width: "100%", maxWidth: 460, display: "grid", gap: 12 }}>
+        <h1 style={{ textAlign: "center", margin: "0 0 8px" }}>Registro AgroBroker IA</h1>
+        <p style={{ textAlign: "center", color: "#cbd5e1", margin: "0 0 12px" }}>
+          Creá tu cuenta para acceder al mercado agrocomercial.
+        </p>
+        {[
+          ["nombre", "Nombre y apellido", "text"],
+          ["empresa", "Empresa", "text"],
+          ["cuit", "CUIT", "text"],
+          ["telefono", "Teléfono", "tel"],
+          ["provincia", "Provincia", "text"],
+          ["email", "Correo electrónico", "email"],
+          ["password", "Contraseña (mínimo 8 caracteres)", "password"],
+        ].map(([field, placeholder, type]) => (
+          <input key={field} type={type} placeholder={placeholder}
+            value={form[field as keyof typeof form]}
+            onChange={(e) => update(field as keyof typeof form, e.target.value)}
+            required={field === "nombre" || field === "email" || field === "password"}
+            minLength={field === "password" ? 8 : undefined}
+            style={{ padding: 13, borderRadius: 8, border: "1px solid #334155", background: "#fff", color: "#0f172a" }} />
+        ))}
+        <select value={form.tipoUsuario} onChange={(e) => update("tipoUsuario", e.target.value)}
+          style={{ padding: 13, borderRadius: 8 }}>
+          {roles.map(([label, value]) => <option key={value} value={value}>{label}</option>)}
         </select>
-
-        <input
-          type="email"
-          placeholder="Correo electrónico"
-          value={email}
-          onChange={(e) => setEmail(e.target.value)}
-        />
-
-        <input
-          type="password"
-          placeholder="Contraseña"
-          value={password}
-          onChange={(e) => setPassword(e.target.value)}
-        />
-
-        <button
-          onClick={registrarse}
-          style={{
-            padding: "14px",
-            background: "#22c55e",
-            color: "white",
-            border: "none",
-            borderRadius: "8px",
-            fontSize: "16px",
-            cursor: "pointer",
-            marginTop: "10px",
-          }}
-        >
-          Crear cuenta
+        <button type="submit" disabled={loading}
+          style={{ padding: 14, background: loading ? "#64748b" : "#22c55e", color: "white", border: 0, borderRadius: 8, fontSize: 16, cursor: loading ? "wait" : "pointer" }}>
+          {loading ? "Creando cuenta..." : "Crear cuenta"}
         </button>
-      </div>
+      </form>
     </main>
   );
 }
