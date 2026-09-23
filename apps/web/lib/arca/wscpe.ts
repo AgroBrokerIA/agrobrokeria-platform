@@ -1,7 +1,7 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "https://serviciosjava.afip.gob.ar/wscpe/";
+const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
 
 function enviarSOAP(soap: string): Promise<{
   status: number;
@@ -79,18 +79,18 @@ export async function probarWSCPEAutenticado() {
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
   <soapenv:Header/>
   <soapenv:Body>
-    <wsc:dummy>
-      <wsc:auth>
-        <wsc:token>${credenciales.token}</wsc:token>
-        <wsc:sign>${credenciales.sign}</wsc:sign>
-        <wsc:cuitRepresentada>${arcaConfig.cuit}</wsc:cuitRepresentada>
-      </wsc:auth>
-    </wsc:dummy>
+    <wsc:ConsultarProvinciasReq>
+      <auth>
+        <token>${credenciales.token}</token>
+        <sign>${credenciales.sign}</sign>
+        <cuit>${arcaConfig.cuit}</cuit>
+      </auth>
+    </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
-  validarRespuesta(response, "WSCPE Dummy autenticado");
+  validarRespuesta(response, "WSCPE ConsultarProvincias autenticado");
   return { ok: true, respuestaXml: response.body };
 }
 
@@ -106,7 +106,7 @@ export async function consultarProvinciasWSCPE() {
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
+        <cuit>${arcaConfig.cuit}</cuit>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
