@@ -430,7 +430,15 @@ export default function OperacionesPage() {
     setIntermediariosDisponibles(disponibles);
   }
 
-  async function cargarOperaciones() {
+
+  async function avanzarWorkflowSeguro(workflowId: string, etapaDestinoId: string, estado?: string) {
+    return supabase.rpc("avanzar_operacion_workflow", {
+      p_workflow_id: workflowId,
+      p_etapa_destino_id: etapaDestinoId,
+      p_estado: estado ?? null,
+    });
+  }
+\n  async function cargarOperaciones() {
     try {
       setLoading(true);
       setError("");
