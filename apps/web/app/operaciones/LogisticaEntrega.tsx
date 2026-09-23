@@ -150,22 +150,10 @@ export default function LogisticaEntrega({
       updated_at: ahora,
     };
 
-    const resultado = datos.id
-      ? await supabase
-          .from("operacion_logistica")
-          .update(cambios)
-          .eq("id", datos.id)
-          .select()
-          .single()
-      : await supabase
-          .from("operacion_logistica")
-          .insert({
-            ...datos,
-            ...cambios,
-            operacion_id: operacionId,
-          })
-          .select()
-          .single();
+    const resultado = await supabase.rpc("guardar_operacion_logistica", {
+      p_operacion_id: operacionId,
+      p_datos: { id: datos.id || null, ...datos, ...cambios },
+    });
 
     if (resultado.error) {
       setError(
@@ -208,18 +196,10 @@ export default function LogisticaEntrega({
       updated_at: new Date().toISOString(),
     };
 
-    const { data, error } = datos.id
-      ? await supabase
-          .from("operacion_logistica")
-          .update(payload)
-          .eq("id", datos.id)
-          .select()
-          .single()
-      : await supabase
-          .from("operacion_logistica")
-          .insert(payload)
-          .select()
-          .single();
+    const { data, error } = await supabase.rpc("guardar_operacion_logistica", {
+      p_operacion_id: operacionId,
+      p_datos: { id: datos.id || null, ...payload },
+    });
 
     if (error) {
       setError(`No se pudo guardar la logística: ${error.message}`);
@@ -602,18 +582,10 @@ export default function LogisticaEntrega({
               updated_at: ahora,
             };
 
-            const resultado = datosActualizados.id
-              ? await supabase
-                  .from("operacion_logistica")
-                  .update(payload)
-                  .eq("id", datosActualizados.id)
-                  .select()
-                  .single()
-              : await supabase
-                  .from("operacion_logistica")
-                  .insert(payload)
-                  .select()
-                  .single();
+            const resultado = await supabase.rpc("guardar_operacion_logistica", {
+              p_operacion_id: operacionId,
+              p_datos: { id: datosActualizados.id || null, ...payload },
+            });
 
             if (resultado.error) {
               setError(
