@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
-import { probarWSCPEAutenticado } from "@/lib/arca/wscpe";
+import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
 
 export async function GET() {
   try {
@@ -10,12 +10,13 @@ export async function GET() {
       return NextResponse.json({ ok: false, error: "No autorizado." }, { status: 401 });
     }
 
-    const resultado = await probarWSCPEAutenticado();
+    const resultado = await consultarProvinciasWSCPE();
+
     return NextResponse.json({
       ok: resultado.ok,
       ambiente: process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION",
       servicio: "wscpe",
-      respuesta: resultado.respuestaXml,
+      mensaje: "Autenticación y consulta WSCPE realizadas correctamente.",
     });
   } catch (error) {
     console.error("ARCA WSCPE auth-test:", error);
