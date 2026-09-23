@@ -87,7 +87,12 @@ export default function MarketplaceCard({ publicacion }: Props) {
           </div>
           <div style={{ marginTop: 20, padding: 12, background: "#f5f5f5", borderRadius: 8 }}>
             <strong>Importe estimado:</strong>{" "}
-            {Number.isFinite(cantidad * precio) ? (cantidad * precio).toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0,00"} {monedaOferta === "2" ? "USD" : monedaOferta === "1" ? "ARS" : ""}
+            {(() => {
+  const cantidad = Number(cantidadOferta);
+  const precio = Number(precioOferta);
+  const importe = cantidad * precio;
+  return Number.isFinite(importe) ? importe.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0,00";
+})()} {monedaOferta === "2" ? "USD" : monedaOferta === "1" ? "ARS" : ""}
           </div>
           <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
             <Button variant="secondary" onClick={() => { setMostrarFormulario(false); setError(""); }}>Cancelar</Button>
