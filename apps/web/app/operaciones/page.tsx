@@ -1020,12 +1020,10 @@ export default function OperacionesPage() {
       return;
     }
 
-    const { data, error } = await supabase
-      .from("contactos_comerciales")
-      .insert({
+    const { data, error } = await supabase.rpc("guardar_contacto_comercial", {
+      p_datos: {
         tipo_persona: nuevoContacto.tipo_persona,
-        nombre_razon_social:
-          nuevoContacto.nombre_razon_social,
+        nombre_razon_social: nuevoContacto.nombre_razon_social,
         dni: nuevoContacto.dni || null,
         cuit: nuevoContacto.cuit || null,
         domicilio: nuevoContacto.domicilio || null,
@@ -1033,15 +1031,11 @@ export default function OperacionesPage() {
         provincia: nuevoContacto.provincia || null,
         email: nuevoContacto.email || null,
         telefono: nuevoContacto.telefono || null,
-        representante_nombre:
-          nuevoContacto.representante_nombre || null,
-        representante_dni:
-          nuevoContacto.representante_dni || null,
-        representante_cargo:
-          nuevoContacto.representante_cargo || null,
-      })
-      .select()
-      .single();
+        representante_nombre: nuevoContacto.representante_nombre || null,
+        representante_dni: nuevoContacto.representante_dni || null,
+        representante_cargo: nuevoContacto.representante_cargo || null,
+      },
+    });
 
     if (error) {
       console.error(error);
@@ -1509,56 +1503,11 @@ export default function OperacionesPage() {
     setError("");
     setMensaje("");
 
-    const { error } = await supabase
-      .from("partes_operacion")
-      .upsert(
-        {
-          operacion_id: operacionId,
-          contacto_id: contactoId,
-          rol,
-          tipo_persona:
-            contactos.find((c) => c.id === contactoId)
-              ?.tipo_persona || "FISICA",
-          nombre_razon_social:
-            contactos.find((c) => c.id === contactoId)
-              ?.nombre_razon_social || "",
-          dni:
-            contactos.find((c) => c.id === contactoId)
-              ?.dni || null,
-          cuit:
-            contactos.find((c) => c.id === contactoId)
-              ?.cuit || null,
-          domicilio:
-            contactos.find((c) => c.id === contactoId)
-              ?.domicilio || null,
-          localidad:
-            contactos.find((c) => c.id === contactoId)
-              ?.localidad || null,
-          provincia:
-            contactos.find((c) => c.id === contactoId)
-              ?.provincia || null,
-          email:
-            contactos.find((c) => c.id === contactoId)
-              ?.email || null,
-          telefono:
-            contactos.find((c) => c.id === contactoId)
-              ?.telefono || null,
-          representante_nombre:
-            contactos.find((c) => c.id === contactoId)
-              ?.representante_nombre || null,
-          representante_dni:
-            contactos.find((c) => c.id === contactoId)
-              ?.representante_dni || null,
-          representante_cargo:
-            contactos.find((c) => c.id === contactoId)
-              ?.representante_cargo || null,
-          updated_at: new Date().toISOString(),
-        },
-        {
-          onConflict:
-            "operacion_id,rol",
-        }
-      );
+    const { error } = await supabase.rpc("guardar_parte_operacion", {
+      p_operacion_id: operacionId,
+      p_contacto_id: contactoId,
+      p_rol: rol,
+    });
 
     if (error) {
       console.error(error);
