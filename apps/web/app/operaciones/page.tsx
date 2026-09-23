@@ -2420,15 +2420,10 @@ Firma: ______________________________
     setError("");
     setMensaje("");
 
-    const { data, error } = await supabase
-      .from("operacion_control_comercial")
-      .update({
-        ...cambios,
-        updated_at: new Date().toISOString(),
-      })
-      .eq("operacion_id", operacionId)
-      .select("*")
-      .single();
+    const { data, error } = await supabase.rpc("guardar_control_comercial", {
+      p_operacion_id: operacionId,
+      p_cambios: cambios,
+    });
 
     if (error) {
       console.error(error);
