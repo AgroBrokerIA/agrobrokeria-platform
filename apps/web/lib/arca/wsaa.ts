@@ -1,11 +1,8 @@
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { execFile } from "node:child_process";
-import { promisify } from "node:util";
+import forge from "node-forge";
 import { arcaConfig, getArcaCertificateMaterial } from "./config";
-
-const execFileAsync = promisify(execFile);
 
 function generarUniqueId(): number {
   return Math.floor(Date.now() / 1000) % 4294967295;
@@ -44,25 +41,34 @@ function generarTRA(): string {
 </loginTicketRequest>`;
 }
 
-async function generarCMS(traPath: string, cmsPath: string, certificatePath: string, privateKeyPath: string) {
-  await execFileAsync("openssl", [
-    "cms",
-    "-sign",
-    "-binary",
-    "-in",
-    traPath,
-    "-signer",
-    certificatePath,
-    "-inkey",
-    privateKeyPath,
-    "-outform",
-    "DER",
-    "-out",
-    cmsPath,
-    "-nodetach",
-    "-md",
-    "sha1",
-  ]);
+function generarCMS(tra: string, certificatePem: string, privateKeyPem: string): string {
+  const certificate = forge.pki.certificateFromPem(certificatePem);
+  const privateKey = forge.pki.privateKeyFromPem(privateKeyPem);
+  const p7 = forge.pkcs7.createSignedData();
+
+  p7.content = forge.util.createBuffer(tra, "utf8");
+  p7.addCertificate(certificate);
+  p7.addSigner({
+    key: privateKey,
+    certificate,
+    digestAlgorithm: forge.pki.oids.sha1,
+    authenticatedAttributes: [
+      {
+        type: forge.pki.oids.contentType,
+        value: forge.pki.oids.data,
+      },
+      {
+        type: forge.pki.oids.messageDigest,
+      },
+      {
+        type: forge.pki.oids.signingTime,
+        value: new Date(),
+      },
+    ],
+  });
+  p7.sign({ detached: false });
+
+  return forge.asn1.toDer(p7.toAsn1()).getBytes();
 }
 
 function extraerXmlRespuesta(soap: string): string {
@@ -96,20 +102,10 @@ function extraerCredenciales(xml: string) {
 }
 
 export async function solicitarTicketWSCPE() {
-  const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), "agrobrokeria-wsaa-"));
-  const traPath = path.join(tmpDir, "LoginTicketRequest.xml");
-  const cmsPath = path.join(tmpDir, "LoginTicketRequest.xml.cms");
-  const certPath = path.join(tmpDir, "arca.crt");
-  const keyPath = path.join(tmpDir, "arca.key");
-
-  try {
-    const material = getArcaCertificateMaterial();
-    await fs.promises.writeFile(certPath, material.certificate, { encoding: "utf8", mode: 0o600 });
-    await fs.promises.writeFile(keyPath, material.privateKey, { encoding: "utf8", mode: 0o600 });
-    await fs.promises.writeFile(traPath, generarTRA(), "utf8");
-    await generarCMS(traPath, cmsPath, certPath, keyPath);
-
-    const cmsBase64 = (await fs.promises.readFile(cmsPath)).toString("base64");
+  const material = getArcaCertificateMaterial();
+  const tra = generarTRA();
+  const cmsDer = generarCMS(tra, material.certificate, material.privateKey);
+  const cmsBase64 = Buffer.from(cmsDer, "binary").toString("base64");
     const soap = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov">
   <soapenv:Header/>
@@ -141,7 +137,5 @@ export async function solicitarTicketWSCPE() {
       sign: credentials.sign,
       expirationTime: credentials.expirationTime,
     };
-  } finally {
-    await fs.promises.rm(tmpDir, { recursive: true, force: true });
-  }
+
 }
