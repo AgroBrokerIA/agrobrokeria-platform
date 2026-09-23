@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function ArcaTestPage() {
   const [resultado, setResultado] = useState<string>("Preparando prueba...");
-  const [cargando, setCargando] = useState(true);
+  const [cargando, setCargando] = useState(false);
 
   async function ejecutarPrueba() {
     setCargando(true);
@@ -21,16 +21,25 @@ export default function ArcaTestPage() {
       return;
     }
 
-    const response = await fetch("/api/arca/wscpe/auth-test", {
-      headers: {
-        Authorization: `Bearer ${session.access_token}`,
-      },
-      cache: "no-store",
-    });
+    try {
+      const response = await fetch("/api/arca/wscpe/auth-test", {
+        headers: {
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        cache: "no-store",
+      });
 
-    const data = await response.json();
-    setResultado(JSON.stringify(data, null, 2));
-    setCargando(false);
+      const data = await response.json();
+      setResultado(JSON.stringify(data, null, 2));
+    } catch (error) {
+      setResultado(
+        error instanceof Error
+          ? `Error de conexión: ${error.message}`
+          : "Error de conexión con el servidor."
+      );
+    } finally {
+      setCargando(false);
+    }
   }
 
   return (
