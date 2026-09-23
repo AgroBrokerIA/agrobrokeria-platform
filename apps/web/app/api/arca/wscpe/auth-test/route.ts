@@ -1,13 +1,31 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { supabase } from "@/lib/supabase/server";
 import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    const authorization = request.headers.get("authorization");
+    const accessToken = authorization?.startsWith("Bearer ")
+      ? authorization.slice("Bearer ".length).trim()
+      : "";
 
-    if (!user) {
-      return NextResponse.json({ ok: false, error: "No autorizado." }, { status: 401 });
+    if (!accessToken) {
+      return NextResponse.json(
+        { ok: false, error: "No autorizado. Iniciá sesión en AgroBrokerIA y ejecutá la prueba desde /arca-test." },
+        { status: 401 }
+      );
+    }
+
+    const {
+      data: { user },
+      error: userError,
+    } = await supabase.auth.getUser(accessToken);
+
+    if (userError || !user) {
+      return NextResponse.json(
+        { ok: false, error: "Sesión de AgroBrokerIA inválida o vencida." },
+        { status: 401 }
+      );
     }
 
     const resultado = await consultarProvinciasWSCPE();
@@ -16,6 +34,7 @@ export async function GET() {
       ok: resultado.ok,
       ambiente: process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION",
       servicio: "wscpe",
+      usuario: user.email ?? null,
       mensaje: "Autenticación y consulta WSCPE realizadas correctamente.",
     });
   } catch (error) {
