@@ -2390,15 +2390,7 @@ Firma: ______________________________
         return;
       }
 
-      const {
-        error: errorWorkflow,
-      } = await supabase
-        .from("operacion_workflow")
-        .update({
-          etapa_actual_id:
-            siguienteEtapa.id,
-        })
-        .eq("id", workflow.id);
+      const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, siguienteEtapa.id);
 
       if (errorWorkflow) {
         setMensaje("");
