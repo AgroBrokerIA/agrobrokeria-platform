@@ -468,15 +468,12 @@ export default function OfertasRecibidasPage() {
         return;
       }
     } else {
-      const { data: ofertaActualizada, error } = await supabase
-        .from("ofertas_negociacion")
-        .update({ estado: nuevoEstado })
-        .eq("id", oferta.oferta_id)
-        .select("id, estado")
-        .maybeSingle();
-
-      if (error || !ofertaActualizada) {
-        alert(`No se pudo actualizar la oferta: ${error?.message || "sin cambios"}`);
+      const { error } = await supabase.rpc("cambiar_estado_oferta", {
+        p_oferta_id: oferta.oferta_id,
+        p_nuevo_estado: nuevoEstado,
+      });
+      if (error) {
+        alert(`No se pudo actualizar la oferta: ${error.message}`);
         return;
       }
     }
