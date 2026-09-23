@@ -50,7 +50,17 @@ function validarRespuesta(
   operacion: string
 ) {
   if (response.status < 200 || response.status >= 300) {
-    throw new Error(`${operacion}: HTTP ${response.status}`);
+    const cuerpo = response.body
+      .replace(/<token>[\\s\\S]*?<\\/token>/gi, "<token>[REDACTED]</token>")
+      .replace(/<sign>[\\s\\S]*?<\\/sign>/gi, "<sign>[REDACTED]</sign>")
+      .replace(/<auth>[\\s\\S]*?<\\/auth>/gi, "<auth>[REDACTED]</auth>")
+      .replace(/<cuit>[^<]*<\\/cuit>/gi, "<cuit>[REDACTED]</cuit>")
+      .slice(0, 3000);
+
+    throw new Error(
+      `${operacion}: HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
+      `Respuesta: ${cuerpo || "[vacía]"}`
+    );
   }
   if (!response.body.includes("Envelope")) {
     const cuerpo = response.body
