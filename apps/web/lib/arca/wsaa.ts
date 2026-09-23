@@ -111,18 +111,18 @@ export async function solicitarTicketWSCPE() {
 
     const cmsBase64 = (await fs.promises.readFile(cmsPath)).toString("base64");
     const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:ser="https://wsaa.afip.gov.ar/ws/services/LoginCms">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov">
   <soapenv:Header/>
   <soapenv:Body>
-    <ser:loginCms>
-      <ser:in0>${cmsBase64}</ser:in0>
-    </ser:loginCms>
+    <wsaa:loginCms>
+      <wsaa:in0>${cmsBase64}</wsaa:in0>
+    </wsaa:loginCms>
   </soapenv:Body>
 </soapenv:Envelope>`;
 
     const response = await fetch(arcaConfig.wsaaUrl, {
       method: "POST",
-      headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: "" },
+      headers: { "Content-Type": "text/xml; charset=utf-8", SOAPAction: "urn:LoginCms" },
       body: soap,
       signal: AbortSignal.timeout(30000),
     });
