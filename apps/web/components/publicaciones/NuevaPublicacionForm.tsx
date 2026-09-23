@@ -10,7 +10,7 @@ import {
 } from "@/app/nueva-publicacion/services/publicaciones";
 
 import { supabase } from "@/lib/supabase/client";
-import { crearPublicacion } from "@/app/nueva-publicacion/services/publicaciones";
+import { crearPublicacion, actualizarPublicacion } from "@/app/nueva-publicacion/services/publicaciones";
 import { Publicacion } from "@/types/publicacion";
 
 import { Producto } from "@/types/producto";
@@ -343,39 +343,13 @@ export default function NuevaPublicacionForm() {
        */
 
       if (modoEdicion && publicacionId) {
-        const {
-          data,
-          error: errorActualizacion,
-        } = await supabase
-          .from("publicaciones")
-          .update(datos)
-          .eq("id", publicacionId)
-          .select()
-          .single();
-
+        const { data, error: errorActualizacion } = await actualizarPublicacion(publicacionId, datos);
         if (errorActualizacion) {
-          console.error(errorActualizacion);
-
-          setError(
-            `No se pudieron guardar los cambios: ${errorActualizacion.message}`
-          );
-
+          setError(`No se pudieron guardar los cambios: ${errorActualizacion.message}`);
           return;
         }
-
-        console.log(
-          "Publicación actualizada:",
-          data
-        );
-
-        setMensaje(
-          "✅ Publicación actualizada correctamente."
-        );
-
-        setTimeout(() => {
-          router.push("/mis-publicaciones");
-        }, 700);
-
+        setMensaje("✅ Publicación actualizada correctamente.");
+        setTimeout(() => router.push("/mis-publicaciones"), 700);
         return;
       }
 
