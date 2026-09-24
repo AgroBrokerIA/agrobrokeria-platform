@@ -17,7 +17,18 @@ export async function POST(request: Request) {
 
     const supabaseAuth = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        auth: {
+          autoRefreshToken: false,
+          persistSession: false,
+        },
+        global: {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        },
+      }
     );
 
     const {
@@ -42,7 +53,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const resultados = await procesarPublicacionConIA(publicacionId);
+    const resultados = await procesarPublicacionConIA(
+      supabaseAuth,
+      publicacionId
+    );
 
     return NextResponse.json({
       ok: true,
