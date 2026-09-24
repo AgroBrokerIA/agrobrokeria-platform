@@ -121,34 +121,7 @@ export default function MensajesPage() {
   }
 
   return (
-    <main
-      style={{
-        padding: 30,
-        maxWidth: 1400,
-        margin: "0 auto",
-      }}
-    >
-      <div style={{ marginBottom: 25 }}>
-        <h1
-          style={{
-            margin: 0,
-            fontSize: 32,
-            fontWeight: 800,
-          }}
-        >
-          💬 Mensajes comerciales
-        </h1>
-
-        <p
-          style={{
-            marginTop: 8,
-            color: "#64748b",
-          }}
-        >
-          Conversaciones vinculadas a operaciones de AgroBrokerIA.
-        </p>
-      </div>
-
+    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">COMUNICACIÓN</span><h1>Mensajes comerciales</h1><p>Conversaciones vinculadas a operaciones de AgroBroker IA.</p></div><div className="module-pill">Canal comercial</div></div>
       {error && (
         <div
           style={{
