@@ -159,7 +159,7 @@ export default function ControlComercial({
               marginBottom: 6,
             }}
           >
-            Comisión configurada
+            Comisión fija y automática
           </div>
 
           <div
