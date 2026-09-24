@@ -4169,7 +4169,6 @@ Firma: ______________________________
                         control={
                           controlesComerciales[operacion.id]
                         }
-                        cantidadTn={operacion.cantidad_tn}
                         onActualizarComision={async (
                           cambios
                         ) =>
@@ -4291,9 +4290,6 @@ Firma: ______________________________
                       operacionId={operacion.id}
                       cantidadContractualTn={operacion.cantidad_tn}
                       precioTn={operacion.precio_tn}
-                      comisionAgrobrokerUsd={
-                        controlesComerciales[operacion.id]?.comision_monto ?? 0
-                      }
                       onLiquidacionConfirmada={() =>
                         confirmarLiquidacionYAvanzar(
                           operacion.id
