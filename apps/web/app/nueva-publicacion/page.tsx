@@ -4,14 +4,18 @@ import NuevaPublicacionForm from "@/components/publicaciones/NuevaPublicacionFor
 
 export default function NuevaPublicacionPage() {
   return (
-    <main
-      style={{
-        maxWidth: 1100,
-        margin: "40px auto",
-        padding: "20px",
-      }}
-    >
-      <NuevaPublicacionForm />
+    <main className="module-page publication-page">
+      <div className="module-hero">
+        <div>
+          <span className="eyebrow">MERCADO</span>
+          <h1>Nueva publicación</h1>
+          <p>Publicá una oferta de compra o venta y activá la inteligencia comercial de AgroBroker IA.</p>
+        </div>
+        <div className="module-pill">Mercado · IA activa</div>
+      </div>
+      <section className="publication-form-shell">
+        <NuevaPublicacionForm />
+      </section>
     </main>
   );
 }
