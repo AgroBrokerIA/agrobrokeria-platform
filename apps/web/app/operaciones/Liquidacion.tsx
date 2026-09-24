@@ -463,8 +463,8 @@ export default function Liquidacion({
         {(calculos.entregadaTn || 0).toFixed(2)}
         <br />
         La comisión se registra separadamente y no se descuenta
-        nuevamente del importe de la mercadería. El importe proviene del
-        acuerdo comercial configurado para la operación.
+        nuevamente del importe de la mercadería. La plataforma la calcula
+        automáticamente como USD 1 por cada tonelada efectivamente entregada.
       </div>
 
       {mensaje && (
