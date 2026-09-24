@@ -2595,27 +2595,10 @@ Firma: ______________________________
 
 
   return (
-    <main
-      style={{
-        maxWidth: 1250,
-        margin: "40px auto",
-        padding: "20px",
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <div style={{ marginBottom: 30 }}>
-        <h1
-          style={{
-            fontSize: 36,
-            marginBottom: 8,
-          }}
-        >
-          📊 Operaciones
-        </h1>
-
-        <p style={{ color: "#666", margin: 0 }}>
-          Seguimiento de las operaciones comerciales y su workflow.
-        </p>
+    <main className="operations-page module-page">
+      <div className="module-hero">
+        <div><span className="eyebrow">GESTIÓN COMERCIAL</span><h1>Operaciones</h1><p>Seguimiento integral desde la aceptación hasta la liquidación.</p></div>
+        <div className="module-pill">10 etapas · Workflow protegido</div>
       </div>
 
       {loading && (
