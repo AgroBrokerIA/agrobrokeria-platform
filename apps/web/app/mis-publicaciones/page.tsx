@@ -436,6 +436,7 @@ export default function MisPublicacionesPage() {
           </table>
         </div>
       )}
+      </div>
     </div>
   );
 }
