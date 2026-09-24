@@ -1189,10 +1189,6 @@ export default function OperacionesPage() {
       operacion.id
     );
 
-    // Comisión automática AgroBroker IA:
-    // USD 1 por cada tonelada de la operación.
-    await asegurarComisionAgroBrokerIA(operacion);
-
     setContratoAbierto(operacion.id);
   }
 
@@ -4149,7 +4145,6 @@ Firma: ______________________________
                         control={
                           controlesComerciales[operacion.id]
                         }
-                        cantidadTn={operacion.cantidad_tn}
                         onActualizarComision={async (
                           cambios
                         ) =>
