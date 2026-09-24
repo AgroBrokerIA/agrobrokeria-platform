@@ -499,13 +499,7 @@ export default function OfertasRecibidasPage() {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 1200,
-        margin: "40px auto",
-        padding: "20px",
-      }}
-    >
+    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">NEGOCIACIÓN</span><h1>Ofertas recibidas</h1><p>Gestioná propuestas comerciales sobre tus publicaciones.</p></div><div className="module-pill">Negociación segura</div></div>
       <div
         style={{
           marginBottom: 30,
