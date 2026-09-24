@@ -26,11 +26,13 @@ export default function Liquidacion({
   operacionId,
   cantidadContractualTn,
   precioTn,
+  comisionAgrobrokerUsd = 0,
   onLiquidacionConfirmada,
 }: {
   operacionId: string;
   cantidadContractualTn: number;
   precioTn: number;
+  comisionAgrobrokerUsd?: number;
   onLiquidacionConfirmada?: () => Promise<boolean>;
 }) {
   const [datos, setDatos] = useState<LiquidacionData>({
@@ -44,7 +46,7 @@ export default function Liquidacion({
     importe_bruto_usd: 0,
     ajustes_usd: 0,
     deducciones_usd: 0,
-    comision_agrobroker_usd: (cantidadContractualTn || 0) * 1,
+    comision_agrobroker_usd: Number(comisionAgrobrokerUsd) || 0,
     importe_neto_usd: 0,
     fecha_liquidacion: "",
     referencia_comprobante: "",
@@ -148,7 +150,7 @@ export default function Liquidacion({
       diferencia_tn: (cantidadContractualTn || 0) - entregadaTn,
       importe_bruto_usd: bruto,
       importe_neto_usd: bruto,
-      comision_agrobroker_usd: (cantidadContractualTn || 0) * 1,
+      comision_agrobroker_usd: Number(comisionAgrobrokerUsd) || 0,
       fecha_liquidacion: entrega?.fecha_entrega || "",
     }));
   }
@@ -180,7 +182,7 @@ export default function Liquidacion({
       ajustes_usd: Number(datos.ajustes_usd) || 0,
       deducciones_usd: Number(datos.deducciones_usd) || 0,
       comision_agrobroker_usd:
-        (Number(datos.cantidad_contractual_tn) || 0) * 1,
+        Number(datos.comision_agrobroker_usd) || 0,
       importe_neto_usd: calculos.neto,
       fecha_liquidacion:
         datos.fecha_liquidacion || new Date().toISOString(),
@@ -386,9 +388,7 @@ export default function Liquidacion({
 
         <Campo
           label="Comisión AgroBroker IA (USD)"
-          value={(
-            (Number(datos.cantidad_contractual_tn) || 0) * 1
-          ).toFixed(2)}
+          value={Number(datos.comision_agrobroker_usd || 0).toFixed(2)}
           readOnly
         />
 
@@ -463,12 +463,11 @@ export default function Liquidacion({
       >
         <strong>Comisión AgroBroker IA:</strong>{" "}
         USD{" "}
-        {(
-          (Number(datos.cantidad_contractual_tn) || 0) * 1
-        ).toFixed(2)}
+        {Number(datos.comision_agrobroker_usd || 0).toFixed(2)}
         <br />
         La comisión se registra separadamente y no se descuenta
-        nuevamente del importe de la mercadería.
+        nuevamente del importe de la mercadería. El importe proviene del
+        acuerdo comercial configurado para la operación.
       </div>
 
       {mensaje && (
