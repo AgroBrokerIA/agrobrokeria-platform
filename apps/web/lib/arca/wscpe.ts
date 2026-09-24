@@ -45,28 +45,53 @@ function enviarSOAP(soap: string): Promise<{
   });
 }
 
+function redactarXmlTag(xml: string, tag: string): string {
+  let resultado = xml;
+  let cursor = 0;
+
+  while (true) {
+    const apertura = resultado.indexOf("<" + tag, cursor);
+    if (apertura < 0) break;
+
+    const cierreApertura = resultado.indexOf(">", apertura);
+    if (cierreApertura < 0) break;
+
+    const cierre = resultado.indexOf("</" + tag + ">", cierreApertura);
+    if (cierre < 0) break;
+
+    resultado =
+      resultado.slice(0, cierreApertura + 1) +
+      "[REDACTED]" +
+      resultado.slice(cierre);
+
+    cursor = cierreApertura + 1 + "[REDACTED]".length + ("</" + tag + ">").length;
+  }
+
+  return resultado;
+}
+
 function validarRespuesta(
   response: { status: number; contentType: string | null; body: string },
   operacion: string
 ) {
   if (response.status < 200 || response.status >= 300) {
-    const cuerpo = response.body
-      .replace(/<token>[\\s\\S]*?<\\/token>/gi, "<token>[REDACTED]</token>")
-      .replace(/<sign>[\\s\\S]*?<\\/sign>/gi, "<sign>[REDACTED]</sign>")
-      .replace(/<auth>[\\s\\S]*?<\\/auth>/gi, "<auth>[REDACTED]</auth>")
-      .replace(/<cuit>[^<]*<\\/cuit>/gi, "<cuit>[REDACTED]</cuit>")
-      .slice(0, 3000);
+    const cuerpo = ["token", "sign", "auth", "cuit"].reduce(
+      (texto, tag) => redactarXmlTag(texto, tag),
+      response.body
+    ).slice(0, 3000);
 
     throw new Error(
       `${operacion}: HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
       `Respuesta: ${cuerpo || "[vacía]"}`
     );
   }
+
   if (!response.body.includes("Envelope")) {
-    const cuerpo = response.body
-      .replace(/<token>[\s\S]*?<\/token>/gi, "<token>[REDACTED]</token>")
-      .replace(/<sign>[\s\S]*?<\/sign>/gi, "<sign>[REDACTED]</sign>")
-      .slice(0, 1200);
+    const cuerpo = ["token", "sign", "auth", "cuit"].reduce(
+      (texto, tag) => redactarXmlTag(texto, tag),
+      response.body
+    ).slice(0, 1200);
+
     throw new Error(
       `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
       `HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
