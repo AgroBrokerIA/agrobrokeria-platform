@@ -1,40 +1,7 @@
 @import "tailwindcss";
-
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-  }
-}
-
-body {
-  background: var(--background);
-  color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
-}
-.input{
-width:100%;
-padding:12px;
-margin-top:8px;
-border:1px solid #d1d5db;
-border-radius:8px;
-font-size:16px;
-outline:none;
-}
-
-.input:focus{
-border-color:#16a34a;
-box-shadow:0 0 0 3px rgba(22,163,74,.15);
-}
+:root{--bg:#f4f7f3;--surface:#fff;--ink:#17221b;--muted:#6b776f;--line:#e1e8e2;--green:#167a45;--green-dark:#0e5b33;--green-soft:#e9f5ed;--sidebar:#10251a}
+*{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{color:inherit}button,input,select,textarea{font:inherit}
+.app-header{height:72px;background:#fff;border-bottom:1px solid var(--line);display:flex;align-items:center;justify-content:space-between;padding:0 28px;position:sticky;top:0;z-index:30}.brand-mark{display:flex;align-items:center;gap:11px;text-decoration:none;color:var(--ink);font-size:17px}.brand-mark small{display:block;color:var(--muted);font-size:10px;font-weight:700;letter-spacing:1px;text-transform:uppercase;margin-top:1px}.brand-icon{width:38px;height:38px;border-radius:11px;background:var(--green);color:#fff;display:grid;place-items:center;font-weight:800;font-size:20px;box-shadow:0 6px 16px #167a4525}.app-header-actions{display:flex;align-items:center;gap:8px}.header-link,.header-login{padding:9px 12px;text-decoration:none;font-weight:650;font-size:14px}.header-icon{width:38px;height:38px;border:1px solid var(--line);border-radius:10px;display:grid;place-items:center;text-decoration:none;background:#fff}.user-menu{display:flex;align-items:center;gap:9px;margin-left:8px;padding-left:12px;border-left:1px solid var(--line)}.user-avatar{width:34px;height:34px;border-radius:50%;background:var(--green-soft);color:var(--green-dark);display:grid;place-items:center;font-weight:800}.user-name{font-size:13px;font-weight:650;max-width:170px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.logout-button{border:0;background:transparent;color:var(--muted);cursor:pointer;font-size:13px}
+.app-sidebar{width:248px;background:var(--sidebar);color:#dbe9df;min-height:calc(100vh - 72px);padding:24px 14px;position:sticky;top:72px;align-self:flex-start}.sidebar-section-label{font-size:10px;letter-spacing:1.5px;font-weight:800;color:#7f9989;padding:0 12px 10px}.sidebar-nav{display:flex;flex-direction:column;gap:3px}.sidebar-link{display:flex;align-items:center;gap:11px;padding:10px 12px;border-radius:10px;text-decoration:none;font-size:13px;font-weight:600;color:#b9cabe;transition:.15s}.sidebar-link:hover{background:#ffffff0c;color:#fff}.sidebar-link.active{background:#1c7547;color:#fff;box-shadow:inset 3px 0 #7ee2a7}.sidebar-icon{width:21px;text-align:center;font-size:15px}.sidebar-label{flex:1}.sidebar-badge{background:#e34b4b;color:#fff;border-radius:999px;min-width:20px;padding:2px 6px;text-align:center;font-size:10px}.sidebar-status{display:flex;gap:10px;align-items:center;margin:30px 8px 0;padding:13px;border:1px solid #ffffff12;border-radius:12px;background:#ffffff08}.sidebar-status strong{display:block;font-size:11px;color:#eef8f1}.sidebar-status small{display:block;color:#7f9989;font-size:10px;margin-top:2px}.status-dot{width:8px;height:8px;border-radius:50%;background:#5ee58d;box-shadow:0 0 0 4px #5ee58d18}
+.page-shell{flex:1;min-width:0;background:var(--bg);min-height:calc(100vh - 72px)}.page-shell>main{max-width:1440px;margin:0 auto}.input{width:100%;padding:12px;margin-top:8px;border:1px solid #d1d8d2;border-radius:9px;font-size:15px;outline:none;background:#fff}.input:focus{border-color:#29945a;box-shadow:0 0 0 3px #29945a18}
+@media(max-width:850px){.app-sidebar{width:72px;padding:24px 8px}.sidebar-label,.sidebar-section-label,.sidebar-status{display:none}.sidebar-link{justify-content:center}.sidebar-icon{width:auto}.user-name,.header-link{display:none}.app-header{padding:0 14px}.page-shell>main{width:100%}}
