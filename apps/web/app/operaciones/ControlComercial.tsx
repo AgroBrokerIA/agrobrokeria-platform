@@ -76,13 +76,11 @@ export default function ControlComercial({
   const comisionEstado =
     control?.comision_estado || "PENDIENTE";
 
-  const comisionCalculada =
-    Number(cantidadTn || 0) * 1;
-
   const comisionMostrar =
-    Number(control?.comision_monto || 0) > 0
-      ? Number(control?.comision_monto)
-      : comisionCalculada;
+    control?.comision_monto !== null &&
+    control?.comision_monto !== undefined
+      ? Number(control.comision_monto)
+      : 0;
 
   const fondosEstado =
     control?.fondos_estado || "PENDIENTES";
@@ -164,7 +162,7 @@ export default function ControlComercial({
               marginBottom: 6,
             }}
           >
-            Comisión automática
+            Comisión configurada
           </div>
 
           <div
@@ -188,8 +186,7 @@ export default function ControlComercial({
               color: "#475569",
             }}
           >
-            Calculada automáticamente a razón de{" "}
-            <strong>USD 1 por tonelada</strong>.
+            Ingresá el importe total de la comisión acordada para esta operación.
           </div>
 
           <div
@@ -199,7 +196,41 @@ export default function ControlComercial({
               fontSize: 14,
             }}
           >
-            El monto no puede ser modificado manualmente.
+            La comisión se registra de forma explícita y no se modifica automáticamente según las toneladas.
+          </div>
+
+          <div style={{ marginTop: 15 }}>
+            <label
+              style={{
+                display: "block",
+                fontWeight: 700,
+                marginBottom: 7,
+              }}
+            >
+              Importe total de comisión (USD)
+            </label>
+            <input
+              type="number"
+              min="0"
+              step="0.01"
+              value={control?.comision_monto ?? ""}
+              onChange={(e) =>
+                onActualizarComision({
+                  comision_monto:
+                    e.target.value === "" ? null : Number(e.target.value),
+                  comision_moneda: "USD",
+                })
+              }
+              placeholder="Ej.: 600.00"
+              style={{
+                width: "100%",
+                boxSizing: "border-box",
+                padding: 12,
+                borderRadius: 8,
+                border: "1px solid #cbd5e1",
+                background: "white",
+              }}
+            />
           </div>
 
           <div
