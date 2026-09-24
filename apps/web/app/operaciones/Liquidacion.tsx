@@ -114,7 +114,7 @@ export default function Liquidacion({
         ajustes_usd: Number(data.ajustes_usd) || 0,
         deducciones_usd: Number(data.deducciones_usd) || 0,
         comision_agrobroker_usd:
-          Number(data.comision_agrobroker_usd) || 0,
+          Number(data.cantidad_entregada_tn) || 0,
         importe_neto_usd: Number(data.importe_neto_usd) || 0,
         fecha_liquidacion: data.fecha_liquidacion || "",
         referencia_comprobante: data.referencia_comprobante || "",
@@ -179,8 +179,7 @@ export default function Liquidacion({
       importe_bruto_usd: calculos.bruto,
       ajustes_usd: Number(datos.ajustes_usd) || 0,
       deducciones_usd: Number(datos.deducciones_usd) || 0,
-      comision_agrobroker_usd:
-        Number(datos.comision_agrobroker_usd) || 0,
+      comision_agrobroker_usd: calculos.entregadaTn,
       importe_neto_usd: calculos.neto,
       fecha_liquidacion:
         datos.fecha_liquidacion || new Date().toISOString(),
@@ -386,7 +385,7 @@ export default function Liquidacion({
 
         <Campo
           label="Comisión AgroBroker IA (USD)"
-          value={Number(datos.comision_agrobroker_usd || 0).toFixed(2)}
+          value={(calculos.entregadaTn || 0).toFixed(2)}
           readOnly
         />
 
@@ -461,7 +460,7 @@ export default function Liquidacion({
       >
         <strong>Comisión AgroBroker IA:</strong>{" "}
         USD{" "}
-        {Number(datos.comision_agrobroker_usd || 0).toFixed(2)}
+        {(calculos.entregadaTn || 0).toFixed(2)}
         <br />
         La comisión se registra separadamente y no se descuenta
         nuevamente del importe de la mercadería. El importe proviene del
