@@ -13,3 +13,14 @@
 @media(max-width:650px){.module-page{padding:24px 16px 40px}.module-hero{align-items:flex-start;flex-direction:column}.module-hero h1,.module-title{font-size:25px}}
 
 .operations-page>div:not(.module-hero){font-family:inherit}.operations-page h2{letter-spacing:-.25px}.operations-page button{transition:transform .12s ease,box-shadow .12s ease}.operations-page button:hover{transform:translateY(-1px)}
+
+.operations-page{padding-bottom:72px}
+.operations-page>.module-hero{padding:22px 24px;margin:0 0 20px;background:linear-gradient(135deg,#ffffff 0%,#f7fbf8 100%);border:1px solid var(--line);border-radius:18px;box-shadow:0 10px 30px #10251a0b}
+.operations-page>.module-hero h1{font-size:32px}
+.operations-page>.module-hero .module-pill{background:var(--green-soft);border-color:#c8e3d0}
+.operations-page>div:not(.module-hero){max-width:100%}
+.operations-page>div:not(.module-hero)>div[style*="box-shadow"]{border:1px solid var(--line);box-shadow:0 8px 24px #10251a0b!important}
+.operations-page h2{font-size:21px}
+.operations-page h3{color:var(--ink)}
+.operations-page hr{border-color:var(--line)!important}
+@media(max-width:650px){.operations-page>.module-hero{padding:18px}.operations-page>.module-hero h1{font-size:26px}}
