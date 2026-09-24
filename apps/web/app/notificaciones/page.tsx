@@ -176,8 +176,13 @@ export default function NotificacionesPage() {
   ).length;
 
   return (
-    <main
-      style={{
+    <main className="module-page notifications-page">
+      <div className="module-hero">
+        <div><span className="eyebrow">CENTRO DE ALERTAS</span><h1>Notificaciones</h1><p>Seguimiento de cambios, ofertas y eventos de tus operaciones.</p></div>
+        <div className="module-pill">{pendientes > 0 ? pendientes+" pendientes" : "Todo al día"}</div>
+      </div>
+      <section className="notifications-body">
+      <div style={{
         padding: 30,
         maxWidth: 1000,
         margin: "0 auto",
@@ -350,6 +355,7 @@ export default function NotificacionesPage() {
           ))}
         </div>
       )}
+      </section>
     </main>
   );
 }
