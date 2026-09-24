@@ -9,6 +9,7 @@ type Comision = {
   empresa_id: string | null;
   profile_id: string | null;
   tipo_comision: string;
+  origen_comision: string | null;
   tipo_ganancia: string;
   concepto: string;
   modalidad_calculo: string;
@@ -1162,7 +1163,9 @@ if (errorMovimientos) {
 
                     <td style={{ padding: 12 }}>
                       {numero(comision.saldo_pendiente) > 0 &&
-                      comision.estado !== "ANULADA" ? (
+                      comision.estado !== "ANULADA" &&
+                      !(comision.origen_comision === "AGROBROKER_IA" &&
+                        !comision.empresa_id) ? (
                         <button
                           type="button"
                           onClick={() => {
@@ -1194,7 +1197,10 @@ if (errorMovimientos) {
                         >
                           {comision.estado === "ABONADA"
                             ? "✓ Pagada"
-                            : "—"}
+                            : comision.origen_comision === "AGROBROKER_IA" &&
+                                !comision.empresa_id
+                              ? "Conciliación administrativa"
+                              : "—"}
                         </span>
                       )}
                     </td>
