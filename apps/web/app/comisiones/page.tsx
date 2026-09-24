@@ -349,13 +349,7 @@ if (errorMovimientos) {
   }, [comisionesFiltradas]);
 
   return (
-    <main
-      style={{
-        padding: 24,
-        maxWidth: 1500,
-        margin: "0 auto",
-      }}
-    >
+    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">FINANZAS</span><h1>Comisiones</h1><p>Controlá comisiones generadas, pendientes y abonadas.</p></div><div className="module-pill">AgroBroker IA · USD 1 / TN</div></div>
       <div
         style={{
           display: "flex",
