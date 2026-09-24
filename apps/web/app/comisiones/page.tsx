@@ -239,57 +239,19 @@ if (errorMovimientos) {
     setError("");
 
     try {
-      const nuevoSaldoPagado =
-        numero(comisionPago.saldo_pagado) + importe;
+      const { error: errorPago } = await supabase.rpc(
+        "registrar_pago_comision",
+        {
+          p_comision_id: comisionPago.id,
+          p_importe: importe,
+          p_medio_pago: medioPago.trim(),
+          p_referencia_pago: referenciaPago.trim() || null,
+        }
+      );
 
-      const nuevoSaldoPendiente =
-        Math.max(0, saldoPendienteActual - importe);
-
-      const nuevoEstado =
-        nuevoSaldoPendiente === 0 ? "ABONADA" : "A_PAGAR";
-
-      const ahora = new Date().toISOString();
-
-      const { error: errorComision } = await supabase
-        .from("operacion_comisiones")
-        .update({
-          saldo_pagado: nuevoSaldoPagado,
-          saldo_pendiente: nuevoSaldoPendiente,
-          estado: nuevoEstado,
-          medio_pago: medioPago.trim(),
-          fecha_pago: ahora,
-          referencia_pago: referenciaPago.trim() || null,
-          actualizado_at: ahora,
-        })
-        .eq("id", comisionPago.id);
-
-      if (errorComision) {
+      if (errorPago) {
         throw new Error(
-          `No se pudo actualizar la comisión: ${errorComision.message}`
-        );
-      }
-
-      const { error: errorMovimiento } = await supabase
-        .from("operacion_movimientos_economicos")
-        .insert({
-          operacion_id: comisionPago.operacion_id,
-          comision_id: comisionPago.id,
-          empresa_id: comisionPago.empresa_id,
-          profile_id: comisionPago.profile_id,
-          tipo_movimiento: "PAGO_COMISION",
-          concepto: `Pago de comisión — ${comisionPago.concepto}`,
-          moneda_id: comisionPago.moneda_id,
-          importe,
-          signo: -1,
-          estado: nuevoEstado,
-          referencia: referenciaPago.trim() || null,
-          fecha_movimiento: ahora,
-          actualizado_at: ahora,
-        });
-
-      if (errorMovimiento) {
-        throw new Error(
-          `La comisión se actualizó, pero no se pudo registrar el movimiento: ${errorMovimiento.message}`
+          `No se pudo registrar el pago de la comisión: ${errorPago.message}`
         );
       }
 
