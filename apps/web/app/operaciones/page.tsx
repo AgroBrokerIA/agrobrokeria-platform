@@ -1885,161 +1885,64 @@ Firma: ______________________________
        * VALIDACIONES PARA CONFIRMAR ACUERDO COMERCIAL
        * =========================================================
        *
-       * El borrador puede guardarse sin intermediario ni comisión.
+       * El Acuerdo Comercial puede confirmarse con o sin
+       * intermediario externo.
        *
-       * Para CONFIRMAR:
-       * 1. Debe existir intermediario seleccionado.
-       * 2. Debe existir como participante INTERMEDIARIO.
-       * 3. Debe existir comisión del intermediario.
-       * 4. La comisión debe ser mayor a cero.
-       * 5. La comisión automática de AgroBrokerIA debe coincidir
-       *    con USD 1 por tonelada.
+       * La comisión de AgroBrokerIA es siempre automática:
+       * USD 1 por tonelada.
+       *
+       * Si existe un intermediario externo, su comisión se
+       * registra y liquida por separado.
        */
 
       if (confirmar) {
-        const intermediarioId =
-          intermediariosSeleccionados[operacion.id];
+        // La comisión de un intermediario externo es opcional y
+        // completamente independiente de la comisión fija de AgroBrokerIA.
+        // Si existe intermediario, su comisión ya cargada se conserva;
+        // si no existe, el Acuerdo Comercial puede confirmarse igualmente.
 
-        if (!intermediarioId) {
-          setMensaje("");
-          setError(
-            "No se puede confirmar el Acuerdo Comercial: primero debe seleccionar el intermediario de la operación."
-          );
-          return;
-        }
+        const comisionAgroBrokerEsperada =
+          Number(operacion.cantidad_tn || 0);
 
+        // La comisión propia se verifica directamente contra Supabase.
+        // El RPC también la fuerza a USD 1/TN, por lo que esta validación
+        // protege la experiencia de usuario sin convertirla en un dato editable.
         const {
-          data: participanteIntermediario,
-          error: errorParticipante,
+          data: controlAgroBroker,
+          error: errorControlAgroBroker,
         } = await supabase
-          .from("operacion_participantes")
-          .select("id, empresa_id, rol")
+          .from("operacion_control_comercial")
+          .select("id, comision_monto, comision_moneda")
           .eq("operacion_id", operacion.id)
-          .eq("empresa_id", intermediarioId)
-          .eq("rol", "INTERMEDIARIO")
           .maybeSingle();
 
-        if (errorParticipante) {
+        if (errorControlAgroBroker) {
           setMensaje("");
           setError(
-            `No se pudo verificar el intermediario de la operación: ${errorParticipante.message}`
+            `No se pudo verificar la comisión de AgroBrokerIA: ${errorControlAgroBroker.message}`
           );
           return;
         }
 
-        if (!participanteIntermediario) {
+        const comisionAgroBrokerRegistrada =
+          Number(controlAgroBroker?.comision_monto ?? 0);
+
+        const monedaAgroBroker =
+          controlAgroBroker?.comision_moneda;
+
+        if (
+          comisionAgroBrokerRegistrada !== comisionAgroBrokerEsperada ||
+          monedaAgroBroker !== "USD"
+        ) {
           setMensaje("");
           setError(
-            "No se puede confirmar el Acuerdo Comercial: el intermediario seleccionado todavía no está registrado como participante de esta operación."
+            `No se puede confirmar el Acuerdo Comercial: la comisión de AgroBrokerIA debe ser de USD ${comisionAgroBrokerEsperada.toFixed(
+              2
+            )} (USD 1 por tonelada).`
           );
           return;
         }
-
-        const {
-          data: comisionesIntermediario,
-          error: errorComision,
-        } = await supabase
-          .from("comisiones_intermediarios")
-          .select(
-            "id, valor_comision, estado, moneda, tipo_comision, quien_abona"
-          )
-          .eq("operacion_id", operacion.id)
-          .eq(
-            "parte_operacion_id",
-            participanteIntermediario.id
-          )
-          .order("created_at", {
-            ascending: false,
-          });
-
-        if (errorComision) {
-          setMensaje("");
-          setError(
-            `No se pudo verificar la comisión del intermediario: ${errorComision.message}`
-          );
-          return;
-        }
-
-        const comisionIntermediario =
-          (comisionesIntermediario || []).find(
-            (comision) =>
-              Number(comision.valor_comision) > 0 &&
-              comision.estado !== "ANULADA" &&
-              comision.estado !== "DEVUELTA"
-          );
-
-        if (!comisionIntermediario) {
-          setMensaje("");
-          setError(
-            "No se puede confirmar el Acuerdo Comercial: el intermediario seleccionado todavía no tiene una comisión acordada."
-          );
-          return;
-        }
-
-          const comisionAgroBrokerEsperada =
-            Number(operacion.cantidad_tn || 0);
-
-          // ---------------------------------------------------------
-          // Verificar comisión AgroBrokerIA directamente en Supabase
-          // ---------------------------------------------------------
-          // No dependemos del estado local de React porque puede
-          // quedar desactualizado después de guardar la comisión.
-
-          const {
-            data: controlAgroBroker,
-            error: errorControlAgroBroker,
-          } = await supabase
-            .from("operacion_control_comercial")
-            .select("id, comision_monto, comision_moneda")
-            .eq("operacion_id", operacion.id)
-            .maybeSingle();
-
-          if (errorControlAgroBroker) {
-            console.error(
-              "ERROR VERIFICANDO COMISIÓN AGROBROKERIA:",
-              errorControlAgroBroker
-            );
-
-            setMensaje("");
-            setError(
-              `No se pudo verificar la comisión de AgroBrokerIA: ${errorControlAgroBroker.message}`
-            );
-            return;
-          }
-
-          const comisionAgroBrokerRegistrada =
-            Number(controlAgroBroker?.comision_monto ?? 0);
-
-          const monedaAgroBroker =
-            controlAgroBroker?.comision_moneda;
-
-          if (
-            comisionAgroBrokerRegistrada !==
-              comisionAgroBrokerEsperada ||
-            monedaAgroBroker !== "USD"
-          ) {
-            setMensaje("");
-            setError(
-              `No se puede confirmar el Acuerdo Comercial: la comisión de AgroBrokerIA debe ser de USD ${comisionAgroBrokerEsperada.toFixed(
-                2
-              )} (USD 1 por tonelada).`
-            );
-            return;
-          }
-
-          console.log(
-            "VALIDACIONES DEL ACUERDO OK",
-            {
-              intermediarioId,
-              participanteIntermediario,
-              comisionIntermediario,
-              comisionAgroBrokerEsperada,
-              comisionAgroBrokerRegistrada,
-              monedaAgroBroker,
-              controlAgroBroker,
-            }
-          );
-        }
+      }
 
       const estado = confirmar
         ? "CONFIRMADO"
