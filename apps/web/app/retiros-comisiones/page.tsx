@@ -272,22 +272,7 @@ export default function RetirosComisionesPage() {
   }
 
   return (
-    <main
-      style={{
-        padding: 24,
-        maxWidth: 1300,
-        margin: "0 auto",
-      }}
-    >
-      <div style={{ marginBottom: 24 }}>
-        <h1 style={{ margin: 0, fontSize: 28, fontWeight: 800 }}>
-          💸 Retiros de comisiones
-        </h1>
-        <p style={{ color: "#64748b", marginTop: 6 }}>
-          Solicitá el retiro de tus comisiones hacia un medio de cobro validado.
-        </p>
-      </div>
-
+    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">FINANZAS</span><h1>Retiros de comisiones</h1><p>Gestioná el retiro de comisiones hacia un medio de cobro validado.</p></div><div className="module-pill">Fondos disponibles</div></div>
       {error && (
         <div
           style={{
