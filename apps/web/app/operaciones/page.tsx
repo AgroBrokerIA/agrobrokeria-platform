@@ -1654,84 +1654,27 @@ Firma: ______________________________
         return;
       }
 
-      // Sincronizar el estado local con el acuerdo real
-      setAcuerdo({
+      const acuerdoReal: Acuerdo = {
         id: acuerdoDB.id,
         operacion_id: operacion.id,
         lugar_carga: acuerdoDB.lugar_carga || "",
         destino: acuerdoDB.destino || "",
-        condicion_entrega:
-          acuerdoDB.condicion_entrega || "",
-        forma_pago:
-          acuerdoDB.forma_pago || "",
-        plazo_pago:
-          acuerdoDB.plazo_pago || "",
-        flete:
-          acuerdoDB.flete || "",
-        calidad:
-          acuerdoDB.calidad || "",
-        observaciones:
-          acuerdoDB.observaciones || "",
-        estado:
-          acuerdoDB.estado || "CONFIRMADO",
-      });
+        condicion_entrega: acuerdoDB.condicion_entrega || "",
+        forma_pago: acuerdoDB.forma_pago || "",
+        plazo_pago: acuerdoDB.plazo_pago || "",
+        flete: acuerdoDB.flete || "",
+        calidad: acuerdoDB.calidad || "",
+        observaciones: acuerdoDB.observaciones || "",
+        estado: acuerdoDB.estado || "CONFIRMADO",
+      };
 
-      // Utilizar los datos reales del acuerdo para el contrato
-      const acuerdoOriginal = acuerdo;
-
-      setAcuerdo((actual) => ({
-        ...actual,
-        id: acuerdoDB.id,
-        lugar_carga: acuerdoDB.lugar_carga || "",
-        destino: acuerdoDB.destino || "",
-        condicion_entrega:
-          acuerdoDB.condicion_entrega || "",
-        forma_pago:
-          acuerdoDB.forma_pago || "",
-        plazo_pago:
-          acuerdoDB.plazo_pago || "",
-        flete:
-          acuerdoDB.flete || "",
-        calidad:
-          acuerdoDB.calidad || "",
-        observaciones:
-          acuerdoDB.observaciones || "",
-        estado:
-          acuerdoDB.estado || "CONFIRMADO",
-      }));
+      setAcuerdo(acuerdoReal);
 
       let contenidoContrato = contrato.contenido;
 
       if (operacion.tipo_operacion === "F2") {
         try {
-          // La función utiliza el estado del acuerdo.
-          // Lo actualizamos con los datos recuperados arriba.
-          const acuerdoAnterior = {
-            ...acuerdoOriginal,
-            id: acuerdoDB.id,
-            operacion_id: operacion.id,
-            lugar_carga:
-              acuerdoDB.lugar_carga || "",
-            destino:
-              acuerdoDB.destino || "",
-            condicion_entrega:
-              acuerdoDB.condicion_entrega || "",
-            forma_pago:
-              acuerdoDB.forma_pago || "",
-            plazo_pago:
-              acuerdoDB.plazo_pago || "",
-            flete:
-              acuerdoDB.flete || "",
-            calidad:
-              acuerdoDB.calidad || "",
-            observaciones:
-              acuerdoDB.observaciones || "",
-            estado:
-              acuerdoDB.estado || "CONFIRMADO",
-          };
-
-          setAcuerdo(acuerdoAnterior);
-
+          // Generar el contrato directamente con los datos recuperados de Supabase.
           // Generar el contrato directamente con los datos
           // recuperados de Supabase.
           contenidoContrato =
