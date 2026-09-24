@@ -53,6 +53,39 @@ export async function POST(request: Request) {
       );
     }
 
+    const { data: profile, error: profileError } = await supabaseAuth
+      .from("profiles")
+      .select("active_company_id")
+      .eq("id", user.id)
+      .single();
+
+    if (profileError || !profile?.active_company_id) {
+      return NextResponse.json(
+        { ok: false, error: "No se pudo determinar la empresa activa." },
+        { status: 403 }
+      );
+    }
+
+    const { data: publicacion, error: publicacionError } = await supabaseAuth
+      .from("publicaciones")
+      .select("empresa_id")
+      .eq("id", publicacionId)
+      .single();
+
+    if (publicacionError || !publicacion) {
+      return NextResponse.json(
+        { ok: false, error: "Publicación no encontrada." },
+        { status: 404 }
+      );
+    }
+
+    if (publicacion.empresa_id !== profile.active_company_id) {
+      return NextResponse.json(
+        { ok: false, error: "No tenés autorización para procesar esta publicación." },
+        { status: 403 }
+      );
+    }
+
     const resultados = await procesarPublicacionConIA(
       supabaseAuth,
       publicacionId
