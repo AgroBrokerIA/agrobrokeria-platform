@@ -166,7 +166,7 @@ export default function MisPublicacionesPage() {
   }
 
   return (
-    <div
+    <div className="module-page"><div className="module-hero"><div><span className="eyebrow">MERCADO</span><h1>Mis Publicaciones</h1><p>Administrá tus oportunidades de compra y venta.</p></div><div className="module-pill">Publicaciones activas</div></div><div
       style={{
         padding: 30,
       }}
