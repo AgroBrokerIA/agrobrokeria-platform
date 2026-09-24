@@ -673,81 +673,6 @@ export default function OperacionesPage() {
           }
         }
       }
-      // =========================================================
-      // SINCRONIZACIÓN AUTOMÁTICA: COMISIÓN AGROBROKER IA
-      // =========================================================
-      // USD 1 por cada tonelada de la operación.
-      // Corrige operaciones existentes que tengan la comisión
-      // en 0, vacía o con moneda diferente de USD.
-      // =========================================================
-
-      for (const operacion of operacionesDB || []) {
-        const montoComision =
-          Number(operacion.cantidad_tn) * 1;
-
-        if (!Number.isFinite(montoComision)) {
-          continue;
-        }
-
-        const { data: controlComision, error: errorControlComision } =
-          await supabase
-            .from("operacion_control_comercial")
-            .select("comision_monto, comision_moneda")
-            .eq("operacion_id", operacion.id)
-            .maybeSingle();
-
-        if (errorControlComision) {
-          console.error(
-            "No se pudo consultar la comisión de AgroBroker IA:",
-            errorControlComision
-          );
-          continue;
-        }
-
-        if (!controlComision) {
-          continue;
-        }
-
-        if (
-          Number(controlComision.comision_monto) === montoComision &&
-          controlComision.comision_moneda === "USD"
-        ) {
-          continue;
-        }
-
-        const { error: errorActualizarComision } =
-          await supabase.rpc("guardar_control_comercial", {
-            p_operacion_id: operacion.id,
-            p_cambios: {
-              comision_monto: montoComision,
-              comision_moneda: "USD",
-            },
-          });
-
-        if (!errorActualizarComision) {
-          setControlesComerciales((actual) => ({
-            ...actual,
-            [operacion.id]: {
-              ...actual[operacion.id],
-              comision_monto: montoComision,
-              comision_moneda: "USD",
-            },
-          }));
-        }
-
-        if (errorActualizarComision) {
-          console.error(
-            "No se pudo actualizar la comisión de AgroBroker IA:",
-            errorActualizarComision
-          );
-          continue;
-        }
-
-        console.log(
-          `✅ Comisión AgroBroker IA actualizada: ${operacion.id} → USD ${montoComision}`
-        );
-      }
-
     } catch (e) {
       console.error(e);
       setError("Ocurrió un error al cargar las operaciones.");
@@ -932,49 +857,10 @@ export default function OperacionesPage() {
       }));
     }
 
-    await asegurarComisionAgroBrokerIA(operacion);
   }
 
-  async function asegurarComisionAgroBrokerIA(
-    operacion: Operacion
-  ) {
-    const montoComision =
-      Number(operacion.cantidad_tn) * 1;
-
-    const controlActual =
-      controlesComerciales[operacion.id];
-
-    if (
-      controlActual?.comision_monto === montoComision &&
-      controlActual?.comision_moneda === "USD"
-    ) {
-      return;
-    }
-
-    const { data, error } = await supabase.rpc("guardar_control_comercial", {
-      p_operacion_id: operacion.id,
-      p_cambios: {
-        comision_monto: montoComision,
-        comision_moneda: "USD",
-      },
-    });
-
-    if (error) {
-      console.error(error);
-      setError(
-        `No se pudo calcular la comisión de AgroBroker IA: ${error.message}`
-      );
-      return;
-    }
-
-    setControlesComerciales((actual) => ({
-      ...actual,
-      [operacion.id]: {
-        ...actual[operacion.id],
-        ...data,
-      },
-    }));
-  }
+  // La comisión de AgroBroker IA se configura explícitamente en el control comercial.
+  // No se asigna un valor automático por tonelada: puede variar según el acuerdo.
 
   async function cargarComisionesIntermediarios(
     operacionId: string
