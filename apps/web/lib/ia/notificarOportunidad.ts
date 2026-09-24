@@ -1,11 +1,12 @@
-import { supabase } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 export async function notificarOportunidadIA(
+  db: SupabaseClient,
   empresaId: string,
   publicacionId: string,
   puntaje: number
 ) {
-  const { data: usuarios, error } = await supabase
+  const { data: usuarios, error } = await db
     .from("company_users")
     .select("profile_id")
     .eq("company_id", empresaId)
@@ -23,7 +24,7 @@ export async function notificarOportunidadIA(
     if (!usuario.profile_id) continue;
 
     const { error: notificacionError } =
-      await supabase.rpc("crear_notificacion_ia", {
+      await db.rpc("crear_notificacion_ia", {
         p_profile_id: usuario.profile_id,
         p_publicacion_id: publicacionId,
         p_titulo: "Nueva oportunidad detectada por IA",
