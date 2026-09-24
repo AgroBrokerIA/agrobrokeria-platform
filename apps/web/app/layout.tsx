@@ -1,12 +1,9 @@
 import "./globals.css";
-
-import Header from "../components/layout/Header";
-import Sidebar from "../components/layout/Sidebar";
-import PageContainer from "../components/layout/PageContainer";
+import AppChrome from "../components/layout/AppChrome";
 
 export const metadata = {
   title: "AgroBroker IA",
-  description: "Plataforma Inteligente de Comercialización de Granos",
+  description: "Plataforma inteligente de comercialización de commodities agrícolas.",
 };
 
 export default function RootLayout({
@@ -17,20 +14,7 @@ export default function RootLayout({
   return (
     <html lang="es">
       <body>
-        <Header />
-
-        <div
-          style={{
-            display: "flex",
-            minHeight: "100vh",
-          }}
-        >
-          <Sidebar />
-
-          <PageContainer>
-            {children}
-          </PageContainer>
-        </div>
+        <AppChrome>{children}</AppChrome>
       </body>
     </html>
   );
