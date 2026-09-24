@@ -11,3 +11,5 @@
 
 .module-page{padding:32px 38px 60px}.module-hero{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;margin-bottom:22px}.module-hero h1,.module-title{margin:0;font-size:30px;letter-spacing:-.7px;color:var(--ink)}.module-subtitle,.module-hero p{margin:6px 0 0;color:var(--muted);font-size:14px}.module-pill{padding:8px 11px;border:1px solid #cfe4d5;background:#f5fbf7;color:var(--green-dark);border-radius:999px;font-size:11px;font-weight:750;white-space:nowrap}.marketplace-page>div:not(.module-hero){max-width:100%}
 @media(max-width:650px){.module-page{padding:24px 16px 40px}.module-hero{align-items:flex-start;flex-direction:column}.module-hero h1,.module-title{font-size:25px}}
+
+.operations-page>div:not(.module-hero){font-family:inherit}.operations-page h2{letter-spacing:-.25px}.operations-page button{transition:transform .12s ease,box-shadow .12s ease}.operations-page button:hover{transform:translateY(-1px)}
