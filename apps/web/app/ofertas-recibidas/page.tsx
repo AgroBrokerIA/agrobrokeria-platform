@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { crearNotificacion } from "@/lib/notificaciones/crearNotificacion";
-import { sincronizarComisionAgroBrokerIA } from "@/lib/comisiones/sincronizarComisionesOperacion";
 
 type Oferta = {
   oferta_id: string;
