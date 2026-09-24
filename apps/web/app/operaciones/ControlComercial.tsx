@@ -28,8 +28,6 @@ type Control = {
 
 type Props = {
   control?: Control;
-  cantidadTn?: number;
-
   onActualizarComision: (
     cambios: Partial<Control>
   ) => Promise<boolean>;
@@ -69,7 +67,6 @@ function estadoVisual(estado: string) {
 
 export default function ControlComercial({
   control,
-  cantidadTn,
   onActualizarComision,
   onActualizarControl,
 }: Props) {
@@ -186,7 +183,7 @@ export default function ControlComercial({
               color: "#475569",
             }}
           >
-            Ingresá el importe total de la comisión acordada para esta operación.
+            AgroBroker IA cobra automáticamente <strong>USD 1 por cada tonelada</strong> de la operación.
           </div>
 
           <div
@@ -196,41 +193,7 @@ export default function ControlComercial({
               fontSize: 14,
             }}
           >
-            La comisión se registra de forma explícita y no se modifica automáticamente según las toneladas.
-          </div>
-
-          <div style={{ marginTop: 15 }}>
-            <label
-              style={{
-                display: "block",
-                fontWeight: 700,
-                marginBottom: 7,
-              }}
-            >
-              Importe total de comisión (USD)
-            </label>
-            <input
-              type="number"
-              min="0"
-              step="0.01"
-              value={control?.comision_monto ?? ""}
-              onChange={(e) =>
-                onActualizarComision({
-                  comision_monto:
-                    e.target.value === "" ? null : Number(e.target.value),
-                  comision_moneda: "USD",
-                })
-              }
-              placeholder="Ej.: 600.00"
-              style={{
-                width: "100%",
-                boxSizing: "border-box",
-                padding: 12,
-                borderRadius: 8,
-                border: "1px solid #cbd5e1",
-                background: "white",
-              }}
-            />
+            Esta comisión no se puede editar manualmente. Las comisiones de intermediarios externos se cargan por separado.
           </div>
 
           <div
