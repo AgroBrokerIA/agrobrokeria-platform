@@ -39,14 +39,14 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     const detalle =
-      error instanceof Error ? error.message.slice(0, 500) : "Error técnico desconocido.";
+      error instanceof Error ? error.message.slice(0, 2000) : "Error técnico desconocido.";
 
     console.error("ARCA WSCPE auth-test:", detalle);
 
     return NextResponse.json(
       {
         ok: false,
-        error: "No fue posible autenticar contra ARCA WSCPE.",
+        error: "No fue posible completar la consulta WSCPE contra ARCA.",
         detalle,
       },
       { status: 502 }
