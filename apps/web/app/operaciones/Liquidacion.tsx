@@ -26,13 +26,11 @@ export default function Liquidacion({
   operacionId,
   cantidadContractualTn,
   precioTn,
-  comisionAgrobrokerUsd = 0,
   onLiquidacionConfirmada,
 }: {
   operacionId: string;
   cantidadContractualTn: number;
   precioTn: number;
-  comisionAgrobrokerUsd?: number;
   onLiquidacionConfirmada?: () => Promise<boolean>;
 }) {
   const [datos, setDatos] = useState<LiquidacionData>({
@@ -46,7 +44,7 @@ export default function Liquidacion({
     importe_bruto_usd: 0,
     ajustes_usd: 0,
     deducciones_usd: 0,
-    comision_agrobroker_usd: Number(comisionAgrobrokerUsd) || 0,
+    comision_agrobroker_usd: 0,
     importe_neto_usd: 0,
     fecha_liquidacion: "",
     referencia_comprobante: "",
@@ -150,7 +148,7 @@ export default function Liquidacion({
       diferencia_tn: (cantidadContractualTn || 0) - entregadaTn,
       importe_bruto_usd: bruto,
       importe_neto_usd: bruto,
-      comision_agrobroker_usd: Number(comisionAgrobrokerUsd) || 0,
+      comision_agrobroker_usd: entregadaTn,
       fecha_liquidacion: entrega?.fecha_entrega || "",
     }));
   }
@@ -233,7 +231,7 @@ export default function Liquidacion({
       deducciones_usd:
         Number(nueva.deducciones_usd) || 0,
       comision_agrobroker_usd:
-        Number(nueva.comision_agrobroker_usd) || 0,
+        calculos.entregadaTn,
       importe_neto_usd:
         Number(nueva.importe_neto_usd) || 0,
     }));
