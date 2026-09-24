@@ -1,5 +1,5 @@
 import { notificarOportunidadIA } from "@/lib/ia/notificarOportunidad";
-import { supabase } from "@/lib/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Publicacion = {
   id: string;
@@ -164,15 +164,16 @@ function calcularTotal(
 }
 
 async function obtenerHistorial(
+  db: SupabaseClient,
   empresaId: string
 ): Promise<number> {
-  const { data: compras } = await supabase
+  const { data: compras } = await db
     .from("publicaciones")
     .select("id")
     .eq("empresa_id", empresaId)
     .eq("tipo", "COMPRA");
 
-  const { data: ventas } = await supabase
+  const { data: ventas } = await db
     .from("publicaciones")
     .select("id")
     .eq("empresa_id", empresaId)
@@ -185,7 +186,7 @@ async function obtenerHistorial(
 
   if (ids.length === 0) return 50;
 
-  const { count, error } = await supabase
+  const { count, error } = await db
     .from("operaciones")
     .select("id", {
       count: "exact",
@@ -205,9 +206,10 @@ async function obtenerHistorial(
 }
 
 async function obtenerDocumentacion(
+  db: SupabaseClient,
   empresaId: string
 ): Promise<number> {
-  const { data, error } = await supabase
+  const { data, error } = await db
     .from("empresas_verificaciones")
     .select("id")
     .eq("empresa_id", empresaId)
@@ -219,11 +221,12 @@ async function obtenerDocumentacion(
 }
 
 async function obtenerCandidatos(
+  db: SupabaseClient,
   publicacion: Publicacion
 ): Promise<Candidato[]> {
   const candidatos: Candidato[] = [];
 
-  const { data: intereses } = await supabase
+  const { data: intereses } = await db
     .from("intereses_comerciales")
     .select(
       `
@@ -259,7 +262,7 @@ async function obtenerCandidatos(
     });
   }
 
-  const { data: productos } = await supabase
+  const { data: productos } = await db
     .from("empresas_productos")
     .select(
       `
@@ -346,10 +349,11 @@ async function obtenerCandidatos(
 }
 
 export async function procesarPublicacionConIA(
+  db: SupabaseClient,
   publicacionId: string
 ): Promise<ResultadoCompatibilidad[]> {
   const { data: publicacion, error } =
-    await supabase
+    await db
       .from("publicaciones")
       .select(
         `
@@ -377,7 +381,7 @@ export async function procesarPublicacionConIA(
   }
 
   const candidatos =
-    await obtenerCandidatos(publicacion);
+    await obtenerCandidatos(db, publicacion);
 
   const resultados: ResultadoCompatibilidad[] = [];
 
@@ -413,11 +417,13 @@ export async function procesarPublicacionConIA(
 
     const puntajeHistorial =
       await obtenerHistorial(
+        db,
         candidato.empresa_id
       );
 
     const puntajeDocumentacion =
       await obtenerDocumentacion(
+        db,
         candidato.empresa_id
       );
 
@@ -447,7 +453,7 @@ export async function procesarPublicacionConIA(
     resultados.push(resultado);
 
     const { error: compatibilidadError } =
-      await supabase.rpc(
+      await db.rpc(
         "guardar_compatibilidad_ia",
         {
           p_publicacion_id:
@@ -481,7 +487,7 @@ export async function procesarPublicacionConIA(
 
     if (resultado.recomendada) {
       const { error: oportunidadError } =
-        await supabase.rpc(
+        await db.rpc(
           "crear_oportunidad_ia",
           {
             p_publicacion_id:
@@ -500,6 +506,7 @@ export async function procesarPublicacionConIA(
       }
 
       await notificarOportunidadIA(
+        db,
         candidato.empresa_id,
         publicacion.id,
         resultado.puntaje_total
