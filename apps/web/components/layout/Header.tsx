@@ -6,142 +6,26 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function Header() {
   const [usuario, setUsuario] = useState<string | null>(null);
-
   useEffect(() => {
     let activo = true;
-
-    async function cargarUsuario() {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!activo) return;
-
-      setUsuario(
-        user?.user_metadata?.nombre ||
-          user?.user_metadata?.full_name ||
-          user?.email ||
-          null
-      );
+    async function cargar() {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (activo) setUsuario(user?.user_metadata?.nombre || user?.user_metadata?.full_name || user?.email || null);
     }
-
-    cargarUsuario();
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      if (!activo) return;
-
-      setUsuario(
-        session?.user?.user_metadata?.nombre ||
-          session?.user?.user_metadata?.full_name ||
-          session?.user?.email ||
-          null
-      );
+    void cargar();
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (activo) setUsuario(session?.user?.user_metadata?.nombre || session?.user?.user_metadata?.full_name || session?.user?.email || null);
     });
-
-    return () => {
-      activo = false;
-      subscription.unsubscribe();
-    };
+    return () => { activo = false; subscription.unsubscribe(); };
   }, []);
-
-  async function cerrarSesion() {
-    await supabase.auth.signOut();
-    window.location.href = "/login";
-  }
-
-  return (
-    <header
-      style={{
-        height: "70px",
-        background: "#0f172a",
-        color: "white",
-        display: "flex",
-        alignItems: "center",
-        justifyContent: "space-between",
-        padding: "0 30px",
-        borderBottom: "1px solid #1e293b",
-      }}
-    >
-      <Link
-        href="/"
-        style={{
-          color: "#22c55e",
-          textDecoration: "none",
-          fontSize: "24px",
-          fontWeight: 700,
-        }}
-      >
-        AgroBroker IA
-      </Link>
-
-      <div
-        style={{
-          display: "flex",
-          alignItems: "center",
-          gap: "15px",
-        }}
-      >
-        <Link
-          href="/notificaciones"
-          aria-label="Notificaciones"
-          style={{ color: "white", textDecoration: "none", fontSize: "20px" }}
-        >
-          🔔
-        </Link>
-
-        <Link
-          href="/mensajes"
-          aria-label="Mensajes"
-          style={{ color: "white", textDecoration: "none", fontSize: "20px" }}
-        >
-          💬
-        </Link>
-
-        {usuario ? (
-          <>
-            <span style={{ fontSize: "16px" }}>👤 {usuario}</span>
-            <button
-              type="button"
-              onClick={cerrarSesion}
-              style={{
-                padding: "8px 12px",
-                border: "1px solid #475569",
-                borderRadius: "8px",
-                background: "transparent",
-                color: "white",
-                cursor: "pointer",
-              }}
-            >
-              Cerrar sesión
-            </button>
-          </>
-        ) : (
-          <>
-            <Link
-              href="/login"
-              style={{
-                color: "white",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              Iniciar sesión
-            </Link>
-            <Link
-              href="/register"
-              style={{
-                color: "white",
-                textDecoration: "none",
-                fontWeight: 600,
-              }}
-            >
-              Registrarse
-            </Link>
-          </>
-        )}
-      </div>
-    </header>
-  );
+  async function cerrarSesion() { await supabase.auth.signOut(); window.location.href = "/login"; }
+  return <header className="app-header">
+    <Link href="/" className="brand-mark"><span className="brand-icon">A</span><span><strong>AgroBroker</strong><small>IA · Commodities</small></span></Link>
+    <div className="app-header-actions">
+      <Link href="/marketplace" className="header-link">Mercado</Link>
+      <Link href="/mensajes" className="header-icon" aria-label="Mensajes">💬</Link>
+      <Link href="/notificaciones" className="header-icon" aria-label="Notificaciones">🔔</Link>
+      {usuario ? <div className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><span className="user-name">{usuario}</span><button type="button" onClick={cerrarSesion} className="logout-button">Salir</button></div> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
+    </div>
+  </header>;
 }
