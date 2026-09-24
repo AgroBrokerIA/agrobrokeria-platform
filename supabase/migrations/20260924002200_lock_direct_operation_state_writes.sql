@@ -1,0 +1,10 @@
+revoke insert, update, delete on public.operacion_participantes from authenticated;
+revoke insert, update, delete on public.operacion_participantes from anon;
+revoke insert, update, delete on public.operacion_liquidacion from authenticated;
+revoke insert, update, delete on public.operacion_liquidacion from anon;
+revoke insert, update, delete on public.operacion_logistica from authenticated;
+revoke insert, update, delete on public.operacion_logistica from anon;
+revoke insert, update, delete on public.operacion_movimientos_economicos from authenticated;
+revoke insert, update, delete on public.operacion_movimientos_economicos from anon;
+revoke insert, update, delete on public.workflow_historial from authenticated;
+revoke insert, update, delete on public.workflow_historial from anon;
