@@ -184,14 +184,14 @@ export default function OportunidadesPage() {
 
   if (cargando) {
     return (
-      <main className="p-6">
+      <main className="module-page">
         <p>Cargando oportunidades IA...</p>
       </main>
     );
   }
 
   return (
-    <main className="p-6 space-y-6">
+    <main className="module-page">
       <div>
         <h1 className="text-2xl font-bold">
           Oportunidades IA
