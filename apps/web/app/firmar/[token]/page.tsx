@@ -10,7 +10,8 @@ export default function FirmarPage(){
  const base=process.env.NEXT_PUBLIC_SUPABASE_URL;
  useEffect(()=>{if(!token||!base)return; (async()=>{try{const r=await fetch(base+"/functions/v1/firmar-documento?token="+encodeURIComponent(token),{cache:"no-store"});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"Solicitud no válida");setData(j.data);setNombre(j.data.firmante_nombre)}catch(e){setError(e instanceof Error?e.message:"No se pudo cargar la solicitud")}finally{setLoading(false)}})()},[token,base]);
  async function firmar(){setSending(true);setError("");try{const r=await fetch(base+"/functions/v1/firmar-documento?token="+encodeURIComponent(token),{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({nombre,consentimiento:consent,declaracion})});const j=await r.json();if(!r.ok||!j.ok)throw new Error(j.error||"No se pudo firmar");setOk(true)}catch(e){setError(e instanceof Error?e.message:"No se pudo firmar")}finally{setSending(false)}}
- if(loading)return <main style={{maxWidth:900,margin:"40px auto",padding:20}}>Cargando documento…</main>;
+ if(loading)return <meta name="referrer" content="no-referrer" />
+      <main style={{maxWidth:900,margin:"40px auto",padding:20}}>Cargando documento…</main>;
  if(error)return <main style={{maxWidth:900,margin:"40px auto",padding:20}}><h1>No se puede firmar</h1><p>{error}</p></main>;
  if(ok)return <main style={{maxWidth:900,margin:"40px auto",padding:20}}><h1>Firma registrada</h1><p>La firma electrónica quedó registrada junto con la evidencia técnica y la huella del documento.</p></main>;
  return <main style={{maxWidth:1000,margin:"24px auto",padding:20,fontFamily:"system-ui"}}>
