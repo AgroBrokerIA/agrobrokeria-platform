@@ -11,6 +11,7 @@ type Mensaje = {
   destinatario_profile_id: string | null;
   destinatario_empresa_id: string | null;
   mensaje: string;
+  idioma_origen: string | null;
   tipo_mensaje: string;
   estado: string;
   leido_at: string | null;
