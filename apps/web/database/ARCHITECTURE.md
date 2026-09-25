@@ -1,177 +1,246 @@
-# AgroBroker IA - Arquitectura del Sistema
+# AgroBrokerIA — Arquitectura Maestra y Alcance de Producto
 
 ## Objetivo
 
-AgroBroker IA es una plataforma B2B para la comercialización nacional e internacional de commodities agrícolas.
+AgroBrokerIA es una plataforma B2B de intermediación y comercialización de commodities agrícolas nacionales e internacionales. El producto final debe automatizar el trabajo operativo de un broker sin eliminar el control humano en decisiones comerciales, contractuales, financieras o reguladas.
 
-La plataforma conecta:
+**Principio de diseño:** el usuario carga una oferta o demanda una sola vez; el sistema analiza el mercado autorizado, identifica contrapartes compatibles, prepara acciones comerciales, registra las respuestas y acompaña la operación hasta el cierre.
 
-- Compradores
-- Vendedores
-- Corredores
-- Exportadores
-- Acopios
-- Industrias
-- Empresas logísticas
+## Flujo comercial completo
 
-utilizando Inteligencia Artificial para detectar oportunidades comerciales.
+Oferta/demanda → normalización → Smart Match → Radar → priorización → propuesta IA → canal autorizado → respuesta → conversación protegida → contraoferta → acuerdo → verificación → LOI/SCO/FCO → contrato → firma → liquidación → comisión → facturación → pago → cierre → CRM permanente.
 
----
+Ningún componente debe marcar una operación como cerrada si faltan condiciones obligatorias.
 
-# Módulos
+## Broker Autopilot
 
-## Autenticación
+Entrada: commodity, toneladas, precio/moneda, provincia, localidad/zona, puerto/destino, calidad, campaña, modalidad, Incoterm, fechas, frecuencia, pago, documentación y observaciones.
 
-- Login
-- Registro
-- Recuperar contraseña
-- Verificación de empresa
-- Roles
-- Permisos
+Automatiza:
+1. validación y normalización;
+2. detección de compradores/vendedores compatibles;
+3. preferencias e historial;
+4. distancia/logística cuando haya datos suficientes;
+5. compatibilidad;
+6. priorización;
+7. generación de mensaje;
+8. envío/presentación por canales permitidos;
+9. registro de acción y respuesta;
+10. creación/actualización de oportunidad;
+11. escalamiento al usuario cuando haga falta una decisión.
 
----
+Las acciones externas deben respetar APIs, términos, límites y políticas de cada proveedor.
 
-## Empresas
+## Smart Match
 
-Cada empresa tendrá:
+El puntaje debe considerar producto, tipo de operación, volumen, precio, moneda, provincia, localidad/zona, puerto/destino, logística, vigencia, preferencias, historial, verificación/documentación y comportamiento comercial.
 
-- Razón social
-- Nombre comercial
-- CUIT
-- IVA
-- País
-- Provincia
-- Ciudad
-- Dirección
-- Sitio web
-- Email
-- Teléfono
-- Logo
-- Descripción
-- Estado
+El puntaje prioriza oportunidades; no garantiza solvencia ni cumplimiento.
 
----
+## Radar y CRM
 
-## Marketplace
+Guardar empresas, contactos, roles, productos, intención, zonas, volúmenes, precios objetivo, puertos, condiciones, interacciones, operaciones, contratos, documentación, verificación y última actividad.
 
-Una empresa podrá publicar:
+Consultas previstas: compradores por zona, compradores recurrentes, vendedores con abastecimiento, exportadores que buscan origen Argentina, contratos mensuales/anuales y prospectos por commodity/volumen/puerto.
 
-- Compra
-- Venta
+## Prospección externa
 
-Cada publicación contendrá:
+Fuentes: APIs oficiales, directorios, registros públicos, sitios corporativos, fuentes comerciales autorizadas e integraciones autorizadas.
 
-- Producto
-- Cantidad
-- Unidad
-- Precio
-- Moneda
-- Incoterm
-- Puerto
-- Calidad
-- Campaña
-- Vigencia
-- Observaciones
-- Fotos
-- Documentos
+No se debe evadir autenticación, límites, controles técnicos o términos de Google, Meta/Facebook u otros servicios.
 
----
+Cada prospecto externo registra fuente, fecha, método, verificación, base jurídica/consentimiento cuando corresponda y actualización.
 
-## Operaciones
+## Export Radar
 
-Cuando dos empresas llegan a un acuerdo se genera una operación.
+Exportador/importador → commodity → origen → volumen → frecuencia → destino → Incoterm → documentación → condiciones → abastecimiento → propuestas → negociación → contrato.
 
-Una operación tendrá:
+Debe soportar contratos mensuales/anuales y abastecimiento parcial.
 
-- Comprador
-- Vendedor
-- Producto
-- Cantidad
-- Precio
-- Estado
-- Documentación
-- Comisiones
+## IA comercial
 
----
+Redacción de ofertas/contraofertas, resumen de conversaciones, detección de intención, próximos pasos, datos faltantes, comparación de condiciones, LOI/SCO/FCO, incompatibilidades, alternativas, preguntas de negociación y priorización.
 
-## Mensajería
+La IA no firma contratos, acepta condiciones vinculantes, mueve fondos ni asume obligaciones legales sin autorización explícita y trazable.
 
-Los usuarios podrán conversar sin revelar sus datos personales hasta que la operación avance.
+## Contact Shield
 
----
+Antes de la etapa autorizada no se exponen teléfono, email, CBU/alias, cuenta bancaria, dirección exacta, credenciales ni datos financieros sensibles.
 
-## Inteligencia Artificial
+Se puede mostrar información comercial necesaria: zona, provincia, puerto, commodity, volumen, precio, calidad, fechas y condiciones.
 
-La IA podrá:
+Registrar intentos de compartir contacto en canales internos y aplicar las reglas de la etapa. La protección no debe impedir una revelación exigida por ley o contrato.
 
-- Detectar coincidencias
-- Recomendar compradores
-- Recomendar vendedores
-- Analizar precios
-- Detectar oportunidades
-- Generar documentos comerciales
+## Verificación y Trust
 
----
+Sellos visuales:
+- verde: empresa/acopio/cooperativa verificada;
+- azul: corredor verificado;
+- naranja: intermediario verificado;
+- amarillo: productor/comprador con identidad o empresa verificada.
+
+El sello indica estado de verificación, no garantía financiera.
+
+Verificación posible: CUIT/CUIL, condición fiscal, actividad, documentación societaria, matrícula/registro, documentación de productor/logística y cuenta bancaria solo cuando sea necesaria para una operación.
+
+## Comisiones
+
+Soportar comisión de AgroBrokerIA, broker e intermediarios; porcentaje, fija, USD/tn, por operación, por contrato y múltiples participantes.
+
+Calcular precio base, toneladas, importe, comisiones individuales, importe comprador, neto vendedor y liquidación de cada participante. Cada participante solo ve sus datos autorizados.
+
+## Facturación
+
+Estados: pendiente, documentación requerida, factura recibida, verificada, retenida, liberada, pagada, rechazada/anulada.
+
+Si la factura es requisito, la comisión permanece retenida hasta cumplirlo.
+
+## Pagos y datos bancarios
+
+Los datos bancarios se separan del perfil comercial y se protegen con mínimo privilegio. Se solicitan cuando sean necesarios para la operación.
+
+Contrato → datos protegidos → proveedor/servicio habilitado → liquidación → eliminación/retención conforme a obligaciones legales → conservación de trazabilidad necesaria.
+
+No almacenar credenciales bancarias.
+
+eCheq y otros instrumentos deben integrarse mediante proveedores/entidades habilitados; AgroBrokerIA no debe actuar como entidad financiera no autorizada.
+
+## Intermediarios
+
+Soportar cadenas comprador ↔ intermediario(s) ↔ corredor ↔ vendedor con comisiones acordadas, visibles solo para participantes autorizados. Una comisión fijada no puede modificarse unilateralmente; toda modificación debe estar autorizada y auditada.
+
+## Documentos y contratos
+
+Expediente: LOI, SCO, FCO, contrato, anexos, documentación societaria/fiscal, calidad, logística, facturas y comprobantes.
+
+Cada documento: propietario, tipo, versión, fecha, estado, hash/huella cuando corresponda, cargador, verificador e historial.
+
+Firma electrónica/digital mediante proveedor adecuado cuando corresponda.
+
+## Workflow contractual
+
+1. oportunidad
+2. contacto
+3. negociación
+4. términos preliminares
+5. verificación
+6. documentación
+7. LOI/SCO/FCO
+8. contrato preparado
+9. firma pendiente
+10. contrato firmado
+11. pago/liquidación
+12. ejecución
+13. completada
+14. cerrada
+15. cancelada/disputada
+
+Las transiciones se ejecutan mediante backend/RPC y quedan auditadas.
 
 ## Logística
 
-- Transportistas
-- Puertos
-- Fletes
-- Seguimiento
-- Costos
+Origen, destino, localidad, provincia, puerto, distancia, transportista, vehículo, toneladas/viaje, viajes, costo/tn, costo total, impuestos, fechas y estado.
 
----
+Calcular ARS/USD según configuración y tipo de cambio autorizado.
 
-## Administración
+## Calculadora comercial
 
-- Usuarios
-- Empresas
-- Productos
-- Operaciones
-- Reportes
-- Auditoría
+**importe base = toneladas × precio/tn**
 
----
+**importe final = importe base + comisiones + logística + conceptos acordados**
 
-# Modelo General
+Soportar ARS, USD, conversión, comisión porcentual, USD/tn, fija, múltiples comisiones, redondeos e historial.
 
-auth.users
+Los cálculos críticos deben ejecutarse en backend.
 
-↓
+## Memoria comercial
 
-profiles
+Detectar compradores/vendedores recurrentes, precios históricos, volúmenes, zonas, puertos, condiciones aceptadas, tiempos de respuesta, operaciones completadas y contratos recurrentes.
 
-↓
+## Dashboard de inteligencia
 
-company_users
+Mostrar oportunidades nuevas, compradores/vendedores activos, contratos próximos, negociaciones, cierres, comisiones, documentación, facturas, pagos, alertas, prospectos prioritarios y actividad comercial.
 
-↓
+## Seguridad
 
-companies
+Obligatorio: RLS, mínimo privilegio, autorización server-side, separación de datos sensibles, auditoría, secretos protegidos, validación, acceso por empresa/rol, RPC para operaciones críticas, idempotencia, protección de comisiones, aislamiento entre empresas, logs y política de retención.
 
-↓
+No existe garantía de sistema imposible de hackear. El objetivo es defensa en profundidad, reducción de superficie de ataque y capacidad de detección/respuesta.
 
-offers
+## Video
 
-↓
+Videollamada mediante proveedor autorizado como etapa del workflow. Registrar invitación, participantes, fecha, estado y referencia. No grabar por defecto; si se graba, debe existir consentimiento/base legal.
 
-operations
+## Administración del creador
 
-↓
+Rol administrativo interno separado de las cuentas comerciales, con acceso a empresas, usuarios, verificaciones, operaciones, contratos, comisiones de plataforma, auditoría, configuración y métricas.
 
-documents
+Acceso protegido con MFA/controles reforzados y auditado. La identidad personal del administrador puede mantenerse separada del perfil comercial público cuando la estructura legal lo permita, sin engañar a los usuarios.
 
-↓
+## Automatización y consentimiento
 
-messages
+Automatizar no significa enviar spam. Toda automatización externa debe respetar términos, APIs, límites, opt-out, consentimiento/base jurídica, identificación comercial, anti-spam y protección de datos.
 
-↓
+Implementar colas, límites, deduplicación, registro de envíos y mecanismos de baja.
 
-notifications
+## Definición de terminado — Test E2E
 
----
+Productor publica 5.000 TN de soja
+→ IA normaliza
+→ Smart Match encuentra compradores
+→ Radar prioriza
+→ IA redacta
+→ canal autorizado envía
+→ respuestas registradas
+→ negociación
+→ contraoferta
+→ acuerdo
+→ partes verificadas
+→ documentación
+→ LOI/SCO/FCO
+→ contrato
+→ firma
+→ comisiones fijadas
+→ facturas/documentación
+→ pago mediante proveedor habilitado
+→ liquidación
+→ comisión AgroBrokerIA
+→ cierre
+→ datos sensibles protegidos
+→ CRM conserva la relación permitida
+→ IA reutiliza la relación en futuras oportunidades.
 
-# Objetivo Final
+Este es el test E2E principal.
 
-Crear la plataforma B2B más completa para la comercialización de commodities agrícolas de Latinoamérica.
+## Fases
+
+### A — Núcleo
+Publicaciones, marketplace, empresas, intereses, Smart Match, oportunidades, negociación, acuerdos y operaciones.
+
+### B — Broker Autopilot
+Radar, CRM, mensajes, colas, notificaciones y seguimiento.
+
+### C — Protección y confianza
+KYC, verificación, Contact Shield, auditoría, permisos y RLS.
+
+### D — Contratos
+LOI/SCO/FCO, expediente, firma y workflow.
+
+### E — Liquidación
+Comisiones múltiples, facturación, pagos, eCheq mediante integración habilitada y liquidaciones.
+
+### F — Inteligencia
+Broker Copilot, memoria comercial, priorización, contratos recurrentes y Export Radar.
+
+### G — Escala
+Multiidioma, mercados internacionales, proveedores externos, observabilidad, rendimiento y hardening.
+
+## Regla de desarrollo
+
+Hasta completar el E2E principal no se agregan funcionalidades de alcance ajenas a seguridad, cumplimiento o funcionamiento.
+
+Cada módulo cuenta como terminado únicamente con:
+
+**UI + backend + base de datos + permisos + estados + auditoría + pruebas.**
+
+Una pantalla visual sin flujo real conectado no cuenta como funcionalidad terminada.
