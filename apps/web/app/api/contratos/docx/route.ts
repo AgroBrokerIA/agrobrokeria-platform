@@ -17,6 +17,7 @@ export async function POST(req:NextRequest){
   const {data:{user}}=await sb.auth.getUser();if(!user)return NextResponse.json({error:"AUTH_REQUIRED"},{status:401});
   const {contractId}=await req.json();if(typeof contractId!=="string"||!/^[0-9a-f-]{36}$/i.test(contractId))return NextResponse.json({error:"INVALID_CONTRACT_ID"},{status:400});
   const {data:c,error}=await sb.from("contratos").select("*").eq("id",contractId).single();if(error||!c)return NextResponse.json({error:"CONTRACT_NOT_FOUND"},{status:404});
+  const admin=createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!,process.env.SUPABASE_SERVICE_ROLE_KEY!);
   const {data:parts}=await sb.from("operacion_participantes").select("empresa_id,rol").eq("operacion_id",c.operacion_id);
   const ids=(parts||[]).map(x=>x.empresa_id);const {data:companies}=ids.length?await sb.from("empresas").select("id,razon_social,cuit,direccion,localidad,provincia").in("id",ids):{data:[]};
   const names=(companies||[]).map(x=>{const p=(parts||[]).find(y=>y.empresa_id===x.id);return (p?.rol||"PARTE")+": "+x.razon_social+" — CUIT "+x.cuit+(x.direccion? " — "+x.direccion:"")}).join(" | ");
