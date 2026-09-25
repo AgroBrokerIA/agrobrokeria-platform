@@ -1,0 +1,20 @@
+create table if not exists public.pricing_calculations(id uuid primary key default gen_random_uuid(),operation_id uuid references public.operaciones(id),commodity_id uuid references public.commodities(id),product_id integer references public.productos(id),quantity numeric not null check(quantity>=0),unit text not null,currency text not null,price_type text not null,market_quote_id uuid references public.market_quotes(id),base_price numeric,premium numeric not null default 0,discount numeric not null default 0,freight numeric not null default 0,taxes numeric not null default 0,commission numeric not null default 0,other_costs numeric not null default 0,final_price numeric,formula text not null,snapshot jsonb not null default '{}'::jsonb,created_at timestamptz not null default now());
+create index if not exists ix_pricing_calculations_operation on public.pricing_calculations(operation_id,created_at desc);
+alter table public.pricing_calculations enable row level security;
+drop policy if exists pricing_select_participant on public.pricing_calculations;
+create policy pricing_select_participant on public.pricing_calculations for select to authenticated using(operation_id is null or public.usuario_participa_operacion(operation_id));
+revoke insert,update,delete on public.pricing_calculations from anon,authenticated;
+create or replace function public.calcular_precio_operacion(p_operation_id uuid,p_market_quote_id uuid,p_base_price numeric,p_premium numeric default 0,p_discount numeric default 0,p_freight numeric default 0,p_taxes numeric default 0,p_commission numeric default 0,p_other_costs numeric default 0,p_formula text default 'BASE') returns uuid language plpgsql security definer set search_path=public as $$
+declare v_uid uuid:=auth.uid();v_id uuid;v_op public.operaciones%rowtype;v_q public.market_quotes%rowtype;v_final numeric;
+begin
+if v_uid is null then raise exception 'AUTH_REQUIRED';end if;
+if p_operation_id is not null and not public.usuario_participa_operacion(p_operation_id) then raise exception 'FORBIDDEN';end if;
+select * into v_op from public.operaciones where id=p_operation_id;
+if p_operation_id is not null and v_op.id is null then raise exception 'OPERATION_NOT_FOUND';end if;
+if p_market_quote_id is not null then select * into v_q from public.market_quotes where id=p_market_quote_id;if v_q.id is null then raise exception 'MARKET_QUOTE_NOT_FOUND';end if;end if;
+v_final:=coalesce(p_base_price,coalesce(v_q.price,0))+coalesce(p_premium,0)-coalesce(p_discount,0)-coalesce(p_freight,0)+coalesce(p_taxes,0)+coalesce(p_commission,0)+coalesce(p_other_costs,0);
+insert into public.pricing_calculations(operation_id,commodity_id,product_id,quantity,unit,currency,price_type,market_quote_id,base_price,premium,discount,freight,taxes,commission,other_costs,final_price,formula,snapshot)
+values(p_operation_id,v_q.commodity_id,v_q.product_id,coalesce(v_op.cantidad_tn,0),coalesce(v_q.unit,'T'),coalesce(v_q.currency,'ARS'),coalesce(v_q.price_type,'FIXED'),p_market_quote_id,coalesce(p_base_price,v_q.price),coalesce(p_premium,0),coalesce(p_discount,0),coalesce(p_freight,0),coalesce(p_taxes,0),coalesce(p_commission,0),coalesce(p_other_costs,0),v_final,p_formula,jsonb_build_object('quote_id',p_market_quote_id,'source',v_q.source,'source_reference',v_q.source_reference,'market_date',v_q.market_date,'obtained_at',v_q.obtained_at,'price',v_q.price,'currency',v_q.currency,'unit',v_q.unit,'position',v_q.position,'market',v_q.market,'port',v_q.port)) returning id into v_id;
+return v_id;end $$;
+revoke execute on function public.calcular_precio_operacion(uuid,uuid,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text) from public,anon;
+grant execute on function public.calcular_precio_operacion(uuid,uuid,numeric,numeric,numeric,numeric,numeric,numeric,numeric,text) to authenticated;
