@@ -42,3 +42,30 @@
 ## Regla de release
 
 No considerar el release técnicamente cerrado hasta verificar el build/deployment final de Vercel y ejecutar una prueba E2E autenticada sobre un entorno de producción/preproducción con usuarios de productor, comprador e intermediario.
+
+
+## Circuito documental/fiscal — 25/09/2026
+
+- Módulo FACTURAS agregado al frontend.
+- `facturas` ampliada con receptor, contrato, producto, cantidad, datos fiscales, CAE/CAEA, respuesta ARCA, auditoría y responsable.
+- Escritura directa de facturas bloqueada; creación mediante `crear_solicitud_factura`.
+- Edge Function `arca-facturacion` desplegada y protegida con JWT.
+- Adaptador WSAA/WSFEv1 preparado para homologación y producción. No genera CAE localmente.
+- CAE, número de comprobante y resultado se guardan solamente desde la respuesta de ARCA.
+- Bucket privado `agrobroker-private` creado con RLS por operación.
+- Módulo CONTRATOS agregado con versionado y hash.
+- Catálogo estructurado de 6 plantillas contractuales: abastecimiento, F1, F2, compraventa, intermediación y acuerdo comercial.
+- Generador DOCX profesional implementado en Next.js; usa el contenido contractual existente y no inventa cláusulas jurídicas.
+- Adaptador externo de firma y webhook HMAC desplegados. El proveedor real queda desacoplado mediante variables server-side.
+- Workflow de cierre reforzado: la última etapa exige validación documental.
+- Tests documentales/fiscales agregados.
+
+### Integraciones externas pendientes de activación
+
+**ARCA:** para emitir realmente en homologación/producción deben configurarse en Supabase Secrets `ARCA_ENVIRONMENT`, `ARCA_CUIT`, `ARCA_CERT_PEM` y `ARCA_PRIVATE_KEY_PEM`, y el certificado debe estar asociado al WSFEv1 según ARCA. ARCA documenta que WSAA requiere certificado X.509 y autorización/asociación al web service. 
+
+**Firma externa:** falta seleccionar/configurar un proveedor concreto y sus credenciales. El sistema ya dispone del adaptador `firma-proveedor`, webhook HMAC y campos de trazabilidad; no se marca una firma como realizada por la plataforma sin evidencia del proceso externo.
+
+**Vercel:** el check continúa `pending` y la sesión conectada no tiene acceso al scope del equipo Vercel, por lo que el deployment final todavía no puede certificarse desde esta integración.
+
+**Supabase Auth:** Security Advisor mantiene *Leaked Password Protection* deshabilitado.
