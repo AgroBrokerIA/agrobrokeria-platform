@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
+import { useCallback } from "react";
 
 type Documento={id:string;tipo_documento:string|null;nombre_archivo:string|null;url_archivo:string|null;version:number|null;obligatorio:boolean|null;aprobado:boolean|null;observaciones:string|null;creado_en:string|null;operacion_id:string};
 type Contrato={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;archivo_pdf:string|null};
@@ -76,6 +77,17 @@ export default function DocumentosPage(){
    finally{setGenerando(null)}
  }
 
+ async function solicitarFirma(contratoId:string){
+   if(!firmanteNombre.trim()||!firmanteEmail.trim()){setError("Completá nombre y email del firmante.");return}
+   setFirmaLoading(true);setError("");setMensaje("");
+   try{
+    const {data,error}=await supabase.rpc("crear_solicitud_firma_contrato",{p_contrato_id:contratoId,p_firmante_email:firmanteEmail.trim(),p_firmante_nombre:firmanteNombre.trim(),p_firmante_rol:firmanteRol.trim()});
+    if(error) throw new Error(error.message);
+    const base=process.env.NEXT_PUBLIC_SUPABASE_URL||"";
+    const link=base+"/functions/v1/firmar-documento?token="+encodeURIComponent(data.token);
+    setFirmaContrato(link); setMensaje("Solicitud de firma creada. Copiá el enlace y enviáselo al firmante.");
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo crear la solicitud de firma")}finally{setFirmaLoading(false)}
+ }
  function nombreOperacion(id:string){return operaciones.find(o=>o.id===id)?.codigo||id.slice(0,8)}
 
  return <main className="module-page documents-page">
@@ -85,6 +97,15 @@ export default function DocumentosPage(){
    {loading?<div className="loading-card">Cargando expediente...</div>:<>
      <section className="document-summary"><div><strong>{empresaDocs.length}</strong><span>Empresa</span></div><div><strong>{docs.length+lois.length+scos.length}</strong><span>Operaciones</span></div><div><strong>{contratos.length}</strong><span>Contratos</span></div></section>
 
+     <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">FIRMA ELECTRÓNICA</span><h2>Solicitar firma de contrato</h2><p>Generá un enlace único de 72 horas. La plataforma registra consentimiento, hash SHA-256, fecha, IP, navegador y evidencia de firma.</p></div></div>
+<div style={{display:"grid",gap:10,maxWidth:700}}>
+<select value={operacionSeleccionada} onChange={e=>setOperacionSeleccionada(e.target.value)}><option value="">Seleccioná la operación</option>{contratos.filter(c=>c.estado==="CONFIRMADO").map(c=><option key={c.id} value={c.id}>{c.numero_contrato||"Contrato"} · OP {c.operacion_id.slice(0,8)}</option>)}</select>
+<input placeholder="Nombre completo del firmante" value={firmanteNombre} onChange={e=>setFirmanteNombre(e.target.value)}/>
+<input type="email" placeholder="Email del firmante" value={firmanteEmail} onChange={e=>setFirmanteEmail(e.target.value)}/>
+<select value={firmanteRol} onChange={e=>setFirmanteRol(e.target.value)}><option>PARTE</option><option>VENDEDOR</option><option>COMPRADOR</option><option>INTERMEDIARIO</option></select>
+<button type="button" disabled={!operacionSeleccionada||firmaLoading} onClick={()=>solicitarFirma(contratos.find(c=>c.operacion_id===operacionSeleccionada)?.id||"")}>{firmaLoading?"Creando…":"Crear solicitud de firma"}</button>
+{firmaContrato&&<div style={{padding:12,background:"#f1f5f9",borderRadius:8,wordBreak:"break-all"}}><b>Enlace de firma:</b><br/>{firmaContrato}<br/><button type="button" onClick={()=>navigator.clipboard?.writeText(firmaContrato)}>Copiar enlace</button></div>}
+</div></section>
      <section className="document-section commercial-document-tools"><div className="document-section-head"><div><span className="eyebrow">DOCUMENTACIÓN COMERCIAL</span><h2>LOI / SCO</h2><p>Generá una carta de intención o una oferta comercial estándar a partir de una operación. Cada emisión queda registrada en el expediente.</p></div></div>
        <div className="commercial-document-form"><select value={operacionSeleccionada} onChange={e=>setOperacionSeleccionada(e.target.value)}><option value="">Seleccioná una operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.tipo_operacion||"Operación"}</option>)}</select>
        <button type="button" disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("LOI")}>{generando==="LOI"?"Generando…":"Generar LOI"}</button><button type="button" disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("SCO")}>{generando==="SCO"?"Generando…":"Generar SCO"}</button></div>
