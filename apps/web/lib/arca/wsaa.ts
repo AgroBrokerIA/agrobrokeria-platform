@@ -26,8 +26,12 @@ function generarTRA(): string {
   const expiracion = new Date(ahora.getTime() + 10 * 60 * 1000);
   const uniqueId = generarUniqueId();
   const destination = arcaConfig.environment === "PRODUCCION"
-    ? "cn=wsaa,o=afip,c=ar,serialNumber=CUIT 33693450239"
-    : "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
+    ? "cn=wsaa,o=afip,c=ar,serialNumber=CUIT " + arcaConfig.cuit
+    : "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT " + arcaConfig.cuit;
+
+  if (!arcaConfig.cuit) {
+    throw new Error("Falta ARCA_CUIT para construir el Ticket de Acceso.");
+  }
 
   return `<?xml version="1.0" encoding="UTF-8"?>
 <loginTicketRequest version="1.0">
