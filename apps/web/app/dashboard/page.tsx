@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Profile = { nombre:string|null; empresa:string|null; tipo_usuario:string|null };
-type Publication = { id:string; tipo:string; cantidad_tn:number; precio_tn:number; creada_en:string|null; productos?:{nombre:string}|null; provincia?:string|null };
+type Publication = { id:string; tipo:string; cantidad_tn:number; precio_tn:number; creada_en:string|null; productos?:{nombre:string}|{nombre:string}[]|null; provincia?:string|null };
 type Activity = { id:string; titulo?:string|null; mensaje?:string|null; creada_en?:string|null; leida?:boolean };
 
 export default function Dashboard(){
@@ -64,7 +64,7 @@ export default function Dashboard(){
       <div className="dashboard-panel dashboard-price-panel">
         <div className="panel-heading"><div><span className="eyebrow">MERCADO</span><h2>Últimas referencias publicadas</h2></div><Link href="/marketplace">Ver mercado →</Link></div>
         {prices.length===0 ? <div className="dashboard-empty-line">Todavía no hay publicaciones activas.</div> : <div className="price-list">
-          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{item.productos?.nombre||"Commodity"}</span><span>{item.tipo}</span><strong>USD {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
+          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{(Array.isArray(item.productos) ? item.productos[0]?.nombre : item.productos?.nombre)||"Commodity"}</span><span>{item.tipo}</span><strong>USD {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
         </div>}
       </div>
 
