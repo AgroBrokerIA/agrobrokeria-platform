@@ -28,7 +28,7 @@ export default function DocumentosPage(){
    const {data:ed,error:ee}=await supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,url_archivo,fecha_vencimiento,verificado,observaciones,creado_en").eq("empresa_id",profile.active_company_id).order("creado_en",{ascending:false});
    if(ee) throw new Error(ee.message); setEmpresaDocs((ed||[]) as DocumentoEmpresa[]);
  }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los documentos.");}finally{setLoading(false)}})()},[]);
- const generarComercial=(tipo:"LOI"|"SCO")=>{
+ function generarComercial(tipo:"LOI"|"SCO"){
    const op=operaciones.find(x=>x.id===operacionSeleccionada); if(!op) return;
    const pdf=new jsPDF(); const fecha=new Date().toLocaleDateString("es-AR");
    pdf.setFontSize(18); pdf.text(tipo==="LOI"?"LETTER OF INTENT":"SOFT CORPORATE OFFER",20,24);
@@ -44,7 +44,7 @@ export default function DocumentosPage(){
    pdf.text(pdf.splitTextToSize(body,170),20,105);
    pdf.text(pdf.splitTextToSize("Este documento es informativo/no vinculante salvo pacto expreso por escrito. El contrato definitivo y la documentación firmada prevalecen sobre esta pieza comercial.",170),20,132);
    pdf.save(tipo+"-"+op.codigo+".pdf");
- };
+ }
 
  return <main className="module-page documents-page">
    <div className="module-hero"><div><span className="eyebrow">EXPEDIENTE</span><h1>Documentos</h1><p>Expedientes de empresa, contratos y documentación vinculada a operaciones.</p></div><div className="module-pill">{docs.length+contratos.length+empresaDocs.length} registros</div></div>
