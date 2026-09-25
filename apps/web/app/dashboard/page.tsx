@@ -68,7 +68,7 @@ export default function Dashboard(){
       <div className="dashboard-panel dashboard-price-panel">
         <div className="panel-heading"><div><span className="eyebrow">MERCADO</span><h2>Últimas referencias publicadas</h2></div><Link href="/marketplace">Ver mercado →</Link></div>
         {prices.length===0 ? <div className="dashboard-empty-line">Todavía no hay publicaciones activas.</div> : <div className="price-list">
-          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{(Array.isArray(item.productos) ? item.productos[0]?.nombre : item.productos?.nombre)||"Commodity"}</span><span>{item.tipo}</span><strong>{currencies[item.moneda_id]||"Moneda no informada"} {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
+          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{(Array.isArray(item.productos) ? item.productos[0]?.nombre : item.productos?.nombre)||"Commodity"}</span><span>{item.tipo}</span><strong>{item.moneda_id===null?"Moneda no informada":currencies[item.moneda_id]||"Moneda no informada"} {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
         </div>}
       </div>
 
