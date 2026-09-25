@@ -349,7 +349,7 @@ if (errorMovimientos) {
   }, [comisionesFiltradas]);
 
   return (
-    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">FINANZAS</span><h1>Comisiones</h1><p>Controlá comisiones generadas, pendientes y abonadas.</p></div><div className="module-pill">AgroBroker IA · USD 1 / TN</div></div>
+    <main className="module-page"><div className="module-hero"><div><span className="eyebrow">FINANZAS</span><h1>Comisiones</h1><p>Controlá comisiones generadas, pendientes y abonadas.</p></div><div className="module-pill">Control financiero</div></div>
       <div
         style={{
           display: "flex",
