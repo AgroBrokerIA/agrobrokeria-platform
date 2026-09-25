@@ -166,277 +166,56 @@ export default function MisPublicacionesPage() {
   }
 
   return (
-    <div className="module-page"><div className="module-hero"><div><span className="eyebrow">MERCADO</span><h1>Mis Publicaciones</h1><p>Administrá tus oportunidades de compra y venta.</p></div><div className="module-pill">Publicaciones activas</div></div><div
-      style={{
-        padding: 30,
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          marginBottom: 30,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              fontSize: 34,
-              marginBottom: 8,
-            }}
-          >
-            📢 Mis Publicaciones
-          </h1>
-
-          <p
-            style={{
-              color: "#666",
-              margin: 0,
-            }}
-          >
-            Administrá todas tus publicaciones.
-          </p>
-        </div>
-
-        <Link
-          href="/nueva-publicacion"
-          style={{
-            display: "inline-block",
-            background: "#16a34a",
-            color: "white",
-            padding: "12px 20px",
-            borderRadius: 8,
-            fontWeight: 600,
-            textDecoration: "none",
-          }}
-        >
-          + Nueva publicación
-        </Link>
+    <main className="module-page publications-page">
+      <div className="module-hero">
+        <div><span className="eyebrow">MERCADO</span><h1>Mis Publicaciones</h1><p>Administrá tus oportunidades de compra y venta.</p></div>
+        <div className="module-pill">{publicaciones.filter((p) => p.estado === "PUBLICADA").length} activas</div>
       </div>
+
+      <section className="publication-toolbar">
+        <div><strong>Mis oportunidades</strong><span>{publicaciones.length} publicaciones registradas</span></div>
+        <Link href="/nueva-publicacion" className="primary-action">+ Nueva publicación</Link>
+      </section>
 
       {loading ? (
-        <p>Cargando publicaciones...</p>
+        <div className="empty-module"><div className="empty-module-icon">◌</div><h2>Cargando publicaciones...</h2></div>
       ) : publicaciones.length === 0 ? (
-        <div
-          style={{
-            background: "white",
-            padding: 40,
-            borderRadius: 12,
-            textAlign: "center",
-          }}
-        >
-          <h2>No hay publicaciones.</h2>
-
-          <p>
-            Creá tu primera publicación.
-          </p>
-
-          <Link
-            href="/nueva-publicacion"
-            style={{
-              display: "inline-block",
-              marginTop: 20,
-              background: "#16a34a",
-              color: "white",
-              padding: "10px 18px",
-              borderRadius: 8,
-              textDecoration: "none",
-              fontWeight: 600,
-            }}
-          >
-            Crear publicación
-          </Link>
+        <div className="empty-module">
+          <div className="empty-module-icon">▤</div><h2>No hay publicaciones</h2>
+          <p>Creá tu primera oferta o demanda para comenzar a operar en el mercado.</p>
+          <Link href="/nueva-publicacion" className="primary-action">Crear publicación →</Link>
         </div>
       ) : (
-        <div
-          style={{
-            background: "white",
-            borderRadius: 12,
-            overflowX: "auto",
-          }}
-        >
-          <table
-            style={{
-              width: "100%",
-              borderCollapse: "collapse",
-            }}
-          >
-            <thead
-              style={{
-                background: "#16a34a",
-                color: "white",
-              }}
-            >
-              <tr>
-                <th style={{ padding: 15 }}>
-                  Producto
-                </th>
-                <th>Tipo</th>
-                <th>Cantidad</th>
-                <th>Precio</th>
-                <th>Provincia</th>
-                <th>Puerto</th>
-                <th>Estado</th>
-                <th>Acciones</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {publicaciones.map((p) => {
-                const pausada =
-                  p.estado === "PAUSADA";
-
-                const ocupado =
-                  procesando === p.id;
-
-                return (
-                  <tr
-                    key={p.id}
-                    style={{
-                      borderBottom:
-                        "1px solid #eee",
-                    }}
-                  >
-                    <td
-                      style={{
-                        padding: 15,
-                      }}
-                    >
-                      {p.productos?.[0]
-                        ?.nombre ?? "-"}
-                    </td>
-
-                    <td>{p.tipo}</td>
-
-                    <td>
-                      {p.cantidad_tn} TN
-                    </td>
-
-                    <td>
-                      USD {p.precio_tn}
-                    </td>
-
-                    <td>
-                      {p.provincia}
-                    </td>
-
-                    <td>
-                      {p.puerto}
-                    </td>
-
-                    <td>
-                      <span
-                        style={{
-                          display:
-                            "inline-block",
-                          padding:
-                            "5px 9px",
-                          borderRadius: 6,
-                          fontSize: 13,
-                          fontWeight: 600,
-                          background: pausada
-                            ? "#fef3c7"
-                            : "#dcfce7",
-                          color: pausada
-                            ? "#92400e"
-                            : "#166534",
-                        }}
-                      >
-                        {p.estado}
-                      </span>
-                    </td>
-
-                    <td>
-                      <div
-                        style={{
-                          display: "flex",
-                          gap: 8,
-                          alignItems:
-                            "center",
-                        }}
-                      >
-                        <Link
-                          href={`/nueva-publicacion?id=${p.id}`}
-                          style={{
-                            background:
-                              "#2563eb",
-                            color: "white",
-                            padding:
-                              "6px 10px",
-                            borderRadius: 6,
-                            textDecoration:
-                              "none",
-                            fontSize: 14,
-                          }}
-                        >
-                          Editar
-                        </Link>
-
-                        <button
-                          type="button"
-                          disabled={ocupado}
-                          onClick={() =>
-                            cambiarEstado(p)
-                          }
-                          style={{
-                            background:
-                              pausada
-                                ? "#16a34a"
-                                : "#f59e0b",
-                            color: "white",
-                            border: "none",
-                            padding:
-                              "6px 10px",
-                            borderRadius: 6,
-                            cursor: ocupado
-                              ? "not-allowed"
-                              : "pointer",
-                            opacity: ocupado
-                              ? 0.6
-                              : 1,
-                          }}
-                        >
-                          {ocupado
-                            ? "Procesando..."
-                            : pausada
-                            ? "Publicar"
-                            : "Pausar"}
-                        </button>
-
-                        <button
-                          type="button"
-                          disabled={ocupado}
-                          onClick={() =>
-                            eliminarPublicacion(
-                              p.id
-                            )
-                          }
-                          style={{
-                            background:
-                              "#dc2626",
-                            color: "white",
-                            border: "none",
-                            padding:
-                              "6px 10px",
-                            borderRadius: 6,
-                            cursor: ocupado
-                              ? "not-allowed"
-                              : "pointer",
-                          }}
-                        >
-                          Eliminar
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="publication-list">
+          {publicaciones.map((p) => {
+            const pausada = p.estado === "PAUSADA";
+            const ocupado = procesando === p.id;
+            return (
+              <article key={p.id} className="publication-card">
+                <div className="publication-card-top">
+                  <div>
+                    <div className="publication-tags"><span className={p.tipo === "DEMANDA" ? "demand-tag" : "sale-tag"}>{p.tipo}</span><span className={pausada ? "paused-tag" : "active-tag"}>● {p.estado}</span></div>
+                    <h2>{p.productos?.[0]?.nombre ?? "Commodity"}</h2>
+                    <p>{p.provincia || "Sin provincia"}{p.puerto ? ` · ${p.puerto}` : ""}</p>
+                  </div>
+                  <div className="publication-price"><strong>USD {Number(p.precio_tn).toLocaleString("es-AR")}</strong><span>/ TN</span></div>
+                </div>
+                <div className="publication-data">
+                  <div><span>Cantidad</span><strong>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</strong></div>
+                  <div><span>Tipo</span><strong>{p.tipo}</strong></div>
+                  <div><span>Provincia</span><strong>{p.provincia || "—"}</strong></div>
+                  <div><span>Puerto / entrega</span><strong>{p.puerto || "—"}</strong></div>
+                </div>
+                <div className="publication-actions">
+                  <Link href={`/nueva-publicacion?id=${p.id}`} className="secondary-action">Editar</Link>
+                  <button type="button" disabled={ocupado} onClick={() => cambiarEstado(p)} className={pausada ? "action-green" : "action-amber"}>{ocupado ? "Procesando..." : pausada ? "Publicar" : "Pausar"}</button>
+                  <button type="button" disabled={ocupado} onClick={() => eliminarPublicacion(p.id)} className="action-danger">Eliminar</button>
+                </div>
+              </article>
+            );
+          })}
         </div>
       )}
-      </div>
-    </div>
+    </main>
   );
 }
