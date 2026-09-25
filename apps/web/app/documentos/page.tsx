@@ -20,7 +20,7 @@ export default function DocumentosPage(){
  const [scos,setScos]=useState<Comercial[]>([]);
  const [fcos,setFcos]=useState<Comercial[]>([]);
  const [operacionSeleccionada,setOperacionSeleccionada]=useState("");
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[generando,setGenerando]=useState<"LOI"|"SCO"|"FCO"|null>(null),[mensaje,setMensaje]=useState("");
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[firmanteNombre,setFirmanteNombre]=useState(""),[firmanteEmail,setFirmanteEmail]=useState(""),[firmanteRol,setFirmanteRol]=useState("PARTE"),[firmaLoading,setFirmaLoading]=useState(false),[firmaContrato,setFirmaContrato]=useState(""),[generando,setGenerando]=useState<"LOI"|"SCO"|"FCO"|null>(null),[mensaje,setMensaje]=useState("");
 
  useEffect(()=>{(async()=>{
    try{
