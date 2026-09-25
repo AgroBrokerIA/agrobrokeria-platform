@@ -177,3 +177,13 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Proveedor/API key de traducción automática.
 - Mecanismos oficiales/credenciales para SISA, SENASA, INASE u otras verificaciones externas.
 - Ejecución de E2E autenticado con usuarios de prueba de productor/comprador/intermediario una vez habilitado el entorno de preproducción/producción.
+
+
+## 2026-09-25 — Estado de cierre verificado
+
+- El commit actual de `main` es `7227595` (`docs: record final autonomous hardening pass`).
+- GitHub reporta el check **Vercel: success** para `7227595`.
+- El commit anterior `8ef5210` también tiene **Vercel: success**.
+- Los estados `failure` de `55ec33e`, `d58bc0e` y `8098a89` corresponden a deployments históricos afectados por el límite de builds y no representan el estado del `main` actual.
+- El deployment actual no puede inspeccionarse mediante la API de Vercel conectada porque el token disponible no tiene autorización sobre el scope `agrobroker`; por ello la certificación se basa en el check de Vercel reportado por GitHub y en la evidencia visible del proyecto.
+- La certificación funcional completa todavía requiere E2E autenticado y las credenciales externas enumeradas abajo.
