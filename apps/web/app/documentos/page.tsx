@@ -20,6 +20,7 @@ export default function DocumentosPage(){
  const [scos,setScos]=useState<Comercial[]>([]);
  const [fcos,setFcos]=useState<Comercial[]>([]);
  const [operacionSeleccionada,setOperacionSeleccionada]=useState("");
+ const [firmaContratoSeleccionado,setFirmaContratoSeleccionado]=useState("");
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[firmanteNombre,setFirmanteNombre]=useState(""),[firmanteEmail,setFirmanteEmail]=useState(""),[firmanteRol,setFirmanteRol]=useState("PARTE"),[firmaLoading,setFirmaLoading]=useState(false),[firmaContrato,setFirmaContrato]=useState(""),[generando,setGenerando]=useState<"LOI"|"SCO"|"FCO"|null>(null),[mensaje,setMensaje]=useState("");
 
  useEffect(()=>{(async()=>{
@@ -102,11 +103,11 @@ export default function DocumentosPage(){
 
      <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">FIRMA ELECTRÓNICA</span><h2>Solicitar firma de contrato</h2><p>Generá un enlace único de 72 horas. La plataforma registra consentimiento, hash SHA-256, fecha, IP, navegador y evidencia de firma.</p></div></div>
 <div style={{display:"grid",gap:10,maxWidth:700}}>
-<select value={operacionSeleccionada} onChange={e=>setOperacionSeleccionada(e.target.value)}><option value="">Seleccioná la operación</option>{contratos.filter(c=>c.estado==="CONFIRMADO").map(c=><option key={c.id} value={c.id}>{c.numero_contrato||"Contrato"} · OP {c.operacion_id.slice(0,8)}</option>)}</select>
+<select value={firmaContratoSeleccionado} onChange={e=>setFirmaContratoSeleccionado(e.target.value)}><option value="">Seleccioná el contrato</option>{contratos.filter(c=>c.estado==="CONFIRMADO").map(c=><option key={c.id} value={c.id}>{c.numero_contrato||"Contrato"} · OP {c.operacion_id.slice(0,8)}</option>)}</select>
 <input placeholder="Nombre completo del firmante" value={firmanteNombre} onChange={e=>setFirmanteNombre(e.target.value)}/>
 <input type="email" placeholder="Email del firmante" value={firmanteEmail} onChange={e=>setFirmanteEmail(e.target.value)}/>
 <select value={firmanteRol} onChange={e=>setFirmanteRol(e.target.value)}><option>PARTE</option><option>VENDEDOR</option><option>COMPRADOR</option><option>INTERMEDIARIO</option></select>
-<button type="button" disabled={!operacionSeleccionada||firmaLoading} onClick={()=>solicitarFirma(contratos.find(c=>c.operacion_id===operacionSeleccionada)?.id||"")}>{firmaLoading?"Creando…":"Crear solicitud de firma"}</button>
+<button type="button" disabled={!firmaContratoSeleccionado||firmaLoading} onClick={()=>solicitarFirma(firmaContratoSeleccionado)}>{firmaLoading?"Creando…":"Crear solicitud de firma"}</button>
 {firmaContrato&&<div style={{padding:12,background:"#f1f5f9",borderRadius:8,wordBreak:"break-all"}}><b>Enlace de firma:</b><br/>{firmaContrato}<br/><button type="button" onClick={()=>navigator.clipboard?.writeText(firmaContrato)}>Copiar enlace</button></div>}
 </div></section>
      <section className="document-section commercial-document-tools"><div className="document-section-head"><div><span className="eyebrow">DOCUMENTACIÓN COMERCIAL</span><h2>LOI / SCO</h2><p>Generá una carta de intención o una oferta comercial estándar a partir de una operación. Cada emisión queda registrada en el expediente.</p></div></div>
