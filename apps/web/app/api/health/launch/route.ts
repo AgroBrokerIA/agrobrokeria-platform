@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
-    const requiredTables = ["companies", "publicaciones", "ofertas", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial"];
+    const requiredTables = ["companies", "publicaciones", "ofertas", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "medios_cobro", "retiros_comisiones"];
 
     for (const table of requiredTables) {
       const { error } = await supabase.from(table).select("*", { count: "exact", head: true });
@@ -57,7 +57,7 @@ export async function GET(request: NextRequest) {
         : { ok: true };
     }
 
-    checks.supabase = { ok: requiredTables.every(t => checks["db_" + t]?.ok) };
+    checks.supabase = { ok: requiredTables.every(t => checks["db_" + t]?.ok), detail: `${requiredTables.length} tablas críticas verificadas` };
     checks.arca_environment = {
       ok: Boolean(arcaConfig.cuit) && Boolean(arcaConfig.environment),
       detail: arcaConfig.cuit ? arcaConfig.environment : "Falta ARCA_CUIT"
