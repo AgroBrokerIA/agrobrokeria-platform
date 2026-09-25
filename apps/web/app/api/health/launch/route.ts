@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
     }
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
-    const requiredTables = ["companies", "publicaciones", "ofertas", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "medios_cobro", "retiros_comisiones"];
+    const requiredTables = ["companies", "publicaciones", "ofertas_negociacion", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "medios_cobro", "retiros_comisiones"];
 
     for (const table of requiredTables) {
       const { error } = await supabase.from(table).select("*", { count: "exact", head: true });
