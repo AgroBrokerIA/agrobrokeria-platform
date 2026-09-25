@@ -283,16 +283,7 @@ export default function PanelMensajes({
 
     const ids = pendientes.map((m) => m.id);
     const ahora = new Date().toISOString();
-
-    const { error: errorLectura } = await supabase
-      .from("mensajes_comerciales")
-      .update({
-        estado: "LEIDO",
-        leido_at: ahora,
-        actualizado_at: ahora,
-      })
-      .in("id", ids);
-
+    const { error: errorLectura } = await supabase.rpc("marcar_mensajes_comerciales_leidos", { p_ids: ids });
     if (errorLectura) {
       console.error(errorLectura);
       return;
