@@ -13,6 +13,7 @@ Deno.serve(async(req)=>{
   const source=m.idioma_origen||"es";if(!target||target===source)return json({ok:true,status:"NO_REQUERIDA",texto:m.mensaje});
   const {data:existing}=await userClient.from("mensajes_traducciones").select("*").eq("mensaje_id",mensaje_id).eq("idioma_destino",target).order("version",{ascending:false}).limit(1).maybeSingle();
   if(existing?.estado==="TRADUCIDO")return json(existing);
+  if(existing?.estado==="NO_DISPONIBLE" && (!Deno.env.get("TRANSLATION_API_URL") || !Deno.env.get("TRANSLATION_API_KEY")))return json({...existing,pending_external:true},409);
   const api=Deno.env.get("TRANSLATION_API_URL"),key=Deno.env.get("TRANSLATION_API_KEY"),provider=Deno.env.get("TRANSLATION_PROVIDER")||"external";
   if(!api||!key){
    const {data:r}=await admin.from("mensajes_traducciones").insert({mensaje_id,idioma_origen:source,idioma_destino:target,texto_original:m.mensaje,estado:"NO_DISPONIBLE",proveedor:provider,solicitado_por:user.id,error_codigo:"TRANSLATION_PROVIDER_NOT_CONFIGURED"}).select().single();
