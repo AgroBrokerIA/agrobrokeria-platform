@@ -84,3 +84,14 @@
 .operations-page .operation-workflow>div>div{border:1px solid var(--line)!important;box-shadow:none!important}
 .operations-page .operation-workflow>div>div[style*="background: #eff6ff"]{background:var(--green-soft)!important;color:var(--green-dark)!important}
 @media(max-width:800px){.operations-page .operation-metrics{grid-template-columns:1fr!important}.operations-page .workflow-rail{grid-template-columns:repeat(5,minmax(75px,1fr))}}
+
+
+.dashboard-market-grid{display:grid;grid-template-columns:1.75fr 1fr;gap:16px;margin-bottom:16px}
+.dashboard-lower-grid{display:grid;grid-template-columns:1.75fr 1fr;gap:16px}
+.dashboard-market-grid .dashboard-panel,.dashboard-lower-grid .dashboard-panel{min-width:0}
+.panel-heading{display:flex;align-items:flex-start;justify-content:space-between;gap:15px}.panel-heading>a{color:var(--green);font-size:11px;font-weight:800;text-decoration:none;margin-top:3px}
+.price-list{margin-top:16px}.price-row{display:grid;grid-template-columns:1fr .7fr 1.2fr 1fr;gap:10px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line);font-size:11px}.price-row:last-child{border-bottom:0}.price-product{font-weight:800}.price-row>span:nth-child(2){color:var(--muted);text-transform:uppercase;font-size:9px}.price-row strong{font-size:12px}.price-row small{color:var(--muted);text-align:right}
+.dashboard-empty-line{padding:28px 0;color:var(--muted);font-size:12px}
+.activity-list{margin-top:8px}.activity-row{display:flex;gap:10px;padding:12px 0;border-bottom:1px solid var(--line)}.activity-row:last-child{border-bottom:0}.activity-dot{width:9px;height:9px;flex:0 0 9px;margin-top:4px;border-radius:50%;background:#c8d1cb}.activity-dot.active{background:var(--green);box-shadow:0 0 0 4px #167a4512}.activity-row strong{font-size:11px}.activity-row p{margin:4px 0 0;color:var(--muted);font-size:10px;line-height:1.4}
+@media(max-width:1000px){.dashboard-market-grid,.dashboard-lower-grid{grid-template-columns:1fr}.price-row{grid-template-columns:1fr 1fr}.price-row small{text-align:left}}
+@media(max-width:650px){.price-row{grid-template-columns:1fr}.price-row small{text-align:left}}
