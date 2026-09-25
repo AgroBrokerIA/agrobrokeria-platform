@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-const menu=[["Inicio","/dashboard","⌂"],["Mercado","/marketplace","🌾"],["Oportunidades IA","/oportunidades","✦"],["Publicaciones","/mis-publicaciones","▤"],["Ofertas recibidas","/ofertas-recibidas","↗"],["Operaciones","/operaciones","⇄"],["Comisiones","/comisiones","$"],["Retiros","/retiros-comisiones","↘"],["Mensajes","/mensajes","◌"],["Notificaciones","/notificaciones","♢"],["Empresas","/empresas","▦"],["Configuración","/configuracion","⚙"]] as const;
+const menu=[["Inicio","/dashboard","⌂"],["Mercado","/marketplace","🌾"],["Oportunidades IA","/oportunidades","✦"],["Publicaciones","/mis-publicaciones","▤"],["Ofertas recibidas","/ofertas-recibidas","↗"],["Documentos","/documentos","▧"],["Operaciones","/operaciones","⇄"],["Comisiones","/comisiones","$"],["Retiros","/retiros-comisiones","↘"],["Mensajes","/mensajes","◌"],["Notificaciones","/notificaciones","♢"],["Empresas","/empresas","▦"],["Configuración","/configuracion","⚙"]] as const;
 
 export default function Sidebar(){
  const pathname=usePathname(); const [mensajes,setMensajes]=useState(0); const [notificaciones,setNotificaciones]=useState(0);
