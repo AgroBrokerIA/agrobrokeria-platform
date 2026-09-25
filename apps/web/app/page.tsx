@@ -14,7 +14,7 @@ const defaultCommodities = [
 export default function Home() {
   const [commodities, setCommodities] = useState(defaultCommodities);
   useEffect(() => {
-    supabase.rpc("resumen_publico_mercado").then(({ data }) => {
+    supabase.from("market_public_summary").select("commodity,precio_promedio,moneda,publicaciones").order("publicaciones",{ascending:false}).limit(4).then(({ data }) => {
       if (!data?.length) return;
       const icons: Record<string,string> = { Soja:"🌱", Maíz:"🌽", Trigo:"🌾", Girasol:"🌻" };
       setCommodities(data.map((x:any) => ({
