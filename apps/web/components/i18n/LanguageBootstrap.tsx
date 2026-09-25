@@ -1,0 +1,1 @@
+"use client";import{useEffect}from"react";export default function LanguageBootstrap(){useEffect(()=>{const saved=localStorage.getItem("agrobrokeria.language")||navigator.language?.split("-")[0]||"es";const supported=["es","en","pt","it","fr","de"];const lang=supported.includes(saved)?saved:"es";document.documentElement.lang=lang;},[]);return null}
