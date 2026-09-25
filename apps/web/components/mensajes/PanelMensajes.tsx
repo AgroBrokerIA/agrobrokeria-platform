@@ -239,20 +239,13 @@ export default function PanelMensajes({
     setEnviando(true);
     setError("");
 
-    const { data, error: errorEnvio } = await supabase
-      .from("mensajes_comerciales")
-      .insert({
-        operacion_id: operacionId,
-        remitente_profile_id: usuarioId,
-        remitente_empresa_id: empresaId,
-        destinatario_profile_id: destino.profileId,
-        destinatario_empresa_id: destino.empresaId,
-        mensaje: contenido,
-        tipo_mensaje: "COMERCIAL",
-        estado: "ENVIADO",
-      })
-      .select("*")
-      .single();
+    const { data: messageId, error: errorEnvio } = await supabase.rpc("enviar_mensaje_comercial_seguro", {
+      p_operacion_id: operacionId,
+      p_destinatario_profile_id: destino.profileId,
+      p_destinatario_empresa_id: destino.empresaId,
+      p_mensaje: contenido,
+      p_idioma_origen: document.documentElement.lang || "es",
+    });
 
     if (errorEnvio) {
       console.error(errorEnvio);
@@ -261,14 +254,9 @@ export default function PanelMensajes({
       return;
     }
 
-    if (data) {
-      setMensajes((actuales) => {
-        if (actuales.some((m) => m.id === data.id)) {
-          return actuales;
-        }
-
-        return [...actuales, data];
-      });
+    if (messageId) {
+      const { data } = await supabase.from("mensajes_comerciales").select("*").eq("id", messageId).single();
+      if (data) setMensajes((actuales) => actuales.some((m) => m.id === data.id) ? actuales : [...actuales, data]);
     }
 
     setTexto("");
