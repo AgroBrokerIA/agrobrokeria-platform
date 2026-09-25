@@ -50,6 +50,8 @@ export default function PanelMensajes({
   const [error, setError] = useState("");
   const [traducciones, setTraducciones] = useState<Record<string, string>>({});
   const [traduciendo, setTraduciendo] = useState<string | null>(null);
+  const [idiomaUsuario, setIdiomaUsuario] = useState("es");
+  const traduccionesAutomaticasRef = useRef<Set<string>>(new Set());
 
   const mensajesRef = useRef<HTMLDivElement>(null);
 
@@ -74,7 +76,7 @@ export default function PanelMensajes({
 
       const { data: perfil, error: errorPerfil } = await supabase
         .from("profiles")
-        .select("active_company_id")
+        .select("active_company_id, idioma")
         .eq("id", user.id)
         .maybeSingle();
 
@@ -85,6 +87,8 @@ export default function PanelMensajes({
       }
 
       const miEmpresaId = perfil?.active_company_id || null;
+      const idiomaPreferido = perfil?.idioma || localStorage.getItem("agrobrokeria.language") || "es";
+      setIdiomaUsuario(idiomaPreferido);
       setEmpresaId(miEmpresaId);
 
       const { data: participantes, error: errorParticipantes } =
@@ -153,6 +157,7 @@ export default function PanelMensajes({
       }
 
       await cargarMensajes(user.id);
+      void traducirEntrantesAutomaticamente(user.id, idiomaPreferido);
 
       canal = supabase
         .channel(`mensajes-operacion-${operacionId}`)
@@ -174,6 +179,9 @@ export default function PanelMensajes({
 
               return [...actuales, nuevo];
             });
+            if (nuevo.destinatario_profile_id === user.id) {
+              void traducirMensajeAutomaticamente(nuevo, idiomaPreferido);
+            }
           }
         )
         .subscribe();
@@ -272,6 +280,53 @@ export default function PanelMensajes({
     }, 50);
   }
 
+  async function traducirMensajeAutomaticamente(mensaje: Mensaje, target: string) {
+    if (
+      mensaje.remitente_profile_id === usuarioId ||
+      !target ||
+      mensaje.idioma_origen === target ||
+      traduccionesAutomaticasRef.current.has(mensaje.id)
+    ) {
+      return;
+    }
+
+    traduccionesAutomaticasRef.current.add(mensaje.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!session?.access_token || !base) return;
+
+      const response = await fetch(base + "/functions/v1/translate-message", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: "Bearer " + session.access_token,
+        },
+        body: JSON.stringify({ mensaje_id: mensaje.id, idioma_destino: target }),
+      });
+      const result = await response.json();
+      if (result?.texto_traducido) {
+        setTraducciones((actuales) => ({
+          ...actuales,
+          [mensaje.id]: result.texto_traducido,
+        }));
+      }
+    } catch {
+      // La traducción automática no debe impedir la conversación original.
+    }
+  }
+
+  async function traducirEntrantesAutomaticamente(userId: string, target: string) {
+    const entrantes = mensajes.filter(
+      (mensaje) =>
+        mensaje.destinatario_profile_id === userId &&
+        mensaje.remitente_profile_id !== userId
+    );
+    for (const mensaje of entrantes) {
+      await traducirMensajeAutomaticamente(mensaje, target);
+    }
+  }
+
   async function marcarComoLeidos() {
     if (!usuarioId) return;
 
@@ -312,7 +367,7 @@ export default function PanelMensajes({
 
   async function traducirMensaje(mensaje: Mensaje) {
     if (traducciones[mensaje.id] || traduciendo === mensaje.id) return;
-    const target = localStorage.getItem("agrobrokeria.language") || document.documentElement.lang || "es";
+    const target = idiomaUsuario || localStorage.getItem("agrobrokeria.language") || document.documentElement.lang || "es";
     setTraduciendo(mensaje.id);
     setError("");
     try {
