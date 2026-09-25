@@ -31,7 +31,7 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setError(error.message); return; }
       if (!data.session || !data.user) { setError("No se pudo crear la sesión."); return; }
-      router.push("/dashboard"); router.refresh();
+      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard"; router.push(next.startsWith("/") ? next : "/dashboard"); router.refresh();
     } catch { setError("Ocurrió un error al iniciar sesión."); }
     finally { setLoading(false); }
   }
