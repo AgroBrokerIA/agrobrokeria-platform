@@ -43,8 +43,20 @@ export async function POST(request: Request) {
       );
     }
 
-    const body = await request.json();
-    const publicacionId = String(body?.publicacionId ?? "").trim();
+    let body: unknown;
+
+    try {
+      body = await request.json();
+    } catch {
+      return NextResponse.json(
+        { ok: false, error: "JSON inválido." },
+        { status: 400 }
+      );
+    }
+
+    const publicacionId = String(
+      (body as { publicacionId?: unknown })?.publicacionId ?? ""
+    ).trim();
 
     if (!publicacionId) {
       return NextResponse.json(
@@ -104,10 +116,7 @@ export async function POST(request: Request) {
     return NextResponse.json(
       {
         ok: false,
-        error:
-          error instanceof Error
-            ? error.message
-            : "Error interno procesando IA.",
+        error: "No fue posible procesar la publicación con IA.",
       },
       { status: 500 }
     );
