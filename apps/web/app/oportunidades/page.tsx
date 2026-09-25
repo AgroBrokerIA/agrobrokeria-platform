@@ -185,148 +185,63 @@ export default function OportunidadesPage() {
   if (cargando) {
     return (
       <main className="module-page">
-        <p>Cargando oportunidades IA...</p>
+        <div className="module-hero">
+          <div><span className="eyebrow">INTELIGENCIA COMERCIAL</span><h1>Oportunidades IA</h1><p>Smart Match encuentra coincidencias entre tu empresa y el mercado.</p></div>
+          <div className="module-pill">IA activa</div>
+        </div>
+        <div className="dashboard-panel">Analizando oportunidades comerciales...</div>
       </main>
     );
   }
 
   return (
-    <main className="module-page">
-      <div>
-        <h1 className="text-2xl font-bold">
-          Oportunidades IA
-        </h1>
-
-        <p className="text-gray-600 mt-1">
-          AgroBroker IA detecta automáticamente
-          publicaciones compatibles con tu empresa.
-        </p>
+    <main className="module-page opportunities-page">
+      <div className="module-hero">
+        <div><span className="eyebrow">INTELIGENCIA COMERCIAL</span><h1>Oportunidades IA</h1><p>Smart Match encuentra coincidencias entre tu empresa y el mercado.</p></div>
+        <div className="module-pill">{oportunidades.length} coincidencias</div>
       </div>
 
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-4 text-red-700">
-          {error}
+      {error && <div className="module-alert error">{error}</div>}
+
+      {!error && oportunidades.length === 0 && (
+        <div className="empty-module">
+          <div className="empty-module-icon">✦</div>
+          <h2>La IA todavía no encontró coincidencias</h2>
+          <p>Cuando detectemos una oportunidad compatible con tu empresa, aparecerá automáticamente acá.</p>
+          <Link href="/marketplace" className="secondary-action">Explorar mercado →</Link>
         </div>
       )}
 
-      {!error &&
-        oportunidades.length === 0 && (
-          <div className="rounded-xl border bg-white p-8 text-center">
-            <div className="text-4xl mb-3">
-              🤖
-            </div>
-
-            <h2 className="text-lg font-semibold">
-              Todavía no hay oportunidades
-            </h2>
-
-            <p className="text-gray-600 mt-1">
-              La IA mostrará acá las publicaciones
-              compatibles cuando encuentre coincidencias.
-            </p>
-          </div>
-        )}
-
-      <div className="grid gap-4">
-        {oportunidades.map(
-          (oportunidad) => {
-            const publicacion =
-              oportunidad.publicacion;
-
+      {!error && oportunidades.length > 0 && (
+        <div className="opportunity-list">
+          {oportunidades.map((oportunidad) => {
+            const publicacion = oportunidad.publicacion;
+            const score = Number(oportunidad.indice_compatibilidad);
             return (
-              <article
-                key={oportunidad.id}
-                className="rounded-xl border bg-white p-5 shadow-sm"
-              >
-                <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-                  <div className="space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-semibold text-blue-800">
-                        🤖 IA
-                      </span>
-
-                      <span className="rounded-full bg-gray-100 px-3 py-1 text-sm">
-                        {oportunidad.estado}
-                      </span>
-                    </div>
-
-                    <h2 className="text-lg font-semibold">
-                      {publicacion
-                        ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN`
-                        : "Publicación"}
-                    </h2>
-
+              <article key={oportunidad.id} className="opportunity-card">
+                <div className="opportunity-main">
+                  <div>
+                    <div className="opportunity-tags"><span className="ai-tag">✦ IA MATCH</span><span className="neutral-tag">{oportunidad.estado}</span></div>
+                    <h2>{publicacion ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN` : "Publicación compatible"}</h2>
                     {publicacion && (
-                      <div className="text-sm text-gray-600 space-y-1">
-                        <p>
-                          Precio:{" "}
-                          <strong>
-                            {publicacion.precio_tn}
-                          </strong>{" "}
-                          · Moneda ID{" "}
-                          {publicacion.moneda_id}
-                        </p>
-
-                        {(
-                          publicacion.provincia ||
-                          publicacion.localidad ||
-                          publicacion.puerto
-                        ) && (
-                          <p>
-                            Ubicación:{" "}
-                            {
-                              [
-                                publicacion.localidad,
-                                publicacion.provincia,
-                                publicacion.puerto,
-                              ]
-                                .filter(Boolean)
-                                .join(" · ")
-                            }
-                          </p>
-                        )}
-
-                        <p>
-                          Detectada:{" "}
-                          {formatoFecha(
-                            oportunidad.creada_en
-                          )}
-                        </p>
+                      <div className="opportunity-details">
+                        <span>USD {Number(publicacion.precio_tn).toLocaleString("es-AR")} / TN</span>
+                        <span>{[publicacion.localidad, publicacion.provincia].filter(Boolean).join(", ") || "Ubicación no informada"}</span>
+                        {publicacion.puerto && <span>Entrega: {publicacion.puerto}</span>}
+                        <span>Detectada {formatoFecha(oportunidad.creada_en)}</span>
                       </div>
                     )}
                   </div>
-
-                  <div className="flex flex-col items-start md:items-end gap-3">
-                    <div
-                      className={`text-3xl font-bold ${colorPuntaje(
-                        Number(
-                          oportunidad.indice_compatibilidad
-                        )
-                      )}`}
-                    >
-                      {Number(
-                        oportunidad.indice_compatibilidad
-                      )}
-                      %
-                    </div>
-
-                    <span className="text-sm text-gray-500">
-                      Índice de compatibilidad
-                    </span>
-
-                    <Link
-                      href={`/marketplace?publicacion=${oportunidad.publicacion_id}`}
-                      className="rounded-lg bg-black px-4 py-2 text-sm font-semibold text-white hover:opacity-90"
-                    >
-                      Ver publicación
-                    </Link>
+                  <div className="opportunity-score">
+                    <strong>{score}%</strong><span>compatibilidad</span>
+                    <Link href={`/marketplace?publicacion=${oportunidad.publicacion_id}`} className="primary-action">Ver oportunidad →</Link>
                   </div>
                 </div>
               </article>
             );
-          }
-        )}
-      </div>
+          })}
+        </div>
+      )}
     </main>
   );
 }
