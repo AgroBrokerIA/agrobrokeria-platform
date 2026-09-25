@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { arcaConfig, getArcaCertificateMaterial } from "@/lib/arca/config";
+import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
