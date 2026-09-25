@@ -1,0 +1,16 @@
+begin;
+select plan(12);
+select is((select count(*) from pg_tables where schemaname='public' and tablename in ('facturas','factura_eventos','contrato_versiones','plantillas_contrato') and rowsecurity),4::bigint,'documental/fiscal tables have RLS');
+select is(has_table_privilege('authenticated','public.facturas','insert'),false,'facturas no direct insert');
+select is(has_table_privilege('authenticated','public.facturas','update'),false,'facturas no direct update');
+select is(has_table_privilege('authenticated','public.contrato_versiones','insert'),false,'contract versions no direct insert');
+select is((select count(*) from pg_indexes where schemaname='public' and indexname='ux_facturas_fiscal_number'),1::bigint,'fiscal numbering is unique per issuer/pv/type');
+select is((select count(*) from pg_indexes where schemaname='public' and indexname='idx_factura_eventos_factura'),1::bigint,'invoice audit index exists');
+select is((select count(*) from public.plantillas_contrato where activa),6::bigint,'contract template catalog seeded');
+select is((select count(*) from public.facturas where cae is not null and estado not in ('AUTORIZADA','OBSERVADA')),0::bigint,'no CAE on non-authorized invoice');
+select is((select count(*) from public.facturas where importe_total<0),0::bigint,'no negative fiscal totals');
+select is((select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),(select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),'signature provider field is populated for legacy evidence');
+select is((select count(*) from storage.buckets where id='agrobroker-private' and public=false),1::bigint,'private document bucket exists');
+select is((select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'agrobroker_private_%'),4::bigint,'private storage has four access policies');
+select * from finish();
+rollback;
