@@ -96,3 +96,12 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 ### Estado de datos oficiales
 - BCR publica actualmente las cotizaciones locales y referencias FOB/FAS; AgroBrokerIA utiliza esas páginas como fuente del adaptador y conserva el origen en cada observación.
 - No se presentan valores de BCR en la aplicación hasta que el servicio de sincronización los obtenga realmente.
+
+
+## 2026-09-25 — Autonomous hardening
+
+- Added authorized short-lived signed URLs for private operation documents (`/api/storage/signed-url`).
+- Added canonical `unit_conversion_rules` and `normalizar_unidad(...)`; mass normalization uses tonnes as the base and refuses unsupported technical conversions.
+- Added unit normalization smoke tests.
+- Removed duplicate GitHub Web CI workflow so lint/typecheck/build are executed by a single workflow.
+- Vercel production deployments currently display build errors in the project UI. The available Vercel connection exposes no teams/projects and therefore cannot retrieve the exact build log. A prior commit status explicitly reported the Vercel build-rate-limit target; current failures must be rechecked once Vercel project access is available. No claim of production verification is made while this remains unresolved.
