@@ -2,5 +2,11 @@
   "framework": "nextjs",
   "installCommand": "cd apps/web && npm ci",
   "buildCommand": "cd apps/web && npm run build",
-  "devCommand": "cd apps/web && npm run dev"
+  "devCommand": "cd apps/web && npm run dev",
+  "crons": [
+    {
+      "path": "/api/cron/market-data",
+      "schedule": "0 12-21 * * 1-5"
+    }
+  ]
 }
