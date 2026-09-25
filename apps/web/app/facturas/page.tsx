@@ -3,18 +3,18 @@ import {useEffect,useState} from "react";
 import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 
-type Factura={id:string;operacion_id:string;contrato_id:string|null;empresa_id:string;empresa_receptor_id:string|null;numero_factura:string|null;tipo_factura:string|null;tipo_comprobante_codigo:number|null;punto_venta:number|null;numero_comprobante:number|null;fecha_emision:string|null;cuit_emisor:string|null;cuit_receptor:string|null;razon_social_emisor:string|null;razon_social_receptor:string|null;importe_neto:number|null;importe_iva:number|null;importe_total:number|null;moneda_id:number|null;cae:string|null;caea:string|null;cae_vencimiento:string|null;estado:string;arca_mensaje:string|null;creada_en:string|null};
+type Factura={id:string;operacion_id:string;doc_tipo_receptor:number|null;iva_alicuota:number|null;contrato_id:string|null;empresa_id:string;empresa_receptor_id:string|null;numero_factura:string|null;tipo_factura:string|null;tipo_comprobante_codigo:number|null;punto_venta:number|null;numero_comprobante:number|null;fecha_emision:string|null;cuit_emisor:string|null;cuit_receptor:string|null;razon_social_emisor:string|null;razon_social_receptor:string|null;importe_neto:number|null;importe_iva:number|null;importe_total:number|null;moneda_id:number|null;cae:string|null;caea:string|null;cae_vencimiento:string|null;estado:string;arca_mensaje:string|null;creada_en:string|null};
 type Op={id:string;codigo:string;estado:string;cantidad_tn:number;importe_total:number};
 type Company={id:string;razon_social:string;cuit:string;rol:string};
 
 export default function FacturasPage(){
  const [rows,setRows]=useState<Factura[]>([]),[ops,setOps]=useState<Op[]>([]),[companies,setCompanies]=useState<Company[]>([]);
- const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[cond,setCond]=useState("");
+ const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[alicuota,setAlicuota]=useState("21"),[docTipo,setDocTipo]=useState("80"),[cond,setCond]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
  async function load(){
   setLoading(true);setErr("");
   const [{data:f,error:fe},{data:o,error:oe}]=await Promise.all([
-   supabase.from("facturas").select("id,operacion_id,contrato_id,empresa_id,empresa_receptor_id,numero_factura,tipo_factura,tipo_comprobante_codigo,punto_venta,numero_comprobante,fecha_emision,cuit_emisor,cuit_receptor,razon_social_emisor,razon_social_receptor,importe_neto,importe_iva,importe_total,moneda_id,cae,caea,cae_vencimiento,estado,arca_mensaje,creada_en").order("creada_en",{ascending:false}),
+   supabase.from("facturas").select("id,operacion_id,contrato_id,empresa_id,empresa_receptor_id,doc_tipo_receptor,iva_alicuota,numero_factura,tipo_factura,tipo_comprobante_codigo,punto_venta,numero_comprobante,fecha_emision,cuit_emisor,cuit_receptor,razon_social_emisor,razon_social_receptor,importe_neto,importe_iva,importe_total,moneda_id,cae,caea,cae_vencimiento,estado,arca_mensaje,creada_en").order("creada_en",{ascending:false}),
    supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,importe_total").eq("estado","CERRADA").order("fecha_operacion",{ascending:false})
   ]);
   if(fe) setErr(fe.message);if(oe) setErr(oe.message);setRows((f||[]) as Factura[]);setOps((o||[]) as Op[]);setLoading(false);
@@ -30,7 +30,7 @@ export default function FacturasPage(){
   try{
    const {data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Sesión expirada.");
    if(!opId||!receiver||!pv||!net)throw new Error("Completá operación, receptor, punto de venta e importe neto.");
-   const {data:id,error}=await supabase.rpc("crear_solicitud_factura",{p_operacion_id:opId,p_empresa_receptor_id:receiver,p_tipo_comprobante_codigo:tipo,p_punto_venta:Number(pv),p_importe_neto:Number(net),p_importe_iva:Number(iva||0),p_condicion_iva_receptor:cond?Number(cond):null});
+   const {data:id,error}=await supabase.rpc("crear_solicitud_factura",{p_operacion_id:opId,p_empresa_receptor_id:receiver,p_tipo_comprobante_codigo:tipo,p_punto_venta:Number(pv),p_importe_neto:Number(net),p_importe_iva:Number(iva||0),p_condicion_iva_receptor:cond?Number(cond):null,p_doc_tipo_receptor:Number(docTipo),p_iva_alicuota:Number(alicuota||0)});
    if(error)throw new Error(error.message);
    const r=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+"/functions/v1/arca-facturacion",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({invoice_id:id})});
    const j=await r.json();if(!r.ok)throw new Error(j.error||"Error de integración ARCA.");
@@ -46,7 +46,7 @@ export default function FacturasPage(){
     <select value={receiver} onChange={e=>setReceiver(e.target.value)}><option value="">Empresa receptora</option>{companies.map(c=><option key={c.id} value={c.id}>{c.razon_social} · CUIT {c.cuit} · {c.rol}</option>)}</select>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><select value={tipo} onChange={e=>setTipo(Number(e.target.value))}><option value={1}>Factura A</option><option value={6}>Factura B</option><option value={11}>Factura C</option><option value={51}>Factura M</option></select><input placeholder="Punto de venta ARCA" inputMode="numeric" value={pv} onChange={e=>setPv(e.target.value)}/></div>
     <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}><input placeholder="Importe neto" inputMode="decimal" value={net} onChange={e=>setNet(e.target.value)}/><input placeholder="IVA" inputMode="decimal" value={iva} onChange={e=>setIva(e.target.value)}/></div>
-    <input placeholder="Condición IVA receptor (código ARCA, si corresponde)" inputMode="numeric" value={cond} onChange={e=>setCond(e.target.value)}/>
+    <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:10}}><input placeholder="DocTipo ARCA" inputMode="numeric" value={docTipo} onChange={e=>setDocTipo(e.target.value)}/><input placeholder="Alícuota IVA %" inputMode="decimal" value={alicuota} onChange={e=>setAlicuota(e.target.value)}/><input placeholder="Condición IVA receptor" inputMode="numeric" value={cond} onChange={e=>setCond(e.target.value)}/></div>
     <button disabled={busy||!opId||!receiver} onClick={request}>{busy?"Procesando con ARCA…":"Enviar a ARCA"}</button>
    </div>
   </section>
