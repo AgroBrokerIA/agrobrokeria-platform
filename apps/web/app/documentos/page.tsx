@@ -83,8 +83,7 @@ export default function DocumentosPage(){
    try{
     const {data,error}=await supabase.rpc("crear_solicitud_firma_contrato",{p_contrato_id:contratoId,p_firmante_email:firmanteEmail.trim(),p_firmante_nombre:firmanteNombre.trim(),p_firmante_rol:firmanteRol.trim()});
     if(error) throw new Error(error.message);
-    const base=process.env.NEXT_PUBLIC_SUPABASE_URL||"";
-    const link=base+"/functions/v1/firmar-documento?token="+encodeURIComponent(data.token);
+    const link=window.location.origin+"/firmar/"+encodeURIComponent(data.token);
     setFirmaContrato(link); setMensaje("Solicitud de firma creada. Copiá el enlace y enviáselo al firmante.");
    }catch(e){setError(e instanceof Error?e.message:"No se pudo crear la solicitud de firma")}finally{setFirmaLoading(false)}
  }
