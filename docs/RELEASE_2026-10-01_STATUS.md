@@ -69,3 +69,30 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 **Vercel:** el check continúa `pending` y la sesión conectada no tiene acceso al scope del equipo Vercel, por lo que el deployment final todavía no puede certificarse desde esta integración.
 
 **Supabase Auth:** Security Advisor mantiene *Leaked Password Protection* deshabilitado.
+
+
+## Avance integral adicional — 25/09/2026
+
+### Mercado centralizado
+- Se incorporó el modelo inmutable `market_quotes` para conservar cada observación de mercado sin sobrescribir históricos.
+- Se incorporó `market_sync_runs` para auditar cada actualización, resultado, cantidad de registros y error.
+- Se desplegó `market-data-sync` como servicio central.
+- El servicio consulta las páginas oficiales de cotizaciones locales BCR/CAC y FOB/FAS, normaliza observaciones y registra fuente, fecha, posición, puerto, precio, moneda y payload original.
+- Se agregó `/mercado` al frontend con estados de carga, vacío, error y actualización manual.
+- Se agregó endpoint de cron y programación laboral en Vercel; requiere `CRON_SECRET` configurado en Vercel para activar la ejecución automática.
+- La base actual de `market_quotes` permanece en 0 registros hasta ejecutar una sincronización autenticada; no se insertaron precios ficticios.
+
+### Facturación reforzada
+- `crear_solicitud_factura` ahora exige tipo de comprobante válido, punto de venta, tipo documental del receptor y alícuota cuando corresponde.
+- Se agregó clave de idempotencia fiscal, número solicitado, tipo documental y alícuota IVA.
+- Se eliminó el overload legado de la RPC y se confirmó que `anon` no tiene EXECUTE.
+- WSFEv1 dejó de asumir moneda, DocTipo e IVA 21%: utiliza los datos fiscales registrados en la factura y rechaza configuraciones incompletas/no soportadas.
+
+### Calidad de entrega
+- Se incorporó GitHub Actions CI para ejecutar `npm ci`, typecheck, lint y build en `apps/web`.
+- La integración de GitHub no reporta aún ejecuciones de Actions para estos commits; por lo tanto no se declara el build como verificado.
+- Vercel continúa sin scope accesible desde la integración actual; no se certifica deployment de producción.
+
+### Estado de datos oficiales
+- BCR publica actualmente las cotizaciones locales y referencias FOB/FAS; AgroBrokerIA utiliza esas páginas como fuente del adaptador y conserva el origen en cada observación. citeturn0search0turn0search2
+- No se presentan valores de BCR en la aplicación hasta que el servicio de sincronización los obtenga realmente.
