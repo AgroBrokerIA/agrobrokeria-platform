@@ -155,3 +155,25 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - La traducción automática de mensajes comerciales ya dispone de acción en la conversación y conserva el original.
 - Verificación actual de base: 123/123 tablas públicas con RLS y 0 SECURITY DEFINER ejecutables por `anon`.
 - Las integraciones que requieren secretos externos continúan explícitamente marcadas como pendientes: ARCA, proveedor de firma, Google OAuth/Meet, proveedor de traducción, CRON_SECRET de Vercel y acceso al scope Vercel.
+
+
+## 2026-09-25 — Cierre técnico adicional
+
+- CI de GitHub Actions del commit `8ef5210dcbeb126df3fb70347eaf4cfc47577e54` completó correctamente: npm ci, lint, typecheck y build.
+- La preferencia de idioma ahora propaga el cambio al Sidebar sin recargar la aplicación; catálogo UI activo: 150 traducciones para ES/EN/PT/IT/FR/DE.
+- Se reforzó `verificaciones-sync`: no procesa solicitudes si `CRON_SECRET` no está configurado y exige secreto correcto para ejecutar consultas programadas. La función continúa registrando PENDIENTE cuando no existe integración oficial externa; no inventa verificaciones.
+- `market-data-sync` fue actualizado a v3: parser BCR/CAC más estricto, conserva histórico/fuente/payload, identifica cotización local actual y múltiples observaciones FOB/FAS, y falla explícitamente si no logra extraer ninguna cotización en vez de declarar éxito vacío.
+- Supabase: se añadieron índices para las claves foráneas nuevas sin cobertura y se optimizaron dos políticas RLS para evaluar `auth.uid()` una sola vez por consulta.
+- Verificación actual: 123/123 tablas públicas con RLS; 0 SECURITY DEFINER ejecutables por `anon`; 150 traducciones UI; 7 documentos legales vigentes; 22 artículos de ayuda.
+- `market_quotes` permanece en 0 hasta una ejecución real de sincronización; esto es intencional y evita datos ficticios.
+
+### Pendientes que requieren intervención externa
+
+- Acceso al scope/proyecto de Vercel para certificar deployment y configurar `CRON_SECRET`.
+- Configuración de Auth > Security de Supabase para activar Leaked Password Protection.
+- Credenciales/certificado ARCA para WSAA/WSFEv1.
+- Proveedor y credenciales de firma electrónica externa.
+- OAuth de Google/Google Calendar para Meet.
+- Proveedor/API key de traducción automática.
+- Mecanismos oficiales/credenciales para SISA, SENASA, INASE u otras verificaciones externas.
+- Ejecución de E2E autenticado con usuarios de prueba de productor/comprador/intermediario una vez habilitado el entorno de preproducción/producción.
