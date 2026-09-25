@@ -305,8 +305,6 @@ export default function NotificacionesPage() {
           ))}
         </div>
       )}
-
-      </div>
       </section>
     </main>
   );
