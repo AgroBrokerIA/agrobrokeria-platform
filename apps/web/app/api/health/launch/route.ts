@@ -34,6 +34,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "No hay empresa activa para esta cuenta." }, { status: 403 });
     }
 
+    const { data: membership } = await supabase
+      .from("company_users")
+      .select("rol,activo")
+      .eq("company_id", profile.active_company_id)
+      .eq("profile_id", user.id)
+      .eq("activo", true)
+      .maybeSingle();
+
+    if (!membership || String(membership.rol).toLowerCase() !== "administrador") {
+      return NextResponse.json({ ok: false, error: "Solo un administrador puede ejecutar el preflight de lanzamiento." }, { status: 403 });
+    }
+
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
     const requiredTables = ["companies", "publicaciones", "ofertas", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial"];
 
