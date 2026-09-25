@@ -3,7 +3,7 @@
 ## Estado técnico verificado — 25/09/2026
 
 ### Seguridad / datos
-- 113 tablas públicas con RLS habilitado; 0 tablas públicas sin RLS.
+- 123 tablas públicas con RLS habilitado; 0 tablas públicas sin RLS.
 - Contact Shield: lectura directa de `contactos_comerciales` retirada para `authenticated`; acceso únicamente mediante RPC autorizado por participación en operaciones.
 - Operaciones, contratos, liquidaciones y pagos: escrituras directas desde el rol `authenticated` retiradas; las escrituras críticas pasan por RPC/funciones server-side.
 - Contratos CONFIRMADOS: protección DB contra modificación de términos comerciales.
@@ -90,7 +90,7 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 
 ### Calidad de entrega
 - Se incorporó GitHub Actions CI para ejecutar `npm ci`, typecheck, lint y build en `apps/web`.
-- La integración de GitHub no reporta aún ejecuciones de Actions para estos commits; por lo tanto no se declara el build como verificado.
+- GitHub Actions verificó exitosamente los commits `9307dbbf` y `b5c7066`: npm ci, lint, typecheck y build completaron correctamente.
 - Vercel continúa sin scope accesible desde la integración actual; no se certifica deployment de producción.
 
 ### Estado de datos oficiales
@@ -143,3 +143,15 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - ARCA y firma externa siguen preparados pero dependen de credenciales/proveedor reales.
 
 - Se agregaron vistas navegables de Pagos y Reportes basadas únicamente en registros reales y respetando RLS.
+
+
+## 2026-09-25 — Continuación autónoma
+
+- Se persistió la aceptación legal al registrarse mediante trigger sobre `auth.users` cuando el alta contiene `legal_accepted=true`; se conserva versión, hash, user-agent y fecha.
+- Se cargó el catálogo inicial de traducciones de interfaz para español, inglés, portugués, italiano, francés y alemán.
+- El menú lateral ahora consume el catálogo multilingüe real desde `traducciones_ui`.
+- Se desplegó `translate-document`: traduce contenido contractual mediante proveedor externo configurado, conserva idioma origen/destino, versión, proveedor y SHA-256, y guarda el artefacto traducido en el Storage privado de la operación. Sin proveedor configurado devuelve estado pendiente, nunca una traducción inventada.
+- Contratos incorporó selector de idioma y acción de traducción.
+- La traducción automática de mensajes comerciales ya dispone de acción en la conversación y conserva el original.
+- Verificación actual de base: 123/123 tablas públicas con RLS y 0 SECURITY DEFINER ejecutables por `anon`.
+- Las integraciones que requieren secretos externos continúan explícitamente marcadas como pendientes: ARCA, proveedor de firma, Google OAuth/Meet, proveedor de traducción, CRON_SECRET de Vercel y acceso al scope Vercel.
