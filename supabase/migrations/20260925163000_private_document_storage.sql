@@ -1,0 +1,14 @@
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types) values('agrobroker-private','agrobroker-private',false,52428800,array['application/pdf','application/vnd.openxmlformats-officedocument.wordprocessingml.document','application/msword','image/png','image/jpeg']) on conflict(id) do update set public=false,file_size_limit=52428800,allowed_mime_types=excluded.allowed_mime_types;
+drop policy if exists agrobroker_private_select on storage.objects;
+drop policy if exists agrobroker_private_insert on storage.objects;
+drop policy if exists agrobroker_private_update on storage.objects;
+drop policy if exists agrobroker_private_delete on storage.objects;
+create policy agrobroker_private_select on storage.objects for select to authenticated using(bucket_id='agrobroker-private' and public.usuario_participa_operacion(((storage.foldername(name))[2])::uuid));
+create policy agrobroker_private_insert on storage.objects for insert to authenticated with check(bucket_id='agrobroker-private' and public.usuario_participa_operacion(((storage.foldername(name))[2])::uuid));
+create policy agrobroker_private_update on storage.objects for update to authenticated using(bucket_id='agrobroker-private' and public.usuario_participa_operacion(((storage.foldername(name))[2])::uuid)) with check(bucket_id='agrobroker-private' and public.usuario_participa_operacion(((storage.foldername(name))[2])::uuid));
+create policy agrobroker_private_delete on storage.objects for delete to authenticated using(bucket_id='agrobroker-private' and public.usuario_participa_operacion(((storage.foldername(name))[2])::uuid));
+alter table public.facturas add column if not exists storage_path text;
+alter table public.contratos add column if not exists storage_path text;
+alter table public.contrato_versiones add column if not exists storage_path text;
+create index if not exists idx_facturas_storage_path on public.facturas(storage_path) where storage_path is not null;
+create index if not exists idx_contratos_storage_path on public.contratos(storage_path) where storage_path is not null;
