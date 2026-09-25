@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(12);
 select is((select count(*) from pg_tables where schemaname='public' and tablename in ('facturas','factura_eventos','contrato_versiones','plantillas_contrato') and rowsecurity),4::bigint,'documental/fiscal tables have RLS');
 select is(has_table_privilege('authenticated','public.facturas','insert'),false,'facturas no direct insert');
 select is(has_table_privilege('authenticated','public.facturas','update'),false,'facturas no direct update');
