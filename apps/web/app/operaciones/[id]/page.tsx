@@ -38,8 +38,6 @@ type Historial = {
   observaciones: string | null;
 };
 
-const WORKFLOW_ID = "02771a76-52e3-44bb-ad74-134001e2fdee";
-
 export default function DetalleOperacion() {
   const params = useParams();
   const id = params.id as string;
@@ -73,6 +71,7 @@ export default function DetalleOperacion() {
       .from("operacion_workflow")
       .select(`
         id,
+        workflow_id,
         etapa_actual_id,
         estado,
         workflow_etapas!inner (
@@ -89,6 +88,14 @@ export default function DetalleOperacion() {
       return;
     }
 
+    const workflowId = (wf as any).workflow_id as string | undefined;
+
+    if (!workflowId) {
+      setMensaje("La operación no tiene un workflow asociado.");
+      setCargando(false);
+      return;
+    }
+
     const etapaActual = Array.isArray(wf.workflow_etapas)
       ? wf.workflow_etapas[0]
       : wf.workflow_etapas;
@@ -96,7 +103,7 @@ export default function DetalleOperacion() {
     const { data: etapasData, error: etapasError } = await supabase
       .from("workflow_etapas")
       .select("id, orden, nombre, descripcion")
-      .eq("workflow_id", WORKFLOW_ID)
+      .eq("workflow_id", workflowId)
       .order("orden", { ascending: true });
 
     if (etapasError) {
