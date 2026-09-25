@@ -195,3 +195,11 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - La ruta de descarga sigue entregando el DOCX directamente al usuario y no expone el bucket privado.
 - El CI del commit `08f08249be2e5ed8584e82a39628cc66e55f4e0e` terminó **SUCCESS** con npm ci, lint, typecheck y build.
 - El código de `market-data-sync` en GitHub quedó sincronizado con la versión desplegada del parser BCR/CAC.
+
+
+## 2026-09-25 — Production configuration manifest
+
+- Extended `apps/web/.env.example` with the production-only integration variables for scheduled jobs, Google Calendar/Meet, translation and external electronic signature.
+- No secrets or real credentials were committed.
+- GitHub CI is green on the current main after the automatic message-translation hardening.
+- Vercel deployment remains externally rate-limited; no production readiness claim is made from that failed Vercel check.
