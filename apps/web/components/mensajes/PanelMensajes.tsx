@@ -180,7 +180,7 @@ export default function PanelMensajes({
               return [...actuales, nuevo];
             });
             if (nuevo.destinatario_profile_id === user.id) {
-              void traducirMensajeAutomaticamente(nuevo, idiomaPreferido);
+              void traducirMensajeAutomaticamente(nuevo, idiomaPreferido, user.id);
             }
           }
         )
@@ -283,9 +283,9 @@ export default function PanelMensajes({
     return cargados;
   }
 
-  async function traducirMensajeAutomaticamente(mensaje: Mensaje, target: string) {
+  async function traducirMensajeAutomaticamente(mensaje: Mensaje, target: string, currentUserId: string) {
     if (
-      mensaje.remitente_profile_id === usuarioId ||
+      mensaje.remitente_profile_id === currentUserId ||
       !target ||
       mensaje.idioma_origen === target ||
       traduccionesAutomaticasRef.current.has(mensaje.id)
@@ -326,7 +326,7 @@ export default function PanelMensajes({
         mensaje.remitente_profile_id !== userId
     );
     for (const mensaje of entrantes) {
-      await traducirMensajeAutomaticamente(mensaje, target);
+      await traducirMensajeAutomaticamente(mensaje, target, userId);
     }
   }
 
