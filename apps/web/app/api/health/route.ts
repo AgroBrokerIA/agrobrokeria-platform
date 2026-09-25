@@ -22,7 +22,7 @@ export async function GET() {
     });
 
     const { error } = await db
-      .from("commodities")
+      .from("companies")
       .select("id")
       .limit(1);
 
