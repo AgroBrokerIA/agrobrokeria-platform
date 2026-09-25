@@ -94,5 +94,5 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Vercel continúa sin scope accesible desde la integración actual; no se certifica deployment de producción.
 
 ### Estado de datos oficiales
-- BCR publica actualmente las cotizaciones locales y referencias FOB/FAS; AgroBrokerIA utiliza esas páginas como fuente del adaptador y conserva el origen en cada observación. citeturn0search0turn0search2
+- BCR publica actualmente las cotizaciones locales y referencias FOB/FAS; AgroBrokerIA utiliza esas páginas como fuente del adaptador y conserva el origen en cada observación.
 - No se presentan valores de BCR en la aplicación hasta que el servicio de sincronización los obtenga realmente.
