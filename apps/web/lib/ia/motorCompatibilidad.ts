@@ -415,17 +415,11 @@ export async function procesarPublicacionConIA(
         candidato
       );
 
-    const puntajeHistorial =
-      await obtenerHistorial(
-        db,
-        candidato.empresa_id
-      );
-
-    const puntajeDocumentacion =
-      await obtenerDocumentacion(
-        db,
-        candidato.empresa_id
-      );
+    const [puntajeHistorial, puntajeDocumentacion] =
+      await Promise.all([
+        obtenerHistorial(db, candidato.empresa_id),
+        obtenerDocumentacion(db, candidato.empresa_id),
+      ]);
 
     const puntajeTotal =
       calcularTotal(
@@ -505,12 +499,21 @@ export async function procesarPublicacionConIA(
         );
       }
 
-      await notificarOportunidadIA(
-        db,
-        candidato.empresa_id,
-        publicacion.id,
-        resultado.puntaje_total
-      );
+      try {
+        await notificarOportunidadIA(
+          db,
+          candidato.empresa_id,
+          publicacion.id,
+          resultado.puntaje_total
+        );
+      } catch (notificationError) {
+        // La oportunidad ya quedó persistida. Una falla del canal de
+        // notificación no debe deshacer el procesamiento de la publicación.
+        console.error(
+          "Error notificando oportunidad IA:",
+          notificationError
+        );
+      }
     }
   }
 
