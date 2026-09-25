@@ -23,3 +23,27 @@ Se continúa el cierre de AgroBrokerIA sin datos simulados.
 - Plantillas contractuales activas: 6.
 - Unidades activas cargadas: 8.
 - Cotizaciones de mercado verificadas actualmente: 0; no se muestran valores inventados.
+
+
+## Continuación autónoma — 25/09/2026
+
+### Verificaciones
+- 123/123 tablas públicas tienen RLS.
+- 0 funciones SECURITY DEFINER son ejecutables por `anon`.
+- GitHub Actions verificó con éxito los commits de corrección del dashboard/firma con npm ci, lint, typecheck y build.
+
+### Legal e internacionalización
+- La aceptación legal de alta quedó persistida desde metadata de registro mediante trigger server-side.
+- Catálogo `traducciones_ui` cargado para es/en/pt/it/fr/de.
+- Sidebar consume traducciones reales del catálogo.
+- Mensajes comerciales conservan idioma original y disponen de traducción bajo demanda.
+- `translate-document` quedó desplegado para contratos; con proveedor configurado genera artefacto traducido privado, versión y SHA-256. Sin proveedor no inventa contenido.
+
+### Integraciones externas restantes
+- ARCA: certificado/clave y configuración real.
+- Firma: proveedor concreto y credenciales.
+- Google Meet: OAuth.
+- Traducción: proveedor/API.
+- Vercel: autorización del scope y secretos de producción.
+- CRON de mercado: `CRON_SECRET`.
+- Prueba E2E autenticada de producción/preproducción.
