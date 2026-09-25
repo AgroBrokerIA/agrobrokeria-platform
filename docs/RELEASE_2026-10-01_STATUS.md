@@ -105,3 +105,39 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Added unit normalization smoke tests.
 - Removed duplicate GitHub Web CI workflow so lint/typecheck/build are executed by a single workflow.
 - Vercel production deployments currently display build errors in the project UI. The available Vercel connection exposes no teams/projects and therefore cannot retrieve the exact build log. A prior commit status explicitly reported the Vercel build-rate-limit target; current failures must be rechecked once Vercel project access is available. No claim of production verification is made while this remains unresolved.
+
+
+## 2026-09-25 — Final autonomous pass
+
+### Matching IA
+- Se corrigió el motor Smart Match para dejar de asignar producto=100 de forma incondicional.
+- La compatibilidad ahora exige producto compatible por catálogo o historial real y penaliza incompatibilidades explícitas de volumen.
+- El cálculo utiliza datos reales de cantidad, moneda/precio cuando son comparables, historial, condiciones y preferencias logísticas disponibles.
+- Se incorporaron explicación y puntajes adicionales de condición/logística.
+- Se endurecieron las RPC de procesamiento de Smart Match y generación de oportunidades para exigir autenticación y pertenencia a la empresa propietaria de la publicación.
+- Las oportunidades ya no aceptan un score enviado por el cliente: el puntaje se toma del motor calculado.
+
+### Unidades
+- Se consolidó el servicio sobre la estructura existente unit_conversion_rules para evitar duplicar catálogos.
+- Se soportan conversiones dimensionales de masa, volumen y superficie con factores técnicos explícitos.
+- Se agregó persistencia de cantidad/unidad original y factor de normalización en publicaciones, ofertas y operaciones.
+- Las conversiones masa/volumen incompatibles son rechazadas.
+
+### Expediente y UI
+- El detalle de operación ahora consulta documentos_operacion (estructura real) y Pricing Engine, evitando la tabla inexistente documentos.
+- Se agregó endpoint de URLs firmadas con autorización por operación y expiración de 5 minutos.
+- Dashboard y Oportunidades dejaron de asumir USD como moneda de toda publicación.
+
+### Verificaciones actuales
+- RLS deshabilitadas en tablas públicas: 0.
+- SECURITY DEFINER ejecutables por anon: 0.
+- Escritura directa authenticated bloqueada en operaciones, contratos, liquidaciones, pagos, facturas, comisiones y pricing.
+- Plantillas contractuales activas: 6.
+- Cotizaciones oficiales almacenadas actualmente: 0; por diseño no se muestran precios inventados.
+- Las páginas oficiales BCR/FAS fueron inspeccionadas el 25/09/2026; la sincronización de producción todavía requiere una ejecución real del Edge Function.
+- pgTAP no está habilitado en el proyecto actual, por lo que los archivos de pruebas SQL quedan como suite para el runner; los smoke checks críticos se ejecutaron mediante consultas SQL directas.
+
+### Pendientes que no bloquean el desarrollo
+- El build/production de Vercel no puede certificarse desde la conexión actual porque el scope Vercel no está autorizado.
+- CI GitHub quedó configurado, pero no se declara un build exitoso hasta observar una ejecución real.
+- ARCA y firma externa siguen preparados pero dependen de credenciales/proveedor reales.
