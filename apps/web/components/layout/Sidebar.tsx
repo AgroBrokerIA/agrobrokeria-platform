@@ -4,7 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-const menu=[["Inicio","/dashboard","⌂"],["Mercado","/mercado","🌾"],["Marketplace","/marketplace","▤"],["Oportunidades IA","/oportunidades","✦"],["Publicaciones","/mis-publicaciones","▤"],["Ofertas recibidas","/ofertas-recibidas","↗"],["Documentos","/documentos","▧"],["Contratos","/contratos","▣"],["Facturación","/facturas","$"],["Operaciones","/operaciones","⇄"],["Comisiones","/comisiones","$"],["Medios de cobro","/medios-cobro","▣"],["Retiros","/retiros-comisiones","↘"],["Mensajes","/mensajes","◌"],["Notificaciones","/notificaciones","♢"],["Empresas","/empresas","▦"],["Configuración","/configuracion","⚙"]] as const;
+const menu=[["Inicio","/dashboard","⌂"],["Mercado","/mercado","🌾"],["Marketplace","/marketplace","▤"],["Oportunidades IA","/oportunidades","✦"],["Publicaciones","/mis-publicaciones","▤"],["Ofertas recibidas","/ofertas-recibidas","↗"],["Documentos","/documentos","▧"],["Contratos","/contratos","▣"],["Facturación","/facturas","$"],["Operaciones","/operaciones","⇄"],["Comisiones","/comisiones","$"],["Pagos","/pagos","$"],["Reportes","/reportes","▥"],["Medios de cobro","/medios-cobro","▣"],["Retiros","/retiros-comisiones","↘"],["Mensajes","/mensajes","◌"],["Notificaciones","/notificaciones","♢"],["Empresas","/empresas","▦"],["Configuración","/configuracion","⚙"]] as const;
 
 export default function Sidebar(){
  const pathname=usePathname(); const [mensajes,setMensajes]=useState(0); const [notificaciones,setNotificaciones]=useState(0);
