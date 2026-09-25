@@ -182,59 +182,9 @@ export default function NotificacionesPage() {
         <div className="module-pill">{pendientes > 0 ? pendientes+" pendientes" : "Todo al día"}</div>
       </div>
       <section className="notifications-body">
-      <div style={{
-        padding: 30,
-        maxWidth: 1000,
-        margin: "0 auto",
-      }}
-    >
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 20,
-          marginBottom: 25,
-        }}
-      >
-        <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 32,
-              fontWeight: 800,
-            }}
-          >
-            🔔 Notificaciones
-          </h1>
-
-          <p
-            style={{
-              marginTop: 8,
-              color: "#64748b",
-            }}
-          >
-            Avisos y eventos importantes de AgroBrokerIA.
-          </p>
-        </div>
-
-        {pendientes > 0 && (
-          <button
-            type="button"
-            onClick={marcarTodasLeidas}
-            style={{
-              border: 0,
-              borderRadius: 9,
-              padding: "10px 15px",
-              background: "#166534",
-              color: "white",
-              fontWeight: 700,
-              cursor: "pointer",
-            }}
-          >
-            ✓ Marcar todas como leídas
-          </button>
-        )}
+      <div className="notifications-toolbar">
+        <div><strong>Centro de alertas</strong><span>Actualizaciones de ofertas, operaciones y actividad comercial.</span></div>
+        {pendientes > 0 && <button type="button" onClick={marcarTodasLeidas} className="secondary-action">✓ Marcar todas como leídas</button>}
       </div>
 
       {error && (
@@ -355,6 +305,7 @@ export default function NotificacionesPage() {
           ))}
         </div>
       )}
+
       </div>
       </section>
     </main>
