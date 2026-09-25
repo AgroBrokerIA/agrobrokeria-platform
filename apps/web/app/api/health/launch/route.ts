@@ -58,6 +58,98 @@ export async function GET(request: NextRequest) {
     }
 
     checks.supabase = { ok: requiredTables.every(t => checks["db_" + t]?.ok), detail: `${requiredTables.length} tablas críticas verificadas` };
+
+    // Integridad estructural del workflow: el flujo comercial publicado debe
+    // conservar exactamente las 10 etapas obligatorias definidas para granos.
+    try {
+      const { data: workflow } = await supabase
+        .from("workflows")
+        .select("id,nombre,activo")
+        .eq("activo", true)
+        .eq("nombre", "Operación de granos")
+        .maybeSingle();
+
+      if (!workflow) {
+        checks.workflow_definition = {
+          ok: false,
+          detail: "No existe un workflow activo de Operación de granos."
+        };
+      } else {
+        const { data: stages, error: stagesError } = await supabase
+          .from("workflow_etapas")
+          .select("id,orden,nombre,obligatoria")
+          .eq("workflow_id", workflow.id)
+          .order("orden", { ascending: true });
+
+        const validStages =
+          !stagesError &&
+          stages?.length === 10 &&
+          stages.every((stage, index) =>
+            stage.orden === index + 1 && stage.obligatoria === true
+          );
+
+        checks.workflow_definition = validStages
+          ? { ok: true, detail: "Workflow de granos: 10/10 etapas obligatorias." }
+          : {
+              ok: false,
+              detail: stagesError?.message ?? `Workflow inválido: ${stages?.length ?? 0} etapas.`
+            };
+      }
+    } catch (error) {
+      checks.workflow_definition = {
+        ok: false,
+        detail: error instanceof Error ? error.message : "No se pudo verificar el workflow."
+      };
+    }
+
+    // Regla inmutable de comisión de plataforma: USD 1/TN.
+    // Se valida contra el catálogo de monedas, sin hardcodear el ID de USD.
+    try {
+      const { data: usd } = await supabase
+        .from("monedas")
+        .select("id")
+        .eq("codigo", "USD")
+        .maybeSingle();
+
+      if (!usd) {
+        checks.platform_commission_rule = {
+          ok: false,
+          detail: "No se encontró la moneda USD en el catálogo."
+        };
+      } else {
+        const { data: platformCommissions, error: commissionError } = await supabase
+          .from("operacion_comisiones")
+          .select("valor_unitario,moneda_id")
+          .eq("tipo_comision", "PLATAFORMA");
+
+        const invalidCount = commissionError
+          ? -1
+          : (platformCommissions ?? []).filter(
+              (commission) =>
+                Number(commission.valor_unitario) !== 1 ||
+                commission.moneda_id !== usd.id
+            ).length;
+
+        checks.platform_commission_rule =
+          commissionError
+            ? { ok: false, detail: commissionError.message }
+            : invalidCount === 0
+              ? {
+                  ok: true,
+                  detail: `Regla USD 1/TN verificada en ${platformCommissions?.length ?? 0} registros.`
+                }
+              : {
+                  ok: false,
+                  detail: `Se detectaron ${invalidCount} registros de comisión de plataforma fuera de USD 1/TN.`
+                };
+      }
+    } catch (error) {
+      checks.platform_commission_rule = {
+        ok: false,
+        detail: error instanceof Error ? error.message : "No se pudo verificar la comisión de plataforma."
+      };
+    }
+
     checks.arca_environment = {
       ok: Boolean(arcaConfig.cuit) && Boolean(arcaConfig.environment),
       detail: arcaConfig.cuit ? arcaConfig.environment : "Falta ARCA_CUIT"
