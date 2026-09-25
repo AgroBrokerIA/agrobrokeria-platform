@@ -1,5 +1,5 @@
 begin;
-select plan(12);
+select plan(15);
 select is((select count(*) from pg_tables where schemaname='public' and tablename in ('facturas','factura_eventos','contrato_versiones','plantillas_contrato') and rowsecurity),4::bigint,'documental/fiscal tables have RLS');
 select is(has_table_privilege('authenticated','public.facturas','insert'),false,'facturas no direct insert');
 select is(has_table_privilege('authenticated','public.facturas','update'),false,'facturas no direct update');
@@ -12,5 +12,8 @@ select is((select count(*) from public.facturas where importe_total<0),0::bigint
 select is((select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),(select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),'signature provider field is populated for legacy evidence');
 select is((select count(*) from storage.buckets where id='agrobroker-private' and public=false),1::bigint,'private document bucket exists');
 select is((select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'agrobroker_private_%'),4::bigint,'private storage has four access policies');
+select is((select count(*) from public.unit_conversion_rules where from_unit='kg' and to_unit='t' and factor=0.001),1::bigint,'kg to tonne conversion is canonical');
+select is((select public.normalizar_unidad(1000,'kg')->>'unidad_base'),'t','unit normalization uses tonne base');
+select is(round(((select public.normalizar_unidad(1000,'kg')->>'valor_normalizado')::numeric),6),1::numeric,'1000 kg normalizes to 1 tonne');
 select * from finish();
 rollback;
