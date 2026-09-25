@@ -141,3 +141,5 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - El build/production de Vercel no puede certificarse desde la conexión actual porque el scope Vercel no está autorizado.
 - CI GitHub quedó configurado, pero no se declara un build exitoso hasta observar una ejecución real.
 - ARCA y firma externa siguen preparados pero dependen de credenciales/proveedor reales.
+
+- Se agregaron vistas navegables de Pagos y Reportes basadas únicamente en registros reales y respetando RLS.
