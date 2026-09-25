@@ -48,6 +48,8 @@ export default function PanelMensajes({
   const [cargando, setCargando] = useState(true);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState("");
+  const [traducciones, setTraducciones] = useState<Record<string, string>>({});
+  const [traduciendo, setTraduciendo] = useState<string | null>(null);
 
   const mensajesRef = useRef<HTMLDivElement>(null);
 
@@ -308,6 +310,37 @@ export default function PanelMensajes({
     }
   }, [cargando, mensajes.length, usuarioId]);
 
+  async function traducirMensaje(mensaje: Mensaje) {
+    if (traducciones[mensaje.id] || traduciendo === mensaje.id) return;
+    const target = localStorage.getItem("agrobrokeria.language") || document.documentElement.lang || "es";
+    setTraduciendo(mensaje.id);
+    setError("");
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.access_token) throw new Error("AUTH_REQUIRED");
+      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+      if (!base) throw new Error("SUPABASE_URL_MISSING");
+      const response = await fetch(base + "/functions/v1/translate-message", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
+        body: JSON.stringify({ mensaje_id: mensaje.id, idioma_destino: target }),
+      });
+      const result = await response.json();
+      if (!response.ok && result?.estado !== "NO_DISPONIBLE") {
+        throw new Error(result?.error || result?.error_codigo || "No se pudo traducir el mensaje.");
+      }
+      if (result?.texto_traducido) {
+        setTraducciones((actuales) => ({ ...actuales, [mensaje.id]: result.texto_traducido }));
+      } else if (result?.pending_external) {
+        setError("La traducción automática está pendiente de configurar el proveedor externo.");
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo traducir el mensaje.");
+    } finally {
+      setTraduciendo(null);
+    }
+  }
+
   function formatearFecha(fecha: string) {
     return new Date(fecha).toLocaleString("es-AR", {
       day: "2-digit",
@@ -480,8 +513,27 @@ export default function PanelMensajes({
                       wordBreak: "break-word",
                     }}
                   >
-                    {m.mensaje}
+                    {traducciones[m.id] || m.mensaje}
                   </div>
+
+                  {traducciones[m.id] ? (
+                    <button
+                      type="button"
+                      onClick={() => setTraducciones((actuales) => { const next = { ...actuales }; delete next[m.id]; return next; })}
+                      style={{ marginTop: 6, border: 0, background: "transparent", padding: 0, fontSize: 11, color: "#475569", cursor: "pointer" }}
+                    >
+                      Ver original
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => void traducirMensaje(m)}
+                      disabled={traduciendo === m.id}
+                      style={{ marginTop: 6, border: 0, background: "transparent", padding: 0, fontSize: 11, color: "#166534", cursor: "pointer" }}
+                    >
+                      {traduciendo === m.id ? "Traduciendo…" : "Traducir"}
+                    </button>
+                  )}
 
                   <div
                     style={{
