@@ -8,7 +8,7 @@ const menu=[["Inicio","/dashboard","⌂"],["Mercado","/mercado","🌾"],["Market
 
 export default function Sidebar(){
  const pathname=usePathname(); const [mensajes,setMensajes]=useState(0); const [notificaciones,setNotificaciones]=useState(0);
- const [lang,setLang]=useState("es"); const [t,setT]=useState<Record<string,string>>({});
+ const [t,setT]=useState<Record<string,string>>({});
  const fallback:Record<string,string>={platform:"PLATAFORMA","status.operativo":"Mercado operativo"};
  useEffect(()=>{async function cargar(){const saved=localStorage.getItem("agrobrokeria.language")||document.documentElement.lang||"es";const language=["es","en","pt","it","fr","de"].includes(saved)?saved:"es";setLang(language);const {data}=await supabase.from("traducciones_ui").select("clave,texto").eq("idioma",language).eq("version",1);setT(Object.fromEntries((data||[]).map(x=>[x.clave,x.texto])))}void cargar()},[]);
  useEffect(()=>{async function cargar(){const {data:{user}}=await supabase.auth.getUser();if(!user)return;const [{count:m},{count:n}]=await Promise.all([supabase.from("mensajes_comerciales").select("id",{count:"exact",head:true}).eq("destinatario_profile_id",user.id).is("leido_at",null),supabase.from("notificaciones").select("id",{count:"exact",head:true}).or(`profile_id.eq.${user.id},cuenta_id.eq.${user.id}`).eq("leida",false)]);setMensajes(m||0);setNotificaciones(n||0)}void cargar()},[]);
