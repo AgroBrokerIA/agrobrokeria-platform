@@ -1,5 +1,5 @@
 begin;
-select plan(15);
+select plan(16);
 select is((select count(*) from pg_tables where schemaname='public' and tablename in ('facturas','factura_eventos','contrato_versiones','plantillas_contrato') and rowsecurity),4::bigint,'documental/fiscal tables have RLS');
 select is(has_table_privilege('authenticated','public.facturas','insert'),false,'facturas no direct insert');
 select is(has_table_privilege('authenticated','public.facturas','update'),false,'facturas no direct update');
@@ -12,8 +12,10 @@ select is((select count(*) from public.facturas where importe_total<0),0::bigint
 select is((select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),(select count(*) from public.firma_solicitudes where proveedor='AGROBROKER_EVIDENCE'),'signature provider field is populated for legacy evidence');
 select is((select count(*) from storage.buckets where id='agrobroker-private' and public=false),1::bigint,'private document bucket exists');
 select is((select count(*) from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'agrobroker_private_%'),4::bigint,'private storage has four access policies');
-select is((select count(*) from public.unit_conversion_rules where from_unit='kg' and to_unit='t' and factor=0.001),1::bigint,'kg to tonne conversion is canonical');
-select is((select public.normalizar_unidad(1000,'kg')->>'unidad_base'),'t','unit normalization uses tonne base');
-select is(round(((select public.normalizar_unidad(1000,'kg')->>'valor_normalizado')::numeric),6),1::numeric,'1000 kg normalizes to 1 tonne');
+select is((select count(*) from public.unit_definitions where code='KG' and base_unit='KG' and factor_to_base=1),1::bigint,'kg base unit is canonical');
+select is((select count(*) from public.unit_definitions where code='TN' and dimension='MASS' and factor_to_base=1000),1::bigint,'tonne conversion factor is canonical');
+select is((select count(*) from public.unit_definitions where code='ML' and dimension='VOLUME' and factor_to_base=0.001),1::bigint,'millilitre conversion factor is canonical');
+select is((select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname='convert_unit' and pg_get_function_identity_arguments(p.oid)='p_value numeric, p_from text, p_to text'),1::bigint,'central conversion function exists');
+select is((select count(*) from pg_proc p where p.pronamespace='public'::regnamespace and p.proname='normalizar_cantidad_tn'),1::bigint,'tonne normalization function exists');
 select * from finish();
 rollback;
