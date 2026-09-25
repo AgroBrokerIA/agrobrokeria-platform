@@ -33,6 +33,7 @@ export default function OportunidadesPage() {
     useState<OportunidadVista[]>([]);
   const [cargando, setCargando] = useState(true);
   const [error, setError] = useState("");
+  const [monedas, setMonedas] = useState<Record<number,string>>({});
 
   async function cargarOportunidades() {
     setCargando(true);
@@ -64,6 +65,9 @@ export default function OportunidadesPage() {
         setCargando(false);
         return;
       }
+
+      const { data: monedasData } = await supabase.from("monedas").select("id,codigo");
+      setMonedas(Object.fromEntries((monedasData || []).map((m: {id:number;codigo:string}) => [m.id,m.codigo])));
 
       const { data, error: oportunidadesError } =
         await supabase
@@ -225,7 +229,7 @@ export default function OportunidadesPage() {
                     <h2>{publicacion ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN` : "Publicación compatible"}</h2>
                     {publicacion && (
                       <div className="opportunity-details">
-                        <span>USD {Number(publicacion.precio_tn).toLocaleString("es-AR")} / TN</span>
+                        <span>{monedas[publicacion.moneda_id] || "Moneda no informada"} {Number(publicacion.precio_tn).toLocaleString("es-AR")} / TN</span>
                         <span>{[publicacion.localidad, publicacion.provincia].filter(Boolean).join(", ") || "Ubicación no informada"}</span>
                         {publicacion.puerto && <span>Entrega: {publicacion.puerto}</span>}
                         <span>Detectada {formatoFecha(oportunidad.creada_en)}</span>
