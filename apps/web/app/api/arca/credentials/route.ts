@@ -50,7 +50,7 @@ export async function GET(request: Request) {
     return NextResponse.json({
       ok: true,
       servicio: "wscpe",
-      ambiente: "HOMOLOGACION",
+      ambiente: process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION",
       tieneToken: Boolean(credenciales.token),
       tieneSign: Boolean(credenciales.sign),
       expirationTime: credenciales.expirationTime,
