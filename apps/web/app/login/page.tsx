@@ -31,7 +31,11 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setError(error.message); return; }
       if (!data.session || !data.user) { setError("No se pudo crear la sesión."); return; }
-      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard"; router.push(next.startsWith("/") ? next : "/dashboard"); router.refresh();
+      const {data:legal}=await supabase.from("documentos_legales").select("id,version").eq("estado","VIGENTE");
+      const {data:accepted}=await supabase.from("aceptaciones_legales").select("documento_legal_id,version").eq("profile_id",data.user.id);
+      const ok=(legal||[]).every((d:any)=> (accepted||[]).some((a:any)=>a.documento_legal_id===d.id&&a.version===d.version));
+      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+      router.push(ok ? (next.startsWith("/") ? next : "/dashboard") : "/legal/aceptar"); router.refresh();
     } catch { setError("Ocurrió un error al iniciar sesión."); }
     finally { setLoading(false); }
   }
