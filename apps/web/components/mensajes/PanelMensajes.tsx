@@ -23,7 +23,7 @@ type Participante = {
 };
 
 type CompanyUser = {
-  user_id: string;
+  profile_id: string;
   company_id: string;
 };
 
@@ -118,7 +118,7 @@ export default function PanelMensajes({
       if (idsEmpresa.length > 0) {
         const { data: usuarios, error: errorUsuarios } = await supabase
           .from("company_users")
-          .select("user_id, company_id")
+          .select("profile_id, company_id")
           .in("company_id", idsEmpresa);
 
         if (errorUsuarios) {
@@ -137,10 +137,10 @@ export default function PanelMensajes({
           .filter(
             (usuario) =>
               usuario.company_id === participante.empresa_id &&
-              usuario.user_id !== user.id
+              usuario.profile_id !== user.id
           )
           .map((usuario) => ({
-            profileId: usuario.user_id,
+            profileId: usuario.profile_id,
             empresaId: participante.empresa_id,
             rol: participante.rol,
           }));
