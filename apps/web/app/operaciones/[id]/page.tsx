@@ -117,7 +117,7 @@ export default function DetalleOperacion() {
       return;
     }
 
-    const [expedienteRes, facturasRes, contratosRes, documentosRes] = await Promise.all([
+    const [expedienteRes, facturasRes, contratosRes, documentosRes, pricingRes] = await Promise.all([
       supabase.rpc("obtener_expediente_operacion", { p_operacion_id: id }),
       supabase.from("facturas").select("id,estado,numero_comprobante,cae,importe_total,fecha_emision").eq("operacion_id", id).order("fecha_emision", { ascending:false }),
       supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma").eq("operacion_id", id).order("creado_en", { ascending:false }),
@@ -233,11 +233,11 @@ export default function DetalleOperacion() {
         </p>
 
         <p>
-          <strong>Precio:</strong> U$S {operacion.precio_tn} / tn
+          <strong>Precio:</strong> {Number(operacion.precio_tn).toLocaleString("es-AR")} / tn
         </p>
 
         <p>
-          <strong>Importe total:</strong> U$S {operacion.importe_total}
+          <strong>Importe total:</strong> {Number(operacion.importe_total).toLocaleString("es-AR")}
         </p>
       </section>
 
