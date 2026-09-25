@@ -223,6 +223,7 @@ export default function PanelMensajes({
         behavior: "smooth",
       });
     }, 50);
+    return cargados;
   }
 
   async function enviarMensaje() {
