@@ -8,7 +8,7 @@ Deno.serve(async req=>{
   const raw=await req.text(),secret=Deno.env.get("SIGN_PROVIDER_WEBHOOK_SECRET");if(!secret)return new Response(JSON.stringify({error:"WEBHOOK_SECRET_NOT_CONFIGURED"}),{status:503});
   const sig=req.headers.get("x-signature")||"",expected=await hmac(secret,raw);if(!safe(sig,expected))return new Response(JSON.stringify({error:"INVALID_SIGNATURE"}),{status:401});
   const b=JSON.parse(raw),rid=String(b.requestId||b.externalReference||""),status=String(b.status||"");if(!rid)return new Response(JSON.stringify({error:"REQUEST_ID_REQUIRED"}),{status:400});
-  const {data:s}=await db.from("firma_solicitudes").select("*").or("id.eq."+rid+",proveedor_request_id.eq."+rid).maybeSingle();if(!s)return new Response(JSON.stringify({error:"SIGN_REQUEST_NOT_FOUND"}),{status:404});
+  let {data:s}=await db.from("firma_solicitudes").select("*").eq("proveedor_request_id",rid).maybeSingle();if(!s && /^[0-9a-f-]{36}$/i.test(rid)){const r=await db.from("firma_solicitudes").select("*").eq("id",rid).maybeSingle();s=r.data;}if(!s)return new Response(JSON.stringify({error:"SIGN_REQUEST_NOT_FOUND"}),{status:404});
   const signed=["SIGNED","COMPLETED"].includes(status.toUpperCase());
   await db.from("firma_solicitudes").update({proveedor_status:status,proveedor_signed_document_url:b.signedDocumentUrl||b.documentUrl||null,estado:signed?"FIRMADO":s.estado,firmado_at:signed?new Date().toISOString():s.firmado_at,actualizado_at:new Date().toISOString()}).eq("id",s.id);
   await db.from("firma_eventos").insert({solicitud_id:s.id,evento:signed?"PROVEEDOR_FIRMADO":"PROVEEDOR_EVENTO",metadata:b});
