@@ -3,7 +3,7 @@
 ## Estado técnico verificado — 25/09/2026
 
 ### Seguridad / datos
-- 104 tablas públicas con RLS habilitado; 0 tablas públicas sin RLS.
+- 113 tablas públicas con RLS habilitado; 0 tablas públicas sin RLS.
 - Contact Shield: lectura directa de `contactos_comerciales` retirada para `authenticated`; acceso únicamente mediante RPC autorizado por participación en operaciones.
 - Operaciones, contratos, liquidaciones y pagos: escrituras directas desde el rol `authenticated` retiradas; las escrituras críticas pasan por RPC/funciones server-side.
 - Contratos CONFIRMADOS: protección DB contra modificación de términos comerciales.
