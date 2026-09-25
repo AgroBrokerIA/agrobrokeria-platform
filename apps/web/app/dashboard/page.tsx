@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Profile = { nombre:string|null; empresa:string|null; tipo_usuario:string|null };
-type Publication = { id:string; tipo:string; cantidad_tn:number; precio_tn:number; creada_en:string|null; productos?:{nombre:string}|{nombre:string}[]|null; provincia?:string|null };
+type Publication = { id:string; tipo:string; cantidad_tn:number; precio_tn:number; moneda_id:number|null; creada_en:string|null; productos?:{nombre:string}|{nombre:string}[]|null; provincia?:string|null };
 type Activity = { id:string; titulo?:string|null; mensaje?:string|null; creada_en?:string|null; leida?:boolean };
 
 export default function Dashboard(){
