@@ -28,6 +28,24 @@ export default function DocumentosPage(){
    const {data:ed,error:ee}=await supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,url_archivo,fecha_vencimiento,verificado,observaciones,creado_en").eq("empresa_id",profile.active_company_id).order("creado_en",{ascending:false});
    if(ee) throw new Error(ee.message); setEmpresaDocs((ed||[]) as DocumentoEmpresa[]);
  }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los documentos.");}finally{setLoading(false)}})()},[]);
+ const generarComercial=(tipo:"LOI"|"SCO")=>{
+   const op=operaciones.find(x=>x.id===operacionSeleccionada); if(!op) return;
+   const pdf=new jsPDF(); const fecha=new Date().toLocaleDateString("es-AR");
+   pdf.setFontSize(18); pdf.text(tipo==="LOI"?"LETTER OF INTENT":"SOFT CORPORATE OFFER",20,24);
+   pdf.setFontSize(9); pdf.text("AGROBROKER IA · DOCUMENTO COMERCIAL",20,31);
+   pdf.setFontSize(11); pdf.text("Código de operación: "+op.codigo,20,48);
+   pdf.text("Fecha: "+fecha,20,56);
+   pdf.text("Tipo de operación: "+(op.tipo_operacion||"No especificado"),20,64);
+   pdf.text("Cantidad: "+Number(op.cantidad_tn).toLocaleString("es-AR")+" TN",20,72);
+   pdf.text("Precio de referencia: USD "+Number(op.precio_tn).toLocaleString("es-AR")+" / TN",20,80);
+   pdf.text("Importe de referencia: USD "+Number(op.importe_total).toLocaleString("es-AR"),20,88);
+   pdf.setFontSize(10);
+   const body=tipo==="LOI"?"Las partes manifiestan su intención comercial de avanzar en la negociación de la operación identificada, sujeta a verificación de documentación, condiciones comerciales, disponibilidad de mercadería y posterior formalización contractual.":"Se presenta una oferta comercial indicativa sobre la operación identificada, sujeta a disponibilidad, validación de contraparte, condiciones de entrega, calidad, pago y aceptación expresa.";
+   pdf.text(pdf.splitTextToSize(body,170),20,105);
+   pdf.text(pdf.splitTextToSize("Este documento es informativo/no vinculante salvo pacto expreso por escrito. El contrato definitivo y la documentación firmada prevalecen sobre esta pieza comercial.",170),20,132);
+   pdf.save(tipo+"-"+op.codigo+".pdf");
+ };
+
  return <main className="module-page documents-page">
    <div className="module-hero"><div><span className="eyebrow">EXPEDIENTE</span><h1>Documentos</h1><p>Expedientes de empresa, contratos y documentación vinculada a operaciones.</p></div><div className="module-pill">{docs.length+contratos.length+empresaDocs.length} registros</div></div>
    {error&&<div className="module-alert module-alert-error">{error}</div>}
