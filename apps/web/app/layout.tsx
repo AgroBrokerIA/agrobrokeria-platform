@@ -1,5 +1,6 @@
 import "./globals.css";
 import AppChrome from "../components/layout/AppChrome";
+import LanguageBootstrap from "../components/i18n/LanguageBootstrap";
 
 export const metadata = {
   title: "AgroBroker IA",
@@ -13,7 +14,7 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body>
+      <body><LanguageBootstrap />
         <AppChrome>{children}</AppChrome>
       </body>
     </html>
