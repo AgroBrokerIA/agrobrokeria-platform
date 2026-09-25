@@ -47,3 +47,10 @@ Se continúa el cierre de AgroBrokerIA sin datos simulados.
 - Vercel: autorización del scope y secretos de producción.
 - CRON de mercado: `CRON_SECRET`.
 - Prueba E2E autenticada de producción/preproducción.
+
+
+## Cierre autónomo adicional — 25/09/2026
+- Flujo Google Meet endurecido: la API valida empresa activa, participación real en la operación y existencia del vínculo autorizado antes de crear el evento externo.
+- La pantalla de videollamadas ahora exige fecha/hora y permite título configurable; no usa datos de prueba.
+- Se revisó el cron de verificaciones: sin credenciales oficiales no fabrica resultados; registra explícitamente el estado pendiente de integración externa.
+- Vercel continúa sin equipo/proyecto accesible desde la integración actual; no se declara deployment de producción como verificado.
