@@ -52,6 +52,7 @@ export default function DetalleOperacion() {
   const [facturas, setFacturas] = useState<any[]>([]);
   const [contratos, setContratos] = useState<any[]>([]);
   const [documentos, setDocumentos] = useState<any[]>([]);
+  const [pricing, setPricing] = useState<any[]>([]);
 
   async function cargarDatos() {
     setCargando(true);
@@ -120,12 +121,14 @@ export default function DetalleOperacion() {
       supabase.rpc("obtener_expediente_operacion", { p_operacion_id: id }),
       supabase.from("facturas").select("id,estado,numero_comprobante,cae,importe_total,fecha_emision").eq("operacion_id", id).order("fecha_emision", { ascending:false }),
       supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma").eq("operacion_id", id).order("creado_en", { ascending:false }),
-      supabase.from("documentos").select("id,nombre_archivo,tipo_documento,estado,creado_en").eq("operacion_id", id).order("creado_en", { ascending:false }).limit(20)
+      supabase.from("documentos_operacion").select("id,nombre_archivo,tipo_documento,aprobado,obligatorio,observaciones,creado_en").eq("operacion_id", id).order("creado_en", { ascending:false }).limit(20),
+      supabase.from("pricing_calculations").select("id,base_price,premium,discount,freight,taxes,commission,other_costs,final_price,currency,unit,price_type,formula,created_at").eq("operation_id", id).order("created_at",{ascending:false}).limit(10)
     ]);
     setExpediente(expedienteRes.data);
     setFacturas(facturasRes.data || []);
     setContratos(contratosRes.data || []);
     setDocumentos(documentosRes.data || []);
+    setPricing((pricingRes.data || []));
 
     const { data: historialData, error: historialError } = await supabase
       .from("workflow_historial")
@@ -201,15 +204,11 @@ export default function DetalleOperacion() {
   }
 
   return (
-    <main
-      style={{
-        maxWidth: 1100,
-        margin: "0 auto",
-        padding: 30,
-        fontFamily: "Arial, sans-serif",
-      }}
-    >
-      <h1>Operación {operacion.codigo}</h1>
+    <main className="module-page operation-detail-page">
+      <div className="module-hero">
+        <div><span className="eyebrow">EXPEDIENTE OPERATIVO</span><h1>Operación {operacion.codigo}</h1><p>Seguimiento comercial, documental, financiero y logístico en un único expediente.</p></div>
+        <span className="module-pill">{operacion.estado}</span>
+      </div>
 
       <section
         style={{
@@ -329,7 +328,8 @@ export default function DetalleOperacion() {
         </div>
         {facturas.length>0 && <div style={{marginTop:16}}><strong>Facturación</strong>{facturas.map(f=><div key={f.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}>{f.numero_comprobante || "Pendiente de ARCA"} · {f.estado} · {f.cae ? "CAE "+f.cae : "sin CAE"}</div>)}</div>}
         {contratos.length>0 && <div style={{marginTop:16}}><strong>Contratos</strong>{contratos.map(x=><div key={x.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}>{x.numero_contrato} · {x.estado} {x.fecha_firma ? "· Firmado" : ""}</div>)}</div>}
-        {documentos.length===0 && <p style={{color:"#666"}}>Todavía no hay documentos cargados en este expediente.</p>}
+        {documentos.length===0 && <p style={{color:"#666"}}>Todavía no hay documentos cargados en este expediente.</p>} {documentos.length>0 && <div className="document-grid">{documentos.map(d=><article className="document-card" key={d.id}><div><strong>{d.nombre_archivo||d.tipo_documento}</strong><small>{d.tipo_documento} · {d.aprobado?"Aprobado":"Pendiente"}{d.obligatorio?" · Obligatorio":""}</small></div><span className={"document-status "+(d.aprobado?"ok":"pending")}>{d.aprobado?"APROBADO":"PENDIENTE"}</span></article>)}</div>}
+        {pricing.length>0 && <div style={{marginTop:24}}><div className="panel-heading"><div><span className="eyebrow">PRICING ENGINE</span><h3>Últimos cálculos trazables</h3></div></div><div className="document-grid">{pricing.map(p=><article className="document-card" key={p.id}><div><strong>{p.currency} {Number(p.final_price??0).toLocaleString("es-AR")} / {p.unit}</strong><small>{p.price_type} · {p.formula} · {new Date(p.created_at).toLocaleString("es-AR")}</small></div></article>)}</div></div>}
       </section>
 
       <section
