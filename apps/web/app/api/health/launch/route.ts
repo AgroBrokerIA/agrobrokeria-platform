@@ -73,8 +73,22 @@ export async function GET(request: NextRequest) {
       };
     }
 
+    if (checks.arca_environment.ok && checks.arca_credentials.ok) {
+      try {
+        await consultarProvinciasWSCPE();
+        checks.arca_connectivity = { ok: true, detail: "WSCPE respondió correctamente." };
+      } catch (error) {
+        checks.arca_connectivity = {
+          ok: false,
+          detail: error instanceof Error ? error.message : "No fue posible verificar WSCPE."
+        };
+      }
+    } else {
+      checks.arca_connectivity = { ok: false, detail: "No se ejecutó: faltan configuración o credenciales ARCA." };
+    }
+
     const allCore = checks.supabase.ok;
-    const arcaReady = checks.arca_environment.ok && checks.arca_credentials.ok;
+    const arcaReady = checks.arca_environment.ok && checks.arca_credentials.ok && checks.arca_connectivity.ok;
     return NextResponse.json({
       ok: allCore && arcaReady,
       status: allCore && arcaReady ? "ready" : "blocked",
