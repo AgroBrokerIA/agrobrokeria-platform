@@ -281,7 +281,6 @@ export default function PanelMensajes({
         behavior: "smooth",
       });
     }, 50);
-    return cargados;
   }
 
   async function traducirMensajeAutomaticamente(mensaje: Mensaje, target: string, currentUserId: string) {
