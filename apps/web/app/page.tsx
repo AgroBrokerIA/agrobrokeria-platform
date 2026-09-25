@@ -18,7 +18,7 @@ export default function Home() {
           <span><strong>AgroBroker IA</strong><small>CONECTANDO EL AGRO AL MUNDO</small></span>
         </Link>
         <div className="public-nav-links">
-          <a href="#inicio">Inicio</a><a href="#como-funciona">Cómo funciona</a><a href="#commodities">Commodities</a><a href="#precios">Precios</a><a href="#nosotros">Nosotros</a>
+          <a href="#inicio">Inicio</a><a href="#como-funciona">Cómo funciona</a><a href="#commodities">Commodities</a><a href="#nosotros">Nosotros</a>
         </div>
         <div className="public-nav-actions">
           <Link href="/login" className="public-login">Ingresar</Link>
@@ -55,10 +55,6 @@ export default function Home() {
           <article><b>03</b><h3>Negociación</h3><p>Ofertas, contraofertas y conversaciones vinculadas al negocio.</p></article>
           <article><b>04</b><h3>Operación</h3><p>Acuerdo, contrato, firmas, fondos, logística y liquidación.</p></article>
         </div>
-      </section>
-
-      <section id="precios" className="public-pricing">
-        <span className="hero-kicker">MODELO SIMPLE</span><h2>Comisión AgroBroker IA</h2><strong>USD 1 <small>/ tonelada</small></strong><p>Automática, fija y separada de cualquier comisión manual de intermediarios externos.</p>
       </section>
 
       <section id="nosotros" className="public-footer"><div><strong>AgroBroker IA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><Link href="/register">Crear cuenta →</Link></section>
