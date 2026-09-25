@@ -500,30 +500,6 @@ export default function OfertasRecibidasPage() {
 
   return (
     <main className="module-page"><div className="module-hero"><div><span className="eyebrow">NEGOCIACIÓN</span><h1>Ofertas recibidas</h1><p>Gestioná propuestas comerciales sobre tus publicaciones.</p></div><div className="module-pill">Negociación segura</div></div>
-      <div
-        style={{
-          marginBottom: 30,
-        }}
-      >
-        <h1
-          style={{
-            fontSize: 34,
-            marginBottom: 8,
-          }}
-        >
-          📩 Ofertas recibidas
-        </h1>
-
-        <p
-          style={{
-            color: "#666",
-            margin: 0,
-          }}
-        >
-          Ofertas realizadas sobre tus publicaciones.
-        </p>
-      </div>
-
       {loading && (
         <div
           style={{
@@ -600,13 +576,7 @@ export default function OfertasRecibidasPage() {
             {ofertas.map((oferta) => (
               <div
                 key={oferta.oferta_id}
-                style={{
-                  background: "white",
-                  borderRadius: 14,
-                  padding: 25,
-                  boxShadow:
-                    "0 2px 10px rgba(0,0,0,0.08)",
-                }}
+                className="received-offer-card"
               >
                 <div
                   style={{
