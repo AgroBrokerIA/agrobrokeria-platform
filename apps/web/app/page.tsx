@@ -1,15 +1,31 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 
-const commodities = [
-  { name: "Soja", price: "USD 292 /tn", change: "+1,2%", tone: "up", icon: "🌱" },
-  { name: "Maíz", price: "USD 185 /tn", change: "+0,8%", tone: "up", icon: "🌽" },
-  { name: "Trigo", price: "USD 210 /tn", change: "-0,5%", tone: "down", icon: "🌾" },
-  { name: "Girasol", price: "USD 320 /tn", change: "+1,1%", tone: "up", icon: "🌻" },
+const defaultCommodities = [
+  { name: "Soja", price: "Sin cotización", change: "", tone: "", icon: "🌱" },
+  { name: "Maíz", price: "Sin cotización", change: "", tone: "", icon: "🌽" },
+  { name: "Trigo", price: "Sin cotización", change: "", tone: "", icon: "🌾" },
+  { name: "Girasol", price: "Sin cotización", change: "", tone: "", icon: "🌻" },
 ];
 
 export default function Home() {
+  const [commodities, setCommodities] = useState(defaultCommodities);
+  useEffect(() => {
+    supabase.rpc("resumen_publico_mercado").then(({ data }) => {
+      if (!data?.length) return;
+      const icons: Record<string,string> = { Soja:"🌱", Maíz:"🌽", Trigo:"🌾", Girasol:"🌻" };
+      setCommodities(data.map((x:any) => ({
+        name: x.commodity,
+        price: `${x.moneda || "USD"} ${Number(x.precio_promedio).toLocaleString("es-AR")} /tn`,
+        change: `${x.publicaciones} publicaciones`,
+        tone: "",
+        icon: icons[x.commodity] || "🌾"
+      })));
+    });
+  }, []);
   return (
     <main className="public-home">
       <nav className="public-nav">
