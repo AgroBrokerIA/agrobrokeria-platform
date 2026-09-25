@@ -48,6 +48,10 @@ export default function DetalleOperacion() {
   const [historial, setHistorial] = useState<Historial[]>([]);
   const [cargando, setCargando] = useState(true);
   const [mensaje, setMensaje] = useState("");
+  const [expediente, setExpediente] = useState<any>(null);
+  const [facturas, setFacturas] = useState<any[]>([]);
+  const [contratos, setContratos] = useState<any[]>([]);
+  const [documentos, setDocumentos] = useState<any[]>([]);
 
   async function cargarDatos() {
     setCargando(true);
@@ -111,6 +115,17 @@ export default function DetalleOperacion() {
       setCargando(false);
       return;
     }
+
+    const [expedienteRes, facturasRes, contratosRes, documentosRes] = await Promise.all([
+      supabase.rpc("obtener_expediente_operacion", { p_operacion_id: id }),
+      supabase.from("facturas").select("id,estado,numero_comprobante,cae,importe_total,fecha_emision").eq("operacion_id", id).order("fecha_emision", { ascending:false }),
+      supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma").eq("operacion_id", id).order("creado_en", { ascending:false }),
+      supabase.from("documentos").select("id,nombre_archivo,tipo_documento,estado,creado_en").eq("operacion_id", id).order("creado_en", { ascending:false }).limit(20)
+    ]);
+    setExpediente(expedienteRes.data);
+    setFacturas(facturasRes.data || []);
+    setContratos(contratosRes.data || []);
+    setDocumentos(documentosRes.data || []);
 
     const { data: historialData, error: historialError } = await supabase
       .from("workflow_historial")
@@ -301,6 +316,20 @@ export default function DetalleOperacion() {
             <strong>{mensaje}</strong>
           </p>
         )}
+      </section>
+
+
+      <section style={{ border: "1px solid #ddd", borderRadius: 12, padding: 20, marginTop: 20 }}>
+        <h2>Expediente documental</h2>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(150px,1fr))",gap:12,marginTop:15}}>
+          <div><strong>Contratos</strong><div>{contratos.length}</div></div>
+          <div><strong>Facturas</strong><div>{facturas.length}</div></div>
+          <div><strong>Documentos</strong><div>{documentos.length}</div></div>
+          <div><strong>Expediente</strong><div>{expediente ? "Disponible" : "No disponible"}</div></div>
+        </div>
+        {facturas.length>0 && <div style={{marginTop:16}}><strong>Facturación</strong>{facturas.map(f=><div key={f.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}>{f.numero_comprobante || "Pendiente de ARCA"} · {f.estado} · {f.cae ? "CAE "+f.cae : "sin CAE"}</div>)}</div>}
+        {contratos.length>0 && <div style={{marginTop:16}}><strong>Contratos</strong>{contratos.map(x=><div key={x.id} style={{padding:"8px 0",borderBottom:"1px solid #eee"}}>{x.numero_contrato} · {x.estado} {x.fecha_firma ? "· Firmado" : ""}</div>)}</div>}
+        {documentos.length===0 && <p style={{color:"#666"}}>Todavía no hay documentos cargados en este expediente.</p>}
       </section>
 
       <section
