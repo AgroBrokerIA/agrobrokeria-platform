@@ -8,11 +8,13 @@ const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Corredor","co
 
 export default function RegisterPage() {
   const [form, setForm] = useState({ nombre:"", empresa:"", cuit:"", telefono:"", provincia:"", tipoUsuario:"comprador", email:"", password:"", confirmPassword:"" });
-  const [loading, setLoading] = useState(false);\n  const [acepto, setAcepto] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [acepto, setAcepto] = useState(false);
   function update(field: keyof typeof form, value: string) { setForm((current) => ({ ...current, [field]: value })); }
 
   async function registrarse() {
-    if (!acepto) { alert("Debés aceptar los Términos y Condiciones y la Política de Privacidad."); return; }\n    if (!form.nombre.trim() || !form.email.trim() || form.password.length < 8) { alert("Completá nombre, correo y una contraseña de al menos 8 caracteres."); return; } if (form.password !== form.confirmPassword) { alert("Las contraseñas no coinciden."); return; }
+    if (!acepto) { alert("Debés aceptar los Términos y Condiciones y la Política de Privacidad."); return; }
+    if (!form.nombre.trim() || !form.email.trim() || form.password.length < 8) { alert("Completá nombre, correo y una contraseña de al menos 8 caracteres."); return; } if (form.password !== form.confirmPassword) { alert("Las contraseñas no coinciden."); return; }
     setLoading(true);
     const { error } = await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { nombre:form.nombre.trim(), empresa:form.empresa.trim(), cuit:form.cuit.trim(), telefono:form.telefono.trim(), provincia:form.provincia.trim(), tipo_usuario:form.tipoUsuario } }});
     setLoading(false);
