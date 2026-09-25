@@ -187,3 +187,11 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Los estados `failure` de `55ec33e`, `d58bc0e` y `8098a89` corresponden a deployments históricos afectados por el límite de builds y no representan el estado del `main` actual.
 - El deployment actual no puede inspeccionarse mediante la API de Vercel conectada porque el token disponible no tiene autorización sobre el scope `agrobroker`; por ello la certificación se basa en el check de Vercel reportado por GitHub y en la evidencia visible del proyecto.
 - La certificación funcional completa todavía requiere E2E autenticado y las credenciales externas enumeradas abajo.
+
+
+## 2026-09-25 — Última verificación de esta pasada
+
+- Generación DOCX de contratos ahora persiste el archivo en el bucket privado `agrobroker-private` bajo la operación correspondiente y registra la ruta en `contratos.storage_path` y en la última versión contractual cuando existe.
+- La ruta de descarga sigue entregando el DOCX directamente al usuario y no expone el bucket privado.
+- El CI del commit `08f08249be2e5ed8584e82a39628cc66e55f4e0e` terminó **SUCCESS** con npm ci, lint, typecheck y build.
+- El código de `market-data-sync` en GitHub quedó sincronizado con la versión desplegada del parser BCR/CAC.
