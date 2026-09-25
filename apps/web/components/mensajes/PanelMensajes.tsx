@@ -156,8 +156,8 @@ export default function PanelMensajes({
         setDestinatarioSeleccionado(destinos[0].profileId);
       }
 
-      await cargarMensajes(user.id);
-      void traducirEntrantesAutomaticamente(user.id, idiomaPreferido);
+      const mensajesIniciales = await cargarMensajes(user.id);
+      void traducirEntrantesAutomaticamente(user.id, idiomaPreferido, mensajesIniciales);
 
       canal = supabase
         .channel(`mensajes-operacion-${operacionId}`)
@@ -198,7 +198,7 @@ export default function PanelMensajes({
     };
   }, [operacionId]);
 
-  async function cargarMensajes(userId: string) {
+  async function cargarMensajes(userId: string): Promise<Mensaje[]> {
     const { data, error: errorMensajes } = await supabase
       .from("mensajes_comerciales")
       .select("*")
@@ -211,10 +211,11 @@ export default function PanelMensajes({
     if (errorMensajes) {
       console.error(errorMensajes);
       setError(errorMensajes.message);
-      return;
+      return [];
     }
 
-    setMensajes(data || []);
+    const cargados = (data || []) as Mensaje[];
+    setMensajes(cargados);
 
     setTimeout(() => {
       mensajesRef.current?.scrollTo({
@@ -278,6 +279,7 @@ export default function PanelMensajes({
         behavior: "smooth",
       });
     }, 50);
+    return cargados;
   }
 
   async function traducirMensajeAutomaticamente(mensaje: Mensaje, target: string) {
@@ -316,8 +318,8 @@ export default function PanelMensajes({
     }
   }
 
-  async function traducirEntrantesAutomaticamente(userId: string, target: string) {
-    const entrantes = mensajes.filter(
+  async function traducirEntrantesAutomaticamente(userId: string, target: string, lista: Mensaje[]) {
+    const entrantes = lista.filter(
       (mensaje) =>
         mensaje.destinatario_profile_id === userId &&
         mensaje.remitente_profile_id !== userId
