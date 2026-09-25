@@ -49,7 +49,7 @@ Deno.serve(async req=>{
   const uc=createClient(URL,ANON,{global:{headers:{Authorization:bearer}}});const {data:{user}}=await uc.auth.getUser();if(!user)return new Response(JSON.stringify({error:"AUTH_REQUIRED"}),{status:401});
   const b=await req.json(),id=b?.invoice_id;if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return new Response(JSON.stringify({error:"INVALID_INVOICE_ID"}),{status:400});
   const {data:i}=await db.from("facturas").select("*").eq("id",id).single();if(!i)return new Response(JSON.stringify({error:"INVOICE_NOT_FOUND"}),{status:404});
-  const {data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);if(user.id!==i.usuario_responsable&&!p?.length)return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
+  const {data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();const {data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);if(user.id!==i.usuario_responsable&&(profile?.active_company_id!==i.empresa_id||!p?.length))return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
   if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
   await db.from("facturas").update({estado:"PENDIENTE_ARCA",arca_environment:homo?"HOMOLOGACION":"PRODUCCION",arca_service:"wsfev1",actualizada_en:new Date().toISOString()}).eq("id",id);
   try{
