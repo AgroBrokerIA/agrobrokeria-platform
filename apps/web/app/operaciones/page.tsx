@@ -2677,6 +2677,7 @@ Firma: ______________________________
               return (
                 <div
                   key={operacion.id}
+                  className="operation-card"
                   style={{
                     background: "white",
                     borderRadius: 16,
@@ -2686,6 +2687,7 @@ Firma: ______________________________
                   }}
                 >
                   <div
+                    className="operation-card-header"
                     style={{
                       display: "flex",
                       justifyContent: "space-between",
@@ -2740,6 +2742,7 @@ Firma: ______________________________
                   />
 
                   <div
+                    className="operation-metrics"
                     style={{
                       display: "grid",
                       gridTemplateColumns:
@@ -2803,6 +2806,22 @@ Firma: ______________________________
                       </div>
                     </div>
                   </div>
+
+                  {workflow && (
+                    <div className="workflow-rail">
+                      {ETAPAS.map((etapa, index) => {
+                        const orden = index + 1;
+                        const done = orden < ordenActual;
+                        const current = orden === ordenActual;
+                        return (
+                          <div key={etapa} className={`workflow-rail-step ${done ? "done" : ""} ${current ? "current" : ""}`}>
+                            <span>{done ? "✓" : orden}</span>
+                            <small>{etapa}</small>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
 
                   {workflow &&
                       ordenActual === 1 && (
@@ -5641,7 +5660,7 @@ Firma: ______________________________
                     </div>
                   )}
 
-                  <div>
+                  <div className="operation-workflow">
                     <h3 style={{ marginBottom: 20 }}>
                       📌 Estado del workflow
                     </h3>
