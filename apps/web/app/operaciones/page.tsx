@@ -304,13 +304,9 @@ export default function OperacionesPage() {
   }, []);
 
   async function cargarContactos() {
-    const { data, error } = await supabase
-      .from("contactos_comerciales")
-      .select("*")
-      .eq("activo", true)
-      .order("nombre_razon_social", {
-        ascending: true,
-      });
+    const { data, error } = await supabase.rpc(
+      "listar_contactos_comerciales_autorizados"
+    );
 
     if (error) {
       console.error(error);
