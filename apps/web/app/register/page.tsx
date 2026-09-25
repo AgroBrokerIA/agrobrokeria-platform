@@ -16,7 +16,7 @@ export default function RegisterPage() {
     if (!acepto) { alert("Debés aceptar los Términos y Condiciones y la Política de Privacidad."); return; }
     if (!form.nombre.trim() || !form.email.trim() || form.password.length < 8) { alert("Completá nombre, correo y una contraseña de al menos 8 caracteres."); return; } if (form.password !== form.confirmPassword) { alert("Las contraseñas no coinciden."); return; }
     setLoading(true);
-    const { error } = await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { nombre:form.nombre.trim(), empresa:form.empresa.trim(), cuit:form.cuit.trim(), telefono:form.telefono.trim(), provincia:form.provincia.trim(), tipo_usuario:form.tipoUsuario } }});
+    const { error } = await supabase.auth.signUp({ email: form.email.trim(), password: form.password, options: { data: { nombre:form.nombre.trim(), empresa:form.empresa.trim(), cuit:form.cuit.trim(), telefono:form.telefono.trim(), provincia:form.provincia.trim(), tipo_usuario:form.tipoUsuario, legal_accepted: true, legal_user_agent: typeof navigator !== "undefined" ? navigator.userAgent : "" } }});
     setLoading(false);
     if (error) { alert(error.message); return; }
     alert("Cuenta creada correctamente. Revisá tu correo para confirmar la cuenta.");
