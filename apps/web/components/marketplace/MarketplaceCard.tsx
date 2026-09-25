@@ -10,6 +10,7 @@ type Props = { publicacion: any };
 
 export default function MarketplaceCard({ publicacion }: Props) {
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
+  const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [enviado, setEnviado] = useState(false);
   const [error, setError] = useState("");
@@ -101,9 +102,35 @@ export default function MarketplaceCard({ publicacion }: Props) {
         </div>
       )}
 
+      {mostrarDetalle && (
+        <div className="market-detail-panel">
+          <div className="market-detail-header">
+            <div>
+              <span className="eyebrow">DETALLE DE OPERACIÓN</span>
+              <h3>{publicacion.productos?.nombre ?? "Commodity"} · {publicacion.cantidad_tn} TN</h3>
+            </div>
+            <span className="market-detail-status">● {publicacion.estado || "PUBLICADA"}</span>
+          </div>
+          <div className="market-detail-grid">
+            <div><span>Producto</span><strong>{publicacion.productos?.nombre ?? "—"}</strong></div>
+            <div><span>Cantidad</span><strong>{publicacion.cantidad_tn} TN</strong></div>
+            <div><span>Precio</span><strong>USD {publicacion.precio_tn} / TN</strong></div>
+            <div><span>Provincia</span><strong>{publicacion.provincia || "—"}</strong></div>
+            <div><span>Localidad</span><strong>{publicacion.localidad || "—"}</strong></div>
+            <div><span>Entrega / Puerto</span><strong>{publicacion.puerto || "—"}</strong></div>
+          </div>
+          {publicacion.calidad && <div className="market-detail-note"><span>Calidad</span>{publicacion.calidad}</div>}
+          {publicacion.observaciones && <div className="market-detail-note"><span>Condiciones</span>{publicacion.observaciones}</div>}
+          <div className="market-detail-actions">
+            <strong>¿Te interesa esta oportunidad?</strong>
+            <Button variant="secondary" onClick={mostrarInteres}>Hacer oferta →</Button>
+          </div>
+        </div>
+      )}
+
       {!mostrarFormulario && (
         <div style={{ marginTop: 30, display: "flex", gap: 15 }}>
-          <Button>Ver publicación</Button>
+          <Button onClick={() => setMostrarDetalle((actual) => !actual)}>{mostrarDetalle ? "Ocultar detalle" : "Ver publicación"}</Button>
           <Button variant="secondary" onClick={mostrarInteres}>{enviado ? "Oferta enviada" : "Hacer oferta"}</Button>
         </div>
       )}
