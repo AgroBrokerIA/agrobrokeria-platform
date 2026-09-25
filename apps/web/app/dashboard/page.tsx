@@ -18,6 +18,7 @@ export default function Dashboard(){
   const [closedOperations,setClosedOperations]=useState(0);
   const [prices,setPrices]=useState<Publication[]>([]);
   const [activities,setActivities]=useState<Activity[]>([]);
+  const [currencies,setCurrencies]=useState<Record<number,string>>({});
 
   useEffect(()=>{
     async function load(){
@@ -26,6 +27,9 @@ export default function Dashboard(){
       setEmail(auth.user.email??"");
       const {data:profileData}=await supabase.from("profiles").select("nombre,empresa,tipo_usuario").eq("id",auth.user.id).maybeSingle();
       setProfile(profileData);
+
+      const {data:currencyRows}=await supabase.from("monedas").select("id,codigo");
+      setCurrencies(Object.fromEntries((currencyRows||[]).map((m:{id:number;codigo:string})=>[m.id,m.codigo])));
 
       const [{count:activeCount},{count:demandCount},{count:operationCount},{count:closedCount}] = await Promise.all([
         supabase.from("publicaciones").select("id",{count:"exact",head:true}).eq("estado","PUBLICADA"),
@@ -64,7 +68,7 @@ export default function Dashboard(){
       <div className="dashboard-panel dashboard-price-panel">
         <div className="panel-heading"><div><span className="eyebrow">MERCADO</span><h2>Últimas referencias publicadas</h2></div><Link href="/marketplace">Ver mercado →</Link></div>
         {prices.length===0 ? <div className="dashboard-empty-line">Todavía no hay publicaciones activas.</div> : <div className="price-list">
-          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{(Array.isArray(item.productos) ? item.productos[0]?.nombre : item.productos?.nombre)||"Commodity"}</span><span>{item.tipo}</span><strong>USD {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
+          {prices.map((item)=><div key={item.id} className="price-row"><span className="price-product">{(Array.isArray(item.productos) ? item.productos[0]?.nombre : item.productos?.nombre)||"Commodity"}</span><span>{item.tipo}</span><strong>{currencies[item.moneda_id]||"Moneda no informada"} {Number(item.precio_tn||0).toLocaleString("es-AR")} /tn</strong><small>{Number(item.cantidad_tn||0).toLocaleString("es-AR")} tn · {item.provincia||"Sin provincia"}</small></div>)}
         </div>}
       </div>
 
