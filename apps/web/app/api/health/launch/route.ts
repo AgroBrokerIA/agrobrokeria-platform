@@ -179,17 +179,53 @@ export async function GET(request: NextRequest) {
       checks.arca_connectivity = { ok: false, detail: "No se ejecutó: faltan configuración o credenciales ARCA." };
     }
 
+    // Integraciones externas necesarias para el alcance funcional comprometido.
+    checks.signature_provider = {
+      ok: Boolean(process.env.SIGN_PROVIDER_BASE_URL) && Boolean(process.env.SIGN_PROVIDER_API_KEY),
+      detail: process.env.SIGN_PROVIDER_BASE_URL && process.env.SIGN_PROVIDER_API_KEY
+        ? "Proveedor de firma configurado."
+        : "Faltan SIGN_PROVIDER_BASE_URL y/o SIGN_PROVIDER_API_KEY."
+    };
+    checks.translation_provider = {
+      ok: Boolean(process.env.TRANSLATION_API_URL) && Boolean(process.env.TRANSLATION_API_KEY),
+      detail: process.env.TRANSLATION_API_URL && process.env.TRANSLATION_API_KEY
+        ? "Proveedor de traducción configurado."
+        : "Faltan TRANSLATION_API_URL y/o TRANSLATION_API_KEY."
+    };
+    checks.google_meet = {
+      ok: Boolean(process.env.GOOGLE_CLIENT_ID) &&
+          Boolean(process.env.GOOGLE_CLIENT_SECRET) &&
+          Boolean(process.env.GOOGLE_REFRESH_TOKEN),
+      detail: process.env.GOOGLE_CLIENT_ID &&
+              process.env.GOOGLE_CLIENT_SECRET &&
+              process.env.GOOGLE_REFRESH_TOKEN
+        ? "OAuth de Google configurado."
+        : "Faltan credenciales OAuth de Google."
+    };
+    checks.market_cron_secret = {
+      ok: Boolean(process.env.CRON_SECRET),
+      detail: process.env.CRON_SECRET ? "CRON_SECRET configurado." : "Falta CRON_SECRET."
+    };
+
     const allCore = checks.supabase.ok;
     const arcaReady = checks.arca_environment.ok && checks.arca_credentials.ok && checks.arca_connectivity.ok;
+    const integrationsReady =
+      checks.signature_provider.ok &&
+      checks.translation_provider.ok &&
+      checks.google_meet.ok &&
+      checks.market_cron_secret.ok;
+    const launchReady = allCore && arcaReady && integrationsReady;
+
     return NextResponse.json({
-      ok: allCore && arcaReady,
-      status: allCore && arcaReady ? "ready" : "blocked",
+      ok: launchReady,
+      status: launchReady ? "ready" : "blocked",
       core: allCore,
       arca: arcaReady,
+      integrations: integrationsReady,
       latency_ms: Date.now() - started,
       checked_at: new Date().toISOString(),
       checks,
-    }, { status: allCore && arcaReady ? 200 : 503 });
+    }, { status: launchReady ? 200 : 503 });
   } catch (error) {
     return NextResponse.json({
       ok: false,
