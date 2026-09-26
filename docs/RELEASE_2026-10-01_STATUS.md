@@ -203,3 +203,14 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - No secrets or real credentials were committed.
 - GitHub CI is green on the current main after the automatic message-translation hardening.
 - Vercel deployment remains externally rate-limited; no production readiness claim is made from that failed Vercel check.
+
+
+## 2026-09-26 — Unificación visual por referencia
+
+- Se adoptó como referencia de diseño el dashboard proporcionado para AgroBrokerIA.
+- Se reconstruyó el Dashboard con banner operativo, KPIs, Pizarra, mercado, tarjetas de commodities, ofertas, demandas, actividad, operaciones y oportunidades IA.
+- Se unificó el shell autenticado: sidebar oscuro, header con búsqueda/idioma/notificaciones/mensajes/empresa y área de contenido responsive.
+- Se incorporó una capa visual común para módulos: tarjetas, estados, formularios, tablas, expedientes, empresas, configuración, workflow y estados vacíos.
+- Los módulos existentes conservan sus flujos reales y datos de Supabase; el cambio es principalmente de presentación y consistencia visual.
+- CI del commit `3a9507908b004f547a6359e6a3fb132636971066` terminó SUCCESS con npm ci, lint, typecheck y build.
+- Los commits posteriores de pulido visual y corrección semántica de variaciones de mercado quedan sujetos a la ejecución automática del CI.
