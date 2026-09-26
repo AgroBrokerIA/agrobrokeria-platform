@@ -244,3 +244,15 @@ body{background:var(--ab-bg)}
 .module-alert-error,.module-alert.error{background:#fff0f0!important;color:#a33b42!important;border:1px solid #f1cfd2}.module-alert:not(.error):not(.module-alert-error){background:#edf9f3;color:#167052;border:1px solid #ccebdc}.module-empty{background:#fff;border:1px dashed #d4dfdf;border-radius:13px;padding:38px;text-align:center;box-shadow:var(--ab-shadow)}.module-empty h2{font-size:14px;color:#27484a}.module-empty p{font-size:9px;color:#7c888a}.module-empty-icon{font-size:30px}
 .marketplace-page .marketplace-card,.marketplace-page .marketplace-header,.marketplace-page .marketplace-search,.marketplace-page .marketplace-filters{border-radius:11px!important;border-color:var(--ab-border)!important;box-shadow:var(--ab-shadow)}
 @media(max-width:800px){.settings-grid,.document-summary,.auth-two-col{grid-template-columns:1fr}.company-details{grid-template-columns:1fr}.document-section-head{align-items:flex-start;flex-direction:column}.document-grid{grid-template-columns:1fr}}
+
+
+/* Finance and notification modules */
+.notifications-body,.payment-methods-body{display:grid;gap:12px}
+.notifications-toolbar,.payment-methods-toolbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:13px 15px;background:#fff;border:1px solid var(--ab-border);border-radius:12px;box-shadow:var(--ab-shadow)}
+.notifications-toolbar strong,.payment-methods-toolbar strong{display:block;font-size:11px;color:#184b4d}.notifications-toolbar span,.payment-methods-toolbar span{display:block;font-size:8px;color:#7b8588;margin-top:3px}
+.notifications-body>div:not(.notifications-toolbar),.payment-methods-body>section{border-radius:12px!important;border:1px solid var(--ab-border)!important;box-shadow:var(--ab-shadow)!important}
+.secondary-action{border:1px solid #cfe1df;background:#fff;color:#126f69;border-radius:8px;padding:8px 11px;font-size:9px;font-weight:800;cursor:pointer}
+.payment-methods-toolbar button{background:var(--ab-green)!important;border-radius:8px!important;padding:9px 13px!important;font-size:9px}
+.payment-methods-title{font-size:13px;color:#184b4d;margin:4px 0}
+.payment-methods-body label{font-size:8px;font-weight:800;color:#526063}.payment-methods-body input,.payment-methods-body select{font-size:9px!important}
+@media(max-width:600px){.notifications-toolbar,.payment-methods-toolbar{align-items:flex-start;flex-direction:column}.secondary-action{width:100%}}
