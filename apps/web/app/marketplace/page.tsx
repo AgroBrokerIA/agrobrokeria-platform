@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import MarketplaceHeader from "../../components/marketplace/MarketplaceHeader";
 import MarketplaceSearch from "../../components/marketplace/MarketplaceSearch";
@@ -17,6 +18,9 @@ type Publicacion = {
 };
 
 export default function MarketplacePage() {
+  const searchParams = useSearchParams();
+  const initialSearch = searchParams.get("search") || "";
+  const initialTipo = searchParams.get("tipo") || "";
   const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
   const [busqueda, setBusqueda] = useState("");
   const [tipo, setTipo] = useState("");
@@ -26,6 +30,8 @@ export default function MarketplacePage() {
   const [error, setError] = useState("");
 
   useEffect(() => {
+    setBusqueda(initialSearch);
+    if (initialTipo) setTipo(initialTipo);
     async function cargar() {
       setLoading(true); setError("");
       const { data, error } = await supabase.from("publicaciones")
