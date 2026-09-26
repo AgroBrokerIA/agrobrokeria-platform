@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number;moneda_id:number|null;creada_en:string|null;provincia:string|null;localidad:string|null;puerto:string|null;productos?:{nombre:string}|{nombre:string}[]|null};
 type Op={id:string;codigo:string;estado:string;cantidad_tn:number;tipo_operacion:string|null};
 type Opp={id:string;publicacion_id:string;indice_compatibilidad:number;estado:string;creada_en:string;publicacion?:Pub};
-type Quote={id:string;price:number|null;variation:number|null;market_date:string;commodity_id:string|null;currency:string|null;unit:string|null};
+type Quote={id:string;price:number|null;previous_value:number|null;variation:number|null;market_date:string;commodity_id:string|null;currency:string|null;unit:string|null};
 type Activity={id:string;titulo:string|null;mensaje:string|null;creada_en:string|null;leida:boolean};
 
 const iconFor=(name:string)=>name.toLowerCase().includes("soja")?"🌱":name.toLowerCase().includes("maíz")||name.toLowerCase().includes("maiz")?"🌽":name.toLowerCase().includes("trigo")?"🌾":name.toLowerCase().includes("girasol")?"🌻":"◉";
@@ -39,7 +39,7 @@ export default function Dashboard(){
     supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(12),
     supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,tipo_operacion").neq("estado","ANULADA").order("fecha_operacion",{ascending:false}).limit(8),
     companyId?supabase.from("oportunidades").select("id,publicacion_id,indice_compatibilidad,estado,creada_en").eq("empresa_id",companyId).order("indice_compatibilidad",{ascending:false}).limit(5):Promise.resolve({data:[],error:null}),
-    supabase.from("market_quotes").select("id,price,variation,market_date,commodity_id,currency,unit").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(40),
+    supabase.from("market_quotes").select("id,price,previous_value,variation,market_date,commodity_id,currency,unit").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(40),
     supabase.from("contratos").select("id,estado",{count:"exact",head:true}).neq("estado","FIRMADO"),
     supabase.from("facturas").select("id,estado",{count:"exact",head:true}).not("estado","in","(AUTORIZADA,CANCELADA)"),
     supabase.from("notificaciones").select("id,titulo,mensaje,creada_en,leida").or(`profile_id.eq.${user.id},cuenta_id.eq.${user.id}`).order("creada_en",{ascending:false}).limit(6)
@@ -82,10 +82,10 @@ export default function Dashboard(){
   {error&&<div className="module-alert error">{error}</div>}
   <div className="dashboard-main-grid">
    <section className="dashboard-panel dashboard-board">
-    <div className="dashboard-section-head"><h2>◉ Pizarra Rosario - Cotizaciones del día</h2><span className="live-dot">● En vivo</span><small>{quotes[0]?.market_date||"Sin sincronización"}</small><Link href="/mercado">Ver detalle →</Link></div>
+    <div className="dashboard-section-head"><h2>◉ Pizarra Rosario - Cotizaciones</h2><span className="live-dot">● En vivo</span><small>{quotes[0]?.market_date||"Sin sincronización"}</small><Link href="/mercado">Ver detalle →</Link></div>
     <div className="dashboard-tabs"><b>Granos</b><span>Oleaginosas</span><span>Derivados</span><span>Futuros</span><span>Dólar e índices</span></div>
     <div className="dashboard-market-table"><div className="dashboard-table-head"><span>Producto</span><span>Mes</span><span>Último</span><span>Var. Día</span><span>Var. %</span><span>USD/TN</span></div>
-     {marketCards.map(({code,q})=><div className="dashboard-table-row" key={code}><strong>{code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code[0]+code.slice(1).toLowerCase()}</strong><span>{q?.market_date||"—"}</span><span>{q?.price==null?"Sin cotización":money(q.price,q.currency||"USD")}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}`}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</span><strong>{q?.price==null?"—":money(q.price,q.currency||"USD")}</strong></div>)}
+     {marketCards.map(({code,q})=><div className="dashboard-table-row" key={code}><strong>{code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code[0]+code.slice(1).toLowerCase()}</strong><span>{q?.market_date||"—"}</span><span>{q?.price==null?"Sin cotización":money(q.price,q.currency||"USD")}</span><span className={Number(q?.price||0)-Number(q?.previous_value||q?.price||0)>=0?"up":"down"}>{q?.previous_value==null||q?.price==null?"—":`${q.price-q.previous_value>=0?"+":""}${Number(q.price-q.previous_value).toLocaleString("es-AR",{maximumFractionDigits:2})}`}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</span><strong>{q?.price==null?"—":money(q.price,q.currency||"USD")}</strong></div>)}
     </div>
     <div className="dashboard-market-cards">{marketCards.map(({code,q})=><div key={code}><b>{iconFor(code)}</b><span>{code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small></div>)}</div>
    </section>
