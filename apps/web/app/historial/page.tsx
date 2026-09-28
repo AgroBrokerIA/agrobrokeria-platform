@@ -21,7 +21,7 @@ function typeIcon(type:string){const t=type.toLowerCase();if(t.includes("oper"))
 function tone(status:string){const s=status.toLowerCase();if(s.includes("cancel")||s.includes("rechaz"))return "red";if(s.includes("proceso")||s.includes("negoc"))return "yellow";if(s.includes("firma")||s.includes("cerr")||s.includes("pagad")||s.includes("verific")||s.includes("gener")||s.includes("acredit")||s.includes("activo"))return "green";return "blue"}
 
 export default function HistorialPage(){
- const[activities,setActivities]=useState<Activity[]>([]),[selected,setSelected]=useState<Activity|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[state,setState]=useState("Todos"),[country,setCountry]=useState(""),[loading,setLoading]=useState(true);
+ const[activities,setActivities]=useState<Activity[]>([]),[selected,setSelected]=useState<Activity|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[state,setState]=useState("Todos"),[country,setCountry]=useState(""),[loading,setLoading]=useState(true),[historyTab,setHistoryTab]=useState("Todas las actividades");
  useEffect(()=>{(async()=>{setLoading(true);
   const [ops,cts,pays,docs,aud]=await Promise.all([
    supabase.from("operaciones").select("id,codigo,estado,precio_tn,cantidad_tn,importe_total,fecha_operacion,creada_en,tipo_operacion").order("fecha_operacion",{ascending:false}).limit(120),
@@ -45,7 +45,7 @@ export default function HistorialPage(){
  const detail=selected;
  return <main className="history-page">
   <header className="history-hero"><div><h1>Historial</h1><p>Consulta el historial completo de tus operaciones, negociaciones, documentos, pagos y actividades en la plataforma.</p></div></header>
-  <nav className="history-tabs">{["Todas las actividades","Operaciones","Contratos","Documentos","Pagos","Comisiones","Verificaciones","Mensajes","Usuarios"].map((x,i)=><button key={x} className={i===0?"active":""}>{x}</button>)}</nav>
+  <nav className="history-tabs">{[["Todas las actividades","Todos"],["Operaciones","Operación"],["Contratos","Contrato"],["Documentos","Documento"],["Pagos","Pago"],["Comisiones","Comisión"],["Verificaciones","Verificación"],["Mensajes","Mensaje"],["Usuarios","Usuario"]].map(([x,v])=><button key={x} className={historyTab===x?"active":""} onClick={()=>{setHistoryTab(x);setType(v)}}>{x}</button>)}</nav>
   <section className="history-kpis">
    <article className="hk blue"><Icon name="database" size={24}/><div><strong>{counts.total}</strong><span>Operaciones totales</span></div></article>
    <article className="hk green"><Icon name="check" size={24}/><div><strong>{counts.closed}</strong><span>Operaciones cerradas</span></div></article>
