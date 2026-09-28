@@ -343,7 +343,7 @@ export default function NuevaPublicacionForm() {
        */
 
       if (modoEdicion && publicacionId) {
-        const { data, error: errorActualizacion } = await actualizarPublicacion(publicacionId, datos);
+        const { error: errorActualizacion } = await actualizarPublicacion(publicacionId, datos);
         if (errorActualizacion) {
           setError(`No se pudieron guardar los cambios: ${errorActualizacion.message}`);
           return;
