@@ -1,0 +1,50 @@
+"use client";
+
+import {useEffect,useMemo,useState} from "react";
+import {supabase} from "@/lib/supabase/client";
+
+type Quote={id:string;price:number|null;currency:string|null;unit:string|null;price_type:string;market_date:string;obtained_at:string;variation:number|null;previous_value:number|null;position:string|null;freshness:string;commodity_id:string|null;};
+type Row={code:string;name:string;q?:Quote};
+
+const names:Record<string,string>={SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol","ACEITE_SOJA":"Aceite de Soja",PELLETS_SOJA:"Pellets de Soja",HARINA_SOJA:"Harina de Soja",SORGO:"Sorgo"};
+const icon=(code:string)=>code==="SOJA"?"🫘":code==="MAIZ"?"🌽":code==="TRIGO"?"🌾":code==="GIRASOL"?"🌻":code==="ACEITE_SOJA"?"🫒":code==="HARINA_SOJA"?"🌾":"🫘";
+const money=(q?:Quote)=>q?.price==null?"Sin cotización":`${q.currency||"USD"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+
+export default function PizarraPage(){
+ const[quotes,setQuotes]=useState<Quote[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState("");
+ async function load(){
+  setLoading(true);setError("");
+  const[q,c]=await Promise.all([
+   supabase.from("market_quotes").select("id,price,currency,unit,price_type,market_date,obtained_at,variation,previous_value,position,freshness,commodity_id").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300),
+   supabase.from("commodities").select("id,codigo")
+  ]);
+  if(q.error||c.error)setError(q.error?.message||c.error?.message||"No se pudo cargar la pizarra.");
+  setQuotes((q.data||[]) as Quote[]);setCodes(Object.fromEntries((c.data||[]).map((x:any)=>[x.id,String(x.codigo).toUpperCase()])));setLoading(false);
+ }
+ useEffect(()=>{void load()},[]);
+ async function sync(){
+  setSyncing(true);setSyncMsg("");setError("");
+  try{const{data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Necesitás iniciar sesión.");
+   const r=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+"/functions/v1/market-data-sync",{method:"POST",headers:{Authorization:"Bearer "+session.access_token}});
+   const j=await r.json();if(!r.ok)throw new Error(j.error||"No se pudo actualizar BCR/CAC.");
+   setSyncMsg("Pizarra actualizada desde BCR/CAC. El histórico fue conservado.");await load();
+  }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
+ }
+ const latest=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const code=codes[q.commodity_id||""]||q.commodity_id||"OTRO";if(!m.has(code))m.set(code,q)}return m},[quotes,codes]);
+ const wanted=["SOJA","MAIZ","TRIGO","GIRASOL","ACEITE_SOJA","PELLETS_SOJA","HARINA_SOJA","SORGO"];
+ const rows:Row[]=wanted.map(code=>({code,name:names[code]||code,q:latest.get(code)}));
+ const up=rows.filter(r=>(r.q?.variation||0)>0).length,down=rows.filter(r=>(r.q?.variation||0)<0).length,flat=rows.filter(r=>r.q?.variation===0).length,volume=quotes.length;
+ const soja=quotes.filter(q=>codes[q.commodity_id||""]==="SOJA").slice(0,30).reverse();
+ return <main className="board-reference">
+  <header className="board-head"><div><h1>Pizarra de granos</h1><p>Cotizaciones en tiempo real - Bolsa de Comercio de Rosario</p></div><div className="board-head-right"><span><i/> Mercado abierto</span><span>◷ {new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})} (GMT-3)</span><small>Bolsa de Comercio de Rosario</small><button className="board-source">↗ &nbsp; Ver fuente oficial</button></div></header>
+  {error&&<div className="module-alert module-alert-error">{error}</div>}{syncMsg&&<div className="module-alert">{syncMsg}</div>}
+  <div className="board-toolbar"><nav>{["Granos","Aceites","Harinas","Subproductos"].map((x,i)=><button className={i===0?"active":""} key={x}>{x}</button>)}</nav><span>Última actualización: {quotes[0]?.obtained_at?new Date(quotes[0].obtained_at).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"}):"Sin sincronización"}</span><button className="board-refresh" onClick={sync} disabled={syncing}>⟳ &nbsp;{syncing?"Actualizando…":"Actualizar"}</button></div>
+  <section className="board-layout">
+   <section className="board-table-card"><div className="board-table-head"><span>PRODUCTO</span><span>DISPONIBLE</span><span>ÚLTIMO</span><span>VARIACIÓN</span><span>APERTURA</span><span>MÍNIMO</span><span>MÁXIMO</span><span>VOLUMEN</span><span>TENDENCIA</span><span>GRÁFICO</span></div>
+    {loading?<div className="board-empty">Cargando pizarra…</div>:rows.map(r=><div className="board-row" key={r.code}><span className="board-product"><b>{icon(r.code)}</b><strong>{r.name}</strong><small>{r.code==="GIRASOL"?"Rosario":"MATba · Rosario"}</small></span><span>{r.q?.position||"—"}</span><strong>{money(r.q)}</strong><span className={(r.q?.variation||0)>=0?"positive":"negative"}>{r.q?.variation==null?"—":`${r.q.variation>=0?"+":""}${r.q.variation.toFixed(2)}%`} {r.q?.variation!=null?(r.q.variation>=0?"↗":"↘"):""}</span><span>{r.q?.previous_value==null?"—":Number(r.q.previous_value).toLocaleString("es-AR",{minimumFractionDigits:2})}</span><span>—</span><span>—</span><span>{r.q?"—":"—"}</span><span className="board-trend"><i/></span><button>Ver detalle</button></div>)}
+   </section>
+   <aside className="board-sidebar"><section><h2>Seleccionar mercado</h2><select defaultValue="bcr"><option value="bcr">Bolsa de Comercio de Rosario</option></select><select defaultValue="all"><option value="all">Todos los productos</option></select><select defaultValue="all-m"><option value="all-m">Todos los vencimientos</option></select></section><section><h2>📊 &nbsp;Resumen del mercado</h2><dl><div><dt>Productos</dt><dd>{rows.length}</dd></div><div><dt>En alza</dt><dd className="positive">{up} ↗</dd></div><div><dt>En baja</dt><dd className="negative">{down} ↘</dd></div><div><dt>Sin cambios</dt><dd>{flat} →</dd></div><div><dt>Observaciones</dt><dd>{volume}</dd></div><div><dt>Última actualización</dt><dd>{quotes[0]?.obtained_at?new Date(quotes[0].obtained_at).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"}):"—"}</dd></div></dl></section><section><h2>Variación diaria</h2><div className="board-donut"><div><strong>{rows.length?Math.round(up/Math.max(1,rows.length)*100):0}%</strong></div><ul><li><i className="up"/> En alza <b>{rows.length?Math.round(up/Math.max(1,rows.length)*100):0}%</b></li><li><i className="down"/> En baja <b>{rows.length?Math.round(down/Math.max(1,rows.length)*100):0}%</b></li><li><i className="flat"/> Sin cambios <b>{rows.length?Math.round(flat/Math.max(1,rows.length)*100):0}%</b></li></ul></div></section><section><div className="board-side-title"><h2>🔔 &nbsp;Alertas de precios</h2><a href="/notificaciones">Ver todas →</a></div><div className="board-alert">🟢 <span>Las alertas aparecerán cuando existan eventos de mercado.</span></div></section></aside>
+  </section>
+  <section className="board-bottom-grid"><section className="board-chart-card"><div className="board-section-title"><strong>Evolución de precios - Soja (MATba)</strong><div>{["1D","1S","1M","3M","1A","Todo"].map((x,i)=><button className={i===0?"active":""} key={x}>{x}</button>)}</div></div><div className="board-chart">{soja.length?<svg viewBox="0 0 900 260" preserveAspectRatio="none"><defs><linearGradient id="boardArea" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stopColor="#28b879" stopOpacity=".3"/><stop offset="100%" stopColor="#28b879" stopOpacity=".02"/></linearGradient></defs><polyline fill="url(#boardArea)" stroke="none" points={`0,250 ${soja.map((q,i)=>{const vals=soja.map(x=>x.price||0),max=Math.max(...vals),min=Math.min(...vals);const x=20+i*860/Math.max(1,soja.length-1),y=225-(q.price==null?0:((q.price-min)/Math.max(1,max-min))*190);return x+","+y}).join(" ")} 900,250`}/><polyline fill="none" stroke="#16a96d" strokeWidth="3" points={soja.map((q,i)=>{const vals=soja.map(x=>x.price||0),max=Math.max(...vals),min=Math.min(...vals);const x=20+i*860/Math.max(1,soja.length-1),y=225-(q.price==null?0:((q.price-min)/Math.max(1,max-min))*190);return x+","+y}).join(" ")}/></svg>:<div className="board-empty">Sin datos de evolución de Soja. Actualizá BCR/CAC para cargar cotizaciones verificadas.</div>}</div><div className="board-axis"><span>09:00</span><span>10:00</span><span>11:00</span><span>12:00</span><span>13:00</span><span>14:00</span><span>15:00</span><span>16:00</span></div></section><section className="board-compare"><div className="board-section-title"><strong>Comparativa de productos</strong></div><div className="board-product-tabs">{["Soja","Maíz","Trigo","Girasol"].map((x,i)=><button className={i===0?"active":""} key={x}>{x}</button>)}</div><div className="board-compare-chart"><span>Soja　 🟢 Maíz　 🟡 Trigo　 🟠 Girasol</span></div></section></section>
+ </main>
+}
