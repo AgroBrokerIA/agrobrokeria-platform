@@ -334,3 +334,7 @@ body{background:var(--ab-bg)}
 @media(max-width:850px){
   .app-sidebar{height:auto;max-height:calc(100vh - 72px)}
 }
+
+/* Market module spacing */
+.module-kpis{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px}
+.module-kpis span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
