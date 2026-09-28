@@ -9,7 +9,7 @@ type Company={id:string;razon_social:string;cuit:string;rol:string};
 
 export default function FacturasPage(){
  const [rows,setRows]=useState<Factura[]>([]),[ops,setOps]=useState<Op[]>([]),[companies,setCompanies]=useState<Company[]>([]);
- const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[alicuota,setAlicuota]=useState("21"),[docTipo,setDocTipo]=useState("80"),[cond,setCond]=useState("");
+ const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[alicuota,setAlicuota]=useState(""),[docTipo,setDocTipo]=useState(""),[cond,setCond]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
  async function load(){
   setLoading(true);setErr("");
@@ -30,7 +30,7 @@ export default function FacturasPage(){
   try{
    const {data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Sesión expirada.");
    if(!opId||!receiver||!pv||!net)throw new Error("Completá operación, receptor, punto de venta e importe neto.");
-   const {data:id,error}=await supabase.rpc("crear_solicitud_factura",{p_operacion_id:opId,p_empresa_receptor_id:receiver,p_tipo_comprobante_codigo:tipo,p_punto_venta:Number(pv),p_importe_neto:Number(net),p_importe_iva:Number(iva||0),p_condicion_iva_receptor:cond?Number(cond):null,p_doc_tipo_receptor:Number(docTipo),p_iva_alicuota:Number(alicuota||0)});
+   const {data:id,error}=await supabase.rpc("crear_solicitud_factura",{p_operacion_id:opId,p_empresa_receptor_id:receiver,p_tipo_comprobante_codigo:tipo,p_punto_venta:Number(pv),p_importe_neto:Number(net),p_importe_iva:Number(iva||0),p_condicion_iva_receptor:cond?Number(cond):null,p_doc_tipo_receptor:docTipo?Number(docTipo):null,p_iva_alicuota:alicuota?Number(alicuota):null});
    if(error)throw new Error(error.message);
    const r=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+"/functions/v1/arca-facturacion",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({invoice_id:id})});
    const j=await r.json();if(!r.ok)throw new Error(j.error||"Error de integración ARCA.");
