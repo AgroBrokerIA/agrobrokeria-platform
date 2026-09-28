@@ -9,6 +9,7 @@ type Oferta = {
   oferta_id: string;
   empresa_id: string;
   precio_tn: number;
+  moneda_id?: number | null;
   cantidad_tn: number;
   observaciones: string | null;
   estado: string;
@@ -17,6 +18,7 @@ type Oferta = {
   tipo: string;
   cantidad_publicada: number;
   precio_publicado: number;
+  moneda_id?: number | null;
   provincia: string | null;
   localidad: string | null;
   puerto: string | null;
@@ -101,6 +103,7 @@ export default function OfertasRecibidasPage() {
   const [ofertas, setOfertas] = useState<Oferta[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [monedas, setMonedas] = useState<Record<number,string>>({});
 
   useEffect(() => {
     cargarOfertas();
@@ -110,6 +113,8 @@ export default function OfertasRecibidasPage() {
     try {
       setLoading(true);
       setError("");
+      const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
+      setMonedas(Object.fromEntries((monedaData || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
 
       // =====================================================
       // 1. USUARIO AUTENTICADO
@@ -265,7 +270,7 @@ export default function OfertasRecibidasPage() {
       } = await supabase
         .from("publicaciones")
         .select(
-          "id, empresa_id, tipo, cantidad_tn, precio_tn, provincia, localidad, puerto, empresas(id, razon_social, nombre_comercial, cuit)"
+          "id, empresa_id, tipo, cantidad_tn, precio_tn, moneda_id, provincia, localidad, puerto, empresas(id, razon_social, nombre_comercial, cuit)"
         )
         .eq("empresa_id", empresaId);
 
