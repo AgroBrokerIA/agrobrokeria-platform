@@ -22,27 +22,39 @@ export default function MarketplacePage() {
   const [provincia, setProvincia] = useState("");
   const [producto, setProducto] = useState("");
   const [loading, setLoading] = useState(true);
+  const [catalogProvincias, setCatalogProvincias] = useState<string[]>([]);
+  const [catalogProductos, setCatalogProductos] = useState<string[]>([]);
   const [error, setError] = useState("");
 
   useEffect(() => {
     const params = new URLSearchParams(window.location.search);
     setBusqueda(params.get("search") || "");
-    setTipo(params.get("tipo") || "");
+    const tipoParam = params.get("tipo") || "";
+    setTipo(tipoParam === "DEMANDA" ? "COMPRA" : tipoParam);
     async function cargar() {
       setLoading(true); setError("");
-      const { data, error } = await supabase.from("publicaciones")
-        .select("*, productos(nombre), monedas(codigo), empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)")
-        .eq("estado", "PUBLICADA").order("creada_en", { ascending: false });
-      if (error) setError("No se pudieron cargar las publicaciones.");
-      else setPublicaciones(((data as Publicacion[]) || []).map((row:any) => ({ ...row, moneda_codigo: row.monedas?.codigo || null })));
+      const [{ data, error }, { data: productCatalog, error: productError }, { data: provinceCatalog, error: provinceError }] = await Promise.all([
+        supabase.from("publicaciones")
+          .select("*, productos(nombre), monedas(codigo), empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)")
+          .eq("estado", "PUBLICADA").order("creada_en", { ascending: false }),
+        supabase.from("productos").select("id,nombre").eq("activo", true).order("nombre"),
+        supabase.from("provincias").select("id,nombre").eq("pais_id", 1).eq("activo", true).order("nombre")
+      ]);
+      if (error || productError || provinceError) {
+        setError((error || productError || provinceError)?.message || "No se pudieron cargar los datos del marketplace.");
+      } else {
+        setPublicaciones(((data as Publicacion[]) || []).map((row:any) => ({ ...row, moneda_codigo: row.monedas?.codigo || null })));
+        setCatalogProductos((productCatalog || []).map((row:any) => row.nombre));
+        setCatalogProvincias((provinceCatalog || []).map((row:any) => row.nombre));
+      }
       setLoading(false);
     }
     void cargar();
   }, []);
 
-  const tipos = useMemo(() => [...new Set(publicaciones.map((p) => p.tipo).filter(Boolean))], [publicaciones]);
-  const provincias = useMemo(() => [...new Set(publicaciones.map((p) => p.provincia).filter(Boolean))].sort(), [publicaciones]);
-  const productos = useMemo(() => [...new Set(publicaciones.map((p) => p.productos?.nombre).filter(Boolean) as string[])].sort(), [publicaciones]);
+  const tipos = ["COMPRA", "VENTA"];
+  const provincias = catalogProvincias;
+  const productos = catalogProductos;
 
   const filtradas = useMemo(() => publicaciones.filter((p) => {
     const texto = [p.tipo, p.provincia, p.localidad, p.puerto, p.productos?.nombre, p.empresas?.razon_social].join(" ").toLowerCase();
