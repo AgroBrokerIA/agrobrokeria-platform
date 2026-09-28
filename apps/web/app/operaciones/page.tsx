@@ -18,6 +18,7 @@ type Operacion = {
   precio_tn: number;
   cantidad_tn: number;
   importe_total: number;
+  moneda_id: number | null;
   fecha_operacion: string;
 };
 
@@ -209,6 +210,7 @@ const ETAPAS = [
 
 export default function OperacionesPage() {
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
+  const [monedas, setMonedas] = useState<Record<number, string>>({});
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -446,7 +448,7 @@ export default function OperacionesPage() {
       } = await supabase
         .from("operaciones")
         .select(
-          "id, codigo, estado, tipo_operacion, precio_tn, cantidad_tn, importe_total, fecha_operacion"
+          "id, codigo, estado, tipo_operacion, precio_tn, cantidad_tn, importe_total, moneda_id, fecha_operacion"
         )
         .order("fecha_operacion", {
           ascending: false,
@@ -505,6 +507,10 @@ export default function OperacionesPage() {
         });
       }
 
+      const { data: monedaRows, error: monedaError } = await supabase.from("monedas").select("id,codigo");
+      if (monedaError) console.error("No se pudieron cargar las monedas:", monedaError);
+      setMonedas(Object.fromEntries((monedaRows || []).map((m) => [m.id, m.codigo])));
+
       setOperaciones(
         (operacionesDB || []).map((item) => ({
           id: item.id,
@@ -514,6 +520,7 @@ export default function OperacionesPage() {
           precio_tn: Number(item.precio_tn),
           cantidad_tn: Number(item.cantidad_tn),
           importe_total: Number(item.importe_total),
+          moneda_id: item.moneda_id ?? null,
           fecha_operacion: item.fecha_operacion,
         }))
       );
@@ -767,6 +774,10 @@ export default function OperacionesPage() {
     return numero.toLocaleString("es-AR", {
       maximumFractionDigits: 2,
     });
+  }
+
+  function monedaOperacion(operacion: Operacion) {
+    return operacion.moneda_id ? (monedas[operacion.moneda_id] || "Sin moneda") : "Sin moneda";
   }
 
   function formatoFecha(fecha: string) {
@@ -1511,9 +1522,9 @@ La cantidad corresponde a la operación comercial identificada como ${operacion.
 
 CLÁUSULA 3 — PRECIO
 
-Precio pactado: USD ${formatoNumero(operacion.precio_tn)} por tonelada.
+Precio pactado: ${monedaOperacion(operacion)} ${formatoNumero(operacion.precio_tn)} por tonelada.
 
-Importe total estimado de la operación: USD ${formatoNumero(operacion.importe_total)}.
+Importe total estimado de la operación: ${monedaOperacion(operacion)} ${formatoNumero(operacion.importe_total)}.
 
 Cualquier modificación del precio o de las condiciones de fijación deberá constar por escrito y ser aceptada por las partes.
 
