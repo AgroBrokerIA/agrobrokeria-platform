@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { crearNotificacion } from "@/lib/notificaciones/crearNotificacion";
+import { getCompanyBadge } from "@/lib/company-badges";
 
 type Oferta = {
   oferta_id: string;
@@ -22,6 +23,7 @@ type Oferta = {
   empresa_publicante: string | null;
   cuit_publicante: string | null;
   operacion_id: string;
+  empresa_ofertante?: Empresa | null;
 };
 
 type PerfilEmpresa = {
@@ -33,6 +35,11 @@ type Empresa = {
   razon_social: string | null;
   nombre_comercial: string | null;
   cuit: string | null;
+  tipo_empresa?: string | null;
+  verificada?: boolean | null;
+  reputacion_score?: number | null;
+  operaciones_realizadas?: number | null;
+  toneladas_operadas?: number | null;
 };
 
 type OfertaDB = {
@@ -326,6 +333,11 @@ export default function OfertasRecibidasPage() {
         ofertasDB
       );
 
+      const ofertanteIds = [...new Set((ofertasDB || []).map((o: any) => o.empresa_id).filter(Boolean))];
+      let ofertantes: Empresa[] = [];
+      if (ofertanteIds.length) { const { data } = await supabase.from("empresas").select("id, razon_social, nombre_comercial, cuit, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas").in("id", ofertanteIds); ofertantes = (data || []) as Empresa[]; }
+      const mapaOfertantes = new Map(ofertantes.map((e) => [e.id, e]));
+
       // =====================================================
       // 7. ARMAR RESULTADO
       // =====================================================
@@ -381,6 +393,7 @@ export default function OfertasRecibidasPage() {
 
           observaciones:
             ofertaDB.observaciones ?? null,
+          empresa_ofertante: mapaOfertantes.get(ofertaDB.empresa_id) || null,
 
           estado:
             ofertaDB.estado ?? "PENDIENTE",
@@ -828,7 +841,8 @@ export default function OfertasRecibidasPage() {
                       {oferta.empresa_publicante ||
                         "-"}
                     </div>
-                  </div>
+
+                    {oferta.empresa_ofertante && (() => { const badge = getCompanyBadge(oferta.empresa_ofertante.tipo_empresa, Boolean(oferta.empresa_ofertante.verificada)); return <div className="company-badge-stack" style={{alignItems:"flex-start",marginTop:8}}><span className="company-role-badge" style={{color:badge.color,background:badge.background,borderColor:badge.border}}><i />{badge.label}{badge.verified ? " · Verificada" : ""}</span><div className="company-reputation"><div><strong>{oferta.empresa_ofertante.operaciones_realizadas ?? 0}</strong><span>negocios</span></div><div><strong>{oferta.empresa_ofertante.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div><div><strong>{oferta.empresa_ofertante.reputacion_score ?? 0}%</strong><span>cumplimiento</span></div></div></div>; })()}                  </div>
                 </div>
 
                 {oferta.observaciones && (
