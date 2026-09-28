@@ -65,7 +65,7 @@ export default function Dashboard(){
   }catch(e){setError(e instanceof Error?e.message:"No se pudo cargar el tablero.")}finally{setLoading(false)}
  } void load()},[]);
 
- const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes]);
+ const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes,commodities]);
  const soy=[...(grouped.get("SOJA")||[])].reverse();
  const topQuote=soy[soy.length-1];
  const marketCards=["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"].map(code=>{const q=(grouped.get(code)||[])[0];return {code,q}});
