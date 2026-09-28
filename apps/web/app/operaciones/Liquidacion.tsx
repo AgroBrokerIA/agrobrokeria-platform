@@ -51,6 +51,7 @@ export default function Liquidacion({
     observaciones: "",
   });
 
+  const [currencyCode, setCurrencyCode] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
@@ -65,7 +66,8 @@ export default function Liquidacion({
     const neto =
       bruto -
       Number(datos.ajustes_usd || 0) -
-      Number(datos.deducciones_usd || 0);
+      Number(datos.deducciones_usd || 0) -
+      entregadaTn;
 
     return {
       entregadaTn,
@@ -83,7 +85,17 @@ export default function Liquidacion({
 
   useEffect(() => {
     cargar();
+    cargarMoneda();
   }, [operacionId]);
+
+  async function cargarMoneda() {
+    const { data, error } = await supabase
+      .from("operaciones")
+      .select("monedas(codigo)")
+      .eq("id", operacionId)
+      .maybeSingle();
+    if (!error) setCurrencyCode(String((data as { monedas?: { codigo?: string } | null } | null)?.monedas?.codigo ?? ""));
+  }
 
   async function cargar() {
     setError("");
@@ -354,19 +366,19 @@ export default function Liquidacion({
         />
 
         <Campo
-          label="Precio (USD/TN)"
+          label={`Precio (${currencyCode || "moneda de operación"}/TN)`
           value={datos.precio_tn}
           readOnly
         />
 
         <Campo
-          label="Importe bruto (USD)"
+          label={`Importe bruto (${currencyCode || "moneda de operación"})`
           value={calculos.bruto.toFixed(2)}
           readOnly
         />
 
         <Campo
-          label="Ajustes (USD)"
+          label={`Ajustes (${currencyCode || "moneda de operación"})`
           value={datos.ajustes_usd}
           type="number"
           onChange={(v) =>
@@ -375,7 +387,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label="Deducciones (USD)"
+          label={`Deducciones (${currencyCode || "moneda de operación"})`
           value={datos.deducciones_usd}
           type="number"
           onChange={(v) =>
@@ -390,7 +402,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label="Importe neto a liquidar (USD)"
+          label={`Importe neto a liquidar (${currencyCode || "moneda de operación"})`
           value={calculos.neto.toFixed(2)}
           readOnly
         />
@@ -459,12 +471,11 @@ export default function Liquidacion({
         }}
       >
         <strong>Comisión AgroBroker IA:</strong>{" "}
-        USD{" "}
-        {(calculos.entregadaTn || 0).toFixed(2)}
+        USD {(calculos.entregadaTn || 0).toFixed(2)}
         <br />
-        La comisión se registra separadamente y no se descuenta
-        nuevamente del importe de la mercadería. La plataforma la calcula
-        automáticamente como USD 1 por cada tonelada efectivamente entregada.
+        La plataforma la calcula automáticamente como USD 1 por cada tonelada
+        efectivamente entregada y la descuenta del importe neto en el cálculo
+        financiero server-side.
       </div>
 
       {mensaje && (
