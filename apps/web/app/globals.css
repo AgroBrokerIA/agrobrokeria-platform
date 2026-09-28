@@ -338,3 +338,12 @@ body{background:var(--ab-bg)}
 /* Market module spacing */
 .module-kpis{display:flex;flex-wrap:wrap;gap:10px 14px;margin-top:12px}
 .module-kpis span{display:inline-flex;align-items:center;gap:4px;white-space:nowrap}
+
+/* Commission control panel */
+.commission-actions{display:flex;justify-content:space-between;align-items:center;gap:18px;flex-wrap:wrap;margin:0 0 22px;padding:18px 20px;border:1px solid #dbe3ea;border-radius:12px;background:#fff}
+.commission-actions h2{margin:0;font-size:22px}
+.commission-actions p{margin:5px 0 0;color:#64748b;font-size:13px}
+.commission-action-buttons{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.commission-primary-action,.commission-secondary-action{border-radius:9px;padding:10px 15px;font-weight:700;text-decoration:none;cursor:pointer}
+.commission-primary-action{background:#0f172a;color:#fff}
+.commission-secondary-action{border:1px solid #cbd5e1;background:#fff;color:#0f172a}
