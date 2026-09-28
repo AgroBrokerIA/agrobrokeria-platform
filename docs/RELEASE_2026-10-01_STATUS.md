@@ -260,3 +260,23 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 
 ### Evidencia
 - Auditoría detallada: `docs/AUTONOMOUS_FINAL_AUDIT_2026-09-28.md`.
+
+
+## 2026-09-28 — Correcciones finales posteriores a la auditoría
+
+### Finanzas / monedas
+- La comisión fija de AgroBrokerIA ya no depende de un ID de moneda hardcodeado: el cierre de operación resuelve la moneda USD desde el catálogo `monedas`.
+- Se reconciliaron las comisiones de plataforma existentes para que utilicen el registro real de USD del catálogo.
+- La liquidación muestra la moneda persistida de la operación para precio, bruto, ajustes, deducciones y neto; la única moneda deliberadamente fija es USD para la comisión AgroBrokerIA.
+- La UI de liquidación quedó alineada con la fórmula server-side canónica: `neto = bruto - ajustes - deducciones - comisión AgroBrokerIA`.
+
+### Fiscal / ARCA
+- `crear_solicitud_factura` dejó de asumir DocTipo 80 e IVA 21%. Ambos valores quedan nulos por defecto y son obligatorios cuando corresponde.
+- La pantalla de Facturas dejó de precargar DocTipo 80 y alícuota 21%; el usuario debe aportar los datos fiscales registrados/correspondientes.
+- Se mantiene la regla: CAE, numeración y autorización solo pueden provenir de ARCA; sin credenciales válidas la solicitud permanece pendiente/rechazada según la respuesta real.
+
+### Evidencia de esta pasada
+- Supabase: 126/126 tablas públicas con RLS; 0 SECURITY DEFINER ejecutables por `anon`.
+- GitHub Actions: npm ci, lint, typecheck y build exitosos en el cierre de esta pasada.
+- Vercel: check de deployment del `main` actual en estado SUCCESS.
+- No se cargaron cotizaciones BCR ficticias: `market_quotes` permanece en 0 hasta una sincronización real.
