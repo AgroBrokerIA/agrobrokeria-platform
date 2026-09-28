@@ -5,10 +5,11 @@ import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
 import { supabase } from "@/lib/supabase/client";
+import { getCompanyBadge } from "@/lib/company-badges";
 
 type Props = { publicacion: any };
 
-export default function MarketplaceCard({ publicacion }: Props) {
+export default function MarketplaceCard({ publicacion }: Props) {\n  const companyBadge = getCompanyBadge(publicacion.empresas?.tipo_empresa, Boolean(publicacion.empresas?.verificada));
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -62,10 +63,10 @@ export default function MarketplaceCard({ publicacion }: Props) {
   return (
     <Card>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <Badge>{publicacion.tipo}</Badge><div style={{ fontSize: 28 }}>⭐</div>
+        <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}><Badge>{publicacion.tipo}</Badge><span className="company-role-badge" style={{color:companyBadge.color,background:companyBadge.background,borderColor:companyBadge.border}}><i />{companyBadge.label}{companyBadge.verified ? " · Verificada" : ""}</span></div><div style={{ fontSize: 28 }}>⭐</div>
       </div>
       <h2 style={{ marginTop: 15, marginBottom: 5, fontSize: 34 }}>🌽 {publicacion.productos?.nombre ?? "Producto"}</h2>
-      <p style={{ color: "#666", marginBottom: 30 }}>{publicacion.empresas?.razon_social ?? "Empresa"}</p>
+      <p style={{ color: "#666", marginBottom: 12 }}>{publicacion.empresas?.razon_social ?? "Empresa"}</p>\n      <div className="company-reputation" aria-label="Historial comercial">\n        <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>\n        <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>\n        <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>\n      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30 }}>
         <div><p style={{ color: "#666" }}>Cantidad publicada</p><h3>{publicacion.cantidad_tn} TN</h3><br /><p style={{ color: "#666" }}>Provincia</p><h3>{publicacion.provincia}</h3></div>
