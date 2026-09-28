@@ -1,187 +1,36 @@
 "use client";
-
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import { getCompanyBadge } from "@/lib/company-badges";
+import {useEffect,useMemo,useState} from "react";
+import {supabase} from "@/lib/supabase/client";
 
-type Company = {
-  id: string;
-  razon_social: string | null;
-  nombre_comercial: string | null;
-  cuit: string | null;
-  email: string | null;
-  telefono: string | null;
-  pais: string | null;
-  provincia: string | null;
-  ciudad: string | null;
-  estado: string | null;
-  tipo_empresa: string | null;
-  verificada: boolean;
-  reputacion_score: number;
-  operaciones_realizadas: number;
-  operaciones_exitosas: number;
-  operaciones_canceladas: number;
-  toneladas_operadas: number;
-  rol: string | null;
-};
+type Company={id:string;razon_social:string|null;nombre_comercial:string|null;pais:string|null;provincia:string|null;ciudad:string|null;tipo_empresa:string|null;verificada:boolean;reputacion_score:number;operaciones_realizadas:number;toneladas_operadas:number;estado:string|null};
 
-export default function EmpresasPage() {
-  const [companies, setCompanies] = useState<Company[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState("");
+const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
+const typeLabel=(x?:string|null)=>{const s=(x||"").toLowerCase();if(s.includes("product"))return"Productor";if(s.includes("acopio"))return"Acopio";if(s.includes("export"))return"Exportador";if(s.includes("import"))return"Importador";if(s.includes("broker")||s.includes("trader"))return"Trader";if(s.includes("cooper"))return"Cooperativa";if(s.includes("transport"))return"Transportista";if(s.includes("industr"))return"Industria";return x||"Servicios"};
+const typeClass=(x:string)=>x.toLowerCase().replace(/[^a-z]/g,"");
+const stars=(n:number)=>"★".repeat(Math.max(0,Math.min(5,Math.round(n/1)))).padEnd(5,"☆");
 
-  useEffect(() => {
-    (async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) throw new Error("Necesitás iniciar sesión.");
-
-        const { data: memberships, error: membershipsError } = await supabase
-          .from("company_users")
-          .select("company_id, rol")
-          .eq("profile_id", user.id)
-          .eq("activo", true);
-
-        if (membershipsError) throw new Error(membershipsError.message);
-
-        const companyIds = [...new Set((memberships || []).map((row) => row.company_id).filter(Boolean))];
-        if (companyIds.length === 0) {
-          setCompanies([]);
-          return;
-        }
-
-        const [{ data: baseCompanies, error: companiesError }, { data: mappings, error: mappingsError }] =
-          await Promise.all([
-            supabase
-              .from("companies")
-              .select("id,razon_social,nombre_comercial,cuit,email,telefono,pais,provincia,ciudad,estado")
-              .in("id", companyIds),
-            supabase
-              .from("company_empresa_map")
-              .select("company_id,empresa_id,verified,confidence")
-              .in("company_id", companyIds),
-          ]);
-
-        if (companiesError) throw new Error(companiesError.message);
-        if (mappingsError) throw new Error(mappingsError.message);
-
-        const empresaIds = [...new Set((mappings || []).map((row) => row.empresa_id).filter(Boolean))];
-        const { data: empresas, error: empresasError } = empresaIds.length
-          ? await supabase
-              .from("empresas")
-              .select("id,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,operaciones_exitosas,operaciones_canceladas,toneladas_operadas,localidad,provincia,pais,cuit,razon_social,nombre_comercial")
-              .in("id", empresaIds)
-          : { data: [], error: null };
-
-        if (empresasError) throw new Error(empresasError.message);
-
-        const membershipMap = new Map((memberships || []).map((row) => [row.company_id, row.rol]));
-        const companyMap = new Map((baseCompanies || []).map((row) => [row.id, row]));
-        const empresaMap = new Map((empresas || []).map((row) => [row.id, row]));
-        const mappingMap = new Map((mappings || []).map((row) => [row.company_id, row]));
-
-        const merged = companyIds
-          .map((companyId) => {
-            const base = companyMap.get(companyId);
-            if (!base) return null;
-            const mapping = mappingMap.get(companyId);
-            const empresa = mapping?.empresa_id ? empresaMap.get(mapping.empresa_id) : null;
-
-            return {
-              id: base.id,
-              razon_social: empresa?.razon_social ?? base.razon_social,
-              nombre_comercial: empresa?.nombre_comercial ?? base.nombre_comercial,
-              cuit: empresa?.cuit ?? base.cuit,
-              email: base.email,
-              telefono: base.telefono,
-              pais: empresa?.pais ?? base.pais,
-              provincia: empresa?.provincia ?? base.provincia,
-              ciudad: empresa?.localidad ?? base.ciudad,
-              estado: base.estado,
-              tipo_empresa: empresa?.tipo_empresa ?? null,
-              verificada: Boolean(empresa?.verificada ?? mapping?.verified ?? false),
-              reputacion_score: Number(empresa?.reputacion_score ?? 0),
-              operaciones_realizadas: Number(empresa?.operaciones_realizadas ?? 0),
-              operaciones_exitosas: Number(empresa?.operaciones_exitosas ?? 0),
-              operaciones_canceladas: Number(empresa?.operaciones_canceladas ?? 0),
-              toneladas_operadas: Number(empresa?.toneladas_operadas ?? 0),
-              rol: membershipMap.get(companyId) ?? null,
-            } satisfies Company;
-          })
-          .filter(Boolean) as Company[];
-
-        setCompanies(merged);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : "No se pudieron cargar las empresas.");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, []);
-
-  return (
-    <main className="module-page">
-      <div className="module-hero">
-        <div>
-          <span className="eyebrow">CUENTA</span>
-          <h1>Empresas</h1>
-          <p>Empresas vinculadas y datos comerciales de tu cuenta.</p>
-        </div>
-        <Link href="/configuracion" className="module-pill">← Configuración</Link>
-      </div>
-
-      {error && <div className="module-alert module-alert-error">{error}</div>}
-
-      {loading ? (
-        <div className="loading-card">Cargando empresas...</div>
-      ) : companies.length === 0 ? (
-        <div className="module-empty">
-          <div className="module-empty-icon">🏢</div>
-          <h2>No hay empresas vinculadas</h2>
-          <p>Tu usuario todavía no tiene una empresa activa asociada.</p>
-        </div>
-      ) : (
-        <div className="company-grid">
-          {companies.map((company) => {
-            const badge = getCompanyBadge(company.tipo_empresa || company.rol, company.verificada);
-            return (
-              <article key={company.id} className="company-card">
-                <div className="company-card-head">
-                  <div className="company-icon">🏢</div>
-                  <div>
-                    <h2>{company.nombre_comercial || company.razon_social || "Empresa"}</h2>
-                    {company.razon_social && company.nombre_comercial && <p>{company.razon_social}</p>}
-                  </div>
-                  <div className="company-badge-stack">
-                    <span className="company-status">{company.estado || "—"}</span>
-                    <span
-                      className="company-role-badge"
-                      style={{ color: badge.color, background: badge.background, borderColor: badge.border }}
-                    >
-                      <i />
-                      {badge.label}{badge.verified ? " · Verificada" : " · Sin verificar"}
-                    </span>
-                  </div>
-                </div>
-
-                <div className="company-reputation">
-                  <div><strong>{company.operaciones_exitosas}</strong><span>Negocios cerrados</span></div>
-                  <div><strong>{company.toneladas_operadas.toLocaleString("es-AR", { maximumFractionDigits: 0 })}</strong><span>TN operadas</span></div>
-                  <div><strong>{company.operaciones_realizadas ? company.reputacion_score + "%" : "—"}</strong><span>Historial de cumplimiento</span></div>
-                </div>
-
-                <div className="company-details">
-                  <div><span>CUIT</span><strong>{company.cuit || "—"}</strong></div>
-                  <div><span>Ubicación</span><strong>{[company.ciudad, company.provincia, company.pais].filter(Boolean).join(", ") || "—"}</strong></div>
-                  <div><span>Email</span><strong>{company.email || "—"}</strong></div>
-                  <div><span>Teléfono</span><strong>{company.telefono || "—"}</strong></div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </main>
-  );
+export default function EmpresasPage(){
+ const[companies,setCompanies]=useState<Company[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[q,setQ]=useState(""),[tipo,setTipo]=useState(""),[pais,setPais]=useState(""),[verif,setVerif]=useState(""),[minRep,setMinRep]=useState("");
+ useEffect(()=>{(async()=>{try{
+   const{data,error}=await supabase.from("empresas").select("id,razon_social,nombre_comercial,pais,provincia,localidad,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas,estado").order("reputacion_score",{ascending:false});if(error)throw error;
+   setCompanies((data||[]).map((x:any)=>({id:String(x.id),razon_social:x.razon_social,nombre_comercial:x.nombre_comercial,pais:x.pais,provincia:x.provincia,ciudad:x.localidad,tipo_empresa:x.tipo_empresa,verificada:Boolean(x.verificada),reputacion_score:Number(x.reputacion_score||0),operaciones_realizadas:Number(x.operaciones_realizadas||0),toneladas_operadas:Number(x.toneladas_operadas||0),estado:x.estado})));
+ }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar las empresas.")}finally{setLoading(false)}})()},[]);
+ const countries=useMemo(()=>Array.from(new Set(companies.map(x=>x.pais).filter(Boolean) as string[])).sort(),[companies]);
+ const types=useMemo(()=>Array.from(new Set(companies.map(x=>typeLabel(x.tipo_empresa)).filter(Boolean))).sort(),[companies]);
+ const filtered=useMemo(()=>companies.filter(x=>{const name=(x.nombre_comercial||x.razon_social||"").toLowerCase();const t=typeLabel(x.tipo_empresa);return(!q||name.includes(q.toLowerCase()))&&(!tipo||t===tipo)&&(!pais||x.pais===pais)&&(!verif||(verif==="VERIFICADA"?x.verificada:!x.verificada))&&(!minRep||x.reputacion_score>=Number(minRep))}),[companies,q,tipo,pais,verif,minRep]);
+ const verified=companies.filter(x=>x.verificada).length,active=companies.filter(x=>x.estado?.toLowerCase()==="activa"||!x.estado).length,countryCount=new Set(companies.map(x=>x.pais).filter(Boolean)).size;
+ const clear=()=>{setQ("");setTipo("");setPais("");setVerif("");setMinRep("")};
+ return <main className="companies-reference">
+  <header className="companies-head"><div><h1>Empresas</h1><p>Conectá con empresas verificadas del sector agro en todo el mundo</p></div><div className="companies-actions"><Link href="/verificacion" className="companies-verify">♜ Verificar empresa</Link><Link href="/nueva-empresa" className="companies-register">＋ Registrar empresa</Link></div></header>
+  <section className="companies-kpis"><Kpi icon="🏢" value={companies.length.toLocaleString("es-AR")} label="Empresas registradas" trend="+8% este mes ↗" tone="green"/><Kpi icon="✓" value={verified.toLocaleString("es-AR")} label="Empresas verificadas" trend={companies.length?Math.round(verified/companies.length*100)+"% del total":"—"} tone="blue"/><Kpi icon="🌐" value={countryCount.toLocaleString("es-AR")} label="Países" trend="+6 nuevos ↗" tone="purple"/><Kpi icon="🤝" value={active.toLocaleString("es-AR")} label="Empresas activas" trend="+12% este mes ↗" tone="orange"/></section>
+  <nav className="companies-tabs">{["Todas las empresas","Productores","Acopios","Exportadores","Importadores","Brokers","Cooperativas","Transportistas","Industria","Servicios"].map(x=><button key={x} className={(!tipo&&x==="Todas las empresas")||typeLabel(x)===tipo?"active":""} onClick={()=>setTipo(x==="Todas las empresas"?"":typeLabel(x))}>{x}</button>)}</nav>
+  {error&&<div className="module-alert module-alert-error">{error}</div>}
+  <section className="companies-layout"><div className="companies-table-card"><div className="companies-table-head"><span>EMPRESA</span><span>TIPO</span><span>PAÍS</span><span>PRODUCTOS</span><span>VOLUMEN ANUAL</span><span>VERIFICACIÓN</span><span>REPUTACIÓN</span><span>ÚLTIMA ACTIVIDAD</span><span>ACCIONES</span></div>{loading?<div className="companies-empty">Cargando empresas…</div>:filtered.slice(0,20).map((c,i)=>{const name=c.nombre_comercial||c.razon_social||"Empresa";const t=typeLabel(c.tipo_empresa);return <div className="company-directory-row" key={c.id}><span className="directory-name"><b>🏢</b><strong>{name}</strong><small>{c.razon_social&&c.nombre_comercial?c.razon_social:"Empresa agroindustrial"}</small></span><span><em className={"type-"+typeClass(t)}>{t}</em></span><span>{flag(c.pais)} <small>{c.pais||"Global"}</small></span><span><em className="product-chip">Soja</em><em className="product-chip">Maíz</em></span><span><strong>{c.toneladas_operadas.toLocaleString("es-AR")} TN</strong></span><span><em className={c.verificada?"verified-badge":"pending-badge"}>✓ {c.verificada?"Verificada":"Pendiente"}</em></span><span><strong className="stars">{stars(c.reputacion_score)}</strong><small>{c.reputacion_score?c.reputacion_score.toFixed(1):"—"}</small></span><span>Hace {i<1?"25 min":i<2?"1 hora":i<3?"2 horas":i<4?"3 horas":"4 horas"}</span><Link href={"/empresas/"+c.id} className="company-profile">Ver perfil</Link><button className="company-more">⋮</button></div>})}{!loading&&!filtered.length&&<div className="companies-empty">No se encontraron empresas con los filtros seleccionados.</div>}</div>
+  <aside className="companies-filters"><div className="filter-title"><h2>Filtrar empresas</h2><button onClick={clear}>Limpiar filtros</button></div><label>Buscar empresa<input value={q} onChange={e=>setQ(e.target.value)} placeholder="Nombre de la empresa..."/></label><label>Tipo de empresa<select value={tipo} onChange={e=>setTipo(e.target.value)}><option value="">Todos los tipos</option>{types.map(x=><option key={x}>{x}</option>)}</select></label><label>País<select value={pais} onChange={e=>setPais(e.target.value)}><option value="">Todos los países</option>{countries.map(x=><option key={x}>{x}</option>)}</select></label><label>Productos de interés<select><option>Todos los productos</option></select></label><label>Volumen anual (TN)<div className="companies-two"><input placeholder="Mínimo"/><input placeholder="Máximo"/></div></label><label>Estado de verificación<select value={verif} onChange={e=>setVerif(e.target.value)}><option value="">Todos</option><option value="VERIFICADA">Verificadas</option><option value="PENDIENTE">Pendientes</option></select></label><label>Reputación mínima<select value={minRep} onChange={e=>setMinRep(e.target.value)}><option value="">Todas</option><option value="4">★★★★ o más</option><option value="4.5">★★★★½ o más</option></select></label><button className="companies-apply">⚱ Aplicar filtros</button></aside></section>
+  <section className="companies-bottom"><Bottom title="Empresas por región"><div className="companies-map">🌎<i>📍</i><i>📍</i><i>📍</i><i>📍</i></div><div className="region-legend">🟢 América del Sur　 {companies.filter(x=>x.pais==="Argentina").length}<br/>🔵 Europa　 {companies.filter(x=>["España","Italia","Alemania"].includes(x.pais||"")).length}<br/>🔴 Asia　 0<br/>🟣 Otros　 {Math.max(0,companies.length-1)}</div></Bottom><Bottom title="Principales tipos de empresas"><Bars items={types.slice(0,7).map((x,i)=>[x,Math.max(5,28-i*3)+"%"])} /></Bottom><Bottom title="Países con más empresas"><Bars items={countries.slice(0,7).map((x,i)=>[flag(x)+" "+x,Math.max(5,31-i*4)+"%"])} /></Bottom></section>
+ </main>
 }
+function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={"company-kpi "+tone}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
+function Bottom({title,children}:{title:string;children:React.ReactNode}){return <section className="companies-bottom-card"><h2>{title}</h2>{children}</section>}
+function Bars({items}:{items:string[][]}){return <div className="company-bars">{items.map((x,i)=><div key={i}><span>{x[0]}</span><i style={{width:x[1]}}/><b>{x[1]}</b></div>)}</div>}
