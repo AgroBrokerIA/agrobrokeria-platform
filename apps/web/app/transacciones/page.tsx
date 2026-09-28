@@ -27,7 +27,7 @@ function rowIcon(t:string){if(t==="Cobro")return"down";if(t==="Comisión")return
 function rowClass(t:string){if(t==="Cobro")return"green";if(t==="Comisión")return"orange";if(t==="Transferencia"||t==="Retiro")return"red";return"blue"}
 
 export default function TransaccionesPage(){
- const[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true);
+ const[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas");
  useEffect(()=>{(async()=>{setLoading(true);
   const [pay,com,ops]=await Promise.all([
    supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").order("creado_en",{ascending:false}).limit(120),
