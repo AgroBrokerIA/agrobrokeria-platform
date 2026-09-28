@@ -63,7 +63,7 @@ export default function Dashboard(){
    setCounts({offers:oc||0,demands:dc||0,opportunities:pc||0,operations:opCount||0,contracts:comms.count||0,invoices:invoices.count||0});
    setActivities((notifs.data||[]) as Activity[]);
   }catch(e){setError(e instanceof Error?e.message:"No se pudo cargar el tablero.")}finally{setLoading(false)}
- } void load()},[]);
+ } void load()},[router]);
 
  const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes,commodities]);
  const soy=[...(grouped.get("SOJA")||[])].reverse();
