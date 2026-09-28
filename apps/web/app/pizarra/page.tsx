@@ -36,7 +36,8 @@ export default function PizarraPage(){
  const tabCodes:Record<string,string[]>={Granos:["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"],Aceites:["ACEITE_SOJA"],Harinas:["HARINA_SOJA"],Subproductos:["PELLETS_SOJA","SORGO"]};
  const rows:Row[]=(tabCodes[boardTab]||wanted).map(code=>({code,name:names[code]||code,q:latest.get(code)}));
  const up=rows.filter(r=>(r.q?.variation||0)>0).length,down=rows.filter(r=>(r.q?.variation||0)<0).length,flat=rows.filter(r=>r.q?.variation===0).length,volume=quotes.length;
- const soja=quotes.filter(q=>codes[q.commodity_id||""]==="SOJA").slice(0,30).reverse(); const compareCodes=["SOJA","MAIZ","TRIGO","GIRASOL"]; const compareSeries=compareCodes.map(code=>({code,points:quotes.filter(q=>codes[q.commodity_id||""]===code&&q.price!=null).slice(0,20).reverse()}));
+ const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
+ const soja=quotes.filter(q=>codes[q.commodity_id||""]==="SOJA").slice(0,rangeSize[range]||30).reverse(); const compareCodes=["SOJA","MAIZ","TRIGO","GIRASOL"]; const compareSeries=compareCodes.map(code=>({code,points:quotes.filter(q=>codes[q.commodity_id||""]===code&&q.price!=null).slice(0,20).reverse()}));
  return <main className="board-reference">
   <header className="board-head"><div><h1>Pizarra de granos</h1><p>Cotizaciones en tiempo real - Bolsa de Comercio de Rosario</p></div><div className="board-head-right"><span><i/> Mercado abierto</span><span>◷ {new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})} (GMT-3)</span><small>Bolsa de Comercio de Rosario</small><a className="board-source" href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1" target="_blank" rel="noreferrer">↗ &nbsp; Ver fuente oficial</a></div></header>
   {error&&<div className="module-alert module-alert-error">{error}</div>}{syncMsg&&<div className="module-alert">{syncMsg}</div>}
