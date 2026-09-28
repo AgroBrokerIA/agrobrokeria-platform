@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Card from "../ui/Card";
 import Badge from "../ui/Badge";
 import Button from "../ui/Button";
@@ -19,7 +19,14 @@ export default function MarketplaceCard({ publicacion }: Props) {
   const [cantidadOferta, setCantidadOferta] = useState(String(publicacion.cantidad_tn ?? ""));
   const [precioOferta, setPrecioOferta] = useState(String(publicacion.precio_tn ?? ""));
   const [monedaOferta, setMonedaOferta] = useState(String(publicacion.moneda_id ?? ""));
+  const [monedas, setMonedas] = useState<Array<{ id: number; codigo: string; nombre: string | null }>>([]);
   const [observaciones, setObservaciones] = useState("");
+
+  useEffect(() => {
+    supabase.from("monedas").select("id,codigo,nombre").order("id").then(({ data }) => {
+      setMonedas((data || []) as Array<{ id: number; codigo: string; nombre: string | null }>);
+    });
+  }, []);
 
   async function mostrarInteres() {
     setError("");
@@ -89,7 +96,7 @@ export default function MarketplaceCard({ publicacion }: Props) {
             <label>Cantidad ofertada (TN)<input type="number" min="0.01" step="0.01" value={cantidadOferta} onChange={(e) => setCantidadOferta(e.target.value)} style={inputStyle} /></label>
             <label>Precio ofertado por TN<input type="number" min="0.01" step="0.01" value={precioOferta} onChange={(e) => setPrecioOferta(e.target.value)} style={inputStyle} /></label>
             <label>Moneda<select value={monedaOferta} onChange={(e) => setMonedaOferta(e.target.value)} style={inputStyle}>
-              <option value="">Seleccionar moneda</option><option value="2">USD - Dólares</option><option value="1">ARS - Pesos argentinos</option>
+              <option value="">Seleccionar moneda</option>{monedas.map((moneda) => <option key={moneda.id} value={moneda.id}>{moneda.codigo}{moneda.nombre ? ` - ${moneda.nombre}` : ""}</option>)}
             </select></label>
             <label>Observaciones / condiciones<textarea value={observaciones} onChange={(e) => setObservaciones(e.target.value)} rows={4} placeholder="Pago, entrega, calidad, plazo, etc." style={inputStyle} /></label>
           </div>
@@ -100,7 +107,7 @@ export default function MarketplaceCard({ publicacion }: Props) {
   const precio = Number(precioOferta);
   const importe = cantidad * precio;
   return Number.isFinite(importe) ? importe.toLocaleString("es-AR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : "0,00";
-})()} {monedaOferta === "2" ? "USD" : monedaOferta === "1" ? "ARS" : ""}
+})()} {monedas.find((moneda) => String(moneda.id) === monedaOferta)?.codigo || ""}
           </div>
           <div style={{ marginTop: 20, display: "flex", gap: 10 }}>
             <Button variant="secondary" onClick={() => { setMostrarFormulario(false); setError(""); }}>Cancelar</Button>
