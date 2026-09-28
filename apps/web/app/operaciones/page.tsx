@@ -2718,6 +2718,11 @@ Firma: ______________________________
 
 }
 
+function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={"operation-kpi "+tone}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
+function Filter({label,children}:{label:string;children:any}){return <label className="op-filter">{label}{children}</label>}
+function Bottom({title,children}:{title:string;children:any}){return <section className="operations-bottom-card"><h2>{title}</h2>{children}</section>}
+function Bars({items}:{items:string[][]}){return <div className="op-bars">{items.map((x,i)=><div key={i}><span>{x[0]}</span><i style={{width:x[1]}}/><b>{x[1]}</b></div>)}</div>}
+
 function Campo({
   label,
   value,
