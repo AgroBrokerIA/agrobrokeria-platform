@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Link from "next/link";
 
 type Notificacion={id:string;profile_id:string|null;cuenta_id:string|null;titulo:string|null;mensaje:string|null;tipo:string|null;leida:boolean|null;creada_en:string|null;actualizado_at:string|null;operacion_id:string|null;oferta_id:string|null};
 
