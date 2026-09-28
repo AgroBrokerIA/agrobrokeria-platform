@@ -8,7 +8,7 @@ type Operacion={id:string;codigo:string|null;cantidad_tn:number|null;estado:stri
 type Entrega={viaje_id:string;toneladas_entregadas:number|null;fecha_entrega:string|null;recibido_por:string|null};
 type Logistica={operacion_id:string;estado:string|null;carta_porte_numero:string|null;carta_porte_estado:string|null;transportista:string|null;transportista_cuit:string|null;chofer_nombre:string|null;patente_camion:string|null;patente_acoplado:string|null;fecha_carga:string|null;fecha_estimada_entrega:string|null;destino:string|null;kilos_entregados:number|null};
 
-const date=(v:string|null)=>v?new Date(v).toLocaleDateString("es-AR"):"—";
+const date=(v:string|null|undefined)=>v?new Date(v).toLocaleDateString("es-AR"):"—";
 const tn=(v:number|null)=>v==null?"—":Number(v).toLocaleString("es-AR",{maximumFractionDigits:0})+" TN";
 const norm=(v:string|null)=>String(v||"").toUpperCase().replaceAll(" ","_");
 const flag=(v:string|null)=>{const s=String(v||"").toLowerCase();if(s.includes("china")||s.includes("shanghai"))return "🇨🇳";if(s.includes("italia")||s.includes("génova")||s.includes("genova"))return "🇮🇹";if(s.includes("paises bajos")||s.includes("países bajos")||s.includes("rotterdam"))return "🇳🇱";if(s.includes("alemania")||s.includes("hamburgo"))return "🇩🇪";if(s.includes("brasil")||s.includes("santos"))return "🇧🇷";if(s.includes("uruguay")||s.includes("montevideo"))return "🇺🇾";if(s.includes("chile")||s.includes("valparaiso"))return "🇨🇱";if(s.includes("filipinas")||s.includes("manila"))return "🇵🇭";return "🇦🇷"};
