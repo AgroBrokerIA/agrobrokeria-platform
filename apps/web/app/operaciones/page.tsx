@@ -2787,7 +2787,7 @@ Firma: ______________________________
                           marginTop: 5,
                         }}
                       >
-                        USD{" "}
+                        {monedaOperacion(operacion)}{" "}
                         {formatoNumero(
                           operacion.precio_tn
                         )}{" "}
@@ -2806,7 +2806,7 @@ Firma: ______________________________
                           marginTop: 5,
                         }}
                       >
-                        USD{" "}
+                        {monedaOperacion(operacion)}{" "}
                         {formatoNumero(
                           operacion.importe_total
                         )}
@@ -4198,11 +4198,11 @@ Firma: ______________________________
                           {formatoNumero(operacion.cantidad_tn)} TN
                         </p>
                         <p>
-                          <strong>Precio:</strong> USD{" "}
+                          <strong>Precio:</strong> {monedaOperacion(operacion)}{" "}
                           {formatoNumero(operacion.precio_tn)} / TN
                         </p>
                         <p>
-                          <strong>Importe total:</strong> USD{" "}
+                          <strong>Importe total:</strong> {monedaOperacion(operacion)}{" "}
                           {formatoNumero(operacion.importe_total)}
                         </p>
                       </div>
