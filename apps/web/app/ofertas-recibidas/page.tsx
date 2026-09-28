@@ -732,7 +732,7 @@ export default function OfertasRecibidasPage() {
                         marginTop: 4,
                       }}
                     >
-                      USD{" "}
+                      {monedas[oferta.moneda_id ?? 0] ?? "—"}{" "}
                       {formatoNumero(
                         oferta.precio_tn
                       )}{" "}
@@ -755,7 +755,7 @@ export default function OfertasRecibidasPage() {
                         marginTop: 4,
                       }}
                     >
-                      USD{" "}
+                      {monedas[oferta.moneda_id ?? 0] ?? "—"}{" "}
                       {formatoNumero(
                         oferta.precio_publicado
                       )}{" "}
