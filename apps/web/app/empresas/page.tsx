@@ -70,7 +70,7 @@ export default function EmpresasPage() {
         const { data: empresas, error: empresasError } = empresaIds.length
           ? await supabase
               .from("empresas")
-              .select("id,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,operaciones_exitosas,operaciones_canceladas,toneladas_operadas,localidad,provincia,pais,email,telefono,cuit,razon_social,nombre_comercial")
+              .select("id,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,operaciones_exitosas,operaciones_canceladas,toneladas_operadas,localidad,provincia,pais,cuit,razon_social,nombre_comercial")
               .in("id", empresaIds)
           : { data: [], error: null };
 
@@ -93,8 +93,8 @@ export default function EmpresasPage() {
               razon_social: empresa?.razon_social ?? base.razon_social,
               nombre_comercial: empresa?.nombre_comercial ?? base.nombre_comercial,
               cuit: empresa?.cuit ?? base.cuit,
-              email: empresa?.email ?? base.email,
-              telefono: empresa?.telefono ?? base.telefono,
+              email: base.email,
+              telefono: base.telefono,
               pais: empresa?.pais ?? base.pais,
               provincia: empresa?.provincia ?? base.provincia,
               ciudad: empresa?.localidad ?? base.ciudad,
