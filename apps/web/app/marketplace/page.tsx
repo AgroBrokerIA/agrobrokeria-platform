@@ -55,8 +55,8 @@ export default function MarketplacePage() {
 
   return (
     <main className="module-page marketplace-page">
-      <div className="module-hero"><div><span className="eyebrow">MERCADO DE COMMODITIES</span><h1>Marketplace</h1><p>Encontrá oportunidades de compra y venta de granos.</p></div><div className="module-pill">● Mercado activo</div></div><MarketplaceHeader />
-      <MarketplaceSearch value={busqueda} onChange={setBusqueda} />
+      <div className="module-hero marketplace-hero"><div><span className="eyebrow">MERCADO DE COMMODITIES</span><h1>Marketplace</h1><p>Publicaciones reales de compra y venta, con condiciones comerciales trazables.</p><div className="marketplace-hero-meta"><span>Compra y venta</span><span>Ofertas directas</span><span>Datos sin inventar</span></div></div><div className="marketplace-hero-side"><strong>{filtradas.length}</strong><span>publicaciones visibles</span><small>Mercado activo</small></div></div>
+      <div className="marketplace-toolbar"><MarketplaceSearch value={busqueda} onChange={setBusqueda} /><span className="marketplace-result-count">{filtradas.length} resultados</span></div>
       <MarketplaceFilters tipo={tipo} provincia={provincia} producto={producto}
         onTipoChange={setTipo} onProvinciaChange={setProvincia} onProductoChange={setProducto}
         tipos={tipos} provincias={provincias} productos={productos} />
