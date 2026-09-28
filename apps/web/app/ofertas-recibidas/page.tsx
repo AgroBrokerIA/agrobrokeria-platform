@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import { crearNotificacion } from "@/lib/notificaciones/crearNotificacion";
 import { getCompanyBadge } from "@/lib/company-badges";
 
 type Oferta = {
@@ -18,7 +17,7 @@ type Oferta = {
   tipo: string;
   cantidad_publicada: number;
   precio_publicado: number;
-  moneda_id?: number | null;
+  moneda_publicado_id?: number | null;
   provincia: string | null;
   localidad: string | null;
   puerto: string | null;
@@ -48,6 +47,7 @@ type OfertaDB = {
   id: string;
   empresa_id: string;
   precio_tn: number | string;
+  moneda_id?: number | null;
   cantidad_tn: number | string;
   observaciones: string | null;
   estado: string;
@@ -90,6 +90,7 @@ type PublicacionDB = {
   tipo: string;
   cantidad_tn: number | string;
   precio_tn: number | string;
+  moneda_id?: number | null;
   provincia: string | null;
   localidad: string | null;
   puerto: string | null;
@@ -308,6 +309,7 @@ export default function OfertasRecibidasPage() {
           id,
           empresa_id,
           precio_tn,
+          moneda_id,
           cantidad_tn,
           observaciones,
           estado,
@@ -392,6 +394,8 @@ export default function OfertasRecibidasPage() {
             ofertaDB.precio_tn
           ),
 
+          moneda_id: ofertaDB.moneda_id ?? null,
+
           cantidad_tn: Number(
             ofertaDB.cantidad_tn
           ),
@@ -421,6 +425,8 @@ export default function OfertasRecibidasPage() {
             Number(
               publicacion.precio_tn
             ),
+
+          moneda_publicado_id: publicacion.moneda_id ?? null,
 
           provincia:
             publicacion.provincia,
@@ -465,22 +471,6 @@ export default function OfertasRecibidasPage() {
   // =====================================================
   // OBTENER EMPRESA DE UNA OFERTA
   // =====================================================
-
-  function ofertaDBEmpresaId(
-    oferta: Oferta
-  ): string | null {
-    /*
-     * La empresa compradora se obtiene desde
-     * ofertas_negociacion.empresa_id.
-     *
-     * Este valor se incorporará al objeto Oferta
-     * durante la carga de ofertas.
-     */
-
-    return (oferta as Oferta & {
-      empresa_id?: string;
-    }).empresa_id ?? null;
-  }
 
   // =====================================================
   // CAMBIAR ESTADO DE OFERTA
