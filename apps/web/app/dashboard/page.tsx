@@ -2,110 +2,88 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
 import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
 
 type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number;moneda_id:number|null;creada_en:string|null;provincia:string|null;localidad:string|null;puerto:string|null;productos?:{nombre:string}|{nombre:string}[]|null};
-type Op={id:string;codigo:string;estado:string;cantidad_tn:number;tipo_operacion:string|null};
-type Opp={id:string;publicacion_id:string;indice_compatibilidad:number;estado:string;creada_en:string;publicacion?:Pub};
 type Quote={id:string;price:number|null;previous_value:number|null;variation:number|null;market_date:string;commodity_id:string|null;currency:string|null;unit:string|null};
 type Activity={id:string;titulo:string|null;mensaje:string|null;creada_en:string|null;leida:boolean};
-
-const iconFor=(name:string)=>name.toLowerCase().includes("soja")?"🌱":name.toLowerCase().includes("maíz")||name.toLowerCase().includes("maiz")?"🌽":name.toLowerCase().includes("trigo")?"🌾":name.toLowerCase().includes("girasol")?"🌻":"◉";
+const iconFor=(name:string)=>name.toLowerCase().includes("soja")?"🌱":name.toLowerCase().includes("maíz")||name.toLowerCase().includes("maiz")?"🌽":name.toLowerCase().includes("trigo")?"🌾":name.toLowerCase().includes("girasol")?"🌻":"🌾";
 const productName=(p:Pub)=>Array.isArray(p.productos)?p.productos[0]?.nombre||"Commodity":p.productos?.nombre||"Commodity";
-const money=(value:number|null,currency:string)=>value==null?"S/C":`${currency ? currency+" " : ""}${Number(value).toLocaleString("es-AR")}`;
-
-function Sparkline({values}:{values:number[]}) {
- if(values.length<2)return <div className="dashboard-spark-empty">Sin histórico</div>;
- const min=Math.min(...values),max=Math.max(...values),range=max-min||1;
- const points=values.map((v,i)=>`${(i/(values.length-1))*100},${36-((v-min)/range)*30}`).join(" ");
- return <svg className="dashboard-spark" viewBox="0 0 100 40" preserveAspectRatio="none" aria-label="Evolución"><polyline points={points} fill="none" stroke="currentColor" strokeWidth="2.4" vectorEffect="non-scaling-stroke"/></svg>;
-}
+const money=(value:number|null,currency:string)=>value==null?"Sin cotización":`${currency||"USD"} ${Number(value).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 export default function Dashboard(){
  const router=useRouter();
- const [loading,setLoading]=useState(true); const [error,setError]=useState("");
- const [offers,setOffers]=useState<Pub[]>([]),[demands,setDemands]=useState<Pub[]>([]),[ops,setOps]=useState<Op[]>([]),[opps,setOpps]=useState<Opp[]>([]),[activities,setActivities]=useState<Activity[]>([]);
- const [quotes,setQuotes]=useState<Quote[]>([]); const [commodities,setCommodities]=useState<Record<string,string>>({}); const [monedas,setMonedas]=useState<Record<number,string>>({});
- const [counts,setCounts]=useState({offers:0,demands:0,opportunities:0,operations:0,contracts:0,invoices:0});
-
+ const [loading,setLoading]=useState(true),[error,setError]=useState("");
+ const [offers,setOffers]=useState<Pub[]>([]),[demands,setDemands]=useState<Pub[]>([]),[activities,setActivities]=useState<Activity[]>([]),[quotes,setQuotes]=useState<Quote[]>([]);
+ const [commodities,setCommodities]=useState<Record<string,string>>({}),[monedas,setMonedas]=useState<Record<number,string>>({});
  useEffect(()=>{async function load(){
   try{
    const {data:{user}}=await supabase.auth.getUser(); if(!user){router.replace("/login");return}
-   const {data:p}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
-   const companyId=p?.active_company_id;
-   const [pubs,operations,opportunities,market,comms,invoices,notifs]=await Promise.all([
-    supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(12),
-    supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,tipo_operacion").neq("estado","ANULADA").order("fecha_operacion",{ascending:false}).limit(8),
-    companyId?supabase.from("oportunidades").select("id,publicacion_id,indice_compatibilidad,estado,creada_en").eq("empresa_id",companyId).order("indice_compatibilidad",{ascending:false}).limit(5):Promise.resolve({data:[],error:null}),
-    supabase.from("market_quotes").select("id,price,previous_value,variation,market_date,commodity_id,currency,unit").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(40),
-    supabase.from("contratos").select("id,estado",{count:"exact",head:true}).neq("estado","FIRMADO"),
-    supabase.from("facturas").select("id,estado",{count:"exact",head:true}).not("estado","in","(AUTORIZADA,CANCELADA)"),
+   const [pubs,market,notifs]=await Promise.all([
+    supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(20),
+    supabase.from("market_quotes").select("id,price,previous_value,variation,market_date,commodity_id,currency,unit").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(60),
     supabase.from("notificaciones").select("id,titulo,mensaje,creada_en,leida").or(`profile_id.eq.${user.id},cuenta_id.eq.${user.id}`).order("creada_en",{ascending:false}).limit(6)
    ]);
-   if(pubs.error||operations.error||opportunities.error||market.error)throw new Error((pubs.error||operations.error||opportunities.error||market.error)?.message||"No se pudo cargar el tablero.");
-   const all=(pubs.data||[]) as Pub[]; setOffers(all.filter(x=>x.tipo!=="DEMANDA").slice(0,5)); setDemands(all.filter(x=>x.tipo==="DEMANDA").slice(0,5));
-   setOps((operations.data||[]) as Op[]);
-   const oppBase=(opportunities.data||[]) as any[]; const ids=oppBase.map(x=>x.publicacion_id).filter(Boolean);
-   const pubMap=new Map(all.map(x=>[x.id,x])); const missing=ids.filter(id=>!pubMap.has(id));
-   if(missing.length){const {data:extra}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").in("id",missing);for(const x of (extra||[]) as Pub[])pubMap.set(x.id,x)}
-   setOpps(oppBase.map(x=>({...x,publicacion:pubMap.get(x.publicacion_id)})));
-   setQuotes((market.data||[]) as Quote[]);
+   if(pubs.error||market.error) throw new Error((pubs.error||market.error)?.message||"No se pudo cargar el inicio.");
+   const all=(pubs.data||[]) as Pub[];
+   setOffers(all.filter(x=>x.tipo!=="DEMANDA").slice(0,5)); setDemands(all.filter(x=>x.tipo==="DEMANDA").slice(0,5));
+   setQuotes((market.data||[]) as Quote[]); setActivities((notifs.data||[]) as Activity[]);
    const [{data:cr},{data:currencyRows}]=await Promise.all([supabase.from("commodities").select("id,codigo"),supabase.from("monedas").select("id,codigo")]);
-   setCommodities(Object.fromEntries((cr||[]).map((x:any)=>[x.id,x.codigo])));
-   setMonedas(Object.fromEntries((currencyRows||[]).map((x:any)=>[x.id,x.codigo])));
-   const [{count:oc},{count:dc},{count:pc},{count:opCount}]=await Promise.all([
-    supabase.from("publicaciones").select("id",{count:"exact",head:true}).eq("estado","PUBLICADA").neq("tipo","DEMANDA"),
-    supabase.from("publicaciones").select("id",{count:"exact",head:true}).eq("estado","PUBLICADA").eq("tipo","DEMANDA"),
-    companyId?supabase.from("oportunidades").select("id",{count:"exact",head:true}).eq("empresa_id",companyId):Promise.resolve({count:0,error:null}),
-    supabase.from("operaciones").select("id",{count:"exact",head:true}).not("estado","in","(CERRADA,ANULADA)")
-   ]);
-   setCounts({offers:oc||0,demands:dc||0,opportunities:pc||0,operations:opCount||0,contracts:comms.count||0,invoices:invoices.count||0});
-   setActivities((notifs.data||[]) as Activity[]);
-  }catch(e){setError(e instanceof Error?e.message:"No se pudo cargar el tablero.")}finally{setLoading(false)}
+   setCommodities(Object.fromEntries((cr||[]).map((x:any)=>[x.id,x.codigo]))); setMonedas(Object.fromEntries((currencyRows||[]).map((x:any)=>[x.id,x.codigo])));
+  }catch(e){setError(e instanceof Error?e.message:"No se pudo cargar el inicio.")}finally{setLoading(false)}
  } void load()},[router]);
 
  const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes,commodities]);
- const soy=[...(grouped.get("SOJA")||[])].reverse();
- const topQuote=soy[soy.length-1];
- const marketCards=["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"].map(code=>{const q=(grouped.get(code)||[])[0];return {code,q}});
- if(loading)return <main className="dashboard-page"><div className="loading-card">Cargando centro de operaciones…</div></main>;
+ const marketCards=["SOJA","MAIZ","TRIGO","GIRASOL"].map(code=>({code,q:(grouped.get(code)||[])[0]}));
+ const priceRows=marketCards.map(({code,q})=>({code,label:code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code==="TRIGO"?"Trigo":"Girasol",q}));
+ const change=(q?:Quote)=>q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`;
 
- return <main className="dashboard-page dashboard-reference">
-  <section className="dashboard-banner">
-   <div className="dashboard-banner-copy"><span>PLATAFORMA INTEGRAL DE NEGOCIOS AGROINDUSTRIALES</span><h1>Bienvenido a<br/><strong>AgroBroker<span>IA</span></strong></h1><p>Conectamos productores, compradores e intermediarios en todo el mundo.</p></div>
-   <div className="dashboard-banner-stats">
-    {[[counts.offers,"Ofertas activas","▧"],[counts.demands,"Demandas activas","⌂"],[counts.opportunities,"Oportunidades IA","✦"],[counts.operations,"Operaciones en curso","◌"],[counts.contracts,"Contratos pendientes","▣"],[counts.invoices,"Facturas pendientes","▤"]].map(([n,label,icon])=><div key={label}><b>{icon}</b><strong>{n}</strong><small>{label}</small></div>)}
+ if(loading)return <main className="dashboard-reference"><div className="dashboard-loading">Cargando AgroBrokerIA…</div></main>;
+
+ return <main className="dashboard-reference">
+  <section className="dashboard-reference-hero">
+   <div className="dashboard-hero-overlay"/>
+   <div className="dashboard-reference-hero-copy">
+    <h1>Conectamos<br/>productores, acopios y compradores<br/><span>en todo el mundo</span></h1>
+    <p>Negociación segura, transparente y eficiente de granos y commodities.</p>
+    <div className="dashboard-trust-pills"><span>🛡 <b>Empresas</b><small>verificadas</small></span><span>🤝 <b>Negociaciones</b><small>seguras</small></span><span>📈 <b>Oportunidades</b><small>con IA</small></span></div>
    </div>
+   <div className="dashboard-global-card"><div className="dashboard-world-map">🌐</div><strong>Mercados globales</strong><small>Oportunidades en tiempo real</small><Link href="/mercado">Explorar mercado →</Link></div>
   </section>
 
   {error&&<div className="module-alert error">{error}</div>}
-  <div className="dashboard-main-grid">
-   <section className="dashboard-panel dashboard-board">
-    <div className="dashboard-section-head"><h2>◉ Pizarra Rosario - Cotizaciones</h2><span className="live-dot">● En vivo</span><small>{quotes[0]?.market_date||"Sin sincronización"}</small><Link href="/mercado">Ver detalle →</Link></div>
-    <div className="dashboard-tabs"><b>Granos</b><span>Oleaginosas</span><span>Derivados</span><span>Futuros</span><span>Dólar e índices</span></div>
-    <div className="dashboard-market-table"><div className="dashboard-table-head"><span>Producto</span><span>Mes</span><span>Último</span><span>Var. Día</span><span>Var. %</span><span>Precio</span></div>
-     {marketCards.map(({code,q})=><div className="dashboard-table-row" key={code}><strong>{code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code[0]+code.slice(1).toLowerCase()}</strong><span>{q?.market_date||"—"}</span><span>{q?.price==null?"Sin cotización":money(q.price,q.currency||"")}</span><span className={Number(q?.price||0)-Number(q?.previous_value||q?.price||0)>=0?"up":"down"}>{q?.previous_value==null||q?.price==null?"—":`${q.price-q.previous_value>=0?"+":""}${Number(q.price-q.previous_value).toLocaleString("es-AR",{maximumFractionDigits:2})}`}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</span><strong>{q?.price==null?"—":money(q.price,q.currency||"USD")}</strong></div>)}
-    </div>
-    <div className="dashboard-market-cards">{marketCards.map(({code,q})=><div key={code}><b>{iconFor(code)}</b><span>{code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small></div>)}</div>
-   </section>
-   <aside className="dashboard-side-stack">
-    <section className="dashboard-panel"><div className="dashboard-section-head"><h2>Mercado</h2><Link href="/mercado">Ver más →</Link></div>{marketCards.slice(0,4).map(({code,q})=><div className="dashboard-global-row" key={code}><span>{iconFor(code)} {code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small></div>)}</section>
-    <section className="dashboard-panel dashboard-risk"><div><span>◉</span><small>Riesgo / referencias externas</small><strong>{topQuote?.price==null?"Sin dato":money(topQuote.price,topQuote.currency||"USD")}</strong></div><div><small>Fecha</small><strong>{topQuote?.market_date||"—"}</strong></div></section>
-   </aside>
-  </div>
 
-  <div className="dashboard-market-cards dashboard-price-strip">{marketCards.map(({code,q})=><div key={"strip-"+code}><b>{iconFor(code)}</b><span>{code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small><Sparkline values={(grouped.get(code)||[]).slice(0,12).reverse().map(x=>Number(x.price)).filter(Number.isFinite)}/></div>)}</div>
+  <section className="dashboard-price-row">
+   {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{code==="GIRASOL"?"Rosario":"MATba · Rosario"}</small><em>{money(q?.price||null,q?.currency||"USD")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
+   <Link href="/mercado" className="dashboard-board-link"><b>📊</b><strong>Ver pizarra completa →</strong><small>Precios en tiempo real<br/>Bolsa de Comercio de Rosario</small></Link>
+  </section>
 
-  <div className="dashboard-three-grid">
-   <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Ofertas recientes</h2><Link href="/marketplace">Ver todas →</Link></div><div className="dashboard-mini-table">{offers.map(p=><div key={p.id}><span>{iconFor(productName(p))} {productName(p)}</span><b>{Number(p.cantidad_tn).toLocaleString("es-AR")} t</b><strong>{money(p.precio_tn,p.moneda_id ? (monedas[p.moneda_id]||"") : "")}</strong><small>{[p.localidad,p.provincia].filter(Boolean).join(", ")||"—"}</small><small>{p.creada_en?new Date(p.creada_en).toLocaleDateString("es-AR"):"—"}</small><Link href={"/marketplace?publicacion="+p.id}>Ver</Link></div>)}{!offers.length&&<div className="dashboard-empty-line">No hay ofertas activas.</div>}</div></section>
-   <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Demandas recientes</h2><Link href="/marketplace?tipo=DEMANDA">Ver todas →</Link></div><div className="dashboard-mini-table">{demands.map(p=><div key={p.id}><span>{iconFor(productName(p))} {productName(p)}</span><b>{Number(p.cantidad_tn).toLocaleString("es-AR")} t</b><strong>{money(p.precio_tn,p.moneda_id ? (monedas[p.moneda_id]||"") : "")}</strong><small>{[p.localidad,p.provincia].filter(Boolean).join(", ")||"—"}</small><small>{p.puerto||"—"}</small><Link href={"/marketplace?publicacion="+p.id}>Ver</Link></div>)}{!demands.length&&<div className="dashboard-empty-line">No hay demandas activas.</div>}</div></section>
-   <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Actividad reciente</h2><Link href="/notificaciones">Ver todas →</Link></div><div className="dashboard-activity">{activities.map(a=><div key={a.id}><b>{a.leida?"◌":"●"}</b><span><strong>{a.titulo||"Actividad comercial"}</strong><small>{a.mensaje||"Actualización disponible"}</small></span><time>{a.creada_en?new Date(a.creada_en).toLocaleDateString("es-AR"):"—"}</time></div>)}{!activities.length&&<div className="dashboard-empty-line">No hay actividad reciente.</div>}</div></section>
-  </div>
+  <section className="dashboard-actions-row">
+   <Link href="/nueva-publicacion?tipo=OFERTA" className="dashboard-action green">▤ <span>Publicar oferta</span></Link>
+   <Link href="/nueva-publicacion?tipo=DEMANDA" className="dashboard-action blue">▤ <span>Publicar demanda</span></Link>
+   <Link href="/oportunidades" className="dashboard-action purple">⌕ <span>Buscar oportunidades</span></Link>
+   <Link href="/mercado" className="dashboard-action gold">📈 <span>Ver mercado</span></Link>
+   <Link href="/operaciones" className="dashboard-action orange">▣ <span>Mis operaciones</span></Link>
+   <Link href="/contratos" className="dashboard-action slate">▧ <span>Crear contrato</span></Link>
+  </section>
 
-  <div className="dashboard-bottom-grid">
-   <section className="dashboard-panel"><div className="dashboard-section-head"><h2>▣ Mis operaciones</h2><Link href="/operaciones">Ver todas →</Link></div><div className="dashboard-mini-table dashboard-ops">{ops.slice(0,5).map(o=><div key={o.id}><span>{o.codigo}</span><b>{o.tipo_operacion||"Operación"}</b><strong>{Number(o.cantidad_tn).toLocaleString("es-AR")} t</strong><small>{o.estado}</small><Link href={"/operaciones/"+o.id}>Ver →</Link></div>)}</div></section>
-   <section className="dashboard-panel"><div className="dashboard-section-head"><h2>✦ Oportunidades IA</h2><span className="dashboard-new-badge">{opps.length} nuevas</span><Link href="/oportunidades">Ver todas →</Link></div><div className="dashboard-opportunity-list">{opps.slice(0,3).map(o=><div key={o.id}><strong>{Number(o.indice_compatibilidad)}%</strong><span><b>{o.publicacion?productName(o.publicacion):"Publicación compatible"} · {o.publicacion?.cantidad_tn||"—"} t</b><small>{o.publicacion?.localidad||o.publicacion?.provincia||"Ubicación no informada"}</small></span><Link href={"/marketplace?publicacion="+o.publicacion_id}>Ver</Link></div>)}{!opps.length&&<div className="dashboard-empty-line">No hay oportunidades nuevas.</div>}</div></section>
-  </div>
+  <section className="dashboard-content-grid">
+   <DashboardList title="Ofertas destacadas" items={offers} type="offer" monedas={monedas}/>
+   <DashboardList title="Demandas destacadas" items={demands} type="demand" monedas={monedas}/>
+   <section className="dashboard-panel dashboard-activity-panel"><div className="dashboard-card-head"><h2>Actividad reciente</h2><Link href="/notificaciones">Ver todas →</Link></div><div className="dashboard-activity-list">{activities.map((a,i)=><div key={a.id}><b className={i%2===0?"green":"blue"}>{a.leida?"✓":"▤"}</b><span><strong>{a.titulo||"Actividad comercial"}</strong><small>{a.mensaje||"Actualización disponible"}</small></span><time>{a.creada_en?new Date(a.creada_en).toLocaleDateString("es-AR"):"—"}</time></div>)}{!activities.length&&<div className="dashboard-empty-line">No hay actividad reciente.</div>}</div></section>
+  </section>
+
+  <section className="dashboard-feature-strip">
+   <div><b>🌐</b><span><strong>Comercio internacional</strong><small>Conectamos mercados globales</small></span></div>
+   <div><b>🛡</b><span><strong>Seguridad y confianza</strong><small>Empresas verificadas y KYC</small></span></div>
+   <div><b>文</b><span><strong>Multi-idioma</strong><small>Traducción automática</small></span></div>
+   <div><b>▤</b><span><strong>Contratos digitales</strong><small>Modelos LOI, SCO y contratos</small></span></div>
+   <div><b>🚚</b><span><strong>Logística integrada</strong><small>Seguimiento de embarques</small></span></div>
+  </section>
  </main>;
+}
+
+function DashboardList({title,items,type,monedas}:{title:string;items:Pub[];type:"offer"|"demand";monedas:Record<number,string>}){
+ return <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-card-head"><h2>{title}</h2><Link href={type==="offer"?"/marketplace":"/marketplace?tipo=DEMANDA"}>Ver todas →</Link></div><div className="dashboard-list-items">{items.map(p=>{const name=productName(p);return <div className="dashboard-list-item" key={p.id}><b className="commodity-thumb">{iconFor(name)}</b><span className={type==="offer"?"tag-offer":"tag-demand"}>{type==="offer"?"OFERTA":"DEMANDA"}</span><span className="item-main"><strong>{name}</strong><small>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</small><em>{[p.puerto,p.localidad,p.provincia].filter(Boolean).join(", ")||"Ubicación no informada"}</em></span><span className="item-place">{p.provincia?.includes("Santa")?"🇦🇷":"🌎"} {p.provincia||"Global"}</span><span className="item-price">{money(p.precio_tn,p.moneda_id?(monedas[p.moneda_id]||""):"USD")}/tn</span><Link href={`/marketplace?publicacion=${p.id}`}>Ver detalle</Link></div>})}{!items.length&&<div className="dashboard-empty-line">No hay publicaciones activas.</div>}</div></section>
 }
