@@ -32,7 +32,8 @@ export default function PizarraPage(){
  }
  const latest=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const code=codes[q.commodity_id||""]||q.commodity_id||"OTRO";if(!m.has(code))m.set(code,q)}return m},[quotes,codes]);
  const wanted=["SOJA","MAIZ","TRIGO","GIRASOL","ACEITE_SOJA","PELLETS_SOJA","HARINA_SOJA","SORGO"];
- const tabCodes:Record<string,string[]>={Granos:["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"],Aceites:["ACEITE_SOJA"],Harinas:["HARINA_SOJA"],Subproductos:["PELLETS_SOJA","SORGO"]};\n const rows:Row[]=(tabCodes[boardTab]||wanted).map(code=>({code,name:names[code]||code,q:latest.get(code)}));
+ const tabCodes:Record<string,string[]>={Granos:["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"],Aceites:["ACEITE_SOJA"],Harinas:["HARINA_SOJA"],Subproductos:["PELLETS_SOJA","SORGO"]};
+ const rows:Row[]=(tabCodes[boardTab]||wanted).map(code=>({code,name:names[code]||code,q:latest.get(code)}));
  const up=rows.filter(r=>(r.q?.variation||0)>0).length,down=rows.filter(r=>(r.q?.variation||0)<0).length,flat=rows.filter(r=>r.q?.variation===0).length,volume=quotes.length;
  const soja=quotes.filter(q=>codes[q.commodity_id||""]==="SOJA").slice(0,30).reverse(); const compareCodes=["SOJA","MAIZ","TRIGO","GIRASOL"]; const compareSeries=compareCodes.map(code=>({code,points:quotes.filter(q=>codes[q.commodity_id||""]===code&&q.price!=null).slice(0,20).reverse()}));
  return <main className="board-reference">
