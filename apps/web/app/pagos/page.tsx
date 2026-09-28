@@ -60,7 +60,22 @@ export default function PagosPage(){
    <div className="payments-content-grid">
     <section id="transacciones" className="payments-panel transactions-panel"><div className="payments-panel-title"><h2>Últimas transacciones</h2><button>Ver todas</button></div>
       <div className="payments-table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-      {transactionRows.length?transactionRows.map((p,i)=>{const[s,c]=stateLabel(p.estado);const code=p.operacion_id?String(p.operacion_id).slice(0,8).toUpperCase():`PAGO-${i+1}`;return <tr key={p.id}><td>{fmtDate(p.fecha_pago)}</td><td><span className={"payment-type-icon "+(i%3===1?"orange":i%3===2?"red":"blue")}><Icon name={i%3===1?"dollar":i%3===2?"upload":"file"} size={18}/></span><b>{code}</b></td><td><strong>{p.metodo_pago||"Pago de operación"}</strong><small>Operación vinculada</small></td><td><b>{money(Number(p.importe||0),currencies[p.moneda_id||0]||currency)}</b></td><td><span className={"payment-state "+c}>{s}</span></td><td><button className="payment-action"><Icon name="eye" size={18}/></button></td></tr>}) : <tr><td colSpan={6} className="payments-empty">Todavía no hay transacciones registradas.</td></tr>}
+      {transactionRows.length ? transactionRows.map((p, i) => {
+        const [label, stateClass] = stateLabel(p.estado);
+        const code = p.operacion_id ? String(p.operacion_id).slice(0, 8).toUpperCase() : "PAGO-" + (i + 1);
+        const iconName = i % 3 === 1 ? "dollar" : i % 3 === 2 ? "upload" : "file";
+        const iconClass = i % 3 === 1 ? "orange" : i % 3 === 2 ? "red" : "blue";
+        return (
+          <tr key={p.id}>
+            <td>{fmtDate(p.fecha_pago)}</td>
+            <td><span className={"payment-type-icon " + iconClass}><Icon name={iconName} size={18}/></span><b>{code}</b></td>
+            <td><strong>{p.metodo_pago || "Pago de operación"}</strong><small>Operación vinculada</small></td>
+            <td><b>{money(Number(p.importe || 0), currencies[p.moneda_id || 0] || currency)}</b></td>
+            <td><span className={"payment-state " + stateClass}>{label}</span></td>
+            <td><button className="payment-action"><Icon name="eye" size={18}/></button></td>
+          </tr>
+        );
+      }) : <tr><td colSpan={6} className="payments-empty">Todavía no hay transacciones registradas.</td></tr>}
       </tbody></table></div>
     </section>
     <aside id="retiros" className="payments-panel withdrawal-panel"><h2>Retiro de comisiones</h2><p className="withdrawal-balance">Saldo disponible <strong>para retiro</strong></p><div className="withdrawal-amount">{money(available,currency)}</div><label>Monto a retirar ({currency})</label><div className="withdrawal-input"><input placeholder="0,00"/><span>{currency}</span></div><label>Seleccionar cuenta bancaria</label><select defaultValue={banks[0]?.id||""}><option value="">Seleccioná una cuenta</option>{banks.map(b=><option value={b.id} key={b.id}>{b.banco||"Banco"} · {b.alias||"Cuenta"} ({b.moneda||currency})</option>)}</select><button className="withdrawal-submit"><Icon name="upload" size={18}/>Solicitar retiro</button><div className="withdrawal-info"><Icon name="shield" size={22}/><div><strong>Información</strong><p>Los retiros se procesan de forma segura una vez validados.</p></div></div></aside>
