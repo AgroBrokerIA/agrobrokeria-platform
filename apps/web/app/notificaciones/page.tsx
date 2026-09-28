@@ -43,7 +43,7 @@ export default function NotificacionesPage(){
  const counts=useMemo(()=>{const c:Record<string,number>={Todas:pendientes};notificaciones.forEach(n=>{const k=typeMeta(n.tipo).label;c[k]=(c[k]||0)+(!n.leida?1:0)});return c},[notificaciones,pendientes]);
  const visibles=useMemo(()=>{let rows=notificaciones.filter(n=>{const meta=typeMeta(n.tipo);return filtros[meta.label]!==false&&(filtro==="Todas"||meta.label===filtro)&&((n.titulo||"").toLowerCase().includes(buscando.toLowerCase())||(n.mensaje||"").toLowerCase().includes(buscando.toLowerCase()))});if(orden==="oldest")rows=[...rows].reverse();return rows},[notificaciones,filtro,filtros,buscando,orden]);
  const fecha=(s:string|null)=>s?new Date(s).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
- const relativo=(s:string|null)=>{if(!s)return"";const d=Date.now()-new Date(s).getTime();const m=Math.max(1,Math.round(d/60000));if(m<60)return`Hace ${m} min`;const h=Math.round(m/60);if(h<24)return`Hace ${h} hora`;return`Hace ${Math.round(h/24)} días`};
+ const relativo=(s:string|null)=>s?fecha(s):"";
  return <main className="notifications-reference">
   <header className="notifications-head"><div><h1>Notificaciones</h1><p>Mantente al día con todas las novedades de tus operaciones y del mercado</p></div><button className="notifications-config">⚙ &nbsp; Configurar notificaciones</button></header>
   <div className="notification-tabs">{["Todas","Operaciones","Mensajes","Contratos","Pagos","Logística","Sistema"].map(x=><button key={x} className={filtro===x?"active":""} onClick={()=>setFiltro(x)}>{x}{(counts[x]||0)>0&&<b>{counts[x]}</b>}</button>)}</div>
