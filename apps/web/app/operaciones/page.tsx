@@ -1197,7 +1197,7 @@ export default function OperacionesPage() {
   }
 
 
-  function generarPDFContrato(operacion: Operacion) {
+  function generarPDFContrato() {
     const doc = new jsPDF();
 
     const margen = 20;
@@ -5586,7 +5586,7 @@ Firma: ______________________________
                       >
                         <button
                           onClick={() =>
-                            generarPDFContrato(operacion)
+                            generarPDFContrato()
                           }
                           style={{
                             padding: "14px 20px",
