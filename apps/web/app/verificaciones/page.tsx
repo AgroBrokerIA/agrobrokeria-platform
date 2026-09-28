@@ -14,7 +14,7 @@ function Icon({name,size=18}:{name:string;size?:number}) {
   pin:<><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></>,
   users:<><path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8ZM22 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/></>,
   check:<><circle cx="12" cy="12" r="10"/><path d="m8 12 2.5 2.5L16 9"/></>,
-  x:<><circle cx="12" cy="12" r="10"/><path d="m8 8 8 8M16 8l-8 8"/></>,
+  close:<><circle cx="12" cy="12" r="10"/><path d="M8 8l8 8M16 8l-8 8"/></>,
   clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,
   truck:<><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></>,
   bank:<><path d="M3 10h18M4 10v8M8 10v8M12 10v8M16 10v8M20 10v8M2 20h20L12 3 2 20Z"/></>,
@@ -50,7 +50,7 @@ export default function VerificacionesPage(){
   <section className="vt-kpis">
    <article className="vt-kpi green"><div><Icon name="shield" size={25}/></div><section><strong>{counts.verified}</strong><span>Empresas verificadas</span><small>{companies.length?Math.round(counts.verified/companies.length*100):0}% del total</small></section></article>
    <article className="vt-kpi yellow"><div><Icon name="clock" size={25}/></div><section><strong>{counts.process}</strong><span>En proceso</span><small>{companies.length?Math.round(counts.process/companies.length*100):0}% del total</small></section></article>
-   <article className="vt-kpi red"><div><Icon name="x" size={25}/></div><section><strong>{counts.obs}</strong><span>Con observaciones</span><small>{companies.length?Math.round(counts.obs/companies.length*100):0}% del total</small></section></article>
+   <article className="vt-kpi red"><div><Icon name="close" size={25}/></div><section><strong>{counts.obs}</strong><span>Con observaciones</span><small>{companies.length?Math.round(counts.obs/companies.length*100):0}% del total</small></section></article>
    <article className="vt-kpi dark"><div><Icon name="x" size={25}/></div><section><strong>{counts.rejected}</strong><span>Rechazadas</span><small>{companies.length?Math.round(counts.rejected/companies.length*100):0}% del total</small></section></article>
   </section>
   <div className="vt-layout">
