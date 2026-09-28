@@ -3,7 +3,6 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
-import { getCompanyBadge } from "@/lib/company-badges";
 
 type Operacion = {
   id: string;
