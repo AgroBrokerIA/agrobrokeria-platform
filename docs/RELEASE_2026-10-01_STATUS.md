@@ -214,3 +214,13 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Los módulos existentes conservan sus flujos reales y datos de Supabase; el cambio es principalmente de presentación y consistencia visual.
 - CI del commit `3a9507908b004f547a6359e6a3fb132636971066` terminó SUCCESS con npm ci, lint, typecheck y build.
 - Los commits posteriores de pulido visual y corrección semántica de variaciones de mercado quedan sujetos a la ejecución automática del CI.
+
+
+## Auditoría de alcance inicial + posteriores — 2026-09-28
+
+- Roles de empresas consolidados con distintivos: Acopio/Cooperativa verde; Intermediario naranja; Broker/Corredor azul; Productor/Comprador amarillo; otros perfiles con distintivo secundario.
+- El distintivo de color solo se presenta como verificado cuando `empresas.verificada=true`; los perfiles sin verificación quedan explícitamente sin verificar.
+- Reputación empresarial basada en operaciones reales: negocios cerrados, cancelados, toneladas operadas, última operación y porcentaje de cumplimiento. Se recalcula automáticamente al cambiar participantes o estado de operación.
+- Requisitos de verificación por tipo de empresa incorporados como catálogo y checklist persistente. No se inventan verificaciones oficiales; las consultas externas quedan pendientes hasta disponer del mecanismo/credenciales del organismo.
+- Se mantiene el modelo de comisión AgroBrokerIA de USD 1/TN y el circuito de comisiones/intermediarios, facturación y liquidación ya endurecido.
+- Pendientes externos de lanzamiento siguen siendo credenciales/configuración de ARCA, proveedor de firma, traducción, Google Meet, Vercel/cron y mecanismos oficiales de verificación, además de E2E autenticado y ejecución real del sincronizador de mercado.
