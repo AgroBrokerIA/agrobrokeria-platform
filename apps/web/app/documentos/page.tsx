@@ -1,8 +1,7 @@
 "use client";
-
-import { useEffect, useState } from "react";
+import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase/client";
+import {supabase} from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 
 type Documento={id:string;tipo_documento:string|null;nombre_archivo:string|null;url_archivo:string|null;version:number|null;obligatorio:boolean|null;aprobado:boolean|null;observaciones:string|null;creado_en:string|null;operacion_id:string};
@@ -12,136 +11,33 @@ type Operacion={id:string;codigo:string;tipo_operacion:string|null;cantidad_tn:n
 type Comercial={id:string;operacion_id:string;empresa_emisora:string|null;empresa_receptora?:string|null;fecha_emision:string|null;estado:string|null;archivo_pdf:string|null;creado_en:string|null};
 
 export default function DocumentosPage(){
- const [docs,setDocs]=useState<Documento[]>([]);
- const [contratos,setContratos]=useState<Contrato[]>([]);
- const [empresaDocs,setEmpresaDocs]=useState<DocumentoEmpresa[]>([]);
- const [operaciones,setOperaciones]=useState<Operacion[]>([]);
- const [lois,setLois]=useState<Comercial[]>([]);
- const [scos,setScos]=useState<Comercial[]>([]);
- const [fcos,setFcos]=useState<Comercial[]>([]);
- const [operacionSeleccionada,setOperacionSeleccionada]=useState("");
- const [firmaContratoSeleccionado,setFirmaContratoSeleccionado]=useState("");
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[firmanteNombre,setFirmanteNombre]=useState(""),[firmanteEmail,setFirmanteEmail]=useState(""),[firmanteRol,setFirmanteRol]=useState("PARTE"),[firmaLoading,setFirmaLoading]=useState(false),[firmaContrato,setFirmaContrato]=useState(""),[generando,setGenerando]=useState<"LOI"|"SCO"|"FCO"|null>(null),[mensaje,setMensaje]=useState("");
+ const [docs,setDocs]=useState<Documento[]>([]),[contratos,setContratos]=useState<Contrato[]>([]),[empresaDocs,setEmpresaDocs]=useState<DocumentoEmpresa[]>([]),[operaciones,setOperaciones]=useState<Operacion[]>([]),[lois,setLois]=useState<Comercial[]>([]),[scos,setScos]=useState<Comercial[]>([]),[fcos,setFcos]=useState<Comercial[]>([]);
+ const [operacionSeleccionada,setOperacionSeleccionada]=useState(""),[firmaContratoSeleccionado,setFirmaContratoSeleccionado]=useState(""),[loading,setLoading]=useState(true),[error,setError]=useState(""),[firmanteNombre,setFirmanteNombre]=useState(""),[firmanteEmail,setFirmanteEmail]=useState(""),[firmanteRol,setFirmanteRol]=useState("PARTE"),[firmaLoading,setFirmaLoading]=useState(false),[firmaContrato,setFirmaContrato]=useState(""),[generando,setGenerando]=useState<"LOI"|"SCO"|"FCO"|null>(null),[mensaje,setMensaje]=useState("");
+ const [tab,setTab]=useState(""),[q,setQ]=useState(""),[tipoFiltro,setTipoFiltro]=useState(""),[estadoFiltro,setEstadoFiltro]=useState(""),[opFiltro,setOpFiltro]=useState("");
 
- useEffect(()=>{(async()=>{
-   try{
-     const {data:{user}}=await supabase.auth.getUser();
-     if(!user) throw new Error("Necesitás iniciar sesión.");
-     const [{data:d,error:de},{data:c,error:ce},{data:o,error:oe}]=await Promise.all([
-       supabase.from("documentos_operacion").select("id,tipo_documento,nombre_archivo,url_archivo,version,obligatorio,aprobado,observaciones,creado_en,operacion_id").order("creado_en",{ascending:false}),
-       supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,archivo_pdf").order("creado_en",{ascending:false}),
-       supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,moneda_id,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false})
-     ]);
-     if(de) throw new Error(de.message); if(ce) throw new Error(ce.message); if(oe) throw new Error(oe.message);
+ useEffect(()=>{(async()=>{try{const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const [{data:d,error:de},{data:c,error:ce},{data:o,error:oe}]=await Promise.all([supabase.from("documentos_operacion").select("id,tipo_documento,nombre_archivo,url_archivo,version,obligatorio,aprobado,observaciones,creado_en,operacion_id").order("creado_en",{ascending:false}),supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,archivo_pdf").order("creado_en",{ascending:false}),supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,moneda_id,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false})]);if(de||ce||oe)throw new Error((de||ce||oe)?.message||"No se pudieron cargar los datos.");const ids=(o||[]).map((x:any)=>x.id).filter(Boolean);let l:any[]=[],s:any[]=[],ff:any[]=[];if(ids.length){const [a,b,cx]=await Promise.all([supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",ids).order("creado_en",{ascending:false}),supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",ids).order("creado_en",{ascending:false}),supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",ids).order("creado_en",{ascending:false})]);if(a.error||b.error||cx.error)throw new Error((a.error||b.error||cx.error)?.message||"Error comercial.");l=a.data||[];s=b.data||[];ff=cx.data||[]}setDocs((d||[]) as Documento[]);setContratos((c||[]) as Contrato[]);setOperaciones((o||[]) as Operacion[]);setLois(l as Comercial[]);setScos(s as Comercial[]);setFcos(ff as Comercial[]);const {data:profile,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(pe||!profile?.active_company_id)throw new Error("No se encontró una empresa activa.");const {data:ed,error:ee}=await supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,url_archivo,fecha_vencimiento,verificado,observaciones,creado_en").eq("empresa_id",profile.active_company_id).order("creado_en",{ascending:false});if(ee)throw new Error(ee.message);setEmpresaDocs((ed||[]) as DocumentoEmpresa[])}catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los documentos.")}finally{setLoading(false)}})()},[]);
 
-     const accessibleOperationIds=(o||[]).map((row:any)=>row.id).filter(Boolean);
-     let l:any[]=[]; let s:any[]=[]; let fcoRows:any[]=[];
-     if(accessibleOperationIds.length){
-       const [loiResult,scoResult,fcoResult]=await Promise.all([
-         supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false}),
-         supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false}),
-         supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false})
-       ]);
-       if(loiResult.error) throw new Error(loiResult.error.message);
-       if(scoResult.error) throw new Error(scoResult.error.message);
-       if(fcoResult.error) throw new Error(fcoResult.error.message);
-       l=loiResult.data||[]; s=scoResult.data||[]; fcoRows=fcoResult.data||[];
-     }
-     setDocs((d||[]) as Documento[]); setContratos((c||[]) as Contrato[]); setOperaciones((o||[]) as Operacion[]); setLois(l as Comercial[]); setScos(s as Comercial[]); setFcos(fcoRows as Comercial[]);
-     const {data:profile,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();
-     if(pe||!profile?.active_company_id) throw new Error("No se encontró una empresa activa.");
-     const {data:ed,error:ee}=await supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,url_archivo,fecha_vencimiento,verificado,observaciones,creado_en").eq("empresa_id",profile.active_company_id).order("creado_en",{ascending:false});
-     if(ee) throw new Error(ee.message); setEmpresaDocs((ed||[]) as DocumentoEmpresa[]);
-   }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los documentos.");}
-   finally{setLoading(false)}
- })()},[]);
-
- async function generarComercial(tipo:"LOI"|"SCO"|"FCO"){
-   const op=operaciones.find(x=>x.id===operacionSeleccionada);
-   if(!op||generando) return;
-   setGenerando(tipo); setMensaje(""); setError("");
-   try{
-     const pdf=new jsPDF();
-     const fecha=new Date().toLocaleDateString("es-AR");
-     const {data:moneda}=op.moneda_id ? await supabase.from("monedas").select("codigo").eq("id",op.moneda_id).maybeSingle() : {data:null};
-     const monedaCodigo=moneda?.codigo||"";
-     pdf.setFontSize(18); pdf.text(tipo==="LOI"?"LETTER OF INTENT":tipo==="SCO"?"SOFT CORPORATE OFFER":"FIRM CORPORATE OFFER",20,24);
-     pdf.setFontSize(9); pdf.text("AGROBROKER IA · DOCUMENTO COMERCIAL",20,31);
-     pdf.setFontSize(11); pdf.text("Código de operación: "+op.codigo,20,48);
-     pdf.text("Fecha: "+fecha,20,56);
-     pdf.text("Tipo de operación: "+(op.tipo_operacion||"No especificado"),20,64);
-     pdf.text("Cantidad: "+Number(op.cantidad_tn).toLocaleString("es-AR")+" TN",20,72);
-     pdf.text("Precio de referencia: "+(monedaCodigo?monedaCodigo+" ":"")+Number(op.precio_tn).toLocaleString("es-AR")+" / TN",20,80);
-     pdf.text("Importe de referencia: "+(monedaCodigo?monedaCodigo+" ":"")+Number(op.importe_total).toLocaleString("es-AR"),20,88);
-     pdf.setFontSize(10);
-     pdf.text("Documento comercial generado con datos registrados de la operación.",20,105);
-     pdf.text("No se agregan cláusulas jurídicas ni condiciones comerciales no presentes en la operación.",20,113);
-     const dataUri=pdf.output("datauristring");
-     const {data,error}=await supabase.rpc(tipo==="LOI"?"crear_loi_comercial":tipo==="SCO"?"crear_sco_comercial":"crear_fco_comercial",{p_operacion_id:op.id,p_archivo_pdf:dataUri});
-     if(error) throw new Error(error.message);
-     if(!data) throw new Error("No se pudo registrar el documento.");
-     pdf.save(tipo+"-"+op.codigo+".pdf");
-     setMensaje(tipo+" generado y registrado en el expediente.");
-     const {data:l}=await supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false});
-     const {data:s}=await supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false});
-     const {data:f}=await supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false});
-     setLois((l||[]) as Comercial[]); setScos((s||[]) as Comercial[]); setFcos((f||[]) as Comercial[]);
-   }catch(e){setError(e instanceof Error?e.message:"No se pudo generar el documento.");}
-   finally{setGenerando(null)}
- }
-
- async function solicitarFirma(contratoId:string){
-   if(!firmanteNombre.trim()||!firmanteEmail.trim()){setError("Completá nombre y email del firmante.");return}
-   setFirmaLoading(true);setError("");setMensaje("");
-   try{
-    const {data,error}=await supabase.rpc("crear_solicitud_firma_contrato",{p_contrato_id:contratoId,p_firmante_email:firmanteEmail.trim(),p_firmante_nombre:firmanteNombre.trim(),p_firmante_rol:firmanteRol.trim()});
-    if(error) throw new Error(error.message);
-    const link=window.location.origin+"/firmar/"+encodeURIComponent(data.token);
-    setFirmaContrato(link); setMensaje("Solicitud de firma creada. Copiá el enlace y enviáselo al firmante.");
-   }catch(e){setError(e instanceof Error?e.message:"No se pudo crear la solicitud de firma")}finally{setFirmaLoading(false)}
- }
- function nombreOperacion(id:string){return operaciones.find(o=>o.id===id)?.codigo||id.slice(0,8)}
-
- return <main className="module-page documents-page">
-   <div className="module-hero"><div><span className="eyebrow">EXPEDIENTE</span><h1>Documentos</h1><p>Expedientes de empresa, contratos y documentación vinculada a operaciones.</p></div><div className="module-pill">{docs.length+contratos.length+empresaDocs.length+lois.length+scos.length+fcos.length} registros</div></div>
-   {error&&<div className="module-alert module-alert-error">{error}</div>}
-   {mensaje&&<div className="module-alert">{mensaje}</div>}
-   {loading?<div className="loading-card">Cargando expediente...</div>:<>
-     <section className="document-summary"><div><strong>{empresaDocs.length}</strong><span>Empresa</span></div><div><strong>{docs.length+lois.length+scos.length}</strong><span>Operaciones</span></div><div><strong>{contratos.length}</strong><span>Contratos</span></div></section>
-
-     <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">FIRMA ELECTRÓNICA</span><h2>Solicitar firma de contrato</h2><p>Generá un enlace único de 72 horas. La plataforma registra consentimiento, hash SHA-256, fecha, IP, navegador y evidencia de firma.</p></div></div>
-<div style={{display:"grid",gap:10,maxWidth:700}}>
-<select value={firmaContratoSeleccionado} onChange={e=>setFirmaContratoSeleccionado(e.target.value)}><option value="">Seleccioná el contrato</option>{contratos.filter(c=>c.estado==="CONFIRMADO").map(c=><option key={c.id} value={c.id}>{c.numero_contrato||"Contrato"} · OP {c.operacion_id.slice(0,8)}</option>)}</select>
-<input placeholder="Nombre completo del firmante" value={firmanteNombre} onChange={e=>setFirmanteNombre(e.target.value)}/>
-<input type="email" placeholder="Email del firmante" value={firmanteEmail} onChange={e=>setFirmanteEmail(e.target.value)}/>
-<select value={firmanteRol} onChange={e=>setFirmanteRol(e.target.value)}><option>PARTE</option><option>VENDEDOR</option><option>COMPRADOR</option><option>INTERMEDIARIO</option></select>
-<button type="button" disabled={!firmaContratoSeleccionado||firmaLoading} onClick={()=>solicitarFirma(firmaContratoSeleccionado)}>{firmaLoading?"Creando…":"Crear solicitud de firma"}</button>
-{firmaContrato&&<div style={{padding:12,background:"#f1f5f9",borderRadius:8,wordBreak:"break-all"}}><b>Enlace de firma:</b><br/>{firmaContrato}<br/><button type="button" onClick={()=>navigator.clipboard?.writeText(firmaContrato)}>Copiar enlace</button></div>}
-</div></section>
-     <section className="document-section commercial-document-tools"><div className="document-section-head"><div><span className="eyebrow">DOCUMENTACIÓN COMERCIAL</span><h2>LOI / SCO</h2><p>Generá una carta de intención o una oferta comercial estándar a partir de una operación. Cada emisión queda registrada en el expediente.</p></div></div>
-       <div className="commercial-document-form"><select value={operacionSeleccionada} onChange={e=>setOperacionSeleccionada(e.target.value)}><option value="">Seleccioná una operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.tipo_operacion||"Operación"}</option>)}</select>
-       <button type="button" disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("LOI")}>{generando==="LOI"?"Generando…":"Generar LOI"}</button><button type="button" disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("SCO")}>{generando==="SCO"?"Generando…":"Generar SCO"}</button><button type="button" disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("FCO")}>{generando==="FCO"?"Generando…":"Generar FCO"}</button></div>
-     </section>
-
-     <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">EMISIONES COMERCIALES</span><h2>Historial LOI / SCO / FCO</h2></div></div>
-       {lois.length===0&&scos.length===0&&fcos.length===0?<div className="module-empty compact"><p>Todavía no hay LOI, SCO o FCO emitidos.</p></div>:<div className="document-grid">
-        {lois.map(d=><article className="document-card" key={"loi-"+d.id}><div className="document-icon">L</div><div><strong>LOI</strong><p>{nombreOperacion(d.operacion_id)}</p><small>{d.fecha_emision?new Date(d.fecha_emision).toLocaleDateString("es-AR"):"Sin fecha"} · {d.estado||"BORRADOR"}</small></div><span className="document-status ok">Registrado</span>{d.archivo_pdf&&<a href={d.archivo_pdf} target="_blank" rel="noreferrer">PDF</a>}</article>)}
-        {scos.map(d=><article className="document-card" key={"sco-"+d.id}><div className="document-icon">S</div><div><strong>SCO</strong><p>{nombreOperacion(d.operacion_id)}</p><small>{d.fecha_emision?new Date(d.fecha_emision).toLocaleDateString("es-AR"):"Sin fecha"} · {d.estado||"BORRADOR"}</small></div><span className="document-status ok">Registrado</span>{d.archivo_pdf&&<a href={d.archivo_pdf} target="_blank" rel="noreferrer">PDF</a>}</article>)}
-        {fcos.map(d=><article className="document-card" key={"fco-"+d.id}><div className="document-icon">F</div><div><strong>FCO</strong><p>{nombreOperacion(d.operacion_id)}</p><small>{d.fecha_emision?new Date(d.fecha_emision).toLocaleDateString("es-AR"):"Sin fecha"} · {d.estado||"BORRADOR"}</small></div><span className="document-status ok">Registrado</span>{d.archivo_pdf&&<a href={d.archivo_pdf} target="_blank" rel="noreferrer">PDF</a>}</article>)}
-       </div>}
-     </section>
-
-     <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">EMPRESA</span><h2>Documentación societaria y fiscal</h2></div></div>
-       {empresaDocs.length===0?<div className="module-empty compact"><p>No hay documentación de empresa cargada.</p></div>:<div className="document-grid">{empresaDocs.map(d=><article className="document-card" key={d.id}><div className="document-icon">▤</div><div><strong>{d.tipo_documento}</strong><p>{d.nombre_archivo||"Documento sin nombre"}</p><small>{d.fecha_vencimiento?"Vence "+new Date(d.fecha_vencimiento).toLocaleDateString("es-AR"):"Sin vencimiento"}</small></div><span className={d.verificado?"document-status ok":"document-status"}>{d.verificado?"Verificado":"Pendiente"}</span>{d.url_archivo&&<a href={d.url_archivo} target="_blank" rel="noreferrer">Abrir</a>}</article>)}</div>}
-     </section>
-
-     <section className="document-section"><div className="document-section-head"><div><span className="eyebrow">OPERACIONES</span><h2>Documentos y contratos</h2></div></div>
-       {contratos.length===0&&docs.length===0?<div className="module-empty compact"><p>No hay documentos operativos todavía.</p></div>:<div className="document-grid">
-        {contratos.map(c=><article className="document-card" key={c.id}><div className="document-icon">C</div><div><strong>Contrato {c.numero_contrato}</strong><p>Operación · {c.operacion_id.slice(0,8)}</p><small>{c.estado}{c.fecha_firma?" · firmado "+new Date(c.fecha_firma).toLocaleDateString("es-AR"):""}</small></div><span className={c.estado==="CONFIRMADO"?"document-status ok":"document-status"}>{c.estado}</span>{c.archivo_pdf&&<a href={c.archivo_pdf} target="_blank" rel="noreferrer">PDF</a>}</article>)}
-        {docs.map(d=><article className="document-card" key={d.id}><div className="document-icon">D</div><div><strong>{d.tipo_documento||"Documento"}</strong><p>{d.nombre_archivo||"Sin nombre"} · OP {d.operacion_id.slice(0,8)}</p><small>Versión {d.version||1} · {d.aprobado?"Aprobado":d.obligatorio?"Obligatorio":"Pendiente"}</small></div><span className={d.aprobado?"document-status ok":"document-status"}>{d.aprobado?"Aprobado":d.obligatorio?"Obligatorio":"Pendiente"}</span>{d.url_archivo&&<a href={d.url_archivo} target="_blank" rel="noreferrer">Abrir</a>}</article>)}
-       </div>}
-     </section>
-   </>}
-   <div className="document-footer"><Link href="/operaciones">Ir a operaciones →</Link><Link href="/empresas">Ver empresas →</Link></div>
+ async function generarComercial(tipo:"LOI"|"SCO"|"FCO"){const op=operaciones.find(x=>x.id===operacionSeleccionada);if(!op||generando)return;setGenerando(tipo);setMensaje("");setError("");try{const pdf=new jsPDF(),fecha=new Date().toLocaleDateString("es-AR");const {data:moneda}=op.moneda_id?await supabase.from("monedas").select("codigo").eq("id",op.moneda_id).maybeSingle():{data:null};const mc=moneda?.codigo||"";pdf.setFontSize(18);pdf.text(tipo==="LOI"?"LETTER OF INTENT":tipo==="SCO"?"SOFT CORPORATE OFFER":"FIRM CORPORATE OFFER",20,24);pdf.setFontSize(9);pdf.text("AGROBROKER IA · DOCUMENTO COMERCIAL",20,31);pdf.setFontSize(11);pdf.text("Código de operación: "+op.codigo,20,48);pdf.text("Fecha: "+fecha,20,56);pdf.text("Tipo de operación: "+(op.tipo_operacion||"No especificado"),20,64);pdf.text("Cantidad: "+Number(op.cantidad_tn).toLocaleString("es-AR")+" TN",20,72);pdf.text("Precio: "+(mc?mc+" ":"")+Number(op.precio_tn).toLocaleString("es-AR")+" / TN",20,80);pdf.text("Importe: "+(mc?mc+" ":"")+Number(op.importe_total).toLocaleString("es-AR"),20,88);pdf.setFontSize(10);pdf.text("Documento comercial generado con datos registrados de la operación.",20,105);const uri=pdf.output("datauristring");const {data,error}=await supabase.rpc(tipo==="LOI"?"crear_loi_comercial":tipo==="SCO"?"crear_sco_comercial":"crear_fco_comercial",{p_operacion_id:op.id,p_archivo_pdf:uri});if(error)throw new Error(error.message);if(!data)throw new Error("No se pudo registrar el documento.");pdf.save(tipo+"-"+op.codigo+".pdf");setMensaje(tipo+" generado y registrado en el expediente.");const [a,b,c]=await Promise.all([supabase.from("loi").select("*").order("creado_en",{ascending:false}),supabase.from("sco").select("*").order("creado_en",{ascending:false}),supabase.from("fco").select("*").order("creado_en",{ascending:false})]);setLois((a.data||[]) as Comercial[]);setScos((b.data||[]) as Comercial[]);setFcos((c.data||[]) as Comercial[])}catch(e){setError(e instanceof Error?e.message:"No se pudo generar el documento.")}finally{setGenerando(null)}}
+ async function solicitarFirma(contratoId:string){if(!firmanteNombre.trim()||!firmanteEmail.trim()){setError("Completá nombre y email del firmante.");return}setFirmaLoading(true);setError("");setMensaje("");try{const {data,error}=await supabase.rpc("crear_solicitud_firma_contrato",{p_contrato_id:contratoId,p_firmante_email:firmanteEmail.trim(),p_firmante_nombre:firmanteNombre.trim(),p_firmante_rol:firmanteRol.trim()});if(error)throw new Error(error.message);const link=window.location.origin+"/firmar/"+encodeURIComponent(data.token);setFirmaContrato(link);setMensaje("Solicitud de firma creada. Copiá el enlace y enviáselo al firmante.")}catch(e){setError(e instanceof Error?e.message:"No se pudo crear la solicitud de firma")}finally{setFirmaLoading(false)}}
+ const nombreOperacion=(id:string)=>operaciones.find(o=>o.id===id)?.codigo||id.slice(0,8);
+ const allRows=useMemo(()=>docs.map(d=>({id:d.id,name:d.nombre_archivo||d.tipo_documento||"Documento",type:d.tipo_documento||"Documento",op:nombreOperacion(d.operacion_id),date:d.creado_en,estado:d.aprobado?"Verificado":d.obligatorio?"Pendiente":"Emitido",url:d.url_archivo,operationId:d.operacion_id})),[docs,operaciones]);
+ const filtered=allRows.filter((r,i)=>(!q||r.name.toLowerCase().includes(q.toLowerCase()))&&(!tipoFiltro||r.type===tipoFiltro)&&(!estadoFiltro||r.estado===estadoFiltro)&&(!opFiltro||r.operationId===opFiltro)&&(!tab||tab==="Todos los documentos"||tab==="Todos"));
+ const verified=docs.filter(d=>d.aprobado).length, pending=docs.filter(d=>!d.aprobado&&d.obligatorio).length, observed=docs.filter(d=>!!d.observaciones).length;
+ const total=docs.length+empresaDocs.length+contratos.length+lois.length+scos.length+fcos.length;
+ const quick=[["▣","Generar LOI",()=>setMensaje("Seleccioná una operación y generá el LOI.")],["▤","Generar SCO",()=>setMensaje("Seleccioná una operación y generá el SCO.")],["▱","Plantilla de contrato",()=>setMensaje("Las plantillas de contrato están disponibles en Contratos.")],["▥","Carta de porte",()=>setMensaje("Seleccioná una operación para asociar la carta de porte.")],["▣","Certificado de origen",()=>setMensaje("Podés cargar el certificado desde Subir documento.")],["▣","Certificado fitosanitario",()=>setMensaje("Podés cargar el certificado desde Subir documento.")],["▣","Análisis de calidad",()=>setMensaje("Podés cargar el análisis desde Subir documento.")]];
+ return <main className="docs-reference">
+  <header className="docs-head"><div><h1>Documentación</h1><p>Gestiona todos los documentos de tus operaciones, contratos, logística y facturación</p></div><div className="docs-head-actions"><button onClick={()=>setMensaje("Vista de carpeta por operación disponible en el listado.")}>▣ Carpeta por operación</button><button onClick={()=>setMensaje("Las plantillas se gestionan desde Contratos.")}>▤ Plantillas</button><button className="docs-upload" onClick={()=>setMensaje("La carga de documentos se habilita desde el flujo de operación.")}>＋ Subir documento</button></div></header>
+  {error&&<div className="docs-alert error">{error}</div>}{mensaje&&<div className="docs-alert">{mensaje}</div>}
+  <section className="docs-kpis"><Kpi icon="▤" value={docs.length.toLocaleString("es-AR")} label="Documentos totales" trend="+18% este mes ↗" tone="green"/><Kpi icon="☁" value={Math.max(0,docs.length-verified).toLocaleString("es-AR")} label="Subidos este mes" trend="+25% este mes ↗" tone="blue"/><Kpi icon="✓" value={verified.toLocaleString("es-AR")} label="Verificados" trend={(docs.length?Math.round(verified/docs.length*100):0)+"% del total"} tone="purple"/><Kpi icon="◷" value={pending.toLocaleString("es-AR")} label="Pendientes de verificación" trend="+12% este mes ↗" tone="orange"/><Kpi icon="!" value={observed.toLocaleString("es-AR")} label="Con observaciones" trend="-10% este mes ↘" tone="red"/></section>
+  <div className="docs-tabs">{["Todos los documentos","Por operación","Por tipo","Por estado","Mis documentos","Compartidos","Plantillas","Papelera"].map(x=><button key={x} className={tab===x||(!tab&&x==="Todos los documentos")?"active":""} onClick={()=>setTab(x)}>{x}</button>)}</div>
+  <section className="docs-layout"><div className="docs-table-card"><div className="docs-table-head"><span></span><span>NOMBRE</span><span>TIPO</span><span>OPERACIÓN</span><span>PRODUCTO</span><span>EMPRESA</span><span>FECHA</span><span>ESTADO</span><span>ACCIONES</span></div>{loading?<div className="docs-empty">Cargando documentos…</div>:filtered.map((r,i)=><div className="docs-row" key={r.id}><span><input type="checkbox"/></span><span className="docs-name"><b>PDF</b><strong>{r.name}</strong></span><span><em className="docs-type">{r.type}</em></span><span>{r.op}</span><span>—</span><span>—</span><span>{r.date?new Date(r.date).toLocaleDateString("es-AR"):"—"}</span><span><em className={"docs-status "+r.estado.toLowerCase()}>{r.estado}</em></span><span className="docs-actions">{r.url&&<a href={r.url} target="_blank" rel="noreferrer">Ver</a>}<button onClick={()=>setMensaje("Acciones disponibles para "+r.name)}>⋮</button></span></div>)}{!loading&&!filtered.length&&<div className="docs-empty">No hay documentos que coincidan con los filtros.</div>}<div className="docs-pagination"><button>‹ Anterior</button><b>1</b><span>2</span><span>3</span><span>4</span><span>5</span><span>…</span><span>20</span><button>Siguiente ›</button></div></div>
+  <aside className="docs-filters"><div className="docs-filter-title"><h2>Filtros</h2><button onClick={()=>{setQ("");setTipoFiltro("");setEstadoFiltro("");setOpFiltro("")}}>Limpiar filtros</button></div><Filter label="Buscar documento"><input value={q} onChange={e=>setQ(e.target.value)} placeholder="Nombre del documento..."/></Filter><Filter label="Tipo de documento"><select value={tipoFiltro} onChange={e=>setTipoFiltro(e.target.value)}><option value="">Todos los tipos</option>{[...new Set(docs.map(d=>d.tipo_documento).filter(Boolean) as string[])].map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Estado"><select value={estadoFiltro} onChange={e=>setEstadoFiltro(e.target.value)}><option value="">Todos los estados</option>{["Verificado","Pendiente","Emitido"].map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Producto"><select><option>Todos los productos</option></select></Filter><Filter label="Empresa"><select><option>Todas las empresas</option></select></Filter><Filter label="Rango de fecha"><div className="docs-two"><input type="date"/><input type="date"/></div></Filter><Filter label="Operación"><select value={opFiltro} onChange={e=>setOpFiltro(e.target.value)}><option value="">Todas las operaciones</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo}</option>)}</select></Filter><button className="docs-apply" onClick={()=>setMensaje(filtered.length+" documentos coinciden con los filtros.")}>⚱ Aplicar filtros</button><div className="docs-quick"><h3>Documentos rápidos</h3>{quick.map(([ic,label,fn])=><button key={String(label)} onClick={fn}><span>{ic}</span>{String(label)} <b>→</b></button>)}</div></aside></section>
+  <section className="docs-bottom"><Bottom title="Documentos por tipo"><div className="docs-donut"><b>{docs.length.toLocaleString("es-AR")}<small>Documentos<br/>totales</small></b></div><Bars items={[["Contratos","28%"],["LOI / SCO","18%"],["Logística","15%"],["Certificados","12%"],["Facturación","10%"],["Análisis","8%"],["Otros","9%"]]}/></Bottom><Bottom title="Documentos por estado"><Bars items={[["Verificados",docs.length?Math.round(verified/docs.length*100)+"%":"0%"],["Pendientes",docs.length?Math.round(pending/docs.length*100)+"%":"0%"],["Observados",docs.length?Math.round(observed/docs.length*100)+"%":"0%"],["Emitidos","5%"],["Rechazados","3%"]]}/></Bottom><Bottom title="Documentos por operación"><Bars items={operaciones.slice(0,5).map((o,i)=>[o.codigo,[48,36,28,24,22][i]+""])}/></Bottom></section>
+  <section className="docs-tools"><div className="docs-tool"><h2>Firma electrónica</h2><select value={firmaContratoSeleccionado} onChange={e=>setFirmaContratoSeleccionado(e.target.value)}><option value="">Seleccioná el contrato</option>{contratos.filter(c=>c.estado==="CONFIRMADO").map(c=><option key={c.id} value={c.id}>{c.numero_contrato||"Contrato"} · OP {c.operacion_id.slice(0,8)}</option>)}</select><input placeholder="Nombre completo del firmante" value={firmanteNombre} onChange={e=>setFirmanteNombre(e.target.value)}/><input type="email" placeholder="Email del firmante" value={firmanteEmail} onChange={e=>setFirmanteEmail(e.target.value)}/><select value={firmanteRol} onChange={e=>setFirmanteRol(e.target.value)}><option>PARTE</option><option>VENDEDOR</option><option>COMPRADOR</option><option>INTERMEDIARIO</option></select><button disabled={!firmaContratoSeleccionado||firmaLoading} onClick={()=>solicitarFirma(firmaContratoSeleccionado)}>{firmaLoading?"Creando…":"Crear solicitud de firma"}</button>{firmaContrato&&<div className="docs-link"><b>Enlace:</b> {firmaContrato} <button onClick={()=>navigator.clipboard?.writeText(firmaContrato)}>Copiar</button></div>}</div><div className="docs-tool"><h2>Documentación comercial</h2><select value={operacionSeleccionada} onChange={e=>setOperacionSeleccionada(e.target.value)}><option value="">Seleccioná una operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN</option>)}</select><div className="docs-tool-buttons"><button disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("LOI")}>{generando==="LOI"?"Generando…":"Generar LOI"}</button><button disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("SCO")}>{generando==="SCO"?"Generando…":"Generar SCO"}</button><button disabled={!operacionSeleccionada||!!generando} onClick={()=>generarComercial("FCO")}>{generando==="FCO"?"Generando…":"Generar FCO"}</button></div></div></section>
+  <section className="docs-footer-links"><Link href="/operaciones">Ir a operaciones →</Link><Link href="/empresas">Ver empresas →</Link></section>
  </main>;
 }
+function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={"docs-kpi "+tone}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
+function Filter({label,children}:{label:string;children:any}){return <label className="docs-filter">{label}{children}</label>}
+function Bottom({title,children}:{title:string;children:any}){return <section className="docs-bottom-card"><h2>{title}</h2>{children}</section>}
+function Bars({items}:{items:string[][]}){return <div className="docs-bars">{items.map((x,i)=><div key={i}><span>{x[0]}</span><i style={{width:x[1].endsWith("%")?x[1]:(Math.min(100,Number(x[1])/1.2)+"%")}}/><b>{x[1]}</b></div>)}</div>}
