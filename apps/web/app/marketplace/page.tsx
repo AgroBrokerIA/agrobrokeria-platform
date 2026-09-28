@@ -13,7 +13,7 @@ type Publicacion = {
   provincia: string; localidad?: string; puerto: string; calidad?: string;
   humedad?: number; proteina?: number; observaciones?: string; creada_en?: string;
   productos?: { nombre: string } | null;
-  empresas?: { razon_social: string } | null;
+  empresas?: { razon_social: string; tipo_empresa?: string | null; verificada?: boolean | null; reputacion_score?: number | null; operaciones_realizadas?: number | null; toneladas_operadas?: number | null } | null;
 };
 
 export default function MarketplacePage() {
@@ -32,7 +32,7 @@ export default function MarketplacePage() {
     async function cargar() {
       setLoading(true); setError("");
       const { data, error } = await supabase.from("publicaciones")
-        .select("*, productos(nombre), empresas(razon_social)")
+        .select("*, productos(nombre), empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)")
         .eq("estado", "PUBLICADA").order("creada_en", { ascending: false });
       if (error) setError("No se pudieron cargar las publicaciones.");
       else setPublicaciones((data as Publicacion[]) || []);
