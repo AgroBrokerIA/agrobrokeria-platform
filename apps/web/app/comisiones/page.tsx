@@ -350,75 +350,14 @@ if (errorMovimientos) {
 
   return (
     <main className="module-page"><div className="module-hero"><div><span className="eyebrow">FINANZAS</span><h1>Comisiones</h1><p>Controlá comisiones generadas, pendientes y abonadas.</p></div><div className="module-pill">Control financiero</div></div>
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 16,
-          marginBottom: 24,
-          flexWrap: "wrap",
-        }}
-      >
+      <div className="commission-actions">
         <div>
-          <h1
-            style={{
-              margin: 0,
-              fontSize: 28,
-              fontWeight: 800,
-            }}
-          >
-            💵 Comisiones y Movimientos
-          </h1>
-
-          <p
-            style={{
-              marginTop: 6,
-              color: "#64748b",
-            }}
-          >
-            Control económico de las comisiones generadas por AgroBrokerIA.
-          </p>
+          <h2>Control económico</h2>
+          <p>Las comisiones se generan desde operaciones y quedan registradas para liquidación y pago.</p>
         </div>
-
-        <div
-          style={{
-            display: "flex",
-            gap: 10,
-            alignItems: "center",
-            flexWrap: "wrap",
-          }}
-        >
-          <a
-            href="/retiros-comisiones"
-            style={{
-              border: "1px solid #0f172a",
-              background: "#0f172a",
-              color: "#fff",
-              borderRadius: 9,
-              padding: "10px 16px",
-              textDecoration: "none",
-              fontWeight: 700,
-            }}
-          >
-            💸 Retirar comisión
-          </a>
-
-          <button
-            type="button"
-            onClick={cargarDatos}
-            disabled={cargando}
-            style={{
-              border: "1px solid #cbd5e1",
-              background: "#fff",
-              borderRadius: 9,
-              padding: "10px 16px",
-              cursor: cargando ? "not-allowed" : "pointer",
-              fontWeight: 600,
-            }}
-          >
-            🔄 Actualizar
-          </button>
+        <div className="commission-action-buttons">
+          <a href="/retiros-comisiones" className="commission-primary-action">💸 Retirar comisión</a>
+          <button type="button" onClick={cargarDatos} disabled={cargando} className="commission-secondary-action">🔄 Actualizar</button>
         </div>
       </div>
 
