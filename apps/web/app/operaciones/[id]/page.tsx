@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import { getCompanyBadge } from "@/lib/company-badges";
 
 type Operacion = {
   id: string;
@@ -189,6 +190,7 @@ export default function DetalleOperacion() {
     return (
       <main style={{ padding: 30 }}>
         <h1>Detalle de operación</h1>
+          <div className="operation-participant-note"><span>Identidad comercial</span><small>Los datos sensibles permanecen protegidos hasta la etapa autorizada del workflow.</small></div>
         <p>Cargando...</p>
       </main>
     );
