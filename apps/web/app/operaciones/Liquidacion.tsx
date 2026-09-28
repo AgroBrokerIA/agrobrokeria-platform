@@ -159,7 +159,7 @@ export default function Liquidacion({
       cantidad_entregada_tn: entregadaTn,
       diferencia_tn: (cantidadContractualTn || 0) - entregadaTn,
       importe_bruto_usd: bruto,
-      importe_neto_usd: bruto,
+      importe_neto_usd: bruto - entregadaTn,
       comision_agrobroker_usd: entregadaTn,
       fecha_liquidacion: entrega?.fecha_entrega || "",
     }));
@@ -366,19 +366,19 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Precio (${currencyCode || "moneda de operación"}/TN)`
+          label={`Precio (${currencyCode || "moneda de operación"}/TN)`}
           value={datos.precio_tn}
           readOnly
         />
 
         <Campo
-          label={`Importe bruto (${currencyCode || "moneda de operación"})`
+          label={`Importe bruto (${currencyCode || "moneda de operación"})`}
           value={calculos.bruto.toFixed(2)}
           readOnly
         />
 
         <Campo
-          label={`Ajustes (${currencyCode || "moneda de operación"})`
+          label={`Ajustes (${currencyCode || "moneda de operación"})`}
           value={datos.ajustes_usd}
           type="number"
           onChange={(v) =>
@@ -387,7 +387,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Deducciones (${currencyCode || "moneda de operación"})`
+          label={`Deducciones (${currencyCode || "moneda de operación"})`}
           value={datos.deducciones_usd}
           type="number"
           onChange={(v) =>
@@ -402,7 +402,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Importe neto a liquidar (${currencyCode || "moneda de operación"})`
+          label={`Importe neto a liquidar (${currencyCode || "moneda de operación"})`}
           value={calculos.neto.toFixed(2)}
           readOnly
         />
