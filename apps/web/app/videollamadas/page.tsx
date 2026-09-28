@@ -1,68 +1,31 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
+import {useEffect,useMemo,useState} from "react";
+import {supabase} from "@/lib/supabase/client";
 
-type Operation = { id: string; codigo: string | null; estado: string | null };
-type Meeting = {
-  id: string; operacion_id: string; titulo: string | null; estado: string | null;
-  inicio_at: string | null; enlace: string | null; proveedor: string | null; meeting_id: string | null;
-};
+type Operation={id:string;codigo:string|null;estado:string|null};
+type Meeting={id:string;operacion_id:string;titulo:string|null;estado:string|null;inicio_at:string|null;enlace:string|null;proveedor:string|null;meeting_id:string|null};
+type Participant={id:string;name:string;company:string;role:string;initials:string};
 
-export default function Videollamadas() {
-  const [meetings, setMeetings] = useState<Meeting[]>([]);
-  const [operations, setOperations] = useState<Operation[]>([]);
-  const [operationId, setOperationId] = useState("");
-  const [startAt, setStartAt] = useState("");
-  const [title, setTitle] = useState("Reunión comercial AgroBrokerIA");
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-
-  async function load() {
-    const [{ data: meetingData, error: meetingError }, { data: operationData, error: operationError }] = await Promise.all([
-      supabase.from("videollamadas_comerciales").select("id,operacion_id,titulo,estado,inicio_at,enlace,proveedor,meeting_id").order("creada_en",{ascending:false}),
-      supabase.from("operaciones").select("id,codigo,estado").order("creada_en",{ascending:false}).limit(100),
-    ]);
-    if (meetingError) setError(meetingError.message); else setMeetings((meetingData||[]) as Meeting[]);
-    if (operationError) setError(operationError.message); else setOperations((operationData||[]) as Operation[]);
-  }
-  useEffect(()=>{ void load(); },[]);
-
-  async function crear() {
-    if (!operationId) return setError("Seleccioná una operación.");
-    if (!startAt) return setError("Indicá fecha y hora de inicio.");
-    setBusy(true); setError("");
-    try {
-      const { data:{session} }=await supabase.auth.getSession();
-      if (!session?.access_token) throw new Error("AUTH_REQUIRED");
-      const { data, error: rpcError }=await supabase.rpc("crear_videollamada_comercial",{
-        p_operacion_id:operationId,p_negociacion_id:null,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"
-      });
-      if (rpcError) throw rpcError;
-      const response=await fetch("/api/videollamadas/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({videollamada_id:data})});
-      const result=await response.json();
-      if (!response.ok) throw new Error(result.detail||result.error||"No se pudo crear Google Meet.");
-      setOperationId(""); setStartAt(""); await load();
-    } catch(e) { setError(e instanceof Error?e.message:"No se pudo crear la videollamada."); }
-    finally { setBusy(false); }
-  }
-
-  return <main className="module-page">
-    <div className="module-hero"><div><span className="eyebrow">COMUNICACIÓN</span><h1>Videollamadas comerciales</h1><p>Reuniones vinculadas a operaciones y participantes autorizados.</p></div></div>
-    <section className="company-card" style={{marginBottom:20}}>
-      <h2>Programar reunión</h2>
-      <div className="auth-two-col">
-        <label>Operación<select value={operationId} onChange={e=>setOperationId(e.target.value)}><option value="">Seleccionar operación…</option>{operations.map(o=><option key={o.id} value={o.id}>{o.codigo||o.id} · {o.estado||"SIN ESTADO"}</option>)}</select></label>
-        <label>Inicio<input type="datetime-local" value={startAt} onChange={e=>setStartAt(e.target.value)} /></label>
-        <label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={120} /></label>
-      </div>
-      <button className="module-pill" disabled={busy||!operationId||!startAt} onClick={crear} type="button">{busy?"Creando…":"🎥 Crear videollamada"}</button>
-    </section>
-    {error&&<div className="module-alert module-alert-error">{error}</div>}
-    <section className="company-grid">{meetings.map(m=><article className="company-card" key={m.id}>
-      <div className="company-card-head"><div><h2>{m.titulo||"Reunión comercial"}</h2><p>{m.operacion_id}</p></div><span className="company-status">{m.estado}</span></div>
-      <div className="company-details"><div><span>Proveedor</span><strong>{m.proveedor||"Pendiente externo"}</strong></div><div><span>Fecha</span><strong>{m.inicio_at?new Date(m.inicio_at).toLocaleString("es-AR"):"—"}</strong></div><div><span>Meeting ID</span><strong>{m.meeting_id||"Pendiente externo"}</strong></div></div>
-      {m.enlace?<a className="module-pill" href={m.enlace} target="_blank" rel="noreferrer">Unirse a videollamada →</a>:<small>Google Meet pendiente de autorización externa.</small>}
-    </article>)}</section>
-  </main>;
+export default function Videollamadas(){
+ const [meetings,setMeetings]=useState<Meeting[]>([]);const [operations,setOperations]=useState<Operation[]>([]);const [selected,setSelected]=useState<Meeting|null>(null);const [operationId,setOperationId]=useState("");const [startAt,setStartAt]=useState("");const [title,setTitle]=useState("Reunión comercial AgroBrokerIA");const [error,setError]=useState("");const [busy,setBusy]=useState(false);const [running,setRunning]=useState(true);const [chat,setChat]=useState("");const [messages,setMessages]=useState<{name:string;text:string;mine?:boolean}[]>([]);const [userName,setUserName]=useState("Tú");
+ async function load(){const [{data:meetingData,error:meetingError},{data:operationData,error:operationError},{data:{user}}]=await Promise.all([supabase.from("videollamadas_comerciales").select("id,operacion_id,titulo,estado,inicio_at,enlace,proveedor,meeting_id").order("creada_en",{ascending:false}),supabase.from("operaciones").select("id,codigo,estado").order("creada_en",{ascending:false}).limit(100),supabase.auth.getUser()]);if(meetingError)setError(meetingError.message);else{const rows=(meetingData||[]) as Meeting[];setMeetings(rows);if(!selected&&rows[0])setSelected(rows[0]);}if(operationError)setError(operationError.message);else setOperations((operationData||[]) as Operation[]);const m=user?.user_metadata||{};setUserName(m.nombre||m.full_name||user?.email?.split("@")[0]||"Tú")}
+ useEffect(()=>{void load()},[]);
+ async function crear(){if(!operationId)return setError("Seleccioná una operación.");if(!startAt)return setError("Indicá fecha y hora de inicio.");setBusy(true);setError("");try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");const {data,error:rpcError}=await supabase.rpc("crear_videollamada_comercial",{p_operacion_id:operationId,p_negociacion_id:null,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"});if(rpcError)throw rpcError;const response=await fetch("/api/videollamadas/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({videollamada_id:data})});const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo crear Google Meet.");setOperationId("");setStartAt("");await load()}catch(e){setError(e instanceof Error?e.message:"No se pudo crear la videollamada.")}finally{setBusy(false)}}
+ const active=selected||meetings[0]||null;const operation=useMemo(()=>operations.find(o=>o.id===active?.operacion_id),[operations,active]);
+ const participants:Participant[]=[{id:"me",name:userName,company:"AgroBrokerIA",role:"Gestora",initials:userName.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase()||"TU"},{id:"op",name:"Participante de la operación",company:"Parte autorizada",role:"Participante",initials:"PA"},{id:"co",name:"Participante comercial",company:"Empresa vinculada",role:"Participante",initials:"PC"},{id:"lo",name:"Participante logístico",company:"Logística",role:"Participante",initials:"PL"}];
+ const send=()=>{if(!chat.trim())return;setMessages(x=>[...x,{name:userName,text:chat.trim(),mine:true}]);setChat("")};
+ return <main className="meet-reference">
+  <header className="meet-head"><div><h1>Videollamada</h1><p>Reuniones seguras para negociar, coordinar operaciones y fortalecer conexiones comerciales</p></div><button className="meet-new" onClick={()=>document.getElementById("meet-create")?.scrollIntoView({behavior:"smooth"})}>＋ Nueva reunión</button></header>
+  <nav className="meet-tabs"><button className="active">▣ &nbsp; Sala de reunión</button><button>▣ &nbsp; Programar reunión</button><button>▦ &nbsp; Mis reuniones</button><button>▣ &nbsp; Grabaciones</button><button>⚙ &nbsp; Configuración</button></nav>
+  {active?<><section className="meet-room-head"><div><h2>{active.titulo||"Reunión comercial"}</h2><p>Operación {operation?.codigo||active.operacion_id} &nbsp;|&nbsp; {active.proveedor||"AgroBrokerIA"}</p></div><div className="meet-status">● En curso</div><strong className="meet-timer">{running?"00:36:24":"00:00:00"}</strong><div className="meet-room-actions"><button>♙ {participants.length}</button><button>ⓘ</button><button>⋮</button></div></section>
+  <section className="meet-workspace"><div className="meet-main"><div className="meet-grid">{participants.map((p,i)=><article className={"meet-tile tile-"+i} key={p.id}><div className="meet-avatar-large">{p.initials}</div><div className="meet-tile-label"><b>♟ &nbsp;{p.name}{p.id==="me"?" (Tú)":""}</b><small>{p.company} | {p.role}</small></div><button className="tile-more">⋮</button></article>)}</div>
+    <div className="meet-controls"><button>♩<small>Micrófono</small></button><button>▣<small>Cámara</small></button><button>▤<small>Compartir</small></button><button>▢<small>Chat</small></button><button>♙<small>Participantes</small><b>4</b></button><button>◉<small>Grabar</small></button><button>CC<small>Subtítulos</small></button><button>◎<small>Traducir</small></button><button>•••<small>Más</small></button><span/><button className="meet-end" onClick={()=>setRunning(false)}>☎<small>Finalizar</small></button></div></div>
+   <aside className="meet-side"><div className="meet-side-tabs"><button className="active">Participantes ({participants.length})</button><button>Chat</button><button>Documentos</button></div><div className="meet-participants">{participants.map(p=><div className="meet-person" key={p.id}><i>{p.initials}</i><div><b>{p.name}{p.id==="me"?" (Tú)":""}</b><small>{p.company} | {p.role}</small>{p.id==="me"&&<em>Organizadora</em>}</div><button>♩</button><button>▣</button><button>⋮</button></div>)}<div className="meet-side-actions"><button>♙ Invitar participantes</button>{active.enlace&&<button onClick={()=>navigator.clipboard?.writeText(active.enlace||"")}>🔗 Copiar enlace</button>}</div></div><div className="meet-chat"><h3>Chat de la reunión</h3>{messages.length?messages.map((m,i)=><div className={m.mine?"chat-line mine":"chat-line"} key={i}><b>{m.name}</b><small>{m.text}</small></div>):<div className="chat-line"><b>Chat de la reunión</b><small>La conversación aparecerá aquí.</small></div>}<div className="meet-chat-input"><button>📎</button><input value={chat} onChange={e=>setChat(e.target.value)} onKeyDown={e=>e.key==="Enter"&&send()} placeholder="Escribe un mensaje..."/><button onClick={send}>➤</button></div></div></aside></section>
+  <section className="meet-feature-row"><Feature icon="✓" title="Reuniones seguras" text="Comunicación encriptada y privada para tus negociaciones."/><Feature icon="文" title="Traducción en tiempo real" text="Conversaciones en más de 50 idiomas con traducción automática."/><Feature icon="▤" title="Compartir documentos" text="Muestra contratos, fichas técnicas y documentos en pantalla."/></section>
+  </section>:<section className="meet-empty">No hay una reunión activa. Creá una nueva o seleccioná una reunión existente.</section>}
+  <section id="meet-create" className="meet-create"><h2>Programar reunión</h2><div><label>Operación<select value={operationId} onChange={e=>setOperationId(e.target.value)}><option value="">Seleccionar operación…</option>{operations.map(o=><option key={o.id} value={o.id}>{o.codigo||o.id} · {o.estado||"SIN ESTADO"}</option>)}</select></label><label>Inicio<input type="datetime-local" value={startAt} onChange={e=>setStartAt(e.target.value)}/></label><label>Título<input value={title} onChange={e=>setTitle(e.target.value)} maxLength={120}/></label><button onClick={crear} disabled={busy||!operationId||!startAt}>{busy?"Creando…":"🎥 Crear videollamada"}</button></div></section>
+  {error&&<div className="meet-error">{error}</div>}
+ </main>
 }
+function Feature({icon,title,text}:{icon:string;title:string;text:string}){return <div className="meet-feature"><i>{icon}</i><div><b>{title}</b><span>{text}</span></div></div>}
