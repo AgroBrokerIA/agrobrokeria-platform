@@ -2,11 +2,13 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
 const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Corredor","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Industria","industria"],["Intermediario","intermediario"]];
 
 export default function RegisterPage() {
+  const router = useRouter();
   const [form, setForm] = useState({ nombre:"", empresa:"", cuit:"", telefono:"", provincia:"", tipoUsuario:"comprador", email:"", password:"", confirmPassword:"" });
   const [loading, setLoading] = useState(false);
   const [acepto, setAcepto] = useState(false);
@@ -20,7 +22,7 @@ export default function RegisterPage() {
     setLoading(false);
     if (error) { alert(error.message); return; }
     alert("Cuenta creada correctamente. Revisá tu correo para confirmar la cuenta.");
-    window.location.href = "/login";
+    router.replace("/login");
   }
 
   return (
