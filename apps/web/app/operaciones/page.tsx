@@ -224,13 +224,10 @@ export default function OperacionesPage() {
   const [visadoAbierto, setVisadoAbierto] =
     useState<string | null>(null);
 
-  const [guardandoVisado, setGuardandoVisado] =
-    useState(false);
-
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
 
-  const [comisionesIntermediarios, setComisionesIntermediarios] =
+  const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
 
   const [contactos, setContactos] = useState<ContactoComercial[]>([]);
@@ -244,7 +241,7 @@ export default function OperacionesPage() {
   const [intermediariosSeleccionados, setIntermediariosSeleccionados] =
     useState<Record<string, string>>({});
 
-  const [participantesCargadosPorOperacion, setParticipantesCargadosPorOperacion] =
+  const [participantesCargadosPorOperacion] =
     useState<Record<string, boolean>>({});
 
   const [participantesPorOperacion, setParticipantesPorOperacion] =
