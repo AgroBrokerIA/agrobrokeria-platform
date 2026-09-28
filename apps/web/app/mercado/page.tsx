@@ -29,8 +29,9 @@ export default function MercadoPage(){
  async function sync(){
   setSyncing(true);setSyncMsg("");setError("");
   try{const{data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Necesitás iniciar sesión.");
-   const r=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+"/functions/v1/market-data-sync",{method:"POST",headers:{Authorization:"Bearer "+session.access_token}});
-   const j=await r.json();if(!r.ok)throw new Error(j.error||"No se pudo actualizar BCR/CAC.");
+   const{data:j,error:invokeError}=await supabase.functions.invoke("market-data-sync");
+   if(invokeError)throw new Error(invokeError.message||"No se pudo actualizar BCR/CAC.");
+   if(!j?.ok)throw new Error(j?.error||"No se pudo actualizar BCR/CAC.");
    setSyncMsg("Precios BCR/CAC actualizados. El histórico fue conservado.");await load();
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
