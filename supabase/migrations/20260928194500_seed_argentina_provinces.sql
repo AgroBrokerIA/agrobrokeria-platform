@@ -1,0 +1,27 @@
+-- Seed the complete Argentine first-level administrative catalog used by the marketplace.
+insert into public.provincias (nombre,codigo,pais_id,activo) values
+('Buenos Aires','AR-B',1,true),
+('Catamarca','AR-K',1,true),
+('Chaco','AR-H',1,true),
+('Chubut','AR-U',1,true),
+('Ciudad Autónoma de Buenos Aires','AR-C',1,true),
+('Córdoba','AR-X',1,true),
+('Corrientes','AR-W',1,true),
+('Entre Ríos','AR-E',1,true),
+('Formosa','AR-P',1,true),
+('Jujuy','AR-Y',1,true),
+('La Pampa','AR-L',1,true),
+('La Rioja','AR-F',1,true),
+('Mendoza','AR-M',1,true),
+('Misiones','AR-N',1,true),
+('Neuquén','AR-Q',1,true),
+('Río Negro','AR-R',1,true),
+('Salta','AR-A',1,true),
+('San Juan','AR-J',1,true),
+('San Luis','AR-D',1,true),
+('Santa Cruz','AR-Z',1,true),
+('Santa Fe','AR-S',1,true),
+('Santiago del Estero','AR-G',1,true),
+('Tierra del Fuego, Antártida e Islas del Atlántico Sur','AR-V',1,true),
+('Tucumán','AR-T',1,true)
+on conflict do nothing;
