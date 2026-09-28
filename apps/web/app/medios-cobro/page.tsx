@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Link from "next/link";
 
 type Medio={id:string;empresa_id:string;tipo:"BANCO"|"FINANCIERA";nombre:string;titular:string|null;cuit_cuil:string|null;banco:string|null;cbu:string|null;alias:string|null;moneda_id:number|null;es_predeterminado:boolean;estado:string};
 type Currency={id:number;codigo:string;nombre:string|null};
