@@ -8,7 +8,7 @@ import jsPDF from "jspdf";
 type Documento={id:string;tipo_documento:string|null;nombre_archivo:string|null;url_archivo:string|null;version:number|null;obligatorio:boolean|null;aprobado:boolean|null;observaciones:string|null;creado_en:string|null;operacion_id:string};
 type Contrato={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;archivo_pdf:string|null};
 type DocumentoEmpresa={id:string;tipo_documento:string;nombre_archivo:string|null;url_archivo:string|null;fecha_vencimiento:string|null;verificado:boolean|null;observaciones:string|null;creado_en:string|null};
-type Operacion={id:string;codigo:string;tipo_operacion:string|null;cantidad_tn:number;precio_tn:number;importe_total:number;fecha_operacion:string};
+type Operacion={id:string;codigo:string;tipo_operacion:string|null;cantidad_tn:number;precio_tn:number;moneda_id:number|null;importe_total:number;fecha_operacion:string};
 type Comercial={id:string;operacion_id:string;empresa_emisora:string|null;empresa_receptora?:string|null;fecha_emision:string|null;estado:string|null;archivo_pdf:string|null;creado_en:string|null};
 
 export default function DocumentosPage(){
@@ -30,7 +30,7 @@ export default function DocumentosPage(){
      const [{data:d,error:de},{data:c,error:ce},{data:o,error:oe},{data:l,error:le},{data:s,error:se},{data:f,error:fe}]=await Promise.all([
        supabase.from("documentos_operacion").select("id,tipo_documento,nombre_archivo,url_archivo,version,obligatorio,aprobado,observaciones,creado_en,operacion_id").order("creado_en",{ascending:false}),
        supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,archivo_pdf").order("creado_en",{ascending:false}),
-       supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false}),
+       supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,moneda_id,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false}),
        supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false}),
        supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false}),
        supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false})
@@ -52,22 +52,19 @@ export default function DocumentosPage(){
    try{
      const pdf=new jsPDF();
      const fecha=new Date().toLocaleDateString("es-AR");
+     const {data:moneda}=op.moneda_id ? await supabase.from("monedas").select("codigo").eq("id",op.moneda_id).maybeSingle() : {data:null};
+     const monedaCodigo=moneda?.codigo||"";
      pdf.setFontSize(18); pdf.text(tipo==="LOI"?"LETTER OF INTENT":tipo==="SCO"?"SOFT CORPORATE OFFER":"FIRM CORPORATE OFFER",20,24);
      pdf.setFontSize(9); pdf.text("AGROBROKER IA · DOCUMENTO COMERCIAL",20,31);
      pdf.setFontSize(11); pdf.text("Código de operación: "+op.codigo,20,48);
      pdf.text("Fecha: "+fecha,20,56);
      pdf.text("Tipo de operación: "+(op.tipo_operacion||"No especificado"),20,64);
      pdf.text("Cantidad: "+Number(op.cantidad_tn).toLocaleString("es-AR")+" TN",20,72);
-     pdf.text("Precio de referencia: USD "+Number(op.precio_tn).toLocaleString("es-AR")+" / TN",20,80);
-     pdf.text("Importe de referencia: USD "+Number(op.importe_total).toLocaleString("es-AR"),20,88);
+     pdf.text("Precio de referencia: "+(monedaCodigo?monedaCodigo+" ":"")+Number(op.precio_tn).toLocaleString("es-AR")+" / TN",20,80);
+     pdf.text("Importe de referencia: "+(monedaCodigo?monedaCodigo+" ":"")+Number(op.importe_total).toLocaleString("es-AR"),20,88);
      pdf.setFontSize(10);
-     const body=tipo==="LOI"
-       ?"Las partes manifiestan su intención comercial de avanzar en la negociación de la operación identificada, sujeta a verificación de documentación, condiciones comerciales, disponibilidad de mercadería y posterior formalización contractual."
-       :tipo==="SCO"
-       ?"Se presenta una oferta comercial indicativa sobre la operación identificada, sujeta a disponibilidad, validación de contraparte, condiciones de entrega, calidad, pago y aceptación expresa."
-       :"Se presenta una oferta corporativa firme sobre la operación identificada, sujeta a los términos comerciales detallados y a la aceptación expresa de la contraparte dentro del plazo indicado.";
-     pdf.text(pdf.splitTextToSize(body,170),20,105);
-     pdf.text(pdf.splitTextToSize("Este documento es informativo/no vinculante salvo pacto expreso por escrito. El contrato definitivo y la documentación firmada prevalecen sobre esta pieza comercial.",170),20,132);
+     pdf.text("Documento comercial generado con datos registrados de la operación.",20,105);
+     pdf.text("No se agregan cláusulas jurídicas ni condiciones comerciales no presentes en la operación.",20,113);
      const dataUri=pdf.output("datauristring");
      const {data,error}=await supabase.rpc(tipo==="LOI"?"crear_loi_comercial":tipo==="SCO"?"crear_sco_comercial":"crear_fco_comercial",{p_operacion_id:op.id,p_archivo_pdf:dataUri});
      if(error) throw new Error(error.message);
