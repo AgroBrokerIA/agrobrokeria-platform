@@ -168,15 +168,6 @@ export default function OportunidadesPage() {
     cargarOportunidades();
   }, []);
 
-  function colorPuntaje(
-    puntaje: number
-  ) {
-    if (puntaje >= 90) return "text-green-700";
-    if (puntaje >= 80) return "text-blue-700";
-    if (puntaje >= 70) return "text-yellow-700";
-    return "text-gray-600";
-  }
-
   function formatoFecha(
     fecha: string
   ) {
