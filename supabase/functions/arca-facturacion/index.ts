@@ -14,7 +14,7 @@ function ivaId(rate:number|null){const r=Number(rate||0);if(r===21)return 5;if(r
 function makeCms(){
  const certPem=Deno.env.get("ARCA_CERT_PEM"),keyPem=Deno.env.get("ARCA_PRIVATE_KEY_PEM");if(!certPem||!keyPem)throw new Error("ARCA_CREDENTIALS_NOT_CONFIGURED");
  const cert=forge.pki.certificateFromPem(certPem),key=forge.pki.privateKeyFromPem(keyPem),now=new Date();
- const fmt=(d:Date)=>new Date(d.getTime()-3*60*60*1000).toISOString().replace(/[-:]/g,"").replace(/\.\d{3}Z$/,"-03:00");
+ const fmt=(d:Date)=>{const z=new Date(d.getTime()-3*60*60*1000);return z.toISOString().replace(/\.\d{3}Z$/,"-03:00")};
  const tra='<?xml version="1.0" encoding="UTF-8"?><loginTicketRequest version="1.0"><header><uniqueId>'+Math.floor(now.getTime()/1000)+'</uniqueId><generationTime>'+fmt(new Date(now.getTime()-60000))+'</generationTime><expirationTime>'+fmt(new Date(now.getTime()+600000))+'</expirationTime></header><service>wsfe</service></loginTicketRequest>';
  const p7=forge.pkcs7.createSignedData();p7.content=forge.util.createBuffer(tra,"utf8");p7.addCertificate(cert);p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[{type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}]});p7.sign({detached:true});return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
 }
