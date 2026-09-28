@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import Link from "next/link";
 
 type Company={id:string;razon_social?:string|null;nombre_comercial?:string|null;cuit?:string|null;pais?:string|null;provincia?:string|null;ciudad?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;};
 type Verification={empresa_id:string;estado:string|null;tipo_consulta:string|null;fecha_verificacion:string|null;consultado_at:string|null;};
