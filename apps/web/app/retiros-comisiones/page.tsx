@@ -236,7 +236,7 @@ export default function RetirosComisionesPage() {
 
     setGuardando(true);
 
-    const { data: retiroId, error: retiroError } = await supabase.rpc(
+    const { error: retiroError } = await supabase.rpc(
       "solicitar_retiro_comision",
       {
         p_empresa_id: profile.active_company_id,
