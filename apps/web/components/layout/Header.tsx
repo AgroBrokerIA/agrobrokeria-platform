@@ -60,7 +60,7 @@ export default function Header() {
       <button type="button" className="header-language" onClick={() => router.push("/idioma")} aria-label="Idioma">🇪🇸 <strong>{idioma}</strong>⌄</button>
       <Link href="/notificaciones" className="header-icon header-notify" aria-label="Notificaciones">♧{notificaciones > 0 && <i>{notificaciones > 99 ? "99+" : notificaciones}</i>}</Link>
       <Link href="/mensajes" className="header-icon header-message" aria-label="Mensajes">✉{mensajes > 0 && <i>{mensajes}</i>}</Link>
-      {usuario ? <div className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>Gestora | AgroBrokerIA</small></div><span className="user-chevron">⌄</span></div> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
+      {usuario ? <Link href="/perfil" className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>Gestora | AgroBrokerIA</small></div><span className="user-chevron">⌄</span></Link> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
     </div>
   </header>;
 }
