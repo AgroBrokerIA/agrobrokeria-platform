@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
-import MarketplaceHeader from "../../components/marketplace/MarketplaceHeader";
 import MarketplaceSearch from "../../components/marketplace/MarketplaceSearch";
 import MarketplaceFilters from "../../components/marketplace/MarketplaceFilters";
 import MarketplaceCard from "../../components/marketplace/MarketplaceCard";
