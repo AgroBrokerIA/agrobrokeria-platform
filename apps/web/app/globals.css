@@ -357,3 +357,9 @@ body{background:var(--ab-bg)}
 .commission-table-card{background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow-x:auto;margin-top:20px}
 .commission-table-card th,.commission-table-card td{padding:14px 16px}
 @media(max-width:700px){.commission-movements-header{align-items:flex-start;flex-direction:column}.commission-filters{display:grid;grid-template-columns:1fr}.commission-filters select{width:100%}}
+
+/* Global marketplace geography */
+.marketplace-filters-grid{display:grid;grid-template-columns:repeat(5,minmax(150px,1fr));gap:10px;margin-bottom:20px}
+.marketplace-filters-grid select:disabled{background:#f8fafc;color:#94a3b8;cursor:not-allowed}
+@media(max-width:1100px){.marketplace-filters-grid{grid-template-columns:repeat(3,minmax(150px,1fr))}}
+@media(max-width:700px){.marketplace-filters-grid{grid-template-columns:1fr}}
