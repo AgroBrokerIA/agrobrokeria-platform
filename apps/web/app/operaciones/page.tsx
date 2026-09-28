@@ -2675,7 +2675,7 @@ Firma: ______________________________
               const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
               const producto=["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Pellets de Soja","Sorgo"][index%8];
-              const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion):undefined;
+              const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion.id):undefined;
               return <div className="operation-directory-row" key={operacion.id}>
                 <span className="op-code">{operacion.codigo}</span>
                 <span className="op-product"><b>{["🫘","🌽","🌾","🌻","🫒","🌾","🫘","🌾"][index%8]}</b><strong>{producto}</strong></span>
