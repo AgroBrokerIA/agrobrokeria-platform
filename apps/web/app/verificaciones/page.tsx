@@ -28,9 +28,9 @@ function Icon({name,size=18}:{name:string;size?:number}) {
  return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{p[name]||p.file}</svg>;
 }
 
-const countryFlag=(country:string|null)=>({Argentina:"🇦🇷","Estados Unidos":"🇺🇸",China:"🇨🇳",Alemania:"🇩🇪",Canadá:"🇨🇦",Brasil:"🇧🇷",Suiza:"🇨🇭"}[country||""]||"🌐");
+const countryFlag=(country:string|null|undefined)=>({Argentina:"🇦🇷","Estados Unidos":"🇺🇸",China:"🇨🇳",Alemania:"🇩🇪",Canadá:"🇨🇦",Brasil:"🇧🇷",Suiza:"🇨🇭"}[country||""]||"🌐");
 const companyName=(c:Company)=>c.nombre_comercial||c.razon_social||"Empresa sin nombre";
-const verificationState=(c:Company,v?:Verification)=>c.verificada||v?.estado?.toUpperCase().includes("VERIFIC")?"Verificada":v?.estado?.toUpperCase().includes("RECHAZ")?"Con observaciones":v?"En proceso":"Sin verificar";
+const verificationState=(c:Company,v?:Verification)=>c.verificada||v?.estado?.toUpperCase().includes("VERIFIC")?"Verificada":v?.estado?.toUpperCase().includes("RECHAZ")?"Rechazado":v?"En proceso":"Sin verificar";
 
 export default function VerificacionesPage(){
  const[companies,setCompanies]=useState<Company[]>([]),[verifications,setVerifications]=useState<Verification[]>([]),[selected,setSelected]=useState<Company|null>(null),[query,setQuery]=useState(""),[country,setCountry]=useState(""),[status,setStatus]=useState("Todos"),[loading,setLoading]=useState(true);
