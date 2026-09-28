@@ -50,7 +50,7 @@ export default function TransaccionesPage(){
  const pageRows=filtered.slice(0,10);
  return <main className="transactions-page">
   <header className="transactions-hero"><div><h1>Transacciones</h1><p>Gestiona todas las transacciones financieras de tus operaciones, pagos, comisiones y retiros.</p></div><button className="new-transaction">＋ Nueva transacción</button></header>
-  <nav className="transactions-tabs">{["Todas","Pagos","Cobros","Comisiones","Retiros","Transferencias","Liquidaciones"].map((x,i)=><button key={x} className={i===0?"active":""}>{x}</button>)}</nav>
+  <nav className="transactions-tabs">{[["Todas","Todos los tipos"],["Pagos","Pago"],["Cobros","Cobro"],["Comisiones","Comisión"],["Retiros","Retiro"],["Transferencias","Transferencia"],["Liquidaciones","Liquidación"]].map(([x,v])=><button key={x} className={txTab===x?"active":""} onClick={()=>{setTxTab(x);setType(v)}}>{x}</button>)}</nav>
   <section className="transactions-kpis">
    <article className="tk green"><span><Icon name="wallet" size={25}/></span><div><small>Saldo disponible</small><strong>USD {totals.in.toLocaleString("en-US",{maximumFractionDigits:0})}</strong><em>Para retiro de comisiones</em></div></article>
    <article className="tk blue"><span><Icon name="down" size={25}/></span><div><small>Total ingresado</small><strong>USD {totals.in.toLocaleString("en-US",{maximumFractionDigits:0})}</strong><em>Últimos 12 meses</em></div></article>
