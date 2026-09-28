@@ -1,311 +1,60 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-type Notificacion = {
-  id: string;
-  profile_id: string | null;
-  cuenta_id: string | null;
-  titulo: string | null;
-  mensaje: string | null;
-  tipo: string | null;
-  leida: boolean | null;
-  creada_en: string | null;
-  actualizado_at: string | null;
-  operacion_id: string | null;
-  oferta_id: string | null;
+type Notificacion={id:string;profile_id:string|null;cuenta_id:string|null;titulo:string|null;mensaje:string|null;tipo:string|null;leida:boolean|null;creada_en:string|null;actualizado_at:string|null;operacion_id:string|null;oferta_id:string|null};
+
+const typeMeta=(tipo:string|null)=>{
+ const t=(tipo||"GENERAL").toUpperCase();
+ if(t.includes("MENSAJ"))return{label:"Mensajes",icon:"▰",tone:"blue"};
+ if(t.includes("CONTRAT"))return{label:"Contratos",icon:"♧",tone:"red"};
+ if(t.includes("PAGO")||t.includes("FACTUR"))return{label:"Pagos",icon:"▤",tone:"yellow"};
+ if(t.includes("LOG"))return{label:"Logística",icon:"▣",tone:"purple"};
+ if(t.includes("IA")||t.includes("OPORT"))return{label:"Oportunidades IA",icon:"★",tone:"yellow"};
+ if(t.includes("DOC"))return{label:"Documentación",icon:"▤",tone:"green"};
+ if(t.includes("OPER")||t.includes("OFERTA")||t.includes("DEMANDA"))return{label:"Operaciones",icon:"◆",tone:"green"};
+ return{label:"Sistema",icon:"▥",tone:"green"};
 };
 
-export default function NotificacionesPage() {
-  const [notificaciones, setNotificaciones] = useState<Notificacion[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState("");
+export default function NotificacionesPage(){
+ const [notificaciones,setNotificaciones]=useState<Notificacion[]>([]);
+ const [seleccionada,setSeleccionada]=useState<Notificacion|null>(null);
+ const [cargando,setCargando]=useState(true);
+ const [error,setError]=useState("");
+ const [filtro,setFiltro]=useState("Todas");
+ const [orden,setOrden]=useState("recentes");
+ const [buscando,setBuscando]=useState("");
+ const [filtros,setFiltros]=useState<Record<string,boolean>>({Operaciones:true,Mensajes:true,Contratos:true,Pagos:true,Logística:true,Sistema:true,"Oportunidades IA":true,Documentación:true});
 
-  useEffect(() => {
-    let canal: ReturnType<typeof supabase.channel> | null = null;
+ useEffect(()=>{let canal:ReturnType<typeof supabase.channel>|null=null;async function iniciar(){
+  setCargando(true);setError("");
+  const {data:{user}}=await supabase.auth.getUser();
+  if(!user){setError("Necesitás iniciar sesión.");setCargando(false);return}
+  const {data,error:e}=await supabase.from("notificaciones").select("*").or(`profile_id.eq.${user.id},cuenta_id.eq.${user.id}`).order("creada_en",{ascending:false});
+  if(e){setError(e.message);setCargando(false);return}
+  const rows=(data||[]) as Notificacion[];setNotificaciones(rows);setSeleccionada(rows[0]||null);setCargando(false);
+  canal=supabase.channel(`notificaciones-${user.id}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"notificaciones"},payload=>{const n=payload.new as Notificacion;if(n.profile_id===user.id||n.cuenta_id===user.id){setNotificaciones(a=>[n,...a.filter(x=>x.id!==n.id)]);setSeleccionada(n)}}).subscribe();
+ }iniciar();return()=>{if(canal)supabase.removeChannel(canal)}} ,[]);
 
-    async function iniciar() {
-      setCargando(true);
-      setError("");
-
-      const {
-        data: { user },
-      } = await supabase.auth.getUser();
-
-      if (!user) {
-        setError("Necesitás iniciar sesión.");
-        setCargando(false);
-        return;
-      }
-
-      const { data, error: errorDatos } = await supabase
-        .from("notificaciones")
-        .select("*")
-        .or(
-          `profile_id.eq.${user.id},cuenta_id.eq.${user.id}`
-        )
-        .order("creada_en", { ascending: false });
-
-      if (errorDatos) {
-        setError(errorDatos.message);
-        setCargando(false);
-        return;
-      }
-
-      setNotificaciones((data || []) as Notificacion[]);
-      setCargando(false);
-
-      canal = supabase
-        .channel(`notificaciones-${user.id}`)
-        .on(
-          "postgres_changes",
-          {
-            event: "INSERT",
-            schema: "public",
-            table: "notificaciones",
-          },
-          (payload) => {
-            const nueva = payload.new as Notificacion;
-
-            if (
-              nueva.profile_id === user.id ||
-              nueva.cuenta_id === user.id
-            ) {
-              setNotificaciones((actuales) => [
-                nueva,
-                ...actuales.filter(
-                  (item) => item.id !== nueva.id
-                ),
-              ]);
-            }
-          }
-        )
-        .subscribe();
-    }
-
-    iniciar();
-
-    return () => {
-      if (canal) {
-        supabase.removeChannel(canal);
-      }
-    };
-  }, []);
-
-  async function marcarLeida(id: string) {
-    const ahora = new Date().toISOString();
-
-    const { error: errorUpdate } = await supabase
-      .from("notificaciones")
-      .update({
-        leida: true,
-        actualizado_at: ahora,
-      })
-      .eq("id", id);
-
-    if (errorUpdate) {
-      setError(errorUpdate.message);
-      return;
-    }
-
-    setNotificaciones((actuales) =>
-      actuales.map((item) =>
-        item.id === id
-          ? {
-              ...item,
-              leida: true,
-              actualizado_at: ahora,
-            }
-          : item
-      )
-    );
-  }
-
-  async function marcarTodasLeidas() {
-    const pendientes = notificaciones.filter(
-      (item) => !item.leida
-    );
-
-    if (!pendientes.length) return;
-
-    const ahora = new Date().toISOString();
-
-    const ids = pendientes.map((item) => item.id);
-
-    const { error: errorUpdate } = await supabase
-      .from("notificaciones")
-      .update({
-        leida: true,
-        actualizado_at: ahora,
-      })
-      .in("id", ids);
-
-    if (errorUpdate) {
-      setError(errorUpdate.message);
-      return;
-    }
-
-    setNotificaciones((actuales) =>
-      actuales.map((item) =>
-        ids.includes(item.id)
-          ? {
-              ...item,
-              leida: true,
-              actualizado_at: ahora,
-            }
-          : item
-      )
-    );
-  }
-
-  function formatearFecha(fecha: string | null) {
-    if (!fecha) return "";
-
-    return new Date(fecha).toLocaleString("es-AR", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-    });
-  }
-
-  const pendientes = notificaciones.filter(
-    (item) => !item.leida
-  ).length;
-
-  return (
-    <main className="module-page notifications-page">
-      <div className="module-hero">
-        <div><span className="eyebrow">CENTRO DE ALERTAS</span><h1>Notificaciones</h1><p>Seguimiento de cambios, ofertas y eventos de tus operaciones.</p></div>
-        <div className="module-pill">{pendientes > 0 ? pendientes+" pendientes" : "Todo al día"}</div>
-      </div>
-      <section className="notifications-body">
-      <div className="notifications-toolbar">
-        <div><strong>Centro de alertas</strong><span>Actualizaciones de ofertas, operaciones y actividad comercial.</span></div>
-        {pendientes > 0 && <button type="button" onClick={marcarTodasLeidas} className="secondary-action">✓ Marcar todas como leídas</button>}
-      </div>
-
-      {error && (
-        <div
-          style={{
-            marginBottom: 20,
-            padding: 14,
-            borderRadius: 10,
-            background: "#fef2f2",
-            color: "#b91c1c",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {cargando ? (
-        <div>Cargando notificaciones...</div>
-      ) : notificaciones.length === 0 ? (
-        <div
-          style={{
-            padding: 45,
-            textAlign: "center",
-            border: "1px solid #e2e8f0",
-            borderRadius: 14,
-            background: "#fff",
-            color: "#64748b",
-          }}
-        >
-          No tenés notificaciones todavía.
-        </div>
-      ) : (
-        <div
-          style={{
-            display: "flex",
-            flexDirection: "column",
-            gap: 10,
-          }}
-        >
-          {notificaciones.map((notificacion) => (
-            <div
-              key={notificacion.id}
-              style={{
-                padding: 18,
-                borderRadius: 12,
-                border: "1px solid #e2e8f0",
-                background: notificacion.leida
-                  ? "#ffffff"
-                  : "#f0fdf4",
-                boxShadow: notificacion.leida
-                  ? "none"
-                  : "0 1px 4px rgba(0,0,0,0.06)",
-              }}
-            >
-              <div
-                style={{
-                  display: "flex",
-                  justifyContent: "space-between",
-                  gap: 15,
-                }}
-              >
-                <div>
-                  <div
-                    style={{
-                      fontWeight: 800,
-                      fontSize: 16,
-                    }}
-                  >
-                    {notificacion.titulo || "Notificación"}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 7,
-                      color: "#475569",
-                      whiteSpace: "pre-wrap",
-                    }}
-                  >
-                    {notificacion.mensaje || ""}
-                  </div>
-
-                  <div
-                    style={{
-                      marginTop: 8,
-                      fontSize: 11,
-                      color: "#94a3b8",
-                    }}
-                  >
-                    {notificacion.tipo || "GENERAL"}
-                    {" · "}
-                    {formatearFecha(notificacion.creada_en)}
-                  </div>
-                </div>
-
-                {!notificacion.leida && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      marcarLeida(notificacion.id)
-                    }
-                    style={{
-                      alignSelf: "flex-start",
-                      border: "1px solid #bbf7d0",
-                      borderRadius: 8,
-                      padding: "7px 10px",
-                      background: "#fff",
-                      color: "#166534",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                      whiteSpace: "nowrap",
-                    }}
-                  >
-                    Marcar leída
-                  </button>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      )}
-      </section>
-    </main>
-  );
+ async function marcarLeida(id:string){const ahora=new Date().toISOString();const {error:e}=await supabase.from("notificaciones").update({leida:true,actualizado_at:ahora}).eq("id",id);if(e){setError(e.message);return}setNotificaciones(a=>a.map(n=>n.id===id?{...n,leida:true,actualizado_at:ahora}:n));setSeleccionada(s=>s?.id===id?{...s,leida:true,actualizado_at:ahora}:s)}
+ async function marcarTodasLeidas(){const ids=notificaciones.filter(n=>!n.leida).map(n=>n.id);if(!ids.length)return;const ahora=new Date().toISOString();const {error:e}=await supabase.from("notificaciones").update({leida:true,actualizado_at:ahora}).in("id",ids);if(e){setError(e.message);return}setNotificaciones(a=>a.map(n=>ids.includes(n.id)?{...n,leida:true,actualizado_at:ahora}:n));setSeleccionada(s=>s&&ids.includes(s.id)?{...s,leida:true,actualizado_at:ahora}:s)}
+ const pendientes=notificaciones.filter(n=>!n.leida).length;
+ const counts=useMemo(()=>{const c:Record<string,number>={Todas:pendientes};notificaciones.forEach(n=>{const k=typeMeta(n.tipo).label;c[k]=(c[k]||0)+(!n.leida?1:0)});return c},[notificaciones,pendientes]);
+ const visibles=useMemo(()=>{let rows=notificaciones.filter(n=>{const meta=typeMeta(n.tipo);return filtros[meta.label]!==false&&(filtro==="Todas"||meta.label===filtro)&&((n.titulo||"").toLowerCase().includes(buscando.toLowerCase())||(n.mensaje||"").toLowerCase().includes(buscando.toLowerCase()))});if(orden==="oldest")rows=[...rows].reverse();return rows},[notificaciones,filtro,filtros,buscando,orden]);
+ const fecha=(s:string|null)=>s?new Date(s).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
+ const relativo=(s:string|null)=>{if(!s)return"";const d=Date.now()-new Date(s).getTime();const m=Math.max(1,Math.round(d/60000));if(m<60)return`Hace ${m} min`;const h=Math.round(m/60);if(h<24)return`Hace ${h} hora`;return`Hace ${Math.round(h/24)} días`};
+ return <main className="notifications-reference">
+  <header className="notifications-head"><div><h1>Notificaciones</h1><p>Mantente al día con todas las novedades de tus operaciones y del mercado</p></div><button className="notifications-config">⚙ &nbsp; Configurar notificaciones</button></header>
+  <div className="notification-tabs">{["Todas","Operaciones","Mensajes","Contratos","Pagos","Logística","Sistema"].map(x=><button key={x} className={filtro===x?"active":""} onClick={()=>setFiltro(x)}>{x}{(counts[x]||0)>0&&<b>{counts[x]}</b>}</button>)}</div>
+  {error&&<div className="notifications-error">{error}</div>}
+  {cargando?<div className="notifications-loading">Cargando notificaciones...</div>:<div className="notifications-grid">
+   <section className="notifications-main">
+    <div className="notifications-list-toolbar"><label><input type="checkbox" checked={visibles.length>0&&visibles.every(n=>n.leida)} onChange={e=>e.target.checked&&marcarTodasLeidas()}/> Seleccionar todas</label><button onClick={marcarTodasLeidas}>♜ &nbsp; Marcar como leídas</button><select value={orden} onChange={e=>setOrden(e.target.value)}><option value="recentes">Más recientes</option><option value="oldest">Más antiguas</option></select></div>
+    <div className="notifications-list">{visibles.map(n=>{const meta=typeMeta(n.tipo);return <button key={n.id} className={seleccionada?.id===n.id?"notification-row selected":"notification-row"} onClick={()=>{setSeleccionada(n);if(!n.leida)void marcarLeida(n.id)}}><span className={`notification-icon ${meta.tone}`}>{meta.icon}</span><span className="notification-copy"><strong>{n.titulo||"Notificación"}</strong><em className={meta.tone}>{meta.label}</em><small>{n.mensaje||""}</small></span><span className="notification-time">{relativo(n.creada_en)}<i>›</i></span></button>})}</div>
+   </section>
+   <aside className="notification-detail">{seleccionada?<><div className={`detail-icon ${typeMeta(seleccionada.tipo).tone}`}>{typeMeta(seleccionada.tipo).icon}</div><h2>{seleccionada.titulo||"Notificación"}</h2><time>{fecha(seleccionada.creada_en)}</time><span className={`detail-tag ${typeMeta(seleccionada.tipo).tone}`}>{typeMeta(seleccionada.tipo).label}</span><p className="detail-message">{seleccionada.mensaje||""}</p><div className="offer-details"><h3>Detalles de la notificación</h3><div><span>Operación</span><strong>{seleccionada.operacion_id||"No vinculada"}</strong></div><div><span>Oferta</span><strong>{seleccionada.oferta_id||"No vinculada"}</strong></div><div><span>Estado</span><strong>{seleccionada.leida?"Leída":"Nueva"}</strong></div><div><span>Fecha</span><strong>{fecha(seleccionada.creada_en)}</strong></div></div><button className="detail-primary">Ver detalle completo&nbsp; →</button><button className="detail-secondary" onClick={()=>seleccionada&&!seleccionada.leida&&marcarLeida(seleccionada.id)}>✓ &nbsp; Marcar como leída</button><h3 className="quick-title">Acciones rápidas</h3><div className="quick-actions"><button>✓<small>Aceptar</small></button><button>☁<small>Negociar</small></button><button>×<small>Rechazar</small></button><button>★<small>Guardar</small></button></div></>:<div className="detail-empty">Seleccioná una notificación.</div>}</aside>
+   <aside className="notifications-sidebar"><div className="side-card"><h2>Filtros de notificaciones <a onClick={()=>setFiltros({Operaciones:true,Mensajes:true,Contratos:true,Pagos:true,Logística:true,Sistema:true,"Oportunidades IA":true,Documentación:true})}>Limpiar filtros</a></h2>{Object.keys(filtros).map(k=><label key={k}><span><i className={typeMeta(k).tone}>{typeMeta(k).icon}</i>{k}</span><input type="checkbox" checked={filtros[k]} onChange={e=>setFiltros({...filtros,[k]:e.target.checked})}/><b className={filtros[k]?"on":""}></b></label>)}</div><div className="side-card channels"><h2>Canales de notificación</h2>{["En la plataforma","Email","Notificaciones push","SMS"].map(x=><label key={x}><span>♧ &nbsp; {x}<small>{x==="Email"?"samanta@agrobrokeria.com":x==="SMS"?"+54 9 341 123-4567":"Activo"}</small></span><b className="on"></b></label>)}</div><div className="side-card summary"><h2>Resumen</h2><div><strong>{pendientes}</strong><span>🔵 &nbsp; No leídas</span></div><div><strong>{notificaciones.length}</strong><span>▥ &nbsp; Este mes</span></div></div></aside>
+  </div>}
+ </main>
 }
