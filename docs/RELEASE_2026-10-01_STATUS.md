@@ -280,3 +280,15 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - GitHub Actions: npm ci, lint, typecheck y build exitosos en el cierre de esta pasada.
 - Vercel: check de deployment del `main` actual en estado SUCCESS.
 - No se cargaron cotizaciones BCR ficticias: `market_quotes` permanece en 0 hasta una sincronización real.
+
+
+## Validación final de esta tanda
+- Último código revisado sobre `main` mantiene la separación de moneda de operación vs. comisión fija de plataforma.
+- Se eliminaron más símbolos sin uso detectados por lint.
+- GitHub Actions mantiene `lint`, `typecheck` y `build` como checks obligatorios; la tanda anterior ya terminó con los tres en verde.
+- Los warnings restantes de lint son no bloqueantes y corresponden principalmente a dependencias de `useEffect` en loaders locales; no se ocultaron mediante desactivación global del lint.
+- Vercel reportó estado `success` para el commit de release auditado.
+
+### Estado de datos reales
+- No se cargan cotizaciones ficticias.
+- `market_quotes` está en 0 en este momento; la primera sincronización real depende de que `CRON_SECRET` esté configurado tanto en Vercel como en Supabase y se ejecute el cron o una invocación autorizada.
