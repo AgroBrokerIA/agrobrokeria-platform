@@ -27,16 +27,27 @@ export default function DocumentosPage(){
    try{
      const {data:{user}}=await supabase.auth.getUser();
      if(!user) throw new Error("Necesitás iniciar sesión.");
-     const [{data:d,error:de},{data:c,error:ce},{data:o,error:oe},{data:l,error:le},{data:s,error:se},{data:f,error:fe}]=await Promise.all([
+     const [{data:d,error:de},{data:c,error:ce},{data:o,error:oe}]=await Promise.all([
        supabase.from("documentos_operacion").select("id,tipo_documento,nombre_archivo,url_archivo,version,obligatorio,aprobado,observaciones,creado_en,operacion_id").order("creado_en",{ascending:false}),
        supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,archivo_pdf").order("creado_en",{ascending:false}),
-       supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,moneda_id,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false}),
-       supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false}),
-       supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false}),
-       supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").order("creado_en",{ascending:false})
+       supabase.from("operaciones").select("id,codigo,tipo_operacion,cantidad_tn,precio_tn,moneda_id,importe_total,fecha_operacion").order("fecha_operacion",{ascending:false})
      ]);
-     if(de) throw new Error(de.message); if(ce) throw new Error(ce.message); if(oe) throw new Error(oe.message); if(le) throw new Error(le.message); if(se) throw new Error(se.message); if(fe) throw new Error(fe.message);
-     setDocs((d||[]) as Documento[]); setContratos((c||[]) as Contrato[]); setOperaciones((o||[]) as Operacion[]); setLois((l||[]) as Comercial[]); setScos((s||[]) as Comercial[]); setFcos((f||[]) as Comercial[]);
+     if(de) throw new Error(de.message); if(ce) throw new Error(ce.message); if(oe) throw new Error(oe.message);
+
+     const accessibleOperationIds=(o||[]).map((row:any)=>row.id).filter(Boolean);
+     let l:any[]=[]; let s:any[]=[]; let fcoRows:any[]=[];
+     if(accessibleOperationIds.length){
+       const [loiResult,scoResult,fcoResult]=await Promise.all([
+         supabase.from("loi").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false}),
+         supabase.from("sco").select("id,operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false}),
+         supabase.from("fco").select("id,operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,creado_en").in("operacion_id",accessibleOperationIds).order("creado_en",{ascending:false})
+       ]);
+       if(loiResult.error) throw new Error(loiResult.error.message);
+       if(scoResult.error) throw new Error(scoResult.error.message);
+       if(fcoResult.error) throw new Error(fcoResult.error.message);
+       l=loiResult.data||[]; s=scoResult.data||[]; fcoRows=fcoResult.data||[];
+     }
+     setDocs((d||[]) as Documento[]); setContratos((c||[]) as Contrato[]); setOperaciones((o||[]) as Operacion[]); setLois(l as Comercial[]); setScos(s as Comercial[]); setFcos(fcoRows as Comercial[]);
      const {data:profile,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();
      if(pe||!profile?.active_company_id) throw new Error("No se encontró una empresa activa.");
      const {data:ed,error:ee}=await supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,url_archivo,fecha_vencimiento,verificado,observaciones,creado_en").eq("empresa_id",profile.active_company_id).order("creado_en",{ascending:false});
