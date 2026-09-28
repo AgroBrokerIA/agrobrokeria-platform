@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
@@ -54,9 +55,9 @@ export default function CumplimientosPage(){
  const companyName=company?.nombre||company?.razon_social||"Empresa activa";
 
  return <main className="compliance-page">
-  <header className="compliance-hero"><div><h1>Cumplimientos</h1><p>{companyName} · seguimiento normativo, fiscal, legal y documental basado en registros reales.</p></div><button className="compliance-download" disabled>⇩ &nbsp; Reporte cuando existan datos</button></header>
+  <header className="compliance-hero"><div><h1>Cumplimientos</h1><p>{companyName} · seguimiento normativo, fiscal, legal y documental basado en registros reales.</p></div><Link className="compliance-download" href="/reportes">⇩ &nbsp; Ir a reportes</Link></header>
   {error&&<div className="module-alert module-alert-error">{error}</div>}
-  <nav className="compliance-tabs"><a className="active">▣ &nbsp; Resumen</a><a>▤ &nbsp; Documentación</a><a>▣ &nbsp; KYC</a><a>▣ &nbsp; Cumplimiento fiscal</a><a>▣ &nbsp; Normativas</a><a>△ &nbsp; Alertas</a><a>▤ &nbsp; Historial</a></nav>
+  <nav className="compliance-tabs"><Link className="active" href="/cumplimientos">▣ &nbsp; Resumen</Link><Link href="/documentos">▤ &nbsp; Documentación</Link><Link href="/verificaciones">▣ &nbsp; KYC</Link><Link href="/facturas">▣ &nbsp; Cumplimiento fiscal</Link><Link href="/terminos">▣ &nbsp; Normativas</Link><Link href="/notificaciones">△ &nbsp; Alertas</Link><Link href="/historial">▤ &nbsp; Historial</Link></nav>
   {loading?<div className="module-empty"><div className="module-empty-icon">◷</div><h2>Cargando cumplimiento…</h2></div>:<>
   <section className="compliance-kpis">
    <article className="ckpi green"><I>♢</I><div><small>Estado general</small><strong>{compliancePct}%</strong><div className="progress"><b style={{width:compliancePct+"%"}}/></div><em>Calculado con requisitos registrados</em></div></article>
@@ -65,13 +66,13 @@ export default function CumplimientosPage(){
    <article className="ckpi red"><I>△</I><div><small>Alertas derivadas de datos</small><strong>{expiredDocs}</strong><div className="progress"><b style={{width:(docs.length?expiredDocs/docs.length*100:0)+"%"}}/></div><em>Documentos vencidos</em></div></article>
   </section>
   <div className="compliance-main">
-   <section className="compliance-panel compliance-docs"><div className="cp-title"><h2>Documentación registrada</h2><button className="outline-blue" disabled>⇧ &nbsp; Subir documento</button></div>
+   <section className="compliance-panel compliance-docs"><div className="cp-title"><h2>Documentación registrada</h2><Link className="outline-blue" href="/documentos">⇧ &nbsp; Gestionar documentos</Link></div>
     <div className="doc-filters"><b>Todos <i>{docs.length}</i></b><span>Verificados <i>{validDocs}</i></span><span>Pendientes <i className="yellow">{dueDocs}</i></span><span>Vencidos <i className="red">{expiredDocs}</i></span></div>
-    <div className="doc-table"><div className="doc-head"><span>Documento</span><span>Categoría</span><span>Estado</span><span>Vencimiento</span><span>Acciones</span></div>{docs.length?docs.map(d=><div className="doc-row" key={d.id}><I>{d.icon}</I><div><strong>{d.nombre}</strong></div><span>{d.categoria}</span><b className={"doc-status "+(d.estado==="Verificado"?"ok":d.estado==="Vencido"?"bad":"soon")}>{d.estado}</b><span>{dateLabel(d.vence)}</span><div><button disabled>Ver</button><button className="dots" disabled>⋮</button></div></div>):<div className="module-empty">No hay documentación registrada para esta empresa.</div>}</div>
+    <div className="doc-table"><div className="doc-head"><span>Documento</span><span>Categoría</span><span>Estado</span><span>Vencimiento</span><span>Acciones</span></div>{docs.length?docs.map(d=><div className="doc-row" key={d.id}><I>{d.icon}</I><div><strong>{d.nombre}</strong></div><span>{d.categoria}</span><b className={"doc-status "+(d.estado==="Verificado"?"ok":d.estado==="Vencido"?"bad":"soon")}>{d.estado}</b><span>{dateLabel(d.vence)}</span><div><Link href="/documentos">Ver</Link><button className="dots">⋮</button></div></div>):<div className="module-empty">No hay documentación registrada para esta empresa.</div>}</div>
    </section>
    <aside className="compliance-side">
     <section className="compliance-panel level-panel"><h2>Nivel de cumplimiento</h2><div className="level-content"><div className="donut"><strong>{compliancePct}%</strong></div><div className="level-legend"><span><i/>Documentación <b>{docs.length?Math.round(validDocs/docs.length*100):0}%</b></span><span><i/>Requisitos <b>{reqs.length?Math.round(verifiedReq/reqs.length*100):0}%</b></span><span><i className="orange"/>Vencidos <b>{expiredDocs}</b></span></div></div><div className="green-note">ⓘ El porcentaje se calcula únicamente con información registrada en la plataforma.</div></section>
-    <section className="compliance-panel due-panel"><div className="cp-title"><h2>Próximos vencimientos</h2><button disabled>Ver todos</button></div>{upcoming.length?upcoming.map(x=><div className="due-row" key={x.name+String(x.date)}><I>◷</I><div><strong>{x.name}</strong><span>Registro de la empresa.</span></div><time>{dateLabel(x.date)}</time><b className={x.state==="Vencido"?"bad-bg":"blue-bg"}>{x.state}</b></div>):<div className="module-empty">No hay vencimientos registrados.</div>}</section>
+    <section className="compliance-panel due-panel"><div className="cp-title"><h2>Próximos vencimientos</h2><Link href="/historial">Ver todos</Link></div>{upcoming.length?upcoming.map(x=><div className="due-row" key={x.name+String(x.date)}><I>◷</I><div><strong>{x.name}</strong><span>Registro de la empresa.</span></div><time>{dateLabel(x.date)}</time><b className={x.state==="Vencido"?"bad-bg":"blue-bg"}>{x.state}</b></div>):<div className="module-empty">No hay vencimientos registrados.</div>}</section>
    </aside>
   </div>
   <div className="compliance-bottom">
