@@ -40,7 +40,8 @@ export default function MercadoPage(){
  const tabCodes:Record<string,string[]>={Granos:["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"],Aceites:["ACEITE_SOJA"],Harinas:["HARINA_SOJA"],Subproductos:["PELLETS_SOJA","SORGO"],Futuros:[],FOB:[],FAS:[],CIF:[], "Mercados internacionales":[]};
  const tabRows=(tabCodes[marketTab]||[]).map(code=>({code,q:latest.get(code)}));
  const tabQuotes=quotes.filter(q=>{const p=String(q.price_type||"").toUpperCase();if(marketTab==="Futuros")return p.includes("FUT");if(["FOB","FAS","CIF"].includes(marketTab))return p.includes(marketTab);if(marketTab==="Mercados internacionales")return ["CHICAGO","EURONEXT","BRASIL","PARIS"].includes(String(q.market||"").toUpperCase());return tabCodes[marketTab]?.includes((commodities[q.commodity_id||""]||q.commodity_id||"").toUpperCase())||false;}).slice(0,20);
- const soja=quotes.filter(q=>(commodities[q.commodity_id||""]||"").toUpperCase()==="SOJA").slice(0,30).reverse();
+ const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
+ const soja=quotes.filter(q=>(commodities[q.commodity_id||""]||"").toUpperCase()==="SOJA").slice(0,rangeSize[range]||30).reverse();
  const international=quotes.filter(q=>["CHICAGO","EURONEXT","BRASIL","PARIS"].includes((q.market||"").toUpperCase())).slice(0,6);
  const futures=quotes.filter(q=>String(q.price_type).toUpperCase().includes("FUT")).slice(0,8);
  return <main className="market-reference">
