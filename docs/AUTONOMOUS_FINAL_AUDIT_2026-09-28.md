@@ -44,3 +44,25 @@ No se inventan resultados ni enlaces:
 
 ## Conclusión técnica
 No se detectaron bloqueos de código que requieran credenciales para continuar con las correcciones anteriores. Los únicos pendientes de activación identificados son externos y/o de configuración de cuenta.
+
+
+## Correcciones adicionales verificadas
+
+### Moneda de comisión
+- El cierre de operación resuelve el ID de USD mediante el catálogo `monedas`; no depende de `moneda_id=2`.
+- Las comisiones de plataforma existentes fueron reconciliadas contra el USD real del catálogo.
+- Resultado verificado: 0 registros de comisión AgroBrokerIA con moneda distinta de USD.
+
+### Liquidación
+- La UI obtiene la moneda de la operación desde Supabase y dejó de mostrar USD para los importes comerciales cuando la operación utiliza otra moneda.
+- La UI y la RPC `guardar_liquidacion_operacion` coinciden en el cálculo del neto: bruto menos ajustes, deducciones y comisión fija de AgroBrokerIA de USD 1/TN.
+
+### Fiscal
+- La RPC `crear_solicitud_factura` conserva como únicos defaults fiscales `NULL` para DocTipo, condición y alícuota; ya no presupone DocTipo 80 ni IVA 21%.
+- La pantalla de Facturas dejó de precargar esos valores.
+- La autorización fiscal continúa exclusivamente delegada en ARCA.
+
+### Cierre de calidad
+- Último CI observado: npm ci, lint, typecheck y build SUCCESS.
+- Último check Vercel observado: SUCCESS.
+- La conexión Vercel disponible sigue sin permitir inspeccionar el proyecto mediante la API conectada; el estado de deployment se certifica por el check oficial reportado por GitHub.
