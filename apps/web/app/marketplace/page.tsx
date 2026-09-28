@@ -1,140 +1,24 @@
 "use client";
-
-import { useEffect, useMemo, useState } from "react";
-import { supabase } from "@/lib/supabase/client";
-import MarketplaceSearch from "../../components/marketplace/MarketplaceSearch";
-import MarketplaceFilters from "../../components/marketplace/MarketplaceFilters";
-import MarketplaceCard from "../../components/marketplace/MarketplaceCard";
-import MarketplacePagination from "../../components/marketplace/MarketplacePagination";
-
-type Publicacion = {
-  id: string; tipo: string; cantidad_tn: number; precio_tn: number; moneda_id: number | null; moneda_codigo?: string | null; estado: string;
-  pais_id?: number | null; provincia_id?: number | null; localidad_id?: number | null; provincia: string; localidad?: string; paises?: { nombre: string; codigo_iso: string } | null; provincias?: { nombre: string; codigo: string } | null; localidades?: { nombre: string } | null; puerto: string; calidad?: string;
-  humedad?: number; proteina?: number; observaciones?: string; creada_en?: string;
-  productos?: { nombre: string } | null; monedas?: { codigo: string } | null;
-  empresas?: { razon_social: string; tipo_empresa?: string | null; verificada?: boolean | null; reputacion_score?: number | null; operaciones_realizadas?: number | null; toneladas_operadas?: number | null } | null;
-};
-
-export default function MarketplacePage() {
-  const [publicaciones, setPublicaciones] = useState<Publicacion[]>([]);
-  const [busqueda, setBusqueda] = useState("");
-  const [tipo, setTipo] = useState("");
-  const [pais, setPais] = useState("");
-  const [provincia, setProvincia] = useState("");
-  const [ciudad, setCiudad] = useState("");
-  const [producto, setProducto] = useState("");
-  const [loading, setLoading] = useState(true);
-  const [catalogPaises, setCatalogPaises] = useState<Array<{code:string;name:string}>>([]);
-  const [catalogProvincias, setCatalogProvincias] = useState<Array<{code:string;name:string}>>([]);
-  const [catalogCiudades, setCatalogCiudades] = useState<Array<{name:string}>>([]);
-  const [catalogProductos, setCatalogProductos] = useState<string[]>([]);
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    setBusqueda(params.get("search") || "");
-    const tipoParam = params.get("tipo") || "";
-    setTipo(tipoParam === "DEMANDA" ? "COMPRA" : tipoParam);
-    async function cargar() {
-      setLoading(true); setError("");
-      const [{ data, error }, { data: productCatalog, error: productError }, { data: provinceCatalog, error: provinceError }] = await Promise.all([
-        supabase.from("publicaciones")
-          .select("*, productos(nombre), monedas(codigo), paises(nombre,codigo_iso), provincias(nombre,codigo), localidades(nombre), empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)")
-          .eq("estado", "PUBLICADA").order("creada_en", { ascending: false }),
-        supabase.from("productos").select("id,nombre").eq("activo", true).order("nombre"),
-        Promise.resolve({ data: null, error: null })
-      ]);
-      if (error || productError || provinceError) {
-        setError((error || productError || provinceError)?.message || "No se pudieron cargar los datos del marketplace.");
-      } else {
-        setPublicaciones(((data as Publicacion[]) || []).map((row:any) => ({ ...row, moneda_codigo: row.monedas?.codigo || null })));
-        setCatalogProductos((productCatalog || []).map((row:any) => row.nombre));
-        setCatalogProvincias((provinceCatalog || []).map((row:any) => ({ code: String(row.id), name: row.nombre })));
-      }
-      setLoading(false);
-    }
-    void cargar();
-  }, []);
-
-  useEffect(() => {
-    fetch("/api/geo")
-      .then((r) => r.json())
-      .then((data) => setCatalogPaises((data.countries || []).map((x:any) => ({ code: x.iso2, name: x.name }))))
-      .catch(() => setError("No se pudo cargar el catálogo geográfico global."));
-  }, []);
-
-  useEffect(() => {
-    if (!pais) {
-      setCatalogProvincias([]);
-      setCatalogCiudades([]);
-      setProvincia("");
-      setCiudad("");
-      return;
-    }
-    setProvincia("");
-    setCiudad("");
-    setCatalogCiudades([]);
-    fetch("/api/geo?country=" + encodeURIComponent(pais))
-      .then((r) => r.json())
-      .then((data) => setCatalogProvincias((data.states || []).map((x:any) => ({ code: x.iso2, name: x.name }))))
-      .catch(() => setError("No se pudieron cargar las provincias/estados."));
-  }, [pais]);
-
-  useEffect(() => {
-    if (!pais || !provincia) {
-      setCatalogCiudades([]);
-      setCiudad("");
-      return;
-    }
-    setCiudad("");
-    fetch("/api/geo?country=" + encodeURIComponent(pais) + "&state=" + encodeURIComponent(provincia))
-      .then((r) => r.json())
-      .then((data) => setCatalogCiudades((data.cities || []).map((x:any) => ({ name: x.name }))))
-      .catch(() => setError("No se pudieron cargar las ciudades/localidades."));
-  }, [pais, provincia]);
-
-  const tipos = ["COMPRA", "VENTA"];
-  const provincias = catalogProvincias;
-  const ciudades = catalogCiudades;
-  const productos = catalogProductos;
-
-  const filtradas = useMemo(() => publicaciones.filter((p) => {
-    const texto = [p.tipo, p.provincia, p.localidad, p.puerto, p.productos?.nombre, p.empresas?.razon_social].join(" ").toLowerCase();
-    return texto.includes(busqueda.toLowerCase())
-      && (!tipo || p.tipo === tipo)
-      && (!pais || p.paises?.codigo_iso === pais)
-      && (!provincia || p.provincias?.codigo === provincia || p.provincia === provincia)
-      && (!ciudad || p.localidades?.nombre === ciudad || p.localidad === ciudad)
-      && (!producto || p.productos?.nombre === producto);
-  }), [publicaciones, busqueda, tipo, provincia, producto]);
-
-  return (
-    <main className="module-page marketplace-page">
-      <div className="module-hero marketplace-hero"><div><span className="eyebrow">MERCADO DE COMMODITIES</span><h1>Marketplace</h1><p>Publicaciones reales de compra y venta, con condiciones comerciales trazables.</p><div className="marketplace-hero-meta"><span>Compra y venta</span><span>Ofertas directas</span><span>Datos sin inventar</span></div></div><div className="marketplace-hero-side"><strong>{filtradas.length}</strong><span>publicaciones visibles</span><small>Mercado activo</small></div></div>
-      <div className="marketplace-toolbar"><MarketplaceSearch value={busqueda} onChange={setBusqueda} /><span className="marketplace-result-count">{filtradas.length} resultados</span></div>
-      <MarketplaceFilters tipo={tipo} pais={pais} provincia={provincia} ciudad={ciudad} producto={producto}
-        onTipoChange={setTipo} onPaisChange={setPais} onProvinciaChange={setProvincia} onCiudadChange={setCiudad} onProductoChange={setProducto}
-        tipos={tipos} paises={catalogPaises} provincias={provincias} ciudades={ciudades} productos={productos} />
-
-      {loading && <div style={panel}>Cargando publicaciones...</div>}
-      {error && <div style={{ ...panel, background: "#fee2e2", color: "#991b1b" }}>{error}</div>}
-
-      {!loading && !error && filtradas.length === 0 && (
-        <div style={panel}><h2>No hay publicaciones que coincidan.</h2><p>Probá cambiar la búsqueda o los filtros.</p></div>
-      )}
-
-      {!loading && !error && filtradas.length > 0 && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 20, marginTop: 20 }}>
-          {filtradas.map((publicacion) => (
-            <div key={publicacion.id} id={`publicacion-${publicacion.id}`}>
-              <MarketplaceCard publicacion={publicacion} />
-            </div>
-          ))}
-        </div>
-      )}
-      <MarketplacePagination />
-    </main>
-  );
-}
-
-const panel = { background: "white", padding: 30, borderRadius: 12, textAlign: "center" as const, marginTop: 20 };
+import {useEffect,useMemo,useState} from "react";
+import Link from "next/link";
+import {supabase} from "@/lib/supabase/client";
+type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;estado:string;provincia:string|null;localidad:string|null;puerto:string|null;creada_en:string|null;productos?:{nombre:string}|null;monedas?:{codigo:string}|null;empresas?:{razon_social:string;verificada?:boolean|null}|null;paises?:{nombre:string;codigo_iso:string}|null;provincias?:{nombre:string;codigo:string}|null;localidades?:{nombre:string}|null};
+const icon=(n:string)=>{n=n.toLowerCase();return n.includes("soja")?"🫘":n.includes("maiz")||n.includes("maíz")?"🌽":n.includes("trigo")?"🌾":n.includes("girasol")?"🌻":"🌾"};
+const flag=(iso?:string)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
+const ago=(d?:string|null)=>{if(!d)return"—";const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
+export default function MarketplacePage(){
+ const[rows,setRows]=useState<Pub[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[provincia,setProvincia]=useState(""),[ciudad,setCiudad]=useState(""),[paises,setPaises]=useState<any[]>([]),[provincias,setProvincias]=useState<any[]>([]),[ciudades,setCiudades]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]);
+ async function load(){const[a,b]=await Promise.all([supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,estado,provincia,localidad,puerto,creada_en,productos(nombre),monedas(codigo),paises(nombre,codigo_iso),provincias(nombre,codigo),localidades(nombre),empresas(razon_social,verificada)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}),supabase.from("productos").select("nombre").eq("activo",true).order("nombre")]);if(a.error||b.error)setError(a.error?.message||b.error?.message||"No se pudieron cargar las ofertas.");setRows((a.data||[]) as Pub[]);setProductos((b.data||[]).map((x:any)=>x.nombre));setLoading(false)}
+ useEffect(()=>{void load();fetch("/api/geo").then(r=>r.json()).then(d=>setPaises(d.countries||[]))},[]);
+ useEffect(()=>{setProvincia("");setCiudad("");if(!pais){setProvincias([]);return}fetch("/api/geo?country="+pais).then(r=>r.json()).then(d=>setProvincias(d.states||[]))},[pais]);
+ useEffect(()=>{setCiudad("");if(!pais||!provincia){setCiudades([]);return}fetch("/api/geo?country="+pais+"&state="+provincia).then(r=>r.json()).then(d=>setCiudades(d.cities||[]))},[pais,provincia]);
+ const filtered=useMemo(()=>rows.filter(p=>(!producto||p.productos?.nombre===producto)&&(!pais||p.paises?.codigo_iso===pais)&&(!provincia||p.provincias?.codigo===provincia||p.provincia===provincia)&&(!ciudad||p.localidades?.nombre===ciudad||p.localidad===ciudad)),[rows,producto,pais,provincia,ciudad]);
+ const companies=new Set(filtered.map(p=>p.empresas?.razon_social).filter(Boolean)).size,countries=new Set(filtered.map(p=>p.paises?.codigo_iso).filter(Boolean)).size,tons=filtered.reduce((a,p)=>a+Number(p.cantidad_tn||0),0);
+ return <main className="offers-reference"><header className="offers-head"><div><h1>Ofertas</h1><p>Encuentra las mejores ofertas de granos y commodities agrícolas</p></div><Link href="/nueva-publicacion?tipo=OFERTA" className="offers-publish">⌑ Publicar oferta ＋</Link></header>
+ <section className="offers-stats"><Stat i="🏷️" v={String(filtered.length)} t="Ofertas activas" c="green"/><Stat i="▤" v={String(companies)} t="Empresas oferentes" c="blue"/><Stat i="🌐" v={String(countries)} t="Países" c="purple"/><Stat i="🤝" v={tons.toLocaleString("es-AR")} t="Volumen total" c="orange" s=" tn"/></section>
+ <section className="offers-layout"><div className="offers-main"><nav className="offers-tabs">{["Todas las ofertas","Soja","Maíz","Trigo","Girasol","Aceites","Harinas","Subproductos"].map((x,i)=><button key={x} className={(i===0&&!producto)||producto===x?"active":""} onClick={()=>setProducto(i?x:"")}>{x}</button>)}</nav>
+ <div className="offers-table-card"><div className="offers-table-head"><span>PRODUCTO</span><span>VOLUMEN</span><span>PRECIO</span><span>CONDICIÓN</span><span>ORIGEN</span><span>DESTINO</span><span>PUBLICADO</span><span>EMPRESA</span><span>ESTADO</span><span>ACCIONES</span></div>{loading?<div className="offers-empty">Cargando ofertas…</div>:error?<div className="offers-empty">{error}</div>:filtered.length?filtered.map(p=><div className="offer-row" key={p.id}><span className="offer-product"><b>{icon(p.productos?.nombre||"")}</b><strong>{p.productos?.nombre||"Commodity"}</strong><small>{p.calidad||"Disponible"}</small></span><span><strong>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</strong></span><span><strong>{p.precio_tn==null?"—":`${p.monedas?.codigo||"USD"} ${Number(p.precio_tn).toLocaleString("es-AR")}/tn`}</strong><small>{p.tipo==="VENTA"?"FOB":"Compra"}</small></span><span><em className="cond-fob">FOB</em></span><span className="offer-place">{flag(p.paises?.codigo_iso)} <b>{p.localidad||p.provincia||p.paises?.nombre||"Global"}</b><small>{p.paises?.nombre||""}</small></span><span className="offer-place">🌎 <b>{p.puerto||"A coordinar"}</b><small>Destino comercial</small></span><span>{ago(p.creada_en)}</span><span className="offer-company"><b>{p.empresas?.razon_social||"Empresa"}</b>{p.empresas?.verificada&&<i>✓</i>}<small>{p.empresas?.verificada?"Verificada":"Pendiente"}</small></span><span><em className="offer-active">Activa</em></span><Link className="offer-detail" href={"/marketplace?publicacion="+p.id}>Ver detalle</Link></div>):<div className="offers-empty"><strong>No hay ofertas que coincidan.</strong></div>}</div></div>
+ <aside className="offers-sidebar"><section className="offers-filter-card"><div className="offers-side-title"><h2>Filtrar ofertas</h2><button onClick={()=>{setProducto("");setPais("");setProvincia("");setCiudad("")}}>Limpiar filtros</button></div><label>Producto<select value={producto} onChange={e=>setProducto(e.target.value)}><option value="">Todos los productos</option>{productos.map(x=><option key={x}>{x}</option>)}</select></label><label>País de origen<select value={pais} onChange={e=>setPais(e.target.value)}><option value="">Todos los países</option>{paises.map(x=><option key={x.iso2} value={x.iso2}>{x.name}</option>)}</select></label><label>Provincia / estado<select value={provincia} onChange={e=>setProvincia(e.target.value)}><option value="">Todos</option>{provincias.map(x=><option key={x.iso2} value={x.iso2}>{x.name}</option>)}</select></label><label>Ciudad / localidad<select value={ciudad} onChange={e=>setCiudad(e.target.value)}><option value="">Todas</option>{ciudades.map(x=><option key={x.name}>{x.name}</option>)}</select></label><label>Condición comercial<select><option>Todas</option><option>FOB</option><option>FAS</option><option>CIF</option></select></label><label>Rango de precio (USD/tn)<div className="offers-range"><input placeholder="Mínimo"/><input placeholder="Máximo"/></div></label><button className="offers-apply">⌕ Aplicar filtros</button></section><section className="offers-region-card"><h2>Ofertas por región de origen</h2>{[...new Set(filtered.map(p=>p.provincia||p.localidad||p.paises?.nombre||"Global"))].slice(0,6).map((x,i)=><div key={x}><span className="region-dot"/><b>{x}</b><strong>{filtered.length?Math.round(filtered.filter(p=>(p.provincia||p.localidad||p.paises?.nombre||"Global")===x).reduce((a,p)=>a+Number(p.cantidad_tn),0)/Math.max(1,tons)*100):0}%</strong></div>)}</section></aside></section>
+ <section className="offers-feature-strip"><Feature i="🤝" t="Negociación segura" d="Comunicate directamente con empresas verificadas y negociá con confianza."/><Feature i="▤" t="Contratos digitales" d="Generá y firmá contratos LOI, SCO y contratos de compraventa."/><Feature i="🛡️" t="Empresas verificadas" d="Todas las empresas pasan por un proceso de verificación y KYC."/></section></main>}
+function Stat({i,v,t,c,s=""}:{i:string;v:string;t:string;c:string;s?:string}){return <div className={"offers-stat "+c}><b>{i}</b><span><strong>{v}<small>{s}</small></strong><em>{t}</em><i>Mercado activo</i></span></div>}
+function Feature({i,t,d}:{i:string;t:string;d:string}){return <div className="offers-feature"><b>{i}</b><span><strong>{t}</strong><small>{d}</small></span></div>}
