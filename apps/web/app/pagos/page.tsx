@@ -45,6 +45,13 @@ export default function PagosPage(){
  const available=Math.max(0,totals.received);
  const fmtDate=(d:string|null)=>d?new Date(d).toLocaleDateString("es-AR"): "—";
  const transactionRows=rows.slice(0,7);
+ const transactionContent=transactionRows.map((p,i)=>{
+  const [label,stateClass]=stateLabel(p.estado);
+  const code=p.operacion_id?String(p.operacion_id).slice(0,8).toUpperCase():"PAGO-"+(i+1);
+  const iconName=i%3===1?"dollar":i%3===2?"upload":"file";
+  const iconClass=i%3===1?"orange":i%3===2?"red":"blue";
+  return <tr key={p.id}><td>{fmtDate(p.fecha_pago)}</td><td><span className={"payment-type-icon "+iconClass}><Icon name={iconName} size={18}/></span><b>{code}</b></td><td><strong>{p.metodo_pago||"Pago de operación"}</strong><small>Operación vinculada</small></td><td><b>{money(Number(p.importe||0),currencies[p.moneda_id||0]||currency)}</b></td><td><span className={"payment-state "+stateClass}>{label}</span></td><td><button className="payment-action"><Icon name="eye" size={18}/></button></td></tr>;
+ });
  return <main className="payments-page">
   <header className="payments-hero"><div><h1>Pagos</h1><p>Gestiona los pagos de tus operaciones, comisiones y retiros de forma segura.</p></div></header>
   <nav className="payments-tabs"><a className="active" href="#resumen"><Icon name="file" size={16}/>Resumen</a><a href="#transacciones">▣ Transacciones</a><a href="#cuentas">▣ Cuentas bancarias</a><a href="#metodos">▣ Métodos de pago</a><a href="#retiros">▣ Retiros</a><a href="#facturas">▣ Facturas</a><a href="#configuracion">⚙ Configuración</a></nav>
@@ -53,22 +60,7 @@ export default function PagosPage(){
    <section id="resumen" className="payment-kpis">
     <div className="payment-kpi green"><span className="payment-kpi-icon"><Icon name="wallet" size={29}/></span><div><small>Saldo disponible</small><strong>{money(available,currency)}</strong><em>Para retiro de comisiones</em></div></div>
     <div className="payment-kpi amber"><span className="payment-kpi-icon"><Icon name="coins" size={29}/></span><div><small>En proceso</small><strong>{money(totals.process,currency)}</strong><em>En operaciones activas</em></div></div>
-    <div className="payment-kpi blue"><span className="payment-kpi-icon"><Icon name="check" size={29}/></span><div><small>Total recibido</small><strong>{money(totals.received,currency)}</strong><em>Según pagos registrados</em></div></div>
-    <div className="payment-kpi purple"><span className="payment-kpi-icon"><Icon name="chart" size={29}/></span><div><small>Total retirado</small><strong>{money(0,currency)}</strong><em>Según retiros registrados</em></div></div>
-    <button className="payment-history-btn">Ver historial</button>
-   </section>
-   <div className="payments-content-grid">
-    <section id="transacciones" className="payments-panel transactions-panel"><div className="payments-panel-title"><h2>Últimas transacciones</h2><button>Ver todas</button></div>
-      <div className="payments-table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Concepto</th><th>Monto</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>
-      {transactionRows.length ? transactionRows.map((p, i) => {
-        const [label, stateClass] = stateLabel(p.estado);
-        const code = p.operacion_id ? String(p.operacion_id).slice(0, 8).toUpperCase() : "PAGO-" + (i + 1);
-        const iconName = i % 3 === 1 ? "dollar" : i % 3 === 2 ? "upload" : "file";
-        const iconClass = i % 3 === 1 ? "orange" : i % 3 === 2 ? "red" : "blue";
-        return (
-          <tr key={p.id}>
-            <td>{fmtDate(p.fecha_pago)}</td>
-            <td><span className={"payment-type-icon " + iconClass}><Icon name={iconName} size={18}/></span><b>{code}</b></td>
+      {transactionRows.length ? transactionContent : <tr><td colSpan={6} className="payments-empty">Todavía no hay transacciones registradas.</td></tr>}
             <td><strong>{p.metodo_pago || "Pago de operación"}</strong><small>Operación vinculada</small></td>
             <td><b>{money(Number(p.importe || 0), currencies[p.moneda_id || 0] || currency)}</b></td>
             <td><span className={"payment-state " + stateClass}>{label}</span></td>
