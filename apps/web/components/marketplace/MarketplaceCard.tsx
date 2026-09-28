@@ -71,7 +71,7 @@ export default function MarketplaceCard({ publicacion }: Props) {
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30 }}>
         <div><p style={{ color: "#666" }}>Cantidad publicada</p><h3>{publicacion.cantidad_tn} TN</h3><br /><p style={{ color: "#666" }}>Provincia</p><h3>{publicacion.provincia}</h3></div>
-        <div><p style={{ color: "#666" }}>Precio publicado</p><h3>USD {publicacion.precio_tn}</h3><br /><p style={{ color: "#666" }}>Puerto</p><h3>{publicacion.puerto}</h3></div>
+        <div><p style={{ color: "#666" }}>Precio publicado</p><h3>{publicacion.moneda_codigo ? `${publicacion.moneda_codigo} ` : ""}{publicacion.precio_tn}</h3><br /><p style={{ color: "#666" }}>Puerto</p><h3>{publicacion.puerto}</h3></div>
       </div>
 
       {error && <div style={{ marginTop: 20, background: "#fee2e2", color: "#991b1b", padding: 12, borderRadius: 8 }}>{error}</div>}
