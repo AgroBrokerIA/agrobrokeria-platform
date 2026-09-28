@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
+import { getCompanyBadge } from "@/lib/company-badges";
 
 type Oportunidad = {
   id: string;
@@ -22,6 +23,7 @@ type Publicacion = {
   provincia?: string | null;
   localidad?: string | null;
   puerto?: string | null;
+  empresas?: { razon_social?: string | null; tipo_empresa?: string | null; verificada?: boolean | null; reputacion_score?: number | null; operaciones_realizadas?: number | null; toneladas_operadas?: number | null } | null;
 };
 
 type OportunidadVista = Oportunidad & {
@@ -114,7 +116,8 @@ export default function OportunidadesPage() {
               moneda_id,
               provincia,
               localidad,
-              puerto
+              puerto,
+              empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)
               `
             )
             .in(
@@ -226,7 +229,7 @@ export default function OportunidadesPage() {
                 <div className="opportunity-main">
                   <div>
                     <div className="opportunity-tags"><span className="ai-tag">✦ IA MATCH</span><span className="neutral-tag">{oportunidad.estado}</span></div>
-                    <h2>{publicacion ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN` : "Publicación compatible"}</h2>
+                    <h2>{publicacion ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN` : "Publicación compatible"}</h2>\n                    {publicacion?.empresas && (() => { const badge = getCompanyBadge(publicacion.empresas.tipo_empresa, Boolean(publicacion.empresas.verificada)); return <div className="company-badge-stack opportunity-company-badge"><span className="company-role-badge" style={{color:badge.color,background:badge.background,borderColor:badge.border}}><i />{badge.label}{badge.verified ? " · Verificada" : ""}</span><div className="company-reputation"><div><strong>{publicacion.empresas.operaciones_realizadas ?? 0}</strong><span>negocios</span></div><div><strong>{publicacion.empresas.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div><div><strong>{publicacion.empresas.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div></div></div>; })()}
                     {publicacion && (
                       <div className="opportunity-details">
                         <span>{monedas[publicacion.moneda_id] || "Moneda no informada"} {Number(publicacion.precio_tn).toLocaleString("es-AR")} / TN</span>
