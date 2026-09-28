@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { useRouter } from "next/navigation";
 
 type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number;moneda_id:number|null;creada_en:string|null;provincia:string|null;localidad:string|null;puerto:string|null;productos?:{nombre:string}|{nombre:string}[]|null};
 type Op={id:string;codigo:string;estado:string;cantidad_tn:number;tipo_operacion:string|null};
@@ -22,18 +23,16 @@ function Sparkline({values}:{values:number[]}) {
 }
 
 export default function Dashboard(){
- const [profile,setProfile]=useState<{nombre:string|null;empresa:string|null;active_company_id:string|null}>({nombre:null,empresa:null,active_company_id:null});
- const [email,setEmail]=useState(""); const [loading,setLoading]=useState(true); const [error,setError]=useState("");
+ const router=useRouter();
+ const [loading,setLoading]=useState(true); const [error,setError]=useState("");
  const [offers,setOffers]=useState<Pub[]>([]),[demands,setDemands]=useState<Pub[]>([]),[ops,setOps]=useState<Op[]>([]),[opps,setOpps]=useState<Opp[]>([]),[activities,setActivities]=useState<Activity[]>([]);
- const [quotes,setQuotes]=useState<Quote[]>([]); const [commodities,setCommodities]=useState<Record<string,string>>({});
+ const [quotes,setQuotes]=useState<Quote[]>([]); const [commodities,setCommodities]=useState<Record<string,string>>({}); const [monedas,setMonedas]=useState<Record<number,string>>({});
  const [counts,setCounts]=useState({offers:0,demands:0,opportunities:0,operations:0,contracts:0,invoices:0});
 
  useEffect(()=>{async function load(){
   try{
-   const {data:{user}}=await supabase.auth.getUser(); if(!user){window.location.href="/login";return}
-   setEmail(user.email||"");
-   const {data:p}=await supabase.from("profiles").select("nombre,empresa,active_company_id").eq("id",user.id).maybeSingle();
-   setProfile(p||{nombre:null,empresa:null,active_company_id:null});
+   const {data:{user}}=await supabase.auth.getUser(); if(!user){router.replace("/login");return}
+   const {data:p}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
    const companyId=p?.active_company_id;
    const [pubs,operations,opportunities,market,comms,invoices,notifs]=await Promise.all([
     supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(12),
@@ -52,7 +51,9 @@ export default function Dashboard(){
    if(missing.length){const {data:extra}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,creada_en,provincia,localidad,puerto,productos(nombre)").in("id",missing);for(const x of (extra||[]) as Pub[])pubMap.set(x.id,x)}
    setOpps(oppBase.map(x=>({...x,publicacion:pubMap.get(x.publicacion_id)})));
    setQuotes((market.data||[]) as Quote[]);
-   const {data:cr}=await supabase.from("commodities").select("id,codigo"); setCommodities(Object.fromEntries((cr||[]).map((x:any)=>[x.id,x.codigo])));
+   const [{data:cr},{data:currencyRows}]=await Promise.all([supabase.from("commodities").select("id,codigo"),supabase.from("monedas").select("id,codigo")]);
+   setCommodities(Object.fromEntries((cr||[]).map((x:any)=>[x.id,x.codigo])));
+   setMonedas(Object.fromEntries((currencyRows||[]).map((x:any)=>[x.id,x.codigo])));
    const [{count:oc},{count:dc},{count:pc},{count:opCount}]=await Promise.all([
     supabase.from("publicaciones").select("id",{count:"exact",head:true}).eq("estado","PUBLICADA").neq("tipo","DEMANDA"),
     supabase.from("publicaciones").select("id",{count:"exact",head:true}).eq("estado","PUBLICADA").eq("tipo","DEMANDA"),
@@ -67,7 +68,6 @@ export default function Dashboard(){
  const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes]);
  const soy=[...(grouped.get("SOJA")||[])].reverse();
  const topQuote=soy[soy.length-1];
- const soyValues=soy.map(q=>Number(q.price)).filter(Number.isFinite);
  const marketCards=["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"].map(code=>{const q=(grouped.get(code)||[])[0];return {code,q}});
  if(loading)return <main className="dashboard-page"><div className="loading-card">Cargando centro de operaciones…</div></main>;
 
@@ -84,8 +84,8 @@ export default function Dashboard(){
    <section className="dashboard-panel dashboard-board">
     <div className="dashboard-section-head"><h2>◉ Pizarra Rosario - Cotizaciones</h2><span className="live-dot">● En vivo</span><small>{quotes[0]?.market_date||"Sin sincronización"}</small><Link href="/mercado">Ver detalle →</Link></div>
     <div className="dashboard-tabs"><b>Granos</b><span>Oleaginosas</span><span>Derivados</span><span>Futuros</span><span>Dólar e índices</span></div>
-    <div className="dashboard-market-table"><div className="dashboard-table-head"><span>Producto</span><span>Mes</span><span>Último</span><span>Var. Día</span><span>Var. %</span><span>USD/TN</span></div>
-     {marketCards.map(({code,q})=><div className="dashboard-table-row" key={code}><strong>{code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code[0]+code.slice(1).toLowerCase()}</strong><span>{q?.market_date||"—"}</span><span>{q?.price==null?"Sin cotización":money(q.price,q.currency||"USD")}</span><span className={Number(q?.price||0)-Number(q?.previous_value||q?.price||0)>=0?"up":"down"}>{q?.previous_value==null||q?.price==null?"—":`${q.price-q.previous_value>=0?"+":""}${Number(q.price-q.previous_value).toLocaleString("es-AR",{maximumFractionDigits:2})}`}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</span><strong>{q?.price==null?"—":money(q.price,q.currency||"USD")}</strong></div>)}
+    <div className="dashboard-market-table"><div className="dashboard-table-head"><span>Producto</span><span>Mes</span><span>Último</span><span>Var. Día</span><span>Var. %</span><span>Precio</span></div>
+     {marketCards.map(({code,q})=><div className="dashboard-table-row" key={code}><strong>{code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code[0]+code.slice(1).toLowerCase()}</strong><span>{q?.market_date||"—"}</span><span>{q?.price==null?"Sin cotización":money(q.price,q.currency||"")}</span><span className={Number(q?.price||0)-Number(q?.previous_value||q?.price||0)>=0?"up":"down"}>{q?.previous_value==null||q?.price==null?"—":`${q.price-q.previous_value>=0?"+":""}${Number(q.price-q.previous_value).toLocaleString("es-AR",{maximumFractionDigits:2})}`}</span><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"—":`${q.variation>=0?"+":""}${Number(q.variation).toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</span><strong>{q?.price==null?"—":money(q.price,q.currency||"USD")}</strong></div>)}
     </div>
     <div className="dashboard-market-cards">{marketCards.map(({code,q})=><div key={code}><b>{iconFor(code)}</b><span>{code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small></div>)}</div>
    </section>
@@ -98,7 +98,7 @@ export default function Dashboard(){
   <div className="dashboard-market-cards dashboard-price-strip">{marketCards.map(({code,q})=><div key={"strip-"+code}><b>{iconFor(code)}</b><span>{code}</span><strong>{q?.price==null?"S/C":money(q.price,q.currency||"USD")}</strong><small>{q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`}</small><Sparkline values={(grouped.get(code)||[]).slice(0,12).reverse().map(x=>Number(x.price)).filter(Number.isFinite)}/></div>)}</div>
 
   <div className="dashboard-three-grid">
-   <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Ofertas recientes</h2><Link href="/marketplace">Ver todas →</Link></div><div className="dashboard-mini-table">{offers.map(p=><div key={p.id}><span>{iconFor(productName(p))} {productName(p)}</span><b>{Number(p.cantidad_tn).toLocaleString("es-AR")} t</b><strong>{money(p.precio_tn,"USD")}</strong><small>{[p.localidad,p.provincia].filter(Boolean).join(", ")||"—"}</small><small>{p.creada_en?new Date(p.creada_en).toLocaleDateString("es-AR"):"—"}</small><Link href={"/marketplace?publicacion="+p.id}>Ver</Link></div>)}{!offers.length&&<div className="dashboard-empty-line">No hay ofertas activas.</div>}</div></section>
+   <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Ofertas recientes</h2><Link href="/marketplace">Ver todas →</Link></div><div className="dashboard-mini-table">{offers.map(p=><div key={p.id}><span>{iconFor(productName(p))} {productName(p)}</span><b>{Number(p.cantidad_tn).toLocaleString("es-AR")} t</b><strong>{money(p.precio_tn,p.moneda_id ? (monedas[p.moneda_id]||"") : "")}</strong><small>{[p.localidad,p.provincia].filter(Boolean).join(", ")||"—"}</small><small>{p.creada_en?new Date(p.creada_en).toLocaleDateString("es-AR"):"—"}</small><Link href={"/marketplace?publicacion="+p.id}>Ver</Link></div>)}{!offers.length&&<div className="dashboard-empty-line">No hay ofertas activas.</div>}</div></section>
    <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Demandas recientes</h2><Link href="/marketplace?tipo=DEMANDA">Ver todas →</Link></div><div className="dashboard-mini-table">{demands.map(p=><div key={p.id}><span>{iconFor(productName(p))} {productName(p)}</span><b>{Number(p.cantidad_tn).toLocaleString("es-AR")} t</b><strong>{money(p.precio_tn,"USD")}</strong><small>{[p.localidad,p.provincia].filter(Boolean).join(", ")||"—"}</small><small>{p.puerto||"—"}</small><Link href={"/marketplace?publicacion="+p.id}>Ver</Link></div>)}{!demands.length&&<div className="dashboard-empty-line">No hay demandas activas.</div>}</div></section>
    <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-section-head"><h2>◉ Actividad reciente</h2><Link href="/notificaciones">Ver todas →</Link></div><div className="dashboard-activity">{activities.map(a=><div key={a.id}><b>{a.leida?"◌":"●"}</b><span><strong>{a.titulo||"Actividad comercial"}</strong><small>{a.mensaje||"Actualización disponible"}</small></span><time>{a.creada_en?new Date(a.creada_en).toLocaleDateString("es-AR"):"—"}</time></div>)}{!activities.length&&<div className="dashboard-empty-line">No hay actividad reciente.</div>}</div></section>
   </div>
