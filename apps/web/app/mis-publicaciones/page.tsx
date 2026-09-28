@@ -9,6 +9,7 @@ type Publicacion = {
   tipo: string;
   cantidad_tn: number;
   precio_tn: number;
+  moneda_id?: number | null;
   estado: string;
   puerto: string;
   provincia: string;
@@ -23,9 +24,8 @@ export default function MisPublicacionesPage() {
   >([]);
 
   const [loading, setLoading] = useState(true);
-  const [procesando, setProcesando] = useState<
-    string | null
-  >(null);
+  const [procesando, setProcesando] = useState<string | null>(null);
+  const [monedas, setMonedas] = useState<Record<number,string>>({});
 
   useEffect(() => {
     cargarPublicaciones();
@@ -33,12 +33,15 @@ export default function MisPublicacionesPage() {
 
   async function cargarPublicaciones() {
     setLoading(true);
+    const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
+    setMonedas(Object.fromEntries((monedaData || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
 
     const { data, error } = await supabase
       .from("publicaciones")
       .select(`
         id,
         tipo,
+        moneda_id,
         cantidad_tn,
         precio_tn,
         estado,
@@ -198,7 +201,7 @@ export default function MisPublicacionesPage() {
                     <h2>{p.productos?.[0]?.nombre ?? "Commodity"}</h2>
                     <p>{p.provincia || "Sin provincia"}{p.puerto ? ` · ${p.puerto}` : ""}</p>
                   </div>
-                  <div className="publication-price"><strong>USD {Number(p.precio_tn).toLocaleString("es-AR")}</strong><span>/ TN</span></div>
+                  <div className="publication-price"><strong>{monedas[p.moneda_id ?? 0] || "Moneda no informada"} {Number(p.precio_tn).toLocaleString("es-AR")}</strong><span>/ TN</span></div>
                 </div>
                 <div className="publication-data">
                   <div><span>Cantidad</span><strong>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</strong></div>
