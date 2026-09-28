@@ -18,7 +18,9 @@ export default function MarketplaceFilters({
     <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(180px,1fr))", gap: 10, marginBottom: 20 }}>
       <select value={tipo} onChange={(e) => onTipoChange(e.target.value)} style={style}>
         <option value="">Tipo de operación</option>
-        {tipos.map((item) => <option key={item} value={item}>{item}</option>)}
+        <option value="COMPRA">COMPRA · Demanda</option>
+        <option value="VENTA">VENTA · Oferta</option>
+        {tipos.filter((item) => item !== "COMPRA" && item !== "VENTA").map((item) => <option key={item} value={item}>{item}</option>)}
       </select>
       <select value={producto} onChange={(e) => onProductoChange(e.target.value)} style={style}>
         <option value="">Producto</option>
