@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-type Bank={id:string;empresa_id:string;nombre:string;titular:string|null;banco:string|null;cbu:string|null;alias:string|null;moneda_id:number|null;es_predeterminado:boolean;estado:string};\ntype Payment={id:string;operacion_id:string;importe:number;metodo_pago:string|null;estado:string|null;fecha_pago:string|null;creado_en:string};
+type Bank={id:string;empresa_id:string;nombre:string;titular:string|null;banco:string|null;cbu:string|null;alias:string|null;moneda_id:number|null;es_predeterminado:boolean;estado:string};
+type Payment={id:string;operacion_id:string;importe:number;metodo_pago:string|null;estado:string|null;fecha_pago:string|null;creado_en:string};
 
 const money=(n:number,c:string)=>`${c} ${Number(n||0).toLocaleString("en-US",{maximumFractionDigits:0})}`;
 function Icon({name,size=22}:{name:string;size?:number}){const p:Record<string,React.ReactNode>={
