@@ -67,7 +67,12 @@ export default function MarketplaceCard({ publicacion }: Props) {
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}><Badge>{publicacion.tipo}</Badge><span className="company-role-badge" style={{color:companyBadge.color,background:companyBadge.background,borderColor:companyBadge.border}}><i />{companyBadge.label}{companyBadge.verified ? " · Verificada" : ""}</span></div><div style={{ fontSize: 28 }}>⭐</div>
       </div>
       <h2 style={{ marginTop: 15, marginBottom: 5, fontSize: 34 }}>🌽 {publicacion.productos?.nombre ?? "Producto"}</h2>
-      <p style={{ color: "#666", marginBottom: 12 }}>{publicacion.empresas?.razon_social ?? "Empresa"}</p>\n      <div className="company-reputation" aria-label="Historial comercial">\n        <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>\n        <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>\n        <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>\n      </div>
+      <p style={{ color: "#666", marginBottom: 12 }}>{publicacion.empresas?.razon_social ?? "Empresa"}</p>
+      <div className="company-reputation" aria-label="Historial comercial">
+        <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>
+        <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>
+        <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>
+      </div>
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30 }}>
         <div><p style={{ color: "#666" }}>Cantidad publicada</p><h3>{publicacion.cantidad_tn} TN</h3><br /><p style={{ color: "#666" }}>Provincia</p><h3>{publicacion.provincia}</h3></div>
@@ -116,7 +121,7 @@ export default function MarketplaceCard({ publicacion }: Props) {
           <div className="market-detail-grid">
             <div><span>Producto</span><strong>{publicacion.productos?.nombre ?? "—"}</strong></div>
             <div><span>Cantidad</span><strong>{publicacion.cantidad_tn} TN</strong></div>
-            <div><span>Precio</span><strong>USD {publicacion.precio_tn} / TN</strong></div>
+            <div><span>Precio</span><strong>{publicacion.moneda_codigo ? `${publicacion.moneda_codigo} ` : ""}{publicacion.precio_tn} / TN</strong></div>
             <div><span>Provincia</span><strong>{publicacion.provincia || "—"}</strong></div>
             <div><span>Localidad</span><strong>{publicacion.localidad || "—"}</strong></div>
             <div><span>Entrega / Puerto</span><strong>{publicacion.puerto || "—"}</strong></div>
