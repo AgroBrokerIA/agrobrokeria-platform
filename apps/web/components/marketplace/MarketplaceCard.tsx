@@ -9,7 +9,8 @@ import { getCompanyBadge } from "@/lib/company-badges";
 
 type Props = { publicacion: any };
 
-export default function MarketplaceCard({ publicacion }: Props) {\n  const companyBadge = getCompanyBadge(publicacion.empresas?.tipo_empresa, Boolean(publicacion.empresas?.verificada));
+export default function MarketplaceCard({ publicacion }: Props) {
+  const companyBadge = getCompanyBadge(publicacion.empresas?.tipo_empresa, Boolean(publicacion.empresas?.verificada));
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [enviando, setEnviando] = useState(false);
