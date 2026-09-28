@@ -1,0 +1,64 @@
+"use client";
+
+import { useEffect, useMemo, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
+
+type Activity={id:string;date:string;type:string;description:string;reference:string;company:string;country:string;amount:string;status:string;operationId?:string};
+
+const flag=(c:string)=>({Argentina:"🇦🇷","Estados Unidos":"🇺🇸",Canadá:"🇨🇦",Alemania:"🇩🇪",China:"🇨🇳",Brasil:"🇧🇷",Suiza:"🇨🇭"}[c]||"🌐");
+const money=(n:number|null|undefined)=>n==null?"—":new Intl.NumberFormat("es-AR",{style:"currency",currency:"USD",maximumFractionDigits:0}).format(n);
+const date=(v:string|null)=>v?new Date(v).toLocaleDateString("es-AR"):"—";
+const dateTime=(v:string|null)=>v?new Date(v).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"}):"—";
+
+function Icon({name,size=18}:{name:string;size?:number}){const p:Record<string,React.ReactNode>={
+ search:<><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></>,calendar:<><rect x="3" y="4" width="18" height="17" rx="2"/><path d="M8 2v4M16 2v4M3 9h18"/></>,
+ database:<><ellipse cx="12" cy="5" rx="8" ry="3"/><path d="M4 5v7c0 1.7 3.6 3 8 3s8-1.3 8-3V5M4 12v7c0 1.7 3.6 3 8 3s8-1.3 8-3v-7"/></>,
+ check:<><circle cx="12" cy="12" r="10"/><path d="m8 12 2.5 2.5L16 9"/></>,clock:<><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></>,close:<><circle cx="12" cy="12" r="10"/><path d="m8 8 8 8M16 8l-8 8"/></>,
+ file:<><path d="M6 2h8l4 4v16H6z"/><path d="M14 2v5h5M9 12h6M9 16h6"/></>,card:<><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 10h18"/></>,shield:<><path d="M12 3 19 6v5c0 4.5-2.8 7.5-7 10-4.2-2.5-7-5.5-7-10V6l7-3Z"/><path d="m8.5 12 2.2 2.2 4.8-5"/></>,message:<><path d="M4 5h16v11H8l-4 4z"/><path d="M8 9h8M8 12h5"/></>,user:<><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></>,truck:<><path d="M3 7h11v10H3zM14 10h4l3 3v4h-7zM7 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4ZM18 20a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z"/></>,more:<><circle cx="5" cy="12" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="19" cy="12" r="1"/></>,eye:<><path d="M2 12s3.5-6 10-6 10 6 10 6-3.5 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="2.5"/></>,export:<><path d="M12 3v12M8 7l4-4 4 4M5 14v6h14v-6"/></>,chev:<path d="m9 18 6-6-6-6"/>
+};return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">{p[name]||p.file}</svg>}
+
+function typeIcon(type:string){const t=type.toLowerCase();if(t.includes("oper"))return "shield";if(t.includes("contr"))return "file";if(t.includes("pag"))return "card";if(t.includes("doc"))return "file";if(t.includes("verif"))return "shield";if(t.includes("mens"))return "message";if(t.includes("log"))return "truck";if(t.includes("comis"))return "database";if(t.includes("usu"))return "user";return "database"}
+function tone(status:string){const s=status.toLowerCase();if(s.includes("cancel")||s.includes("rechaz"))return "red";if(s.includes("proceso")||s.includes("negoc"))return "yellow";if(s.includes("firma")||s.includes("cerr")||s.includes("pagad")||s.includes("verific")||s.includes("gener")||s.includes("acredit")||s.includes("activo"))return "green";return "blue"}
+
+export default function HistorialPage(){
+ const[activities,setActivities]=useState<Activity[]>([]),[selected,setSelected]=useState<Activity|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[state,setState]=useState("Todos"),[country,setCountry]=useState(""),[loading,setLoading]=useState(true);
+ useEffect(()=>{(async()=>{setLoading(true);
+  const [ops,cts,pays,docs,aud]=await Promise.all([
+   supabase.from("operaciones").select("id,codigo,estado,precio_tn,cantidad_tn,importe_total,fecha_operacion,creada_en,tipo_operacion").order("fecha_operacion",{ascending:false}).limit(120),
+   supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma,creado_en").order("creado_en",{ascending:false}).limit(80),
+   supabase.from("pagos").select("id,operacion_id,importe,estado,fecha_pago,creado_en").order("fecha_pago",{ascending:false}).limit(80),
+   supabase.from("documentos_operacion").select("id,operacion_id,tipo_documento,nombre_archivo,creado_en,aprobado").order("creado_en",{ascending:false}).limit(80),
+   supabase.from("auditoria").select("id,accion,descripcion,registro_id,creado_en").order("creado_en",{ascending:false}).limit(100)
+  ]);
+  const rows:Activity[]=[];
+  for(const x of (ops.data||[])) rows.push({id:"op-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Operación",description:x.tipo_operacion||"Operación comercial",reference:x.codigo||x.id.slice(0,8),company:"",country:"",amount:x.cantidad_tn?new Intl.NumberFormat("es-AR").format(x.cantidad_tn)+" TN":money(x.importe_total),status:x.estado||"En proceso",operationId:x.id});
+  for(const x of (cts.data||[])) rows.push({id:"ct-"+x.id,date:x.fecha_firma||x.creado_en,type:"Contrato",description:"Contrato "+(x.estado||"registrado").toLowerCase(),reference:x.numero_contrato||x.id.slice(0,8),company:"",country:"",amount:"—",status:x.estado||"Firmado",operationId:x.id});
+  for(const x of (pays.data||[])) rows.push({id:"pay-"+x.id,date:x.fecha_pago||x.creado_en,type:"Pago",description:"Pago registrado",reference:x.id.slice(0,12).toUpperCase(),company:"",country:"",amount:money(x.importe),status:x.estado||"Procesado",operationId:x.operacion_id});
+  for(const x of (docs.data||[])) rows.push({id:"doc-"+x.id,date:x.creado_en,type:"Documento",description:x.nombre_archivo||x.tipo_documento||"Documento de operación",reference:x.id.slice(0,12).toUpperCase(),company:"",country:"",amount:"—",status:x.aprobado?"Generado":"Pendiente",operationId:x.operacion_id});
+  for(const x of (aud.data||[])) rows.push({id:"aud-"+x.id,date:x.creado_en,type:"Sistema",description:x.descripcion||x.accion||"Actividad registrada",reference:x.registro_id?.slice(0,12).toUpperCase()||"—",company:"",country:"",amount:"—",status:"Completada"});
+  rows.sort((a,b)=>+new Date(b.date)-+new Date(a.date));setActivities(rows);setSelected(rows[0]||null);setLoading(false);
+ })()},[]);
+ const filtered=useMemo(()=>activities.filter(a=>{const q=query.toLowerCase();return(!q||[a.type,a.description,a.reference,a.company,a.country].join(" ").toLowerCase().includes(q))&&(type==="Todos"||a.type===type)&&(state==="Todos"||a.status===state)&&(!country||a.country===country)}),[activities,query,type,state,country]);
+ const counts=useMemo(()=>({total:activities.length,closed:activities.filter(a=>tone(a.status)==="green").length,neg:activities.filter(a=>tone(a.status)==="yellow").length,cancel:activities.filter(a=>tone(a.status)==="red").length,docs:activities.filter(a=>a.type==="Documento").length}),[activities]);
+ const countries=Array.from(new Set(activities.map(a=>a.country).filter(Boolean)));
+ const types=["Todos","Operación","Contrato","Documento","Pago","Comisión","Verificación","Mensaje","Usuario","Sistema"];
+ const detail=selected;
+ return <main className="history-page">
+  <header className="history-hero"><div><h1>Historial</h1><p>Consulta el historial completo de tus operaciones, negociaciones, documentos, pagos y actividades en la plataforma.</p></div></header>
+  <nav className="history-tabs">{["Todas las actividades","Operaciones","Contratos","Documentos","Pagos","Comisiones","Verificaciones","Mensajes","Usuarios"].map((x,i)=><button key={x} className={i===0?"active":""}>{x}</button>)}</nav>
+  <section className="history-kpis">
+   <article className="hk blue"><Icon name="database" size={24}/><div><strong>{counts.total}</strong><span>Operaciones totales</span></div></article>
+   <article className="hk green"><Icon name="check" size={24}/><div><strong>{counts.closed}</strong><span>Operaciones cerradas</span></div></article>
+   <article className="hk yellow"><Icon name="clock" size={24}/><div><strong>{counts.neg}</strong><span>En negociación</span></div></article>
+   <article className="hk red"><Icon name="close" size={24}/><div><strong>{counts.cancel}</strong><span>Canceladas</span></div></article>
+   <article className="hk purple"><Icon name="file" size={24}/><div><strong>{counts.docs}</strong><span>Documentos generados</span></div></article>
+  </section>
+  <div className="history-layout">
+   <section className="history-main">
+    <div className="history-filters"><label><Icon name="search" size={17}/><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar en el historial..."/></label><select value={type} onChange={e=>setType(e.target.value)}>{types.map(x=><option key={x}>{x}</option>)}</select><select value={state} onChange={e=>setState(e.target.value)}><option>Todos</option>{Array.from(new Set(activities.map(a=>a.status))).map(x=><option key={x}>{x}</option>)}</select><select><option>Todas las fechas</option></select><select value={country} onChange={e=>setCountry(e.target.value)}><option value="">Todos los países</option>{countries.map(x=><option key={x}>{x}</option>)}</select><button className="history-export"><Icon name="export" size={15}/> Exportar</button></div>
+    <div className="history-table-card"><table><thead><tr><th>Fecha</th><th>Tipo</th><th>Descripción</th><th>Referencia</th><th>Empresa / Contacto</th><th>Monto / Cantidad</th><th>Estado</th><th>Acciones</th></tr></thead><tbody>{loading?<tr><td colSpan={8} className="history-loading">Cargando historial…</td></tr>:filtered.slice(0,10).map(a=><tr key={a.id} className={selected?.id===a.id?"selected":""} onClick={()=>setSelected(a)}><td>{dateTime(a.date)}</td><td><span className={"history-type-icon "+tone(a.status)}><Icon name={typeIcon(a.type)} size={17}/></span>{a.type}</td><td><b>{a.description}</b></td><td className="history-ref">{a.reference}</td><td>{a.country&&flag(a.country)+" "}{a.company||"—"}</td><td><b>{a.amount}</b></td><td><span className={"history-status "+tone(a.status)}>{a.status}</span></td><td><button className="history-more"><Icon name="more" size={16}/></button></td></tr>)}</tbody></table><div className="history-pagination"><span>Mostrando 1–{Math.min(10,filtered.length)} de {filtered.length} registros</span><div><button>‹</button><b>1</b><button>2</button><button>3</button><button>4</button><button>5</button><span>…</span><button>{Math.max(1,Math.ceil(filtered.length/10))}</button><button>›</button></div><span>Mostrar <select><option>10</option><option>25</option><option>50</option></select> por página</span></div></div>
+   </section>
+   <aside className="history-detail"><div className="history-detail-head"><div className="history-detail-logo"><Icon name={detail?typeIcon(detail.type):"database"} size={31}/></div><div><h2>Detalle de actividad</h2>{detail&&<><strong>{detail.type} {detail.reference}</strong><p>{detail.description}</p></>}</div><button>×</button></div>{detail?<><div className="history-detail-tabs"><b>Resumen</b><span>Documentos</span><span>Pagos</span><span>Mensajes</span></div><section className="history-detail-section"><div><span>Fecha:</span><b>{dateTime(detail.date)}</b></div><div><span>Empresa:</span><b>{detail.company||"—"} {detail.country&&"("+detail.country+")"}</b></div><div><span>Tipo:</span><b>{detail.type}</b></div><div><span>Referencia:</span><b>{detail.reference}</b></div><div><span>Monto / Cantidad:</span><b>{detail.amount}</b></div><div><span>Estado:</span><b className={"history-status "+tone(detail.status)}>{detail.status}</b></div></section><h3>Línea de tiempo</h3><div className="history-timeline"><div><i/><p><b>{detail.description}</b><small>{dateTime(detail.date)}</small></p></div><div><i/><p><b>Actividad registrada</b><small>Se incorporó al historial de la plataforma.</small></p></div><div><i/><p><b>Seguimiento disponible</b><small>Los eventos relacionados quedan asociados a esta referencia.</small></p></div></div><button className="history-timeline-link">Ver línea de tiempo completa →</button></>:<div className="history-empty">Seleccioná una actividad para ver su detalle.</div>}</aside>
+  </div>
+ </main>
+}
