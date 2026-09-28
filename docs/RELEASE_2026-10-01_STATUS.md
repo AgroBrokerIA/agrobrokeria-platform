@@ -224,3 +224,39 @@ No considerar el release técnicamente cerrado hasta verificar el build/deployme
 - Requisitos de verificación por tipo de empresa incorporados como catálogo y checklist persistente. No se inventan verificaciones oficiales; las consultas externas quedan pendientes hasta disponer del mecanismo/credenciales del organismo.
 - Se mantiene el modelo de comisión AgroBrokerIA de USD 1/TN y el circuito de comisiones/intermediarios, facturación y liquidación ya endurecido.
 - Pendientes externos de lanzamiento siguen siendo credenciales/configuración de ARCA, proveedor de firma, traducción, Google Meet, Vercel/cron y mecanismos oficiales de verificación, además de E2E autenticado y ejecución real del sincronizador de mercado.
+
+
+## 2026-09-28 — Auditoría autónoma y correcciones finales
+
+### Código / CI
+- Corregido el fallo TypeScript de `/ofertas-recibidas` por declaración duplicada de `moneda_id`.
+- Corregida la representación de monedas en Ofertas recibidas, Dashboard, Operaciones, Documentos y Medios de cobro.
+- Eliminadas cláusulas jurídicas inventadas del generador comercial LOI/SCO/FCO.
+- Eliminados varios imports/variables sin uso detectados por lint.
+- CI de GitHub mantiene pipeline único para npm ci, lint, typecheck y build.
+
+### Finanzas / liquidación
+- Bloqueadas por privilegio las escrituras directas del rol `authenticated` sobre la tabla legacy `public.comisiones`.
+- Corregida la fórmula server-side de liquidación para incluir la comisión AgroBrokerIA en el neto:
+  `neto = bruto - ajustes - deducciones - comisión`.
+- Reconciliados los registros existentes de liquidación que presentaban la inconsistencia.
+- La comisión de AgroBrokerIA continúa siendo estrictamente USD 1 por tonelada entregada y no editable desde frontend.
+
+### Estado Supabase verificado
+- 126/126 tablas públicas con RLS.
+- 0 SECURITY DEFINER ejecutables por `anon`.
+- `market_quotes` continúa en 0 hasta una sincronización real; no se cargan cotizaciones ficticias.
+- Security Advisor conserva advertencias sobre funciones SECURITY DEFINER ejecutables por `authenticated` y Leaked Password Protection. Las funciones públicas SECURITY DEFINER inspeccionadas tienen `search_path` fijado y las funciones de negocio ejecutables por `authenticated` realizan controles de identidad/pertenencia; no se habilita ejecución a `anon`.
+
+### Pendientes externos
+- Vercel: falta acceso autorizado al scope `agrobroker` para inspeccionar/certificar el deployment y configurar/validar `CRON_SECRET`.
+- Supabase Auth: activar Leaked Password Protection desde la configuración de Auth/Security.
+- ARCA: certificado, clave privada, CUIT y autorización/asociación WSAA/WSFEv1.
+- Firma electrónica: proveedor real y credenciales/webhook.
+- Google Meet: OAuth de Google/Calendar.
+- Traducción automática: proveedor y API key.
+- SISA/SENASA/INASE y demás verificaciones oficiales: mecanismos/credenciales oficiales.
+- E2E autenticado de producción/preproducción con perfiles productor, comprador e intermediario.
+
+### Evidencia
+- Auditoría detallada: `docs/AUTONOMOUS_FINAL_AUDIT_2026-09-28.md`.
