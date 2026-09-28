@@ -376,14 +376,7 @@ if (errorMovimientos) {
         </div>
       )}
 
-      <section
-        style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
-          marginBottom: 24,
-        }}
-      >
+      <section className="commission-summary-grid">
         {Object.entries(resumen).length === 0 ? (
           <div
             style={{
@@ -459,18 +452,7 @@ if (errorMovimientos) {
         )}
       </section>
 
-      <section
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginBottom: 18,
-          padding: 14,
-          borderRadius: 12,
-          background: "#f8fafc",
-          border: "1px solid #e2e8f0",
-        }}
-      >
+      <section className="commission-filters">
         <select
           value={filtroEstado}
           onChange={(e) => setFiltroEstado(e.target.value)}
@@ -521,19 +503,7 @@ if (errorMovimientos) {
         </select>
       </section>
 
-      <div
-        style={{
-          display: "flex",
-          justifyContent: "space-between",
-          alignItems: "center",
-          gap: 12,
-          marginBottom: 14,
-          padding: 14,
-          borderRadius: 12,
-          background: "#fff",
-          border: "1px solid #e2e8f0",
-        }}
-      >
+      <div className="commission-movements-header">
         <div>
           <strong style={{ fontSize: 15 }}>
             📒 Movimientos económicos
@@ -900,14 +870,7 @@ if (errorMovimientos) {
         </div>
       )}
 
-      <section
-        style={{
-          background: "#fff",
-          border: "1px solid #e2e8f0",
-          borderRadius: 14,
-          overflowX: "auto",
-        }}
-      >
+      <section className="commission-table-card">
         {cargando ? (
           <div
             style={{
