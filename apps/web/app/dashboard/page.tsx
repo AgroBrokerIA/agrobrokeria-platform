@@ -13,7 +13,7 @@ type Activity={id:string;titulo:string|null;mensaje:string|null;creada_en:string
 
 const iconFor=(name:string)=>name.toLowerCase().includes("soja")?"🌱":name.toLowerCase().includes("maíz")||name.toLowerCase().includes("maiz")?"🌽":name.toLowerCase().includes("trigo")?"🌾":name.toLowerCase().includes("girasol")?"🌻":"◉";
 const productName=(p:Pub)=>Array.isArray(p.productos)?p.productos[0]?.nombre||"Commodity":p.productos?.nombre||"Commodity";
-const money=(value:number|null,currency:string)=>value==null?"S/C":`${currency} ${Number(value).toLocaleString("es-AR")}`;
+const money=(value:number|null,currency:string)=>value==null?"S/C":`${currency ? currency+" " : ""}${Number(value).toLocaleString("es-AR")}`;
 
 function Sparkline({values}:{values:number[]}) {
  if(values.length<2)return <div className="dashboard-spark-empty">Sin histórico</div>;
