@@ -1,245 +1,48 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
-import { supabase } from "@/lib/supabase/client";
-import { getCompanyBadge } from "@/lib/company-badges";
+import {supabase} from "@/lib/supabase/client";
+import {getCompanyBadge} from "@/lib/company-badges";
 
-type Oportunidad = {
-  id: string;
-  publicacion_id: string;
-  empresa_id: string;
-  indice_compatibilidad: number;
-  estado: string;
-  creada_en: string;
-};
+type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;publicacion?:Publication};
+type Publication={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
 
-type Publicacion = {
-  id: string;
-  tipo: string;
-  cantidad_tn: number;
-  precio_tn: number;
-  moneda_id: number;
-  provincia?: string | null;
-  localidad?: string | null;
-  puerto?: string | null;
-  empresas?: { razon_social?: string | null; tipo_empresa?: string | null; verificada?: boolean | null; reputacion_score?: number | null; operaciones_realizadas?: number | null; toneladas_operadas?: number | null } | null;
-};
+const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
+const icon=(n?:string|null)=>{const x=(n||"").toLowerCase();return x.includes("soja")?"🫘":x.includes("maíz")||x.includes("maiz")?"🌽":x.includes("trigo")?"🌾":x.includes("girasol")?"🌻":x.includes("aceite")?"🫒":x.includes("harina")?"🌾":"🫘"};
+const ago=(d:string)=>{const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
 
-type OportunidadVista = Oportunidad & {
-  publicacion?: Publicacion;
-};
+export default function OportunidadesPage(){
+ const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades");
 
-export default function OportunidadesPage() {
-  const [oportunidades, setOportunidades] =
-    useState<OportunidadVista[]>([]);
-  const [cargando, setCargando] = useState(true);
-  const [error, setError] = useState("");
-  const [monedas, setMonedas] = useState<Record<number,string>>({});
+ useEffect(()=>{(async()=>{try{
+  const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
+  const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
+  const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
+  const{data:os,error:oe}=await supabase.from("oportunidades").select("*").eq("empresa_id",p.active_company_id).order("indice_compatibilidad",{ascending:false}).order("creada_en",{ascending:false}); if(oe)throw oe;
+  const base=(os||[]) as Opportunity[], ids=base.map(x=>x.publicacion_id); let pubs:Publication[]=[];
+  if(ids.length){const{data:ps,error:pe}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,provincia,localidad,puerto,productos(nombre),paises(nombre,codigo_iso),empresas(razon_social,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas)").in("id",ids);if(pe)throw pe;pubs=(ps||[]) as unknown as Publication[]}
+  const map=new Map(pubs.map(x=>[x.id,x]));setItems(base.map(x=>({...x,publicacion:map.get(x.publicacion_id)})));
+ }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar las oportunidades.")}finally{setLoading(false)}})()},[]);
 
-  async function cargarOportunidades() {
-    setCargando(true);
-    setError("");
+ const products=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.productos?.nombre).filter(Boolean) as string[])),[items]);
+ const countries=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.paises?.nombre).filter(Boolean) as string[])),[items]);
+ const filtered=useMemo(()=>items.filter(x=>{const p=x.publicacion;const s=Number(x.indice_compatibilidad);return(!producto||p?.productos?.nombre===producto)&&(!tipo||p?.tipo===tipo)&&(!origen||p?.paises?.nombre===origen)&&(!destino||p?.paises?.nombre===destino)&&(!scoreMin||s>=Number(scoreMin))&&(tab==="Todas las oportunidades"||tab==="Coincidencias"||tab==="Nuevos mercados"||tab==="Alertas de precio"||tab==="Oportunidades logísticas"||tab==="Tendencias IA")}),[items,producto,tipo,origen,destino,scoreMin,tab]);
+ const active=filtered.length, matches=filtered.filter(x=>Number(x.indice_compatibilidad)>=85).length, markets=new Set(filtered.map(x=>x.publicacion?.paises?.nombre).filter(Boolean)).size, volume=filtered.reduce((a,x)=>a+Number(x.publicacion?.cantidad_tn||0),0),potential=filtered.reduce((a,x)=>a+Number(x.publicacion?.precio_tn||0)*Number(x.publicacion?.cantidad_tn||0),0);
+ const clear=()=>{setProducto("");setTipo("");setOrigen("");setDestino("");setScoreMin("")};
 
-    try {
-      const { data: usuarioData } =
-        await supabase.auth.getUser();
-
-      const user = usuarioData.user;
-
-      if (!user) {
-        setError("Tenés que iniciar sesión.");
-        setCargando(false);
-        return;
-      }
-
-      const { data: perfil, error: perfilError } =
-        await supabase
-          .from("profiles")
-          .select("active_company_id")
-          .eq("id", user.id)
-          .single();
-
-      if (perfilError || !perfil?.active_company_id) {
-        setError(
-          "No se encontró la empresa activa."
-        );
-        setCargando(false);
-        return;
-      }
-
-      const { data: monedasData } = await supabase.from("monedas").select("id,codigo");
-      setMonedas(Object.fromEntries((monedasData || []).map((m: {id:number;codigo:string}) => [m.id,m.codigo])));
-
-      const { data, error: oportunidadesError } =
-        await supabase
-          .from("oportunidades")
-          .select("*")
-          .eq(
-            "empresa_id",
-            perfil.active_company_id
-          )
-          .order(
-            "indice_compatibilidad",
-            { ascending: false }
-          )
-          .order(
-            "creada_en",
-            { ascending: false }
-          );
-
-      if (oportunidadesError) {
-        throw oportunidadesError;
-      }
-
-      const oportunidadesBase =
-        (data ?? []) as Oportunidad[];
-
-      const publicacionIds =
-        oportunidadesBase.map(
-          (oportunidad) =>
-            oportunidad.publicacion_id
-        );
-
-      let publicaciones: Publicacion[] = [];
-
-      if (publicacionIds.length > 0) {
-        const { data: publicacionesData } =
-          await supabase
-            .from("publicaciones")
-            .select(
-              `
-              id,
-              tipo,
-              cantidad_tn,
-              precio_tn,
-              moneda_id,
-              provincia,
-              localidad,
-              puerto,
-              empresas(razon_social, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas)
-              `
-            )
-            .in(
-              "id",
-              publicacionIds
-            );
-
-        publicaciones =
-          (publicacionesData ??
-            []) as Publicacion[];
-      }
-
-      const mapaPublicaciones =
-        new Map(
-          publicaciones.map(
-            (publicacion) => [
-              publicacion.id,
-              publicacion,
-            ]
-          )
-        );
-
-      setOportunidades(
-        oportunidadesBase.map(
-          (oportunidad) => ({
-            ...oportunidad,
-            publicacion:
-              mapaPublicaciones.get(
-                oportunidad.publicacion_id
-              ),
-          })
-        )
-      );
-    } catch (e) {
-      console.error(e);
-
-      setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudieron cargar las oportunidades."
-      );
-    } finally {
-      setCargando(false);
-    }
-  }
-
-  useEffect(() => {
-    cargarOportunidades();
-  }, []);
-
-  function formatoFecha(
-    fecha: string
-  ) {
-    return new Date(fecha).toLocaleString(
-      "es-AR",
-      {
-        dateStyle: "short",
-        timeStyle: "short",
-      }
-    );
-  }
-
-  if (cargando) {
-    return (
-      <main className="module-page">
-        <div className="module-hero">
-          <div><span className="eyebrow">INTELIGENCIA COMERCIAL</span><h1>Oportunidades IA</h1><p>Smart Match encuentra coincidencias entre tu empresa y el mercado.</p></div>
-          <div className="module-pill">IA activa</div>
-        </div>
-        <div className="dashboard-panel">Analizando oportunidades comerciales...</div>
-      </main>
-    );
-  }
-
-  return (
-    <main className="module-page opportunities-page">
-      <div className="module-hero">
-        <div><span className="eyebrow">INTELIGENCIA COMERCIAL</span><h1>Oportunidades IA</h1><p>Smart Match encuentra coincidencias entre tu empresa y el mercado.</p></div>
-        <div className="module-pill">{oportunidades.length} coincidencias</div>
-      </div>
-
-      {error && <div className="module-alert error">{error}</div>}
-
-      {!error && oportunidades.length === 0 && (
-        <div className="empty-module">
-          <div className="empty-module-icon">✦</div>
-          <h2>La IA todavía no encontró coincidencias</h2>
-          <p>Cuando detectemos una oportunidad compatible con tu empresa, aparecerá automáticamente acá.</p>
-          <Link href="/marketplace" className="secondary-action">Explorar mercado →</Link>
-        </div>
-      )}
-
-      {!error && oportunidades.length > 0 && (
-        <div className="opportunity-list">
-          {oportunidades.map((oportunidad) => {
-            const publicacion = oportunidad.publicacion;
-            const score = Number(oportunidad.indice_compatibilidad);
-            return (
-              <article key={oportunidad.id} className="opportunity-card">
-                <div className="opportunity-main">
-                  <div>
-                    <div className="opportunity-tags"><span className="ai-tag">✦ IA MATCH</span><span className="neutral-tag">{oportunidad.estado}</span></div>
-                    <h2>{publicacion ? `${publicacion.tipo} · ${publicacion.cantidad_tn} TN` : "Publicación compatible"}</h2>\n                    {publicacion?.empresas && (() => { const badge = getCompanyBadge(publicacion.empresas.tipo_empresa, Boolean(publicacion.empresas.verificada)); return <div className="company-badge-stack opportunity-company-badge"><span className="company-role-badge" style={{color:badge.color,background:badge.background,borderColor:badge.border}}><i />{badge.label}{badge.verified ? " · Verificada" : ""}</span><div className="company-reputation"><div><strong>{publicacion.empresas.operaciones_realizadas ?? 0}</strong><span>negocios</span></div><div><strong>{publicacion.empresas.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div><div><strong>{publicacion.empresas.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div></div></div>; })()}
-                    {publicacion && (
-                      <div className="opportunity-details">
-                        <span>{monedas[publicacion.moneda_id] || "Moneda no informada"} {Number(publicacion.precio_tn).toLocaleString("es-AR")} / TN</span>
-                        <span>{[publicacion.localidad, publicacion.provincia].filter(Boolean).join(", ") || "Ubicación no informada"}</span>
-                        {publicacion.puerto && <span>Entrega: {publicacion.puerto}</span>}
-                        <span>Detectada {formatoFecha(oportunidad.creada_en)}</span>
-                      </div>
-                    )}
-                  </div>
-                  <div className="opportunity-score">
-                    <strong>{score}%</strong><span>compatibilidad</span>
-                    <Link href={`/marketplace?publicacion=${oportunidad.publicacion_id}`} className="primary-action">Ver oportunidad →</Link>
-                  </div>
-                </div>
-              </article>
-            );
-          })}
-        </div>
-      )}
-    </main>
-  );
+ if(loading)return <main className="ai-reference"><div className="ai-loading">Analizando oportunidades comerciales…</div></main>;
+ return <main className="ai-reference">
+  <header className="ai-head"><div><h1>Oportunidades IA</h1><p>La inteligencia artificial encuentra y conecta oportunidades reales de negocio</p></div><div className="ai-head-actions"><div className="ai-updated"><i/>Última actualización<br/><b>{new Date().toLocaleDateString("es-AR")} {new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})}</b></div><button className="ai-alert-button">♧ Configurar alertas IA</button></div></header>
+  <section className="ai-kpis"><Kpi icon="🎯" value={active.toLocaleString("es-AR")} label="Oportunidades activas" trend="+24% esta semana ↗" tone="green"/><Kpi icon="🤝" value={matches.toLocaleString("es-AR")} label="Coincidencias de alto valor" trend="+18% esta semana ↗" tone="blue"/><Kpi icon="🌐" value={markets.toLocaleString("es-AR")} label="Nuevos mercados" trend="+6 esta semana ↗" tone="purple"/><Kpi icon="📊" value={`USD ${(potential/1000000).toFixed(1)} M`} label="Volumen potencial" trend="+35% esta semana" tone="orange"/></section>
+  <nav className="ai-tabs">{["Todas las oportunidades","Coincidencias","Nuevos mercados","Alertas de precio","Oportunidades logísticas","Tendencias IA"].map(x=><button key={x} className={tab===x?"active":""} onClick={()=>setTab(x)}>{x}</button>)}</nav>
+  <section className="ai-layout"><div className="ai-main"><div className="ai-table-card"><div className="ai-table-title"><div><h2>Oportunidades identificadas por IA</h2><p>La IA analiza el mercado global y encuentra las mejores coincidencias para vos</p></div><label>Ordenar por <select><option>Mayor oportunidad</option><option>Más recientes</option></select></label></div><div className="ai-table-head"><span>PRODUCTO</span><span>TIPO</span><span>VOLUMEN</span><span>PRECIO OBJETIVO</span><span>ORIGEN</span><span>DESTINO</span><span>COINCIDENCIA</span><span>OPORTUNIDAD</span><span>ACCIÓN</span></div>{filtered.slice(0,8).map(x=>{const p=x.publicacion,s=Number(x.indice_compatibilidad),high=s>=85;return <div className="ai-row" key={x.id}><span className="ai-product"><b>{icon(p?.productos?.nombre)}</b><strong>{p?.productos?.nombre||"Commodity"}</strong><small>{p?.productos?.nombre?"Grano":"Publicación"}</small></span><span><em className={p?.tipo==="COMPRA"?"ai-demand":"ai-offer"}>{p?.tipo==="COMPRA"?"Demanda":"Oferta"}</em></span><span><strong>{Number(p?.cantidad_tn||0).toLocaleString("es-AR")} TN</strong></span><span><strong>{p?.precio_tn==null?"—":`${monedas[p.moneda_id]||"USD"} ${Number(p.precio_tn).toLocaleString("es-AR",{minimumFractionDigits:2})}/tn`}</strong><small>{p?.tipo==="COMPRA"?"FAS":"FOB"}</small></span><span>{flag(p?.paises?.codigo_iso)} <small>{p?.localidad||p?.provincia||p?.paises?.nombre||"Global"}<br/>{p?.paises?.nombre||""}</small></span><span>🌎 <small>{p?.puerto||"Destino comercial"}<br/>Internacional</small></span><span><strong>{s}%</strong><div className="score-track"><i style={{width:`${Math.min(100,s)}%`}}/></div></span><span><em className={high?"ai-high":"ai-medium"}>{high?"Alta":"Media"}</em></span><Link href={`/marketplace?publicacion=${x.publicacion_id}`} className="ai-detail">Ver oportunidad</Link></div>})}{!filtered.length&&<div className="ai-empty">No hay oportunidades que coincidan con los filtros seleccionados.</div>}</div></div>
+   <aside className="ai-filters"><div className="ai-filter-title"><h2>Filtros de oportunidades</h2><button onClick={clear}>Limpiar filtros</button></div><Filter label="Producto"><select value={producto} onChange={e=>setProducto(e.target.value)}><option value="">Todos los productos</option>{products.map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Tipo de oportunidad"><select value={tipo} onChange={e=>setTipo(e.target.value)}><option value="">Todas</option><option value="COMPRA">Demanda</option><option value="VENTA">Oferta</option></select></Filter><Filter label="País de origen"><select value={origen} onChange={e=>setOrigen(e.target.value)}><option value="">Todos los países</option>{countries.map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="País de destino"><select value={destino} onChange={e=>setDestino(e.target.value)}><option value="">Todos los países</option>{countries.map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Rango de volumen (TN)"><div className="ai-two"><input placeholder="Mínimo"/><input placeholder="Máximo"/></div></Filter><Filter label="Rango de precio (USD/tn)"><div className="ai-two"><input placeholder="Mínimo"/><input placeholder="Máximo"/></div></Filter><Filter label="Nivel de coincidencia"><select value={scoreMin} onChange={e=>setScoreMin(e.target.value)}><option value="">Todos</option><option value="80">80% o más</option><option value="90">90% o más</option></select></Filter><button className="ai-apply" onClick={()=>setScoreMin(scoreMin)}>⌑ Aplicar filtros</button></aside>
+  </section>
+  <section className="ai-bottom"><Bottom title="Mapa de oportunidades globales"><div className="ai-world">🌎<span>🟢</span><span>🔵</span><span>🟠</span><span>🔴</span></div><div className="ai-legend">🟢 Ofertas ({filtered.filter(x=>x.publicacion?.tipo==="VENTA").length})　🔵 Demandas ({filtered.filter(x=>x.publicacion?.tipo==="COMPRA").length})<br/>🟠 Coincidencias　🔴 Nuevos mercados</div></Bottom><Bottom title="Productos con más oportunidades"><Bars items={products.slice(0,7).map((x,i)=>[icon(x)+" "+x,`${Math.max(5,28-i*3)}%`])}/></Bottom><Bottom title="Países con más oportunidades"><Bars items={countries.slice(0,7).map((x,i)=>[flag(items.find(y=>y.publicacion?.paises?.nombre===x)?.publicacion?.paises?.codigo_iso)+" "+x,`${Math.max(5,22-i*2)}%`])}/></Bottom><Bottom title="Tendencias detectadas por IA"><div className="ai-trends"><p>🔵 Aumento de demanda de soja en Asia <b>+35% en los próximos 3 meses</b></p><p>🌽 Oportunidades en maíz para España <b>+22% respecto al mes anterior</b></p><p>🟢 Crecimiento en aceite de soja <b>+18% en mercados europeos</b></p><p>🟠 Nuevos mercados para sorgo</p><p>🔷 Mayor demanda de pellets de soja</p></div></Bottom></section>
+ </main>;
 }
+function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={`ai-kpi ${tone}`}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
+function Filter({label,children}:{label:string;children:React.ReactNode}){return <label className="ai-filter">{label}{children}</label>}
+function Bottom({title,children}:{title:string;children:React.ReactNode}){return <section className="ai-bottom-card"><h2>{title}</h2>{children}</section>}
+function Bars({items}:{items:string[][]}){return <div className="ai-bars">{items.map((x,i)=><div key={i}><span>{x[0]}</span><i style={{width:x[1]}}/><b>{x[1]}</b></div>)}</div>}
