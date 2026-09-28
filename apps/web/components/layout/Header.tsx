@@ -55,7 +55,7 @@ export default function Header() {
 
   async function cerrarSesion() {
     await supabase.auth.signOut();
-    window.location.href = "/login";
+    router.replace("/login");
   }
 
   function ejecutarBusqueda(e: React.FormEvent) {
