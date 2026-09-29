@@ -36,7 +36,7 @@ const verificationState=(c:Company,v?:Verification)=>c.verificada||v?.estado?.to
 
 export default function VerificacionesPage(){
  const[companies,setCompanies]=useState<Company[]>([]),[verifications,setVerifications]=useState<Verification[]>([]),[selected,setSelected]=useState<Company|null>(null),[query,setQuery]=useState(""),[country,setCountry]=useState(""),[sector,setSector]=useState(""),[status,setStatus]=useState("Todos"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[showNew,setShowNew]=useState(false),[newCompany,setNewCompany]=useState(""),[newType,setNewType]=useState("KYC / Identidad"),[actionMsg,setActionMsg]=useState("");
- useEffect(()=>{(async()=>{setLoading(true);const [{data:c},{data:v}]=await Promise.all([
+ useEffect(()=>{(async()=>{const [{data:c},{data:v}]=await Promise.all([
   supabase.from("companies").select("id,razon_social,nombre_comercial,cuit,pais,provincia,ciudad,tipo_empresa,verificada").order("nombre_comercial",{ascending:true}).limit(340),
   supabase.from("empresas_verificaciones").select("empresa_id,estado,tipo_consulta,fecha_verificacion,consultado_at").order("consultado_at",{ascending:false}).limit(1000)
  ]);const list=(c||[]) as Company[];setCompanies(list);setVerifications((v||[]) as Verification[]);setSelected(list[0]||null)})()},[]);
