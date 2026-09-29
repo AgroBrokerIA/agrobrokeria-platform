@@ -7,7 +7,7 @@ import { supabase } from "@/lib/supabase/client";
 
 export default function Header() {
   const router = useRouter();
-  const [usuario, setUsuario] = useState<string | null>(null);
+  const [usuario, setUsuario] = useState<string | null>(null);\n  const [condicion, setCondicion] = useState("Usuario");
   const [idioma, setIdioma] = useState("ES");
   const [mensajes, setMensajes] = useState(0);
   const [notificaciones, setNotificaciones] = useState(0);
@@ -17,7 +17,7 @@ export default function Header() {
   async function cargar() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return;
-    setUsuario(user.user_metadata?.nombre || user.user_metadata?.full_name || user.email || null);
+    const { data: profile } = await supabase.from("profiles").select("nombre,tipo_usuario").eq("id", user.id).maybeSingle();\n    const nombre = String(profile?.nombre || user.user_metadata?.nombre || user.user_metadata?.full_name || "Usuario").trim();\n    setUsuario(nombre || "Usuario");\n    const tipo = String(profile?.tipo_usuario || user.user_metadata?.tipo_usuario || "USUARIO").toUpperCase();\n    const labels: Record<string,string> = { BROKER: "Corredor", CORREDOR: "Corredor", INTERMEDIARIO: "Intermediario", COMISIONISTA: "Comisionista", PRODUCTOR: "Productor", COMPRADOR: "Comprador", ACOPIO: "Acopio", COOPERATIVA: "Cooperativa", EXPORTADOR: "Exportador", LOGISTICA: "Logística", LABORATORIO: "Laboratorio", INDUSTRIA: "Industria", ADMIN: "Administrador" };\n    setCondicion(labels[tipo] || "Usuario");
     setIdioma((localStorage.getItem("agrobrokeria.language") || "es").toUpperCase());
     const [{ count: m }, { count: n }, { data: memberships }] = await Promise.all([
       supabase.from("mensajes_comerciales").select("id", { count: "exact", head: true }).eq("destinatario_profile_id", user.id).is("leido_at", null),
@@ -60,7 +60,7 @@ export default function Header() {
       <button type="button" className="header-language" onClick={() => router.push("/idioma")} aria-label="Idioma">🇪🇸 <strong>{idioma}</strong>⌄</button>
       <Link href="/notificaciones" className="header-icon header-notify" aria-label="Notificaciones">♧{notificaciones > 0 && <i>{notificaciones > 99 ? "99+" : notificaciones}</i>}</Link>
       <Link href="/mensajes" className="header-icon header-message" aria-label="Mensajes">✉{mensajes > 0 && <i>{mensajes}</i>}</Link>
-      {usuario ? <Link href="/perfil" className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>Gestora | AgroBrokerIA</small></div><span className="user-chevron">⌄</span></Link> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
+      {usuario ? <Link href="/perfil" className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>{condicion} | AgroBrokerIA</small></div><span className="user-chevron">⌄</span></Link> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
     </div>
   </header>;
 }
