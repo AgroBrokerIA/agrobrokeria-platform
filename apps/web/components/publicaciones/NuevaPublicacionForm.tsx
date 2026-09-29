@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -8,11 +8,12 @@ import {
   obtenerMonedas,
   obtenerIncoterms,
 } from "@/app/nueva-publicacion/services/publicaciones";
-
 import { supabase } from "@/lib/supabase/client";
-import { crearPublicacion, actualizarPublicacion } from "@/app/nueva-publicacion/services/publicaciones";
+import {
+  crearPublicacion,
+  actualizarPublicacion,
+} from "@/app/nueva-publicacion/services/publicaciones";
 import { Publicacion } from "@/types/publicacion";
-
 import { Producto } from "@/types/producto";
 import { Moneda } from "@/types/moneda";
 import { Incoterm } from "@/types/incoterm";
@@ -33,6 +34,21 @@ type Formulario = {
   observaciones: string;
 };
 
+type Puerto = {
+  codigo: string;
+  nombre: string;
+  pais: string;
+  provincia: string | null;
+  localidad: string | null;
+  tipo: string;
+};
+
+type LugarRecepcion = {
+  codigo: string;
+  nombre: string;
+  descripcion: string | null;
+};
+
 async function obtenerEmpresaDelUsuario() {
   const {
     data: { user },
@@ -51,20 +67,44 @@ async function obtenerEmpresaDelUsuario() {
     .limit(1)
     .maybeSingle();
 
-  if (error) {
-    throw new Error(
-      `No se pudo obtener la empresa: ${error.message}`
-    );
-  }
-
-  if (!data?.id) {
-    throw new Error(
-      "Tu usuario no tiene una empresa activa vinculada."
-    );
-  }
+  if (error) throw new Error(`No se pudo obtener la empresa: ${error.message}`);
+  if (!data?.id) throw new Error("Tu usuario no tiene una empresa activa vinculada.");
 
   return data.id;
 }
+
+const puertosFallback: Puerto[] = [
+  ["AR-ROS", "Puerto Rosario", "Argentina", "Santa Fe", "Rosario", "FLUVIAL_CEREALERO"],
+  ["AR-SLO", "Puerto San Lorenzo", "Argentina", "Santa Fe", "San Lorenzo", "FLUVIAL_CEREALERO"],
+  ["AR-GSM", "Puerto General San Martín", "Argentina", "Santa Fe", "General San Martín", "FLUVIAL_CEREALERO"],
+  ["AR-VCO", "Puerto Villa Constitución", "Argentina", "Santa Fe", "Villa Constitución", "FLUVIAL_CEREALERO"],
+  ["AR-SNI", "Puerto San Nicolás", "Argentina", "Buenos Aires", "San Nicolás de los Arroyos", "FLUVIAL_CEREALERO"],
+  ["AR-RAM", "Puerto Ramallo", "Argentina", "Buenos Aires", "Ramallo", "FLUVIAL_CEREALERO"],
+  ["AR-SPD", "Puerto San Pedro", "Argentina", "Buenos Aires", "San Pedro", "FLUVIAL_CEREALERO"],
+  ["AR-ZAR", "Puerto Zárate", "Argentina", "Buenos Aires", "Zárate", "FLUVIAL"],
+  ["AR-QUE", "Puerto Quequén", "Argentina", "Buenos Aires", "Quequén", "MARITIMO_CEREALERO"],
+  ["AR-BBB", "Puerto Bahía Blanca", "Argentina", "Buenos Aires", "Bahía Blanca", "MARITIMO_CEREALERO"],
+  ["AR-BAI", "Puerto Buenos Aires", "Argentina", "Buenos Aires", "Buenos Aires", "MARITIMO"],
+  ["AR-LPL", "Puerto La Plata", "Argentina", "Buenos Aires", "La Plata", "MARITIMO"],
+].map(([codigo, nombre, pais, provincia, localidad, tipo]) => ({
+  codigo,
+  nombre,
+  pais,
+  provincia,
+  localidad,
+  tipo,
+}));
+
+const lugaresFallback: LugarRecepcion[] = [
+  { codigo: "PUERTO", nombre: "Puerto / Terminal portuaria", descripcion: "Entrega o recepción en puerto o terminal." },
+  { codigo: "ACOPIO", nombre: "Acopio", descripcion: "Planta de acopio o centro de recepción." },
+  { codigo: "PLANTA", nombre: "Planta industrial", descripcion: "Molinera, aceitera, procesadora o industria." },
+  { codigo: "CAMPO", nombre: "Campo / establecimiento", descripcion: "Retiro o recepción directamente en establecimiento." },
+  { codigo: "DEPOSITO", nombre: "Depósito / silo", descripcion: "Depósito, silo, elevador o almacenamiento." },
+  { codigo: "TERMINAL", nombre: "Terminal logística", descripcion: "Terminal multimodal o centro logístico." },
+  { codigo: "FRONTERA", nombre: "Paso fronterizo", descripcion: "Punto de entrega para comercio internacional terrestre." },
+  { codigo: "OTRO", nombre: "Otro lugar", descripcion: "Otro punto acordado entre las partes." },
+];
 
 export default function NuevaPublicacionForm() {
   const router = useRouter();
@@ -72,6 +112,8 @@ export default function NuevaPublicacionForm() {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
+  const [puertos, setPuertos] = useState<Puerto[]>([]);
+  const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
@@ -89,17 +131,18 @@ export default function NuevaPublicacionForm() {
     observaciones: "",
   });
 
+  const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
+  const [lugaresSeleccionados, setLugaresSeleccionados] = useState<string[]>([]);
+  const [busquedaPuerto, setBusquedaPuerto] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
-
   const [modoEdicion, setModoEdicion] = useState(false);
-  const [publicacionId, setPublicacionId] =
-    useState<string | null>(null);
+  const [publicacionId, setPublicacionId] = useState<string | null>(null);
 
   useEffect(() => {
-    cargarDatos();
+    void cargarDatos();
   }, []);
 
   async function cargarDatos() {
@@ -107,47 +150,57 @@ export default function NuevaPublicacionForm() {
       setCargando(true);
       setError("");
 
-      const parametros = new URLSearchParams(
-        window.location.search
-      );
-
+      const parametros = new URLSearchParams(window.location.search);
       const id = parametros.get("id");
-
       if (id) {
         setModoEdicion(true);
         setPublicacionId(id);
       }
 
-      const [p, m, i] = await Promise.all([
+      const [p, m, i, puertosResult, lugaresResult] = await Promise.all([
         obtenerProductos(),
         obtenerMonedas(),
         obtenerIncoterms(),
+        supabase
+          .from("catalogo_puertos")
+          .select("codigo,nombre,pais,provincia,localidad,tipo")
+          .eq("activo", true)
+          .order("pais")
+          .order("provincia")
+          .order("nombre"),
+        supabase
+          .from("catalogo_lugares_recepcion")
+          .select("codigo,nombre,descripcion")
+          .eq("activo", true)
+          .order("orden")
+          .order("nombre"),
       ]);
 
-      const productosData =
-        (p.data as Producto[]) ?? [];
-
-      const monedasData =
-        (m.data as Moneda[]) ?? [];
-
-      const incotermsData =
-        (i.data as Incoterm[]) ?? [];
+      const productosData = (p.data as Producto[]) ?? [];
+      const monedasData = (m.data as Moneda[]) ?? [];
+      const incotermsData = (i.data as Incoterm[]) ?? [];
 
       setProductos(productosData);
       setMonedas(monedasData);
       setIncoterms(incotermsData);
-
-      const maiz = productosData.find(
-        (producto) => producto.codigo === "MAIZ"
+      setPuertos(
+        puertosResult.error || !puertosResult.data?.length
+          ? puertosFallback
+          : (puertosResult.data as Puerto[])
+      );
+      setLugares(
+        lugaresResult.error || !lugaresResult.data?.length
+          ? lugaresFallback
+          : (lugaresResult.data as LugarRecepcion[])
       );
 
-      const usd = monedasData.find(
-        (moneda) => moneda.codigo === "USD"
-      );
+      if (puertosResult.error) {
+        console.warn("No se pudo cargar el catálogo de puertos; se usa el catálogo básico.", puertosResult.error);
+      }
 
-      const fob = incotermsData.find(
-        (incoterm) => incoterm.codigo === "FOB"
-      );
+      const maiz = productosData.find((producto) => producto.codigo === "MAIZ");
+      const usd = monedasData.find((moneda) => moneda.codigo === "USD");
+      const fob = incotermsData.find((incoterm) => incoterm.codigo === "FOB");
 
       if (!id) {
         setForm((anterior) => ({
@@ -156,169 +209,126 @@ export default function NuevaPublicacionForm() {
           moneda_id: usd?.id ?? 2,
           incoterm_id: fob?.id ?? 1,
         }));
-
+        setCargando(false);
         return;
       }
 
-      const {
-        data: publicacion,
-        error: errorPublicacion,
-      } = await supabase
+      const { data: publicacion, error: errorPublicacion } = await supabase
         .from("publicaciones")
-        .select(`
-          id,
-          tipo,
-          producto_id,
-          cantidad_tn,
-          precio_tn,
-          moneda_id,
-          incoterm_id,
-          provincia,
-          localidad,
-          puerto,
-          calidad,
-          humedad,
-          proteina,
-          observaciones
-        `)
+        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones")
         .eq("id", id)
         .single();
 
       if (errorPublicacion) {
-        setError(
-          `No se pudo cargar la publicación: ${errorPublicacion.message}`
-        );
+        setError(`No se pudo cargar la publicación: ${errorPublicacion.message}`);
         return;
       }
 
       if (!publicacion) {
-        setError(
-          "No se encontró la publicación."
-        );
+        setError("No se encontró la publicación.");
         return;
       }
 
+      const puertosGuardados = Array.isArray(publicacion.puertos)
+        ? publicacion.puertos.filter(Boolean)
+        : publicacion.puerto
+          ? [publicacion.puerto]
+          : [];
+      const lugaresGuardados = Array.isArray(publicacion.lugares_recepcion)
+        ? publicacion.lugares_recepcion.filter(Boolean)
+        : [];
+
+      setPuertosSeleccionados(puertosGuardados);
+      setLugaresSeleccionados(lugaresGuardados);
       setForm({
-        tipo:
-          publicacion.tipo === "COMPRA"
-            ? "COMPRA"
-            : "VENTA",
-
-        producto_id:
-          Number(publicacion.producto_id),
-
-        cantidad_tn:
-          String(publicacion.cantidad_tn ?? ""),
-
-        precio_tn:
-          String(publicacion.precio_tn ?? ""),
-
-        moneda_id:
-          Number(publicacion.moneda_id),
-
-        incoterm_id:
-          Number(publicacion.incoterm_id),
-
-        provincia:
-          publicacion.provincia ?? "",
-
-        localidad:
-          publicacion.localidad ?? "",
-
-        puerto:
-          publicacion.puerto ?? "",
-
-        calidad:
-          publicacion.calidad ?? "",
-
-        humedad:
-          publicacion.humedad != null
-            ? String(publicacion.humedad)
-            : "",
-
-        proteina:
-          publicacion.proteina != null
-            ? String(publicacion.proteina)
-            : "",
-
-        observaciones:
-          publicacion.observaciones ?? "",
+        tipo: publicacion.tipo === "COMPRA" ? "COMPRA" : "VENTA",
+        producto_id: Number(publicacion.producto_id),
+        cantidad_tn: String(publicacion.cantidad_tn ?? ""),
+        precio_tn: String(publicacion.precio_tn ?? ""),
+        moneda_id: Number(publicacion.moneda_id),
+        incoterm_id: Number(publicacion.incoterm_id),
+        provincia: publicacion.provincia ?? "",
+        localidad: publicacion.localidad ?? "",
+        puerto: puertosGuardados[0] ?? publicacion.puerto ?? "",
+        calidad: publicacion.calidad ?? "",
+        humedad: publicacion.humedad != null ? String(publicacion.humedad) : "",
+        proteina: publicacion.proteina != null ? String(publicacion.proteina) : "",
+        observaciones: publicacion.observaciones ?? "",
       });
     } catch (e) {
       console.error(e);
-
-      setError(
-        e instanceof Error
-          ? e.message
-          : "No se pudieron cargar los datos."
-      );
+      setError(e instanceof Error ? e.message : "No se pudieron cargar los datos.");
     } finally {
       setCargando(false);
     }
   }
 
-  function actualizarCampo(
-    campo: keyof Formulario,
-    valor: string | number
-  ) {
-    setForm((anterior) => ({
-      ...anterior,
-      [campo]: valor,
-    }));
+  function actualizarCampo(campo: keyof Formulario, valor: string | number) {
+    setForm((anterior) => ({ ...anterior, [campo]: valor }));
   }
 
-  async function guardar(
-    e: React.FormEvent<HTMLFormElement>
-  ) {
-    e.preventDefault();
+  function alternarPuerto(codigo: string) {
+    setPuertosSeleccionados((actuales) => {
+      const nuevos = actuales.includes(codigo)
+        ? actuales.filter((item) => item !== codigo)
+        : [...actuales, codigo];
+      const primerPuerto = nuevos[0] ?? "";
+      setForm((anterior) => ({ ...anterior, puerto: primerPuerto }));
+      return nuevos;
+    });
+  }
 
+  function alternarLugar(codigo: string) {
+    setLugaresSeleccionados((actuales) =>
+      actuales.includes(codigo)
+        ? actuales.filter((item) => item !== codigo)
+        : [...actuales, codigo]
+    );
+  }
+
+  const puertosFiltrados = useMemo(() => {
+    const q = busquedaPuerto.trim().toLowerCase();
+    if (!q) return puertos;
+    return puertos.filter((p) =>
+      [p.nombre, p.pais, p.provincia, p.localidad, p.tipo]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase()
+        .includes(q)
+    );
+  }, [puertos, busquedaPuerto]);
+
+  function seleccionarTodosLosPuertos() {
+    const codigos = puertosFiltrados.map((p) => p.codigo);
+    setPuertosSeleccionados((actuales) => {
+      const nuevos = Array.from(new Set([...actuales, ...codigos]));
+      setForm((anterior) => ({ ...anterior, puerto: nuevos[0] ?? "" }));
+      return nuevos;
+    });
+  }
+
+  function limpiarPuertos() {
+    setPuertosSeleccionados([]);
+    setForm((anterior) => ({ ...anterior, puerto: "" }));
+  }
+
+  async function guardar(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
     setMensaje("");
     setError("");
 
-    if (!form.producto_id) {
-      setError("Seleccioná un producto.");
-      return;
-    }
-
-    if (
-      !form.cantidad_tn ||
-      Number(form.cantidad_tn) <= 0
-    ) {
-      setError(
-        "Ingresá una cantidad válida en toneladas."
-      );
-      return;
-    }
-
-    if (
-      !form.precio_tn ||
-      Number(form.precio_tn) <= 0
-    ) {
-      setError(
-        "Ingresá un precio válido por tonelada."
-      );
-      return;
-    }
-
-    if (!form.provincia.trim()) {
-      setError("Ingresá la provincia.");
-      return;
-    }
-
-    if (!form.localidad.trim()) {
-      setError("Ingresá la localidad.");
-      return;
-    }
-
-    if (!form.puerto.trim()) {
-      setError("Ingresá el puerto.");
-      return;
-    }
+    if (!form.producto_id) return setError("Seleccioná un producto.");
+    if (!form.cantidad_tn || Number(form.cantidad_tn) <= 0) return setError("Ingresá una cantidad válida en toneladas.");
+    if (!form.precio_tn || Number(form.precio_tn) <= 0) return setError("Ingresá un precio válido por tonelada.");
+    if (!form.provincia.trim()) return setError("Ingresá la provincia.");
+    if (!form.localidad.trim()) return setError("Ingresá la localidad.");
+    if (puertosSeleccionados.length === 0) return setError("Seleccioná al menos un puerto de recepción o entrega.");
+    if (lugaresSeleccionados.length === 0) return setError("Seleccioná al menos un tipo de lugar de recepción.");
 
     try {
       setGuardando(true);
 
-      const datos = {
+      const datos: Partial<Publicacion> = {
         tipo: form.tipo,
         producto_id: form.producto_id,
         cantidad_tn: Number(form.cantidad_tn),
@@ -327,20 +337,14 @@ export default function NuevaPublicacionForm() {
         incoterm_id: form.incoterm_id,
         provincia: form.provincia.trim(),
         localidad: form.localidad.trim(),
-        puerto: form.puerto.trim(),
+        puerto: form.puerto.trim() || puertosSeleccionados[0],
+        puertos: puertosSeleccionados,
+        lugares_recepcion: lugaresSeleccionados,
         calidad: form.calidad.trim(),
-        humedad: form.humedad
-          ? Number(form.humedad)
-          : null,
-        proteina: form.proteina
-          ? Number(form.proteina)
-          : null,
+        humedad: form.humedad ? Number(form.humedad) : null,
+        proteina: form.proteina ? Number(form.proteina) : null,
         observaciones: form.observaciones.trim(),
       };
-
-      /*
-       * EDITAR PUBLICACIÓN
-       */
 
       if (modoEdicion && publicacionId) {
         const { error: errorActualizacion } = await actualizarPublicacion(publicacionId, datos);
@@ -353,72 +357,30 @@ export default function NuevaPublicacionForm() {
         return;
       }
 
-      /*
-       * CREAR NUEVA PUBLICACIÓN
-       *
-       * Se obtiene la empresa REAL vinculada
-       * al usuario autenticado.
-       */
-
-      const empresaId =
-        await obtenerEmpresaDelUsuario();
-
-      console.log(
-        "Empresa utilizada para publicar:",
-        empresaId
-      );
-
+      const empresaId = await obtenerEmpresaDelUsuario();
       const nuevaPublicacion: Publicacion = {
         empresa_id: empresaId,
-        ...datos,
+        ...(datos as Omit<Publicacion, "empresa_id">),
         estado: "PUBLICADA",
       };
 
-      console.log(
-        "Datos de nueva publicación:",
-        nuevaPublicacion
-      );
-
-      const {
-        data,
-        error: errorInsertar,
-      } = await crearPublicacion(nuevaPublicacion);
+      const { data, error: errorInsertar } = await crearPublicacion(nuevaPublicacion);
 
       if (errorInsertar) {
-        console.error(errorInsertar);
-
-        setError(
-          `No se pudo publicar: ${errorInsertar.message}`
-        );
-
+        setError(`No se pudo publicar: ${errorInsertar.message}`);
         return;
       }
 
-      console.log(
-        "Publicación creada:",
-        data
-      );
-
-      setMensaje(
-        "✅ Publicación creada correctamente."
-      );
+      console.log("Publicación creada:", data);
+      setMensaje("✅ Publicación creada correctamente.");
 
       setForm({
         tipo: "VENTA",
-        producto_id:
-          productos.find(
-            (p) => p.codigo === "MAIZ"
-          )?.id ?? 1,
+        producto_id: productos.find((p) => p.codigo === "MAIZ")?.id ?? 1,
         cantidad_tn: "",
         precio_tn: "",
-        moneda_id:
-          monedas.find(
-            (m) => m.codigo === "USD"
-          )?.id ?? 2,
-        incoterm_id:
-          incoterms.find(
-            (i) => i.codigo === "FOB"
-          )?.id ?? 1,
+        moneda_id: monedas.find((m) => m.codigo === "USD")?.id ?? 2,
+        incoterm_id: incoterms.find((i) => i.codigo === "FOB")?.id ?? 1,
         provincia: "",
         localidad: "",
         puerto: "",
@@ -427,295 +389,109 @@ export default function NuevaPublicacionForm() {
         proteina: "",
         observaciones: "",
       });
+      setPuertosSeleccionados([]);
+      setLugaresSeleccionados([]);
 
-      setTimeout(() => {
-        router.push("/mis-publicaciones");
-      }, 700);
+      setTimeout(() => router.push("/mis-publicaciones"), 700);
     } catch (e) {
       console.error(e);
-
-      setError(
-        e instanceof Error
-          ? e.message
-          : "Ocurrió un error al publicar."
-      );
+      setError(e instanceof Error ? e.message : "Ocurrió un error al publicar.");
     } finally {
       setGuardando(false);
     }
   }
 
-  if (cargando) {
-    return (
-      <div style={{ padding: 20 }}>
-        Cargando formulario...
-      </div>
-    );
-  }
+  if (cargando) return <div style={{ padding: 20 }}>Cargando formulario...</div>;
 
   return (
-    <form
-      onSubmit={guardar}
-      style={{
-        display: "flex",
-        flexDirection: "column",
-        gap: 16,
-      }}
-    >
+    <form onSubmit={guardar} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <h1>Nueva publicación</h1>
 
-      {mensaje && (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 8,
-            background: "#dcfce7",
-            color: "#166534",
-          }}
-        >
-          {mensaje}
+      {mensaje && <div style={{ padding: 12, borderRadius: 8, background: "#dcfce7", color: "#166534" }}>{mensaje}</div>}
+      {error && <div style={{ padding: 12, borderRadius: 8, background: "#fee2e2", color: "#991b1b" }}>{error}</div>}
+
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+        <label>Tipo<select value={form.tipo} onChange={(e) => actualizarCampo("tipo", e.target.value as "VENTA" | "COMPRA")}><option value="VENTA">Venta</option><option value="COMPRA">Compra</option></select></label>
+        <label>Producto<select value={form.producto_id} onChange={(e) => actualizarCampo("producto_id", Number(e.target.value))}>{productos.map((producto) => <option key={producto.id} value={producto.id}>{producto.nombre}</option>)}</select></label>
+        <label>Cantidad (TN)<input type="number" min="0.01" step="0.01" value={form.cantidad_tn} onChange={(e) => actualizarCampo("cantidad_tn", e.target.value)} /></label>
+        <label>Precio por TN<input type="number" min="0.01" step="0.01" value={form.precio_tn} onChange={(e) => actualizarCampo("precio_tn", e.target.value)} /></label>
+        <label>Moneda<select value={form.moneda_id} onChange={(e) => actualizarCampo("moneda_id", Number(e.target.value))}>{monedas.map((moneda) => <option key={moneda.id} value={moneda.id}>{moneda.codigo} - {moneda.nombre}</option>)}</select></label>
+        <label>Incoterm<select value={form.incoterm_id} onChange={(e) => actualizarCampo("incoterm_id", Number(e.target.value))}>{incoterms.map((incoterm) => <option key={incoterm.id} value={incoterm.id}>{incoterm.codigo} - {incoterm.descripcion}</option>)}</select></label>
+        <label>Provincia<input value={form.provincia} onChange={(e) => actualizarCampo("provincia", e.target.value)} /></label>
+        <label>Localidad<input value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} /></label>
+      </div>
+
+      <section style={{ border: "1px solid #dbe5e0", borderRadius: 14, padding: 18, background: "#f8fffb" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20 }}>Puertos de recepción / entrega</h2>
+            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Podés elegir uno, varios o todos los puertos que correspondan a esta publicación.</p>
+          </div>
+          <strong style={{ color: "#047857" }}>{puertosSeleccionados.length} seleccionados</strong>
         </div>
-      )}
 
-      {error && (
-        <div
-          style={{
-            padding: 12,
-            borderRadius: 8,
-            background: "#fee2e2",
-            color: "#991b1b",
-          }}
-        >
-          {error}
+        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
+          <input value={busquedaPuerto} onChange={(e) => setBusquedaPuerto(e.target.value)} placeholder="Buscar puerto, provincia o localidad..." style={{ flex: "1 1 280px" }} />
+          <button type="button" onClick={seleccionarTodosLosPuertos} style={{ padding: "9px 12px" }}>☑ Seleccionar visibles</button>
+          <button type="button" onClick={limpiarPuertos} style={{ padding: "9px 12px" }}>Limpiar</button>
         </div>
-      )}
 
-      <label>
-        Tipo
-        <select
-          value={form.tipo}
-          onChange={(e) =>
-            actualizarCampo(
-              "tipo",
-              e.target.value as
-                | "VENTA"
-                | "COMPRA"
-            )
-          }
-        >
-          <option value="VENTA">Venta</option>
-          <option value="COMPRA">Compra</option>
-        </select>
-      </label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8, marginTop: 14, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
+          {puertosFiltrados.map((puerto) => {
+            const checked = puertosSeleccionados.includes(puerto.codigo);
+            return (
+              <label key={puerto.codigo} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 11, borderRadius: 10, border: checked ? "1px solid #10b981" : "1px solid #e2e8f0", background: checked ? "#ecfdf5" : "#fff", cursor: "pointer" }}>
+                <input type="checkbox" checked={checked} onChange={() => alternarPuerto(puerto.codigo)} style={{ marginTop: 3 }} />
+                <span>
+                  <strong style={{ display: "block" }}>{puerto.nombre}</strong>
+                  <small style={{ color: "#64748b" }}>{[puerto.localidad, puerto.provincia, puerto.pais].filter(Boolean).join(" · ")}</small>
+                </span>
+              </label>
+            );
+          })}
+        </div>
 
-      <label>
-        Producto
-        <select
-          value={form.producto_id}
-          onChange={(e) =>
-            actualizarCampo(
-              "producto_id",
-              Number(e.target.value)
-            )
-          }
-        >
-          {productos.map((producto) => (
-            <option
-              key={producto.id}
-              value={producto.id}
-            >
-              {producto.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+        <label style={{ display: "block", marginTop: 14 }}>
+          Puerto principal
+          <select value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
+            <option value="">Seleccionar puerto principal...</option>
+            {puertos.filter((p) => puertosSeleccionados.includes(p.codigo)).map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}
+          </select>
+        </label>
+      </section>
 
-      <label>
-        Cantidad (TN)
-        <input
-          type="number"
-          value={form.cantidad_tn}
-          onChange={(e) =>
-            actualizarCampo(
-              "cantidad_tn",
-              e.target.value
-            )
-          }
-        />
-      </label>
+      <section style={{ border: "1px solid #dbe5e0", borderRadius: 14, padding: 18, background: "#fff" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+          <div>
+            <h2 style={{ margin: 0, fontSize: 20 }}>Lugares donde recibir / entregar</h2>
+            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Marcá todas las modalidades de recepción que acepta la operación.</p>
+          </div>
+          <strong style={{ color: "#047857" }}>{lugaresSeleccionados.length} opciones</strong>
+        </div>
 
-      <label>
-        Precio por TN
-        <input
-          type="number"
-          value={form.precio_tn}
-          onChange={(e) =>
-            actualizarCampo(
-              "precio_tn",
-              e.target.value
-            )
-          }
-        />
-      </label>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10, marginTop: 14 }}>
+          {lugares.map((lugar) => {
+            const checked = lugaresSeleccionados.includes(lugar.codigo);
+            return (
+              <label key={lugar.codigo} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 10, border: checked ? "1px solid #10b981" : "1px solid #e2e8f0", background: checked ? "#ecfdf5" : "#fff", cursor: "pointer" }}>
+                <input type="checkbox" checked={checked} onChange={() => alternarLugar(lugar.codigo)} style={{ marginTop: 3 }} />
+                <span><strong style={{ display: "block" }}>{lugar.nombre}</strong><small style={{ color: "#64748b" }}>{lugar.descripcion}</small></span>
+              </label>
+            );
+          })}
+        </div>
+      </section>
 
-      <label>
-        Moneda
-        <select
-          value={form.moneda_id}
-          onChange={(e) =>
-            actualizarCampo(
-              "moneda_id",
-              Number(e.target.value)
-            )
-          }
-        >
-          {monedas.map((moneda) => (
-            <option
-              key={moneda.id}
-              value={moneda.id}
-            >
-              {moneda.codigo} -{" "}
-              {moneda.nombre}
-            </option>
-          ))}
-        </select>
-      </label>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+        <label>Calidad<input value={form.calidad} onChange={(e) => actualizarCampo("calidad", e.target.value)} /></label>
+        <label>Humedad (%)<input type="number" step="0.01" value={form.humedad} onChange={(e) => actualizarCampo("humedad", e.target.value)} /></label>
+        <label>Proteína (%)<input type="number" step="0.01" value={form.proteina} onChange={(e) => actualizarCampo("proteina", e.target.value)} /></label>
+      </div>
 
-      <label>
-        Incoterm
-        <select
-          value={form.incoterm_id}
-          onChange={(e) =>
-            actualizarCampo(
-              "incoterm_id",
-              Number(e.target.value)
-            )
-          }
-        >
-          {incoterms.map((incoterm) => (
-            <option
-              key={incoterm.id}
-              value={incoterm.id}
-            >
-              {incoterm.codigo} -{" "}
-              {incoterm.descripcion}
-            </option>
-          ))}
-        </select>
-      </label>
+      <label>Observaciones<textarea value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={4} /></label>
 
-      <label>
-        Provincia
-        <input
-          value={form.provincia}
-          onChange={(e) =>
-            actualizarCampo(
-              "provincia",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Localidad
-        <input
-          value={form.localidad}
-          onChange={(e) =>
-            actualizarCampo(
-              "localidad",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Puerto
-        <input
-          value={form.puerto}
-          onChange={(e) =>
-            actualizarCampo(
-              "puerto",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Calidad
-        <input
-          value={form.calidad}
-          onChange={(e) =>
-            actualizarCampo(
-              "calidad",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Humedad
-        <input
-          type="number"
-          value={form.humedad}
-          onChange={(e) =>
-            actualizarCampo(
-              "humedad",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Proteína
-        <input
-          type="number"
-          value={form.proteina}
-          onChange={(e) =>
-            actualizarCampo(
-              "proteina",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <label>
-        Observaciones
-        <textarea
-          value={form.observaciones}
-          onChange={(e) =>
-            actualizarCampo(
-              "observaciones",
-              e.target.value
-            )
-          }
-        />
-      </label>
-
-      <button
-        type="submit"
-        disabled={guardando}
-        style={{
-          padding: 14,
-          borderRadius: 8,
-          border: "none",
-          cursor: guardando
-            ? "wait"
-            : "pointer",
-          background: "#16a34a",
-          color: "white",
-          fontSize: 16,
-        }}
-      >
-        {guardando
-          ? "Guardando..."
-          : modoEdicion
-          ? "Guardar cambios"
-          : "Publicar"}
+      <button type="submit" disabled={guardando} style={{ padding: 14, borderRadius: 8, border: "none", cursor: guardando ? "wait" : "pointer", background: "#16a34a", color: "white", fontSize: 16 }}>
+        {guardando ? "Guardando..." : modoEdicion ? "Guardar cambios" : "Publicar"}
       </button>
     </form>
   );
