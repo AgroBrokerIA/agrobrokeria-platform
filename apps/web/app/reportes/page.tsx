@@ -1,5 +1,5 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
+import {useEffect,useState} from "react";
 import {supabase} from "@/lib/supabase/client";
 
 type Op={id:string;codigo:string|null;estado:string;precio_tn:number|null;cantidad_tn:number|null;importe_total:number|null;fecha_operacion:string;publicacion_compra_id:string|null;publicacion_venta_id:string|null};
@@ -26,17 +26,17 @@ export default function ReportesPage(){
   if(oe)throw oe;if(pe)throw pe;if(pre)throw pre;if(ce)throw ce;
   setOps((o||[]) as Op[]);setPubs((p||[]) as Pub[]);setProducts((pr||[]) as Product[]);setCompanies((c||[]) as Company[]);
  }catch(e){setError(e instanceof Error?e.message:"No se pudo generar el reporte.")}finally{setLoading(false)}})()},[]);
- const pubById=useMemo(()=>new Map(pubs.map(x=>[x.id,x])),[pubs]), prodById=useMemo(()=>new Map(products.map(x=>[x.id,x.nombre])),[products]), companyById=useMemo(()=>new Map(companies.map(x=>[x.id,x])),[companies]);
- const rows=useMemo(()=>ops.map(o=>{const pub=pubById.get(o.publicacion_venta_id||o.publicacion_compra_id||"");const company=pub?companyById.get(pub.empresa_id):undefined;return {...o,pub,company,producto:pub?.producto_id?prodById.get(pub.producto_id)||"Producto": "Sin producto",pais:company?.pais||"Otros"}}),[ops,pubById,prodById,companyById]);
- const filtered=useMemo(()=>rows.filter(r=>(country==="Todos los países"||r.pais===country)&&(product==="Todos los productos"||r.producto===product)&&(company==="Todas las empresas"||(r.company?.nombre_comercial||r.company?.razon_social||"Sin empresa")===company)&&(statusFilter==="Todos los estados"||statusLabel(r.estado)===statusFilter)&&(!fromDate||r.fecha_operacion>=fromDate)&&(!toDate||r.fecha_operacion<=toDate+"T23:59:59")),[rows,country,product,company,statusFilter,fromDate,toDate]);
- const total=filtered.reduce((a,r)=>a+num(r.importe_total||num(r.cantidad_tn)*num(r.precio_tn)),0), totalTn=filtered.reduce((a,r)=>a+num(r.cantidad_tn),0);
+ const pubById=new Map(pubs.map(x=>[x.id,x])), prodById=new Map(products.map(x=>[x.id,x.nombre])), companyById=new Map(companies.map(x=>[x.id,x]));
+ const rows=ops.map(o=>{const pub=pubById.get(o.publicacion_venta_id||o.publicacion_compra_id||"");const company=pub?companyById.get(pub.empresa_id):undefined;return {...o,pub,company,producto:pub?.producto_id?prodById.get(pub.producto_id)||"Producto":"Sin producto",pais:company?.pais||"Otros"};});
+ const filtered=rows.filter(r=>(country==="Todos los países"||r.pais===country)&&(product==="Todos los productos"||r.producto===product)&&(company==="Todas las empresas"||(r.company?.nombre_comercial||r.company?.razon_social||"Sin empresa")===company)&&(statusFilter==="Todos los estados"||statusLabel(r.estado)===statusFilter)&&(!fromDate||r.fecha_operacion>=fromDate)&&(!toDate||r.fecha_operacion<=toDate+"T23:59:59"));
+ const total=filtered.reduce((a,r)=>a+num(r.importe_total||num(r.cantidad_tn)*num(r.precio_tn)),0);
  const commission=filtered.reduce((a,r)=>a+num(r.importe_total)*0.01,0);
  const countries=[...new Set(rows.map(r=>r.pais).filter(Boolean))];
- const status=useMemo(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(statusLabel(r.estado),(m.get(statusLabel(r.estado))||0)+1));return [...m.entries()].sort((a,b)=>b[1]-a[1])},[filtered]);
- const monthly=useMemo(()=>months.map((label,i)=>{const month=i+4;const subset=filtered.filter(r=>{const d=new Date(r.fecha_operacion);return d.getMonth()+1===month});return {label,value:subset.reduce((a,r)=>a+num(r.importe_total),0),ops:subset.length}}),[filtered]);
- const prod=useMemo(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(r.producto,(m.get(r.producto)||0)+num(r.importe_total)));return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,7)},[filtered]);
- const firms=useMemo(()=>{const m=new Map<string,number>();filtered.forEach(r=>{const n=r.company?.nombre_comercial||r.company?.razon_social||"Sin empresa";m.set(n,(m.get(n)||0)+num(r.importe_total))});return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5)},[filtered]);
- const countriesAgg=useMemo(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(r.pais,(m.get(r.pais)||0)+num(r.importe_total)));return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,7)},[filtered]);
+ const status=(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(statusLabel(r.estado),(m.get(statusLabel(r.estado))||0)+1));return [...m.entries()].sort((a,b)=>b[1]-a[1])})();
+ const monthly=months.map((label,i)=>{const month=i+4;const subset=filtered.filter(r=>{const d=new Date(r.fecha_operacion);return d.getMonth()+1===month});return {label,value:subset.reduce((a,r)=>a+num(r.importe_total),0),ops:subset.length}});
+ const prod=(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(r.producto,(m.get(r.producto)||0)+num(r.importe_total)));return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,7)})();
+ const firms=(()=>{const m=new Map<string,number>();filtered.forEach(r=>{const n=r.company?.nombre_comercial||r.company?.razon_social||"Sin empresa";m.set(n,(m.get(n)||0)+num(r.importe_total))});return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,5)})();
+ const countriesAgg=(()=>{const m=new Map<string,number>();filtered.forEach(r=>m.set(r.pais,(m.get(r.pais)||0)+num(r.importe_total)));return [...m.entries()].sort((a,b)=>b[1]-a[1]).slice(0,7)})();
  return <main className="reports-reference">
   <header className="reports-head"><div><h1>Reportes</h1><p>Analiza el rendimiento de tus operaciones, comisiones, ventas y mercado</p></div><div className="reports-actions"><button onClick={()=>document.getElementById("reports-from")?.focus()}>▣ &nbsp;{fromDate||"Sin fecha"} - {toDate||"Sin fecha"}⌄</button><select value={country} onChange={e=>setCountry(e.target.value)}><option>Todos los países</option>{countries.map(c=><option key={c}>{c}</option>)}</select><button className="reports-export" onClick={exportReport}>⇩ &nbsp;Exportar reporte⌄</button></div></header>
   {error&&<div className="reports-error">{error}</div>}
