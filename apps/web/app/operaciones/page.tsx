@@ -2670,7 +2670,7 @@ Firma: ______________________________
             <span># OPERACIÓN</span><span>PRODUCTO</span><span>VOLUMEN</span><span>PRECIO (USD/tn)</span><span>TIPO</span><span>ORIGEN</span><span>DESTINO</span><span>CONTRAPARTE</span><span>ESTADO</span><span>FECHA</span><span>ACCIONES</span>
           </div>
           {loading ? <div className="operations-empty">Cargando operaciones…</div> :
-            operacionesFiltradas.map((operacion,index)=>{
+            operacionesFiltradas.map((operacion)=>{
               const workflow=obtenerWorkflow(operacion.id), orden=workflow?.orden||0;
               const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
@@ -2695,11 +2695,11 @@ Firma: ______________________________
 
         <aside className="operations-filters">
           <div className="op-filter-title"><h2>Filtrar operaciones</h2><button onClick={limpiarFiltros}>Limpiar filtros</button></div>
-          <Filter label="Producto"><select value={filtroProducto} onChange={e=>setFiltroProducto(e.target.value)}><option value="">Todos los productos</option>{["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Pellets de Soja","Sorgo"].map(x=><option key={x}>{x}</option>)}</select></Filter>
+          <Filter label="Producto"><input value={filtroProducto} onChange={e=>setFiltroProducto(e.target.value)} placeholder="Buscar producto" /></Filter>
           <Filter label="Estado"><select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}><option value="">Todos los estados</option>{["En negociación","En contrato","En logística","En liquidación","Finalizadas","Canceladas"].map(x=><option key={x}>{x}</option>)}</select></Filter>
           <Filter label="Tipo de contrato"><select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}><option value="">Todos los tipos</option><option value="F1">F1</option><option value="F2">F2</option></select></Filter>
-          <Filter label="País de origen"><select value={filtroOrigen} onChange={e=>setFiltroOrigen(e.target.value)}><option value="">Todos los países</option><option>Argentina</option></select></Filter>
-          <Filter label="País de destino"><select value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)}><option value="">Todos los países</option><option>Internacional</option></select></Filter>
+          <Filter label="País de origen"><input value={filtroOrigen} onChange={e=>setFiltroOrigen(e.target.value)} placeholder="Buscar origen" /></Filter>
+          <Filter label="País de destino"><input value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)} placeholder="Buscar destino" /></Filter>
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
           <Filter label="Rango de volumen (TN)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinVol} onChange={e=>setFiltroMinVol(e.target.value)}/><input placeholder="Máximo" value={filtroMaxVol} onChange={e=>setFiltroMaxVol(e.target.value)}/></div></Filter>
           <Filter label="Rango de precio (USD/tn)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
