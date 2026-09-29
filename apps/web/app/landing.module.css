@@ -37,3 +37,26 @@
 .frontier{padding:36px 3.3% 70px}
 .insight{text-decoration:none;color:inherit}
 @media(max-width:1100px){.hero{padding-left:6%;padding-right:6%}}
+
+/* ===== PUBLIC HOME REFERENCE — 1000773319 ===== */
+.landing{background:#f8faf9;color:#0b164e}
+.nav{height:70px;padding:0 3.2%;border-bottom:1px solid #e6ebe8;background:#fff}
+.brand{min-width:255px;gap:10px}.logo{width:39px;height:39px;background:linear-gradient(145deg,#27c78a 0%,#0aa267 70%,#078653 100%);border-radius:58% 42% 58% 42%;box-shadow:none;transform:rotate(-18deg)}
+.logo:before{width:13px;height:27px;left:12px;top:5px;border-left:2px solid #e7fff4;transform:rotate(27deg)}
+.brandName{font-size:19px;color:#111;font-weight:800}.brandName em{color:#00a875}.tagline{font-size:8px;color:#56635d;letter-spacing:.2px;font-weight:500}
+.navLinks{gap:25px}.navLinks a{font-size:12px;color:#101010;font-weight:500}.navLinks a:first-child{font-weight:750;color:#007e52}.navLinks a:first-child:after{height:3px;background:#0b9d65}
+.navRight{min-width:285px;gap:10px}.language{font-size:12px;color:#111;font-weight:600}.login,.register{height:39px;border-radius:7px;font-size:12px}.login{border-color:#168b63;color:#076e4e;padding:0 17px}.register{background:#07834f;border-color:#07834f;padding:0 19px}
+.hero{min-height:502px;padding:40px 10.15% 90px;background-position:center center}.hero:before{background:linear-gradient(90deg,rgba(2,25,15,.90) 0%,rgba(4,35,21,.79) 32%,rgba(4,36,22,.35) 63%,rgba(4,25,17,.13) 100%),linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.38))}
+.heroCopy{max-width:610px;margin-top:-2px}.heroTitle{font-size:49px;line-height:1.03;letter-spacing:-2.6px;margin-bottom:15px}.heroTitle span:first-child{font-weight:800}.heroTitle span:last-child{font-weight:800}.heroTitle em{color:#00ed91}.heroCopy p{font-size:16px;line-height:1.48;max-width:555px;margin-bottom:20px}.checks{gap:9px 35px}.checks li{font-size:12px}.check{background:#16dc86;color:#063c27}
+.primary{background:#00d67d;color:#063723;min-width:250px}.secondary{min-width:205px}
+.quote{right:4.75%;top:43px;width:395px;padding:15px 15px 12px;background:rgba(21,22,26,.86);border-radius:13px}.quoteHead strong{font-size:14px}.quoteHead a{font-size:10px;color:#dce9e2}.quoteRows{border-top:1px solid #ffffff18}.quoteRow{grid-template-columns:35px 1fr auto auto;padding:9px 0}.qIcon{width:31px;height:31px}.quotePrice{font-size:12px}.up{font-size:11px}.quoteButton{height:40px;margin-top:11px}
+.marketStrip{left:3.2%;right:3.2%;bottom:-29px;height:72px;border-radius:11px;padding:0 13px}.stat{padding:0 18px}.statIcon{width:36px;height:36px;background:#e4f8f0;color:#069b68}.stat strong{font-size:17px;color:#0d1650}.stat small{font-size:10px;color:#56646d}
+.cardsSection{padding:73px 3.2% 40px}.cardsGrid{gap:13px}.card{border-radius:10px;box-shadow:0 4px 13px #10251a12}.cardImage{height:117px}.cardIcon{left:12px;bottom:-12px;width:35px;height:35px}.cardBody{padding:17px 13px 13px}.card h3{font-size:14px;color:#0a1651}.card p{font-size:10px}.cardArrow{background:#eef2fb;color:#0d1b5c}
+.frontier{padding:35px 3.2% 68px;grid-template-columns:1.05fr 1fr;gap:48px;background:#fafcfc}.world{min-height:245px;background:radial-gradient(circle at 40% 40%,#e6f8ee 0 23%,transparent 24%),radial-gradient(circle at 70% 52%,#dff4ea 0 17%,transparent 18%);border-radius:0}
+.world:before{inset:10% 4%;background:radial-gradient(ellipse at 15% 56%,#b4dec8 0 15%,transparent 16%),radial-gradient(ellipse at 36% 35%,#c3e8d3 0 17%,transparent 18%),radial-gradient(ellipse at 57% 57%,#b7e1cc 0 14%,transparent 15%),radial-gradient(ellipse at 79% 40%,#c7ead7 0 13%,transparent 14%)}
+.mapDot{position:absolute;width:7px;height:7px;border-radius:50%;background:#11a46c;box-shadow:0 0 0 4px #11a46c18;z-index:2}.mapLine{position:absolute;height:1px;background:#16b77b;transform-origin:left center;z-index:1;opacity:.7}
+.frontierText h2{font-size:30px;color:#0b1653}.frontierText p{font-size:13px;color:#55626b}.badge{font-size:9px;color:#145e49}.badge i{color:#079c68}.insight{background:#e7fbf2;border-color:#c5eedb;padding:17px;margin-top:21px}.insight strong{font-size:13px;color:#0b3f2c}.insight span{font-size:10px}
+.footer{padding:24px 3.2%}
+@media(max-width:1100px){.hero{padding-left:6%;padding-right:6%}.quote{right:4%;width:350px}.navLinks{gap:15px}.brand{min-width:auto}}
+@media(max-width:800px){.hero{min-height:650px;padding:42px 24px 120px}.heroTitle{font-size:40px}.quote{left:24px;right:24px;bottom:95px;top:auto;width:auto}.marketStrip{left:16px;right:16px;bottom:-66px}.cardsSection{padding-top:105px}}
+@media(max-width:520px){.heroTitle{font-size:34px}.primary,.secondary{min-width:0}.hero{min-height:720px}}
