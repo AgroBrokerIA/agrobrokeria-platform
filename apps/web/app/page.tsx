@@ -27,7 +27,7 @@ export default function Home(){
    (async()=>{
      const [market,companies,operations,pubs] = await Promise.all([
        supabase.from("market_public_summary").select("commodity,precio_promedio,moneda,publicaciones").order("publicaciones",{ascending:false}).limit(4),
-       supabase.from("companies").select("id",{count:"exact",head:true}),
+       supabase.from("companies").select("id,pais_id"),
        supabase.from("operaciones").select("id",{count:"exact",head:true}),
        supabase.from("publicaciones").select("cantidad_tn,estado")
      ]);
@@ -62,7 +62,7 @@ export default function Home(){
   ["🤝","+"+fmt(stats.operations),"Operaciones registradas"],
   ["◎","+"+fmt(stats.markets),"Mercados conectados"],
   ["🚚","+"+fmt(Math.round(stats.tons)),"Toneladas publicadas"],
-  ["✓",""+pct(stats.secure),"Publicaciones activas"]
+  ["✓","+"+fmt(stats.secure),"Publicaciones activas"]
  ];
 
  return <main className={styles.landing}>
