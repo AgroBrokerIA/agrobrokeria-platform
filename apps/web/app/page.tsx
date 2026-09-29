@@ -6,7 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import styles from "./landing.module.css";
 
 type Quote = { name:string; price:string; detail:string; icon:string };
-type Stats = { companies:number; operations:number; markets:number; tons:number; secure:number };
+type Stats = { quotes:number; publications:number; commodities:number; updated:string; source:string };
 
 const fallback:Quote[] = [
   {name:"Soja",price:"Sin cotización",detail:"",icon:"🫛"},
@@ -19,36 +19,37 @@ const fmt=(v:number)=>v.toLocaleString("es-AR");
 
 export default function Home(){
  const [quotes,setQuotes]=useState<Quote[]>(fallback);
- const [stats,setStats]=useState<Stats>({companies:0,operations:0,markets:0,tons:0,secure:0});
+ const [stats,setStats]=useState<Stats>({quotes:0,publications:0,commodities:0,updated:"—",source:"BCR"});
 
  useEffect(()=>{
    let mounted=true;
    (async()=>{
-     const [market,companies,operations,pubs] = await Promise.all([
-       supabase.from("market_public_summary").select("commodity,precio_promedio,moneda,publicaciones").order("publicaciones",{ascending:false}).limit(4),
-       supabase.from("companies").select("id,pais_id,verificada"),
-       supabase.from("operaciones").select("id,estado"),
-       supabase.from("publicaciones").select("cantidad_tn,estado")
-     ]);
+     const { data: market, error: marketError } = await supabase
+       .from("market_public_summary")
+       .select("commodity,precio_promedio,moneda,publicaciones,actualizado_at")
+       .order("publicaciones",{ascending:false})
+       .limit(12);
      if(!mounted)return;
-     if(market.data?.length){
+     if(marketError) return;
+     const rows=(market||[]) as any[];
+     if(rows.length){
        const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Girasol:"🌻"};
-       setQuotes(market.data.map((x:any)=>({
+       setQuotes(rows.slice(0,4).map((x:any)=>({
          name:x.commodity,
          price:x.precio_promedio==null?"Sin cotización":(x.moneda||"USD")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}),
          detail:x.publicaciones?fmt(Number(x.publicaciones))+" publicaciones":"",
          icon:icons[x.commodity]||"🌾"
        })));
+       const publicationCount=rows.reduce((sum,row)=>sum+Number(row.publicaciones||0),0);
+       const latest=rows.map(row=>row.actualizado_at).filter(Boolean).sort().at(-1);
+       setStats({
+         quotes:rows.length,
+         publications:publicationCount,
+         commodities:new Set(rows.map(row=>row.commodity).filter(Boolean)).size,
+         updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",
+         source:"BCR",
+       });
      }
-     const rows=(pubs.data||[]) as any[];
-     const companyRows=(companies.data||[]) as any[];
-     const operationRows=(operations.data||[]) as any[];
-     const tons=rows.reduce((a,r)=>a+Number(r.cantidad_tn||0),0);
-     const markets=new Set(companyRows.map(r=>r.pais_id).filter(Boolean)).size;
-     const verifiedCompanies=companyRows.filter(r=>Boolean(r.verificada)).length;
-     const closed=operationRows.filter(r=>["CERRADA","COMPLETADA","FINALIZADA","LIQUIDADA"].includes(String(r.estado||"").toUpperCase())).length;
-     const secure=operationRows.length?Math.round(closed/operationRows.length*100):0;
-     setStats({companies:verifiedCompanies,operations:operationRows.length,markets,tons,secure});
    })();
    return()=>{mounted=false};
  },[]);
@@ -62,11 +63,11 @@ export default function Home(){
   ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra oportunidades a partir de tus publicaciones y demandas.","/ia-matching"]
  ];
  const statItems=[
-  ["🏢","+"+fmt(stats.companies),"Empresas verificadas"],
-  ["🤝","+"+fmt(stats.operations),"Operaciones realizadas"],
-  ["◎","+"+fmt(stats.markets),"Países conectados"],
-  ["🚚","+"+fmt(Math.round(stats.tons)),"Toneladas comercializadas"],
-  ["✓",fmt(stats.secure)+"%","Transacciones seguras"]
+  ["📊",fmt(stats.quotes),"Cotizaciones públicas"],
+  ["▤",fmt(stats.publications),"Publicaciones visibles"],
+  ["🌾",fmt(stats.commodities),"Productos cotizados"],
+  ["◷",stats.updated,"Última actualización"],
+  ["✓",stats.source,"Fuente de mercado"]
  ];
 
  return <main className={styles.landing}>
