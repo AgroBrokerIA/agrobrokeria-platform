@@ -48,7 +48,7 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE),[puertos,setPuertos]=useState<string[]>([]);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
@@ -56,12 +56,17 @@ export default function ContratosPage(){
 
  async function load(){
    setLoading(true);setError("");
-   const [c,v,p]=await Promise.all([
+   const [c,v,p,port]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
-     supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false})
+     supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
+     supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
+     supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden")
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
-   setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);setLoading(false);
+   setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
+   if(!p.error&&p.data?.length)setProductos(p.data.map((x:any)=>x.nombre));
+   if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
+   setLoading(false);
  }
  useEffect(()=>{void load()},[]);
 
@@ -80,7 +85,7 @@ export default function ContratosPage(){
 
   <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
-  {tab==="tipos"||tab==="plantillas"?<section className="contract-builder-grid">
+  {tab==="tipos"?<section className="contract-builder-grid">
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
@@ -88,15 +93,15 @@ export default function ContratosPage(){
         <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato Privado (No registrable)</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
-      <div className="contract-commodity-picks">{PRODUCTOS_BASE.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
+      <div className="contract-commodity-picks">{productos.slice(0,4).map((p,i)=><button type="button" key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻"][i]}</b><span>{p}</span></button>)}<button type="button" className="more-commodity" onClick={()=>document.getElementById("commodity-select")?.focus()}><b>•••</b><span>Otros</span></button></div>
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
       <div className="contract-builder-fields">
        <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
-       <label>Commodity<select value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
+       <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio (USD/tn)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
        <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
-       <label>Puerto de entrega<input value={form.puerto} onChange={e=>update("puerto",e.target.value)}/></label>
+       <label>Puerto de entrega<select value={form.puerto} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto</option>{(puertos.length?puertos:["Rosario","San Lorenzo","General San Martín","Bahía Blanca","Quequén"]).map(x=><option key={x} value={x}>{x}</option>)}</select></label>
        <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
        <label>Forma de pago<select value={form.pago} onChange={e=>update("pago",e.target.value)}>{["Transferencia bancaria","Carta de crédito (LC)","Financiera","eCheq"].map(x=><option key={x}>{x}</option>)}</select></label>
        <label>Vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social"/></label>
@@ -114,7 +119,9 @@ export default function ContratosPage(){
 
   {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("tipos");setForm(x=>({...x,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}</section>}
 
-  {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><article key={x}><b>{i+1}. {x}</b><p>Cláusula disponible para incorporar al modelo contractual y revisar antes de generar el PDF.</p></article>)}</section>}
+  {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Blanco</b><span>Modelo formal para operaciones registrables.</span></button><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F2",condicion:"FOB"}));setMessage("Plantilla F2 cargada.")}}><b>F2 · Privado</b><span>Modelo privado entre comprador y vendedor.</span></button></div></section>}
+
+  {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
   {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2><p>La generación del PDF queda separada de la firma. Seleccioná un contrato desde “Mis contratos” y utilizá el flujo de firma correspondiente a la operación.</p><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
 
