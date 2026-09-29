@@ -60,3 +60,5 @@
 @media(max-width:1100px){.hero{padding-left:6%;padding-right:6%}.quote{right:4%;width:350px}.navLinks{gap:15px}.brand{min-width:auto}}
 @media(max-width:800px){.hero{min-height:650px;padding:42px 24px 120px}.heroTitle{font-size:40px}.quote{left:24px;right:24px;bottom:95px;top:auto;width:auto}.marketStrip{left:16px;right:16px;bottom:-66px}.cardsSection{padding-top:105px}}
 @media(max-width:520px){.heroTitle{font-size:34px}.primary,.secondary{min-width:0}.hero{min-height:720px}}
+
+.quoteRow .up{color:#29df91;font-weight:700}.quoteRow .down{color:#ff6e76;font-weight:700}
