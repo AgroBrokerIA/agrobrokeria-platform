@@ -10,7 +10,7 @@ const ago=(d?:string|null)=>{if(!d)return"—";const m=Math.max(1,Math.round((Da
 
 export default function BuscarPage(){
  const[rows,setRows]=useState<Pub[]>([]),[q,setQ]=useState(""),[tipo,setTipo]=useState("TODO"),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[destino,setDestino]=useState(""),[condicion,setCondicion]=useState(""),[precioMin,setPrecioMin]=useState(""),[precioMax,setPrecioMax]=useState(""),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[puerto,setPuerto]=useState(""),[fecha,setFecha]=useState("30"),[loading,setLoading]=useState(true),[paises,setPaises]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]);
- const[page,setPage]=useState(1),[view,setView]=useState<"list"|"map">("list"),[zoom,setZoom]=useState(1),[advanced,setAdvanced]=useState(false);
+ const[page,setPage]=useState(1),[view,setView]=useState<"list"|"map">("list"),[zoom,setZoom]=useState(1),[advanced,setAdvanced]=useState(false),[now,setNow]=useState(()=>Date.now());
  const pageSize=10;
  async function load(){
   setLoading(true);
@@ -22,13 +22,13 @@ export default function BuscarPage(){
   ]);
   setRows((a.data||[]) as unknown as Pub[]);setProductos((b.data||[]).map((x:any)=>x.nombre));setPaises(g.countries||[]);setPuertos((ps.data||[]).map((x:any)=>x.nombre));setLoading(false);
  }
- useEffect(()=>{void load()},[]);
+ useEffect(()=>{void load();setNow(Date.now())},[]);
  useEffect(()=>{setPage(1)},[q,tipo,producto,pais,destino,condicion,precioMin,precioMax,volMin,volMax,puerto,fecha]);
  const filtered=useMemo(()=>rows.filter(p=>{
   const text=[p.productos?.nombre,p.empresas?.razon_social,p.puerto,p.localidad,p.provincia,p.paises?.nombre].join(" ").toLowerCase();
   const days=fecha==="7"?7:fecha==="30"?30:null; const created=p.creada_en?new Date(p.creada_en).getTime():0;
-  return(!q||text.includes(q.toLowerCase()))&&(tipo==="TODO"||p.tipo===tipo)&&(!producto||p.productos?.nombre===producto)&&(!pais||p.paises?.codigo_iso===pais)&&(!destino||p.puerto===destino)&&(!condicion||p.incoterms?.codigo===condicion)&&(!precioMin||Number(p.precio_tn||0)>=Number(precioMin))&&(!precioMax||Number(p.precio_tn||0)<=Number(precioMax))&&(!volMin||Number(p.cantidad_tn||0)>=Number(volMin))&&(!volMax||Number(p.cantidad_tn||0)<=Number(volMax))&&(!puerto||p.puerto===puerto)&&(!days||created>=Date.now()-days*86400000);
- }),[rows,q,tipo,producto,pais,destino,condicion,precioMin,precioMax,volMin,volMax,puerto,fecha]);
+  return(!q||text.includes(q.toLowerCase()))&&(tipo==="TODO"||p.tipo===tipo)&&(!producto||p.productos?.nombre===producto)&&(!pais||p.paises?.codigo_iso===pais)&&(!destino||p.puerto===destino)&&(!condicion||p.incoterms?.codigo===condicion)&&(!precioMin||Number(p.precio_tn||0)>=Number(precioMin))&&(!precioMax||Number(p.precio_tn||0)<=Number(precioMax))&&(!volMin||Number(p.cantidad_tn||0)>=Number(volMin))&&(!volMax||Number(p.cantidad_tn||0)<=Number(volMax))&&(!puerto||p.puerto===puerto)&&(!days||created>=now-days*86400000);
+ }),[rows,q,tipo,producto,pais,destino,condicion,precioMin,precioMax,volMin,volMax,puerto,fecha,now]);
  const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize)),safePage=Math.min(page,totalPages),visible=filtered.slice((safePage-1)*pageSize,safePage*pageSize);
  const offers=filtered.filter(p=>p.tipo==="VENTA").length, demands=filtered.filter(p=>p.tipo==="COMPRA").length, companies=new Set(filtered.map(p=>p.empresas?.razon_social).filter(Boolean)).size, countries=new Set(filtered.map(p=>p.paises?.codigo_iso).filter(Boolean)).size;
  const clear=()=>{setQ("");setTipo("TODO");setProducto("");setPais("");setDestino("");setCondicion("");setPrecioMin("");setPrecioMax("");setVolMin("");setVolMax("");setPuerto("");setFecha("30");setZoom(1)};
