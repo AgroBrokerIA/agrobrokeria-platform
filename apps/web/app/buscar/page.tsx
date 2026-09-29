@@ -54,4 +54,4 @@ export default function BuscarPage(){
  </section></main>
 }
 function Stat({n,t}:{n:string;t:string}){return <div className="search-stat"><strong>{n}</strong><small>{t}</small></div>}
-function SideList({title,items}:{title:string;items:string[][]}){return <section className="search-side-list"><div><h2>{title}</h2><a href="#">{title==="Resultados por producto"?"Ver todos →":"Ver todos →"}</a></div>{items.map((x,i)=><div className="side-line" key={i}><span>{x[0]}</span><em style={{width:x[2]}}/><b>{x[1]}</b><small>{x[2]}</small></div>)}</section>}
+function SideList({title,items}:{title:string;items:string[][]}){return <section className="search-side-list"><div><h2>{title}</h2><Link href={title==="Resultados por producto"?"/marketplace":"/empresas"}>Ver todos →</Link></div>{items.map((x,i)=><div className="side-line" key={i}><span>{x[0]}</span><em style={{width:x[2]}}/><b>{x[1]}</b><small>{x[2]}</small></div>)}</section>}
