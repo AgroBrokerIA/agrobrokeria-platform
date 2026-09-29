@@ -2651,11 +2651,11 @@ Firma: ______________________________
       {mensaje && <div className="operations-alert success">{mensaje}</div>}
 
       <section className="operations-kpis">
-        <Kpi icon="🟢" value={operaciones.length.toLocaleString("es-AR")} label="Operaciones totales" trend="+18% este mes ↗" tone="green"/>
-        <Kpi icon="🤝" value={enNegociacion.toLocaleString("es-AR")} label="En negociación" trend="+12% este mes ↗" tone="blue"/>
-        <Kpi icon="📄" value={enContrato.toLocaleString("es-AR")} label="En contrato" trend="+25% este mes ↗" tone="purple"/>
-        <Kpi icon="🚚" value={enLogistica.toLocaleString("es-AR")} label="En logística" trend="+20% este mes ↗" tone="mint"/>
-        <Kpi icon="💰" value={enLiquidacion.toLocaleString("es-AR")} label="En liquidación" trend="+15% este mes ↗" tone="orange"/>
+        <Kpi icon="🟢" value={operaciones.length.toLocaleString("es-AR")} label="Operaciones totales" trend="Datos registrados" tone="green"/>
+        <Kpi icon="🤝" value={enNegociacion.toLocaleString("es-AR")} label="En negociación" trend="Estado actual" tone="blue"/>
+        <Kpi icon="📄" value={enContrato.toLocaleString("es-AR")} label="En contrato" trend="Estado actual" tone="purple"/>
+        <Kpi icon="🚚" value={enLogistica.toLocaleString("es-AR")} label="En logística" trend="Estado actual" tone="mint"/>
+        <Kpi icon="💰" value={enLiquidacion.toLocaleString("es-AR")} label="En liquidación" trend="Estado actual" tone="orange"/>
       </section>
 
       <div className="operations-tabs">
@@ -2674,16 +2674,16 @@ Firma: ______________________________
               const workflow=obtenerWorkflow(operacion.id), orden=workflow?.orden||0;
               const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
-              const producto=["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Pellets de Soja","Sorgo"][index%8];
+              const producto="Commodity";
               const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion.id):undefined;
               return <div className="operation-directory-row" key={operacion.id}>
                 <span className="op-code">{operacion.codigo}</span>
-                <span className="op-product"><b>{["🫘","🌽","🌾","🌻","🫒","🌾","🫘","🌾"][index%8]}</b><strong>{producto}</strong></span>
+                <span className="op-product"><b>🌾</b><strong>{producto}</strong></span>
                 <span><strong>{formatoNumero(operacion.cantidad_tn)} TN</strong></span>
                 <span><strong>{formatoNumero(operacion.precio_tn)}</strong></span>
                 <span><em className={"op-condition "+(operacion.tipo_operacion==="F1"?"f1":"f2")}>{operacion.tipo_operacion}</em></span>
-                <span>🇦🇷 <small>Argentina</small></span>
-                <span>🌎 <small>Destino internacional</small></span>
+                <span>🌎 <small>Origen registrado</small></span>
+                <span>🌎 <small>Destino registrado</small></span>
                 <span><small>Contraparte comercial</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
@@ -2708,10 +2708,10 @@ Firma: ______________________________
       </section>
 
       <section className="operations-bottom">
-        <Bottom title="Volumen por estado"><div className="op-donut" style={{background:"conic-gradient(#1686e6 0 28%,#f4bd18 28% 52%,#8c3de8 52% 72%,#07965a 72% 87%,#b7ddd2 87% 93%,#ef3338 93% 100%)"}}><b>{formatoNumero(totalVolumen)}<small>TN</small><small>Total</small></b></div><div className="op-legend"><p>🔵 En negociación <b>28%</b></p><p>🟡 En contrato <b>24%</b></p><p>🟣 En logística <b>20%</b></p><p>🟢 En liquidación <b>15%</b></p><p>⚪ Finalizadas <b>10%</b></p><p>🔴 Canceladas <b>7%</b></p></div></Bottom>
-        <Bottom title="Valor total por producto"><Bars items={["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Otros"].map((x,i)=>[x,[42,18,12,10,8,6,4][i]+"%"])}/></Bottom>
-        <Bottom title="Operaciones por país de destino"><Bars items={["🇨🇳 China","🇮🇹 Italia","🇳🇱 Países Bajos","🇩🇪 Alemania","🇧🇷 Brasil","🇺🇾 Uruguay","Otros"].map((x,i)=>[x,[28,18,14,12,10,8,10][i]+"%"])}/></Bottom>
-        <Bottom title="Evolución de operaciones"><div className="op-chart"><svg viewBox="0 0 300 120" preserveAspectRatio="none"><polyline points="0,92 45,96 90,76 135,81 180,62 225,40 270,25 300,10" fill="none" stroke="#078d54" strokeWidth="3"/><polygon points="0,92 45,96 90,76 135,81 180,62 225,40 270,25 300,10 300,120 0,120" fill="#d8f4e7" opacity=".9"/></svg></div><div className="op-chart-labels"><span>Abr</span><span>May</span><span>Jun</span><span>Jul</span><span>Ago</span><span>Sep</span></div></Bottom>
+        <Bottom title="Resumen por estado"><div className="op-legend"><p>🔵 En negociación <b>{enNegociacion}</b></p><p>🟡 En contrato <b>{enContrato}</b></p><p>🟣 En logística <b>{enLogistica}</b></p><p>🟠 En liquidación <b>{enLiquidacion}</b></p><p>🟢 Finalizadas <b>{operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===10 || /CERR|FINAL/i.test(o.estado)).length}</b></p><p>🔴 Canceladas <b>{operaciones.filter(o=>/CANCEL/i.test(o.estado)).length}</b></p></div></Bottom>
+        <Bottom title="Volumen total registrado"><div className="op-volume-summary"><strong>{formatoNumero(totalVolumen)} TN</strong><span>Calculado sobre las operaciones cargadas</span></div></Bottom>
+        <Bottom title="Tipos de contrato"><Bars items={[["F1",String(operaciones.filter(o=>o.tipo_operacion==="F1").length)],["F2",String(operaciones.filter(o=>o.tipo_operacion==="F2").length)]]}/></Bottom>
+        <Bottom title="Evolución de operaciones"><div className="op-legend"><p>Datos históricos disponibles según fecha de operación.</p><p><b>{operaciones.length}</b> operaciones cargadas en la vista actual.</p></div></Bottom>
       </section>
     </main>
   );
