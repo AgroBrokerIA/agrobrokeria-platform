@@ -11,7 +11,7 @@ const typeClass=(x:string)=>x.toLowerCase().replace(/[^a-z]/g,"");
 const stars=(n:number)=>"★".repeat(Math.max(0,Math.min(5,Math.round(n/1)))).padEnd(5,"☆");
 
 export default function EmpresasPage(){
- const[companies,setCompanies]=useState<Company[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[q,setQ]=useState(""),[tipo,setTipo]=useState(""),[pais,setPais]=useState(""),[verif,setVerif]=useState(""),[minRep,setMinRep]=useState("");
+ const[companies,setCompanies]=useState<Company[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[q,setQ]=useState(""),[tipo,setTipo]=useState(""),[pais,setPais]=useState(""),[verif,setVerif]=useState(""),[minRep,setMinRep]=useState(""),[producto,setProducto]=useState(""),[minVol,setMinVol]=useState(""),[maxVol,setMaxVol]=useState(""),[page,setPage]=useState(1); const pageSize=10;
  useEffect(()=>{(async()=>{try{
    const{data,error}=await supabase.from("empresas").select("id,razon_social,nombre_comercial,pais,provincia,localidad,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas,estado,empresas_productos(productos(nombre))").order("reputacion_score",{ascending:false});if(error)throw error;
    setCompanies((data||[]).map((x:any)=>({id:String(x.id),razon_social:x.razon_social,nombre_comercial:x.nombre_comercial,pais:x.pais,provincia:x.provincia,ciudad:x.localidad,tipo_empresa:x.tipo_empresa,verificada:Boolean(x.verificada),reputacion_score:Number(x.reputacion_score||0),operaciones_realizadas:Number(x.operaciones_realizadas||0),toneladas_operadas:Number(x.toneladas_operadas||0),estado:x.estado,productos:(x.empresas_productos||[]).map((ep:any)=>ep.productos?.nombre).filter(Boolean)})));
