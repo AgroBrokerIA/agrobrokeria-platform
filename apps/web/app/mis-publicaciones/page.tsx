@@ -12,6 +12,8 @@ type Publicacion = {
   moneda_id?: number | null;
   estado: string;
   puerto: string;
+  puertos?: string[] | null;
+  lugares_recepcion?: string[] | null;
   provincia: string;
   productos?: {
     nombre: string;
@@ -46,6 +48,8 @@ export default function MisPublicacionesPage() {
         precio_tn,
         estado,
         puerto,
+        puertos,
+        lugares_recepcion,
         provincia,
         productos(nombre)
       `)
