@@ -152,6 +152,12 @@ export default function NuevaPublicacionForm() {
 
       const parametros = new URLSearchParams(window.location.search);
       const id = parametros.get("id");
+      const tipoQuery = parametros.get("tipo")?.toUpperCase();
+      if (tipoQuery === "DEMANDA" || tipoQuery === "COMPRA") {
+        setForm((anterior) => ({ ...anterior, tipo: "COMPRA" }));
+      } else if (tipoQuery === "OFERTA" || tipoQuery === "VENTA") {
+        setForm((anterior) => ({ ...anterior, tipo: "VENTA" }));
+      }
       if (id) {
         setModoEdicion(true);
         setPublicacionId(id);
