@@ -13,7 +13,7 @@ const iconFor=(name:string)=>/transfer|banc/i.test(name)?"🏦":/usdt|crypto/i.t
 
 export default function PagosPage(){
  const[rows,setRows]=useState<Payment[]>([]),[methods,setMethods]=useState<Method[]>([]),[withdrawals,setWithdrawals]=useState<Withdrawal[]>([]),[curr,setCurr]=useState<Record<number,string>>({}),[commissionTotal,setCommissionTotal]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(""),[msg,setMsg]=useState("");
- const[amount,setAmount]=useState(""),[methodId,setMethodId]=useState(""),[bankId,setBankId]=useState(""),[busy,setBusy]=useState(false);
+ const[amount,setAmount]=useState(""),[methodId,setMethodId]=useState(""),[bankId,setBankId]=useState(""),[busy,setBusy]=useState(false),[clock,setClock]=useState(()=>Date.now());
  async function load(){
   setLoading(true);setError("");
   try{
@@ -33,14 +33,14 @@ export default function PagosPage(){
    const first=(m.data||[]).find((x:any)=>x.tipo!=="BANCO"&&x.estado!=="INACTIVO");if(first&&!methodId)setMethodId(first.id);
   }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los pagos.")}finally{setLoading(false)}
  }
- useEffect(()=>{void load()},[]);
+ useEffect(()=>{void load();setClock(Date.now())},[]);
  const received=rows.filter(r=>/RECIB|PAGAD|CONFIRM/i.test(r.estado||"")).reduce((s,r)=>s+Number(r.importe||0),0);
  const process=rows.filter(r=>/PROCES|PEND/i.test(r.estado||"")).reduce((s,r)=>s+Number(r.importe||0),0);
  const withdrawn=withdrawals.filter(r=>/COMPLET|PAGAD|APROB/i.test(r.estado||"")).reduce((s,r)=>s+Number(r.importe||0),0);
  const balance=Math.max(0,commissionTotal-withdrawn);
  const banks=methods.filter(m=>m.tipo==="BANCO"&&m.estado!=="INACTIVO");
  const payoutMethods=methods.filter(m=>m.tipo!=="BANCO"&&m.estado!=="INACTIVO");
- const months=useMemo(()=>{const now=new Date();return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const value=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key).reduce((s,r)=>s+Number(r.importe||0),0);return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value}})},[rows]);
+ const months=useMemo(()=>{const now=new Date(clock);return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const value=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key).reduce((s,r)=>s+Number(r.importe||0),0);return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value}})},[rows]);
  const maxMonth=Math.max(1,...months.map(x=>x.value));
  async function requestWithdrawal(){
   setMsg("");setError("");const n=Number(amount);if(!n||n<=0){setError("Ingresá un importe válido.");return}if(n>balance){setError("El importe supera el saldo disponible.");return}if(!bankId){setError("Seleccioná una cuenta bancaria.");return}
