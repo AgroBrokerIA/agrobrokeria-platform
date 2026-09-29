@@ -9,25 +9,26 @@ const flag=(iso?:string)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=
 const ago=(d?:string|null)=>{if(!d)return"—";const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
 
 export default function BuscarPage(){
- const[rows,setRows]=useState<Pub[]>([]),[q,setQ]=useState(""),[tipo,setTipo]=useState("TODO"),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[destino,setDestino]=useState(""),[condicion,setCondicion]=useState(""),[precioMin,setPrecioMin]=useState(""),[precioMax,setPrecioMax]=useState(""),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[puerto,setPuerto]=useState(""),[fecha,setFecha]=useState("30"),[loading,setLoading]=useState(true),[paises,setPaises]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]);
+ const[rows,setRows]=useState<Pub[]>([]),[iaIds,setIaIds]=useState<Set<string>>(new Set()),[q,setQ]=useState(""),[tipo,setTipo]=useState("TODO"),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[destino,setDestino]=useState(""),[condicion,setCondicion]=useState(""),[precioMin,setPrecioMin]=useState(""),[precioMax,setPrecioMax]=useState(""),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[puerto,setPuerto]=useState(""),[fecha,setFecha]=useState("30"),[loading,setLoading]=useState(true),[paises,setPaises]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]);
  const[page,setPage]=useState(1),[view,setView]=useState<"list"|"map">("list"),[zoom,setZoom]=useState(1),[advanced,setAdvanced]=useState(false),[sort,setSort]=useState("recent"),[now,setNow]=useState(()=>Date.now());
  const pageSize=10;
  async function load(){
   setLoading(true);
-  const [a,b,g,ps]=await Promise.all([
+  const [a,b,g,ps,oi]=await Promise.all([
    supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,creada_en,provincia,localidad,puerto,productos(nombre),monedas(codigo),incoterms(codigo),empresas(razon_social),paises(nombre,codigo_iso)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}),
    supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
    fetch("/api/geo").then(r=>r.json()),
-   supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("nombre")
+   supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("nombre"),
+   supabase.from("oportunidades").select("publicacion_id")
   ]);
-  setRows((a.data||[]) as unknown as Pub[]);setProductos((b.data||[]).map((x:any)=>x.nombre));setPaises(g.countries||[]);setPuertos((ps.data||[]).map((x:any)=>x.nombre));setLoading(false);
+  setRows((a.data||[]) as unknown as Pub[]);setIaIds(new Set((oi.data||[]).map((x:any)=>x.publicacion_id).filter(Boolean)));setProductos((b.data||[]).map((x:any)=>x.nombre));setPaises(g.countries||[]);setPuertos((ps.data||[]).map((x:any)=>x.nombre));setLoading(false);
  }
  useEffect(()=>{void load();setNow(Date.now())},[]);
  useEffect(()=>{setPage(1)},[q,tipo,producto,pais,destino,condicion,precioMin,precioMax,volMin,volMax,puerto,fecha]);
  const filtered=useMemo(()=>rows.filter(p=>{
   const text=[p.productos?.nombre,p.empresas?.razon_social,p.puerto,p.localidad,p.provincia,p.paises?.nombre].join(" ").toLowerCase();
   const days=fecha==="7"?7:fecha==="30"?30:null; const created=p.creada_en?new Date(p.creada_en).getTime():0;
-  return(!q||text.includes(q.toLowerCase()))&&(tipo==="TODO"||tipo==="EMPRESA"||tipo==="IA"||p.tipo===tipo)&&(!producto||p.productos?.nombre===producto)&&(!pais||p.paises?.codigo_iso===pais)&&(!destino||p.puerto===destino)&&(!condicion||p.incoterms?.codigo===condicion)&&(!precioMin||Number(p.precio_tn||0)>=Number(precioMin))&&(!precioMax||Number(p.precio_tn||0)<=Number(precioMax))&&(!volMin||Number(p.cantidad_tn||0)>=Number(volMin))&&(!volMax||Number(p.cantidad_tn||0)<=Number(volMax))&&(!puerto||p.puerto===puerto)&&(!days||created>=now-days*86400000);
+  return(!q||text.includes(q.toLowerCase()))&&(tipo==="TODO"||tipo==="EMPRESA"||(tipo==="IA"?iaIds.has(p.id):p.tipo===tipo))&&(!producto||p.productos?.nombre===producto)&&(!pais||p.paises?.codigo_iso===pais)&&(!destino||p.puerto===destino)&&(!condicion||p.incoterms?.codigo===condicion)&&(!precioMin||Number(p.precio_tn||0)>=Number(precioMin))&&(!precioMax||Number(p.precio_tn||0)<=Number(precioMax))&&(!volMin||Number(p.cantidad_tn||0)>=Number(volMin))&&(!volMax||Number(p.cantidad_tn||0)<=Number(volMax))&&(!puerto||p.puerto===puerto)&&(!days||created>=now-days*86400000);
  }),[rows,q,tipo,producto,pais,destino,condicion,precioMin,precioMax,volMin,volMax,puerto,fecha,now]);
  const sorted=[...filtered].sort((a,b)=>sort==="priceAsc"?Number(a.precio_tn||0)-Number(b.precio_tn||0):sort==="priceDesc"?Number(b.precio_tn||0)-Number(a.precio_tn||0):sort==="volume"?Number(b.cantidad_tn||0)-Number(a.cantidad_tn||0):new Date(b.creada_en||0).getTime()-new Date(a.creada_en||0).getTime()); const totalPages=Math.max(1,Math.ceil(sorted.length/pageSize)),safePage=Math.min(page,totalPages),visible=sorted.slice((safePage-1)*pageSize,safePage*pageSize);
  const offers=filtered.filter(p=>p.tipo==="VENTA").length, demands=filtered.filter(p=>p.tipo==="COMPRA").length, companies=new Set(filtered.map(p=>p.empresas?.razon_social).filter(Boolean)).size, countries=new Set(filtered.map(p=>p.paises?.codigo_iso).filter(Boolean)).size;
