@@ -60,13 +60,13 @@ export default function Home(){
   ["◎","Mercado internacional","Conectá con empresas de todo el mundo.","/marketplace"],
   ["▤","Contratos y documentación","Generá, firmá y gestioná toda la documentación en un solo lugar.","/contratos"],
   ["🚚","Logística integrada","Coordiná transporte, cartas de porte y entrega.","/logistica"],
-  ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra oportunidades a partir de tus publicaciones y demandas.","/ia-matching"]
+  ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra las mejores oportunidades para vos.","/ia-matching"]
  ];
  const statItems=[
-  ["📊",fmt(stats.quotes),"Cotizaciones públicas"],
-  ["▤",fmt(stats.publications),"Publicaciones visibles"],
-  ["🌾",fmt(stats.commodities),"Productos cotizados"],
-  ["◷",stats.updated,"Última actualización"],
+  ["▦",fmt(stats.quotes),"Cotizaciones del mercado"],
+  ["🤝",fmt(stats.publications),"Publicaciones activas"],
+  ["◎",fmt(stats.commodities),"Productos disponibles"],
+  ["▣",stats.updated,"Actualización"],
   ["✓",stats.source,"Fuente de mercado"]
  ];
 
@@ -100,7 +100,7 @@ export default function Home(){
 
   <section className={styles.cardsSection}><div className={styles.cardsGrid}>{cards.map(([icon,title,desc,href])=><Link href={href} className={styles.card} key={title}><div className={styles.cardImage}><span className={styles.cardIcon}>{icon}</span></div><div className={styles.cardBody}><h3>{title}</h3><p>{desc}</p><span className={styles.cardArrow}>→</span></div></Link>)}</div></section>
 
-  <section className={styles.frontier}><div className={styles.world} aria-label="Mapa de mercados globales"/><div className={styles.frontierText}><h2>Un mercado sin fronteras</h2><p>Conectamos productores, acopios, traders y compradores de todo el mundo, facilitando negocios transparentes, eficientes y seguros.</p><div className={styles.badges}><span className={styles.badge}><i>◒</i> Granos y subproductos</span><span className={styles.badge}><i>◎</i> Mercado global</span><span className={styles.badge}><i>✓</i> Verificación y cumplimiento</span><span className={styles.badge}><i>▤</i> Documentación integrada</span><span className={styles.badge}><i>♟</i> Soporte multilingüe</span></div><Link href="/mercado" className={styles.insight}><i className={styles.insightIcon}>▥</i><div><strong>Inteligencia de mercado</strong><span>Accedé a análisis, precios históricos y tendencias.</span></div><b>→</b></Link></div></section>
+  <section className={styles.frontier}><div className={styles.world} aria-label="Mapa de mercados globales"><span className={styles.mapDot} style={{left:"22%",top:"46%"}}/><span className={styles.mapDot} style={{left:"48%",top:"37%"}}/><span className={styles.mapDot} style={{left:"68%",top:"54%"}}/><span className={styles.mapLine} style={{left:"22%",top:"46%",width:"31%",transform:"rotate(-9deg)"}}/><span className={styles.mapLine} style={{left:"48%",top:"38%",width:"23%",transform:"rotate(16deg)"}}/></div><div className={styles.frontierText}><h2>Un mercado sin fronteras</h2><p>Conectamos productores, acopios, traders y compradores de todo el mundo, facilitando negocios transparentes, eficientes y seguros.</p><div className={styles.badges}><span className={styles.badge}><i>◒</i> Granos y subproductos</span><span className={styles.badge}><i>◎</i> Mercado global</span><span className={styles.badge}><i>✓</i> Verificación y cumplimiento</span><span className={styles.badge}><i>▤</i> Documentación integrada</span><span className={styles.badge}><i>♟</i> Soporte multilingüe</span></div><Link href="/mercado" className={styles.insight}><i className={styles.insightIcon}>▥</i><div><strong>Inteligencia de mercado</strong><span>Accedé a análisis, precios históricos y tendencias.</span></div><b>→</b></Link></div></section>
   <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><Link href="/register">Crear cuenta →</Link></footer>
  </main>
 }
