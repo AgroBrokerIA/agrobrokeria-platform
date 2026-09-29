@@ -4,11 +4,12 @@ import { useEffect, useState } from "react";
 import Link from "next/link";
 import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase/client";
+import "./reference.css";
 
 type C={id:string;operacion_id:string;numero_contrato:string;tipo_contrato:string|null;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
 
-const PRODUCTOS=["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Pellets de Soja","Sorgo"];
+const PRODUCTOS_BASE=["Soja","Maíz","Trigo","Girasol","Cebada","Sorgo","Aceite de soja crudo","Harina / Pellets de soja de alta proteína (Forraje)"];
 const MONEDAS=["USD","EUR","ARS","BRL"];
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
 
@@ -47,7 +48,7 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
@@ -55,7 +56,7 @@ export default function ContratosPage(){
 
  async function load(){
    setLoading(true);setError("");
-   const [c,v]=await Promise.all([
+   const [c,v,p]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false})
    ]);
@@ -87,11 +88,11 @@ export default function ContratosPage(){
         <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato Privado (No registrable)</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
-      <div className="contract-commodity-picks">{PRODUCTOS.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
+      <div className="contract-commodity-picks">{productos.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
       <div className="contract-builder-fields">
        <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
-       <label>Commodity<select value={form.producto} onChange={e=>update("producto",e.target.value)}>{PRODUCTOS.map(p=><option key={p}>{p}</option>)}</select></label>
+       <label>Commodity<select value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio (USD/tn)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
        <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
