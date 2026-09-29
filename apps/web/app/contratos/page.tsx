@@ -73,6 +73,23 @@ export default function ContratosPage(){
  }
  useEffect(()=>{void load()},[]);
 
+ function selectOperation(id:string){
+   const op=operaciones.find(x=>x.id===id);
+   if(!op){ setForm(x=>({...x,operacionId:""})); return; }
+   setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? "")}));
+ }
+ async function saveDraft(){
+   if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
+   setBusy(true);setError("");setMessage("");
+   const payload={tipo_contrato:form.tipo,producto:form.producto,cantidad_tn:Number(form.cantidad)||0,precio_tn:Number(form.precio)||0,condicion_precio:form.condicion,puerto_entrega:form.puerto,fecha_entrega:form.entrega,forma_pago:form.pago,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+   const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
+   if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
+   setBusy(false);
+ }
+ function contractContent(f:FormState){
+   return JSON.stringify({tipo:f.tipo,producto:f.producto,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador});
+ }
+
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
  const current=selected;
 
