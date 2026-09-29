@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase/client";
@@ -66,7 +66,6 @@ export default function ContratosPage(){
 
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
  const current=selected;
- const contractText=useMemo(()=>current?.contenido||"",[current]);
 
  function download(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado en formato Legal.`)}
  function preview(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
