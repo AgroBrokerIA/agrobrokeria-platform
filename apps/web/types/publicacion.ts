@@ -21,6 +21,12 @@ export interface Publicacion {
 
   puerto: string;
 
+  /** Puertos alternativos donde puede realizarse la recepción/entrega. */
+  puertos?: string[];
+
+  /** Tipos de lugares habilitados para la recepción/entrega. */
+  lugares_recepcion?: string[];
+
   calidad: string;
 
   humedad: number | null;
