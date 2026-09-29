@@ -46,9 +46,18 @@ insert into public.catalogo_lugares_recepcion (codigo,nombre,descripcion,orden) 
 ('OTRO','Otro lugar','Otro punto acordado entre las partes.',80)
 on conflict (codigo) do update set nombre=excluded.nombre,descripcion=excluded.descripcion,orden=excluded.orden,activo=true;
 
-insert into public.productos (codigo,nombre,categoria,activo)
-values ('TEFF','Teff','Pseudocereal y nicho',true)
-on conflict (codigo) do update set nombre=excluded.nombre,categoria=excluded.categoria,activo=true;
+insert into public.productos(codigo,nombre,categoria,activo)
+select p.codigo,p.nombre,p.categoria,true
+from (
+  values
+    ('TRIGO_CENTENO','Centeno','Cereal'),
+    ('ARROZ','Arroz','Cereal'),
+    ('AVENA','Avena','Cereal'),
+    ('TEFF','Teff','Pseudocereal y nicho'),
+    ('SOJA','Soja (Soya)','Oleaginosa')
+) p(codigo,nombre,categoria)
+on conflict (codigo) do update
+set nombre=excluded.nombre,categoria=excluded.categoria,activo=true;
 
 create or replace function public.guardar_publicacion(p_publicacion_id uuid, p_datos jsonb)
 returns uuid language plpgsql security definer set search_path to 'public'
