@@ -50,7 +50,7 @@ export default function TransaccionesPage(){
  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize));
  const safePage=Math.min(page,pageCount);
  const pageRows=filtered.slice((safePage-1)*pageSize,safePage*pageSize);
- function exportCsv(){const header=["Fecha","Tipo","Descripción","Referencia","Empresa","Moneda","Monto","Estado"];const lines=filtered.map(r=>[r.date,r.type,r.description,r.ref,r.company,r.currency,String(r.amount),r.status].map(v=>"""+String(v).replaceAll(""","""")+""").join(","));const blob=new Blob([header.join(",")+"\n"+lines.join("\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="agrobrokeria-transacciones.csv";a.click();URL.revokeObjectURL(a.href)}
+ function exportCsv(){const header=["Fecha","Tipo","Descripción","Referencia","Empresa","Moneda","Monto","Estado"];const lines=filtered.map(r=>[r.date,r.type,r.description,r.ref,r.company,r.currency,String(r.amount),r.status].map(v=>JSON.stringify(String(v))).join(","));const blob=new Blob([header.join(",")+"\n"+lines.join("\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="agrobrokeria-transacciones.csv";a.click();URL.revokeObjectURL(a.href)}
  useEffect(()=>{setPage(1)},[query,type,status,currency,pageSize]);
  return <main className="transactions-page">
   <header className="transactions-hero"><div><h1>Transacciones</h1><p>Gestiona todas las transacciones financieras de tus operaciones, pagos, comisiones y retiros.</p></div><button className="new-transaction" onClick={()=>{window.location.href="/pagos"}}>＋ Nueva transacción</button></header>
