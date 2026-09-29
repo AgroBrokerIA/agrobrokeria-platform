@@ -88,7 +88,7 @@ export default function ContratosPage(){
         <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato Privado (No registrable)</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
-      <div className="contract-commodity-picks">{productos.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
+      <div className="contract-commodity-picks">{PRODUCTOS_BASE.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
       <div className="contract-builder-fields">
        <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
