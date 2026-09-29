@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
 
@@ -14,6 +15,8 @@ export default function MensajesPage(){
  const [cargando,setCargando]=useState(true);
  const [error,setError]=useState("");
  const [tab,setTab]=useState("Información");
+ const [busqueda,setBusqueda]=useState("");
+ const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo);setError("Código de operación copiado.");return}setError("Acción disponible desde la conversación seleccionada.");};
 
  useEffect(()=>{void cargarConversaciones()},[]);
  async function cargarConversaciones(){
@@ -48,22 +51,22 @@ export default function MensajesPage(){
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
  const fallbackCompanies=["AgroSur SA","Global Grains Ltd","Campo Azul SRL","BioFeed SRL","Nordic Trade","CerealBuyers","AgroAsia","Litoral Granos","Andes Trading","Mercosur Commodities"];
  const flags=["🇦🇷","🇺🇸","🇦🇷","🇧🇷","🇩🇪","🇺🇸","🇨🇳","🇺🇾","🇨🇱","🇵🇾"];
- const rows=useMemo(()=>conversaciones.map((c,i)=>({...c,nombre:i===0&&empresa?.nombre?empresa.nombre:fallbackCompanies[i]||c.codigo,flag:flags[i]||"🌐"})),[conversaciones,empresa]);
+ const rows=useMemo(()=>conversaciones.map((c,i)=>({...c,nombre:i===0&&empresa?.nombre?empresa.nombre:fallbackCompanies[i]||c.codigo,flag:flags[i]||"🌐"})).filter(c=>!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase())),[conversaciones,empresa,busqueda]);
  return <main className="messages-reference">
-  <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new">＋ Nuevo mensaje</button></header>
+  <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>window.location.href="/operaciones"}>＋ Nuevo mensaje</button></header>
   {error&&<div className="messages-error">{error}</div>}
   {cargando?<div className="messages-loading">Cargando conversaciones...</div>:<div className="messages-workspace">
    <aside className="messages-list-panel">
-    <div className="messages-search">⌕ <span>Buscar conversaciones...</span></div>
+    <label className="messages-search">⌕ <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar conversaciones..." aria-label="Buscar conversaciones"/></label>
     <div className="messages-list-tabs"><b>Todas <i>{conversaciones.reduce((n,c)=>n+c.no_leidos,0)||""}</i></b><span>No leídas <i>{conversaciones.reduce((n,c)=>n+c.no_leidos,0)||""}</i></span><span>Archivadas</span></div>
     <div className="messages-conversations">{rows.map((c,i)=><button key={c.operacion_id} className={seleccionada?.operacion_id===c.operacion_id?"selected":""} onClick={()=>setSeleccionada(c)}><div className="company-avatar">{initials(c.nombre)}</div><div className="conversation-copy"><div><strong>{c.nombre}</strong><small>{c.flag}</small></div><p>{c.ultimo_mensaje}</p></div><div className="conversation-meta"><time>{fecha(c.ultimo_mensaje_at)}</time>{c.no_leidos>0&&<em>{c.no_leidos}</em>}</div></button>)}</div>
    </aside>
    <section className="messages-chat">
-    {seleccionada?<><div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>🇦🇷 &nbsp;{empresa?.pais||"Argentina"} | {empresa?.rol||"Productor"} <b>✓</b></p><span>● En línea</span></div><div className="chat-actions"><button>▣</button><button>⌕</button><button>⋮</button></div></div><div className="chat-body"><PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/></div></>:<div className="messages-empty">Seleccioná una conversación</div>}
+    {seleccionada?<><div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>🇦🇷 &nbsp;{empresa?.pais||"Argentina"} | {empresa?.rol||"Productor"} <b>✓</b></p><span>● En línea</span></div><div className="chat-actions"><button onClick={()=>accionHeader("videollamada")} aria-label="Iniciar videollamada">▣</button><button onClick={()=>setTab("Archivos")} aria-label="Ver archivos">⌕</button><button onClick={()=>accionHeader("copiar")} aria-label="Copiar operación">⋮</button></div></div><div className="chat-body"><PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/></div></>:<div className="messages-empty">Seleccioná una conversación</div>}
    </section>
    <aside className="messages-info">
     <div className="info-tabs">{["Información","Archivos","Operaciones"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</div>
-    {tab==="Información"&&<><div className="info-company"><div className="company-avatar huge">{initials(empresa?.nombre||"Ag")}</div><h2>{empresa?.nombre||"Empresa participante"} <b>✓</b></h2><p>🇦🇷 &nbsp;{empresa?.rol||"Productor"}</p><div className="badges"><span>✓ Verificada</span><span>✓ Confiable</span></div><div className="info-buttons"><button>Ver perfil</button><button>▣ Iniciar videollamada</button></div></div><div className="info-block"><h3>Datos de contacto</h3><p>♙ &nbsp; {empresa?.nombre||"Contacto comercial"}</p><p>✉ &nbsp; {empresa?.email||"No informado"}</p><p>☎ &nbsp; {empresa?.telefono||"No informado"}</p><p>⌖ &nbsp; {empresa?.direccion||"Ubicación no informada"}</p></div><div className="info-block"><h3>Productos de interés</h3>{["🌾 Soja","🌽 Maíz","🌾 Trigo","🌻 Girasol"].map(x=><p key={x}>{x}</p>)}</div><div className="info-block"><h3>Operaciones recientes <a>Ver todas →</a></h3>{conversaciones.slice(0,3).map(c=><p key={c.operacion_id}><span>{c.codigo}</span><em>{c.ultimo_mensaje_at? "Activa":"—"}</em></p>)}</div><div className="info-block notes"><h3>Notas <span>✎</span></h3><div>Productor confiable. Buena comunicación comercial.<br/>Información vinculada a la operación seleccionada.</div></div></>}
+    {tab==="Información"&&<><div className="info-company"><div className="company-avatar huge">{initials(empresa?.nombre||"Ag")}</div><h2>{empresa?.nombre||"Empresa participante"} <b>✓</b></h2><p>🇦🇷 &nbsp;{empresa?.rol||"Productor"}</p><div className="badges"><span>✓ Verificada</span><span>✓ Confiable</span></div><div className="info-buttons"><button onClick={()=>empresa&&window.location.assign(`/empresas?buscar=${encodeURIComponent(empresa.nombre)}`)}>Ver perfil</button><button onClick={()=>accionHeader("videollamada")}>▣ Iniciar videollamada</button></div></div><div className="info-block"><h3>Datos de contacto</h3><p>♙ &nbsp; {empresa?.nombre||"Contacto comercial"}</p><p>✉ &nbsp; {empresa?.email||"No informado"}</p><p>☎ &nbsp; {empresa?.telefono||"No informado"}</p><p>⌖ &nbsp; {empresa?.direccion||"Ubicación no informada"}</p></div><div className="info-block"><h3>Productos de interés</h3>{["🌾 Soja","🌽 Maíz","🌾 Trigo","🌻 Girasol"].map(x=><p key={x}>{x}</p>)}</div><div className="info-block"><h3>Operaciones recientes <Link href="/historial">Ver todas →</Link></h3>{conversaciones.slice(0,3).map(c=><p key={c.operacion_id}><span>{c.codigo}</span><em>{c.ultimo_mensaje_at? "Activa":"—"}</em></p>)}</div><div className="info-block notes"><h3>Notas <button type="button" onClick={()=>empresa&&window.location.assign(`/empresas?nota=${encodeURIComponent(empresa.nombre)}`)}>✎</button></h3><div>Productor confiable. Buena comunicación comercial.<br/>Información vinculada a la operación seleccionada.</div></div></>}
     {tab==="Archivos"&&<div className="info-placeholder">Archivos compartidos de la conversación.</div>}
     {tab==="Operaciones"&&<div className="info-placeholder">Operaciones vinculadas a la conversación.</div>}
    </aside>
