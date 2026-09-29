@@ -3,10 +3,18 @@ import forge from "npm:node-forge@1.3.1";
 
 const URL=Deno.env.get("SUPABASE_URL")!, ANON=Deno.env.get("SUPABASE_ANON_KEY")!, SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db=createClient(URL,SERVICE);
-const GLOBAL_ARCA_CUIT=Deno.env.get("ARCA_CUIT")||"";
-const GLOBAL_CERT=Deno.env.get("ARCA_CERT_PEM")||"";
-const GLOBAL_KEY=Deno.env.get("ARCA_PRIVATE_KEY_PEM")||"";
-const GLOBAL_ENV=Deno.env.get("ARCA_ENVIRONMENT")||"production";
+function envText(name:string){return Deno.env.get(name)||""}
+function envPem(pemName:string,base64Name:string){
+ const pem=Deno.env.get(pemName)||"";
+ if(pem)return pem;
+ const b64=Deno.env.get(base64Name)||"";
+ if(!b64)return "";
+ try{return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\\s/g,"")),c=>c.charCodeAt(0)))}catch{return ""}
+}
+const GLOBAL_ARCA_CUIT=envText("ARCA_CUIT");
+const GLOBAL_CERT=envPem("ARCA_CERT_PEM","ARCA_CERTIFICATE_BASE64");
+const GLOBAL_KEY=envPem("ARCA_PRIVATE_KEY_PEM","ARCA_PRIVATE_KEY_BASE64");
+const GLOBAL_ENV=envText("ARCA_ENVIRONMENT")||"production";
 function endpoints(environment:string){const homo=environment!=="production";return {homo,wsaa:homo?"https://wsaahomo.afip.gov.ar/ws/services/LoginCms":"https://wsaa.afip.gov.ar/ws/services/LoginCms",wsfe:homo?"https://wswhomo.afip.gov.ar/wsfev1/service.asmx":"https://servicios1.afip.gov.ar/wsfev1/service.asmx"}}
 
 function nodeText(xml:string,name:string){const d=new DOMParser().parseFromString(xml,"text/xml");const n=d?.getElementsByTagName(name)[0]||d?.getElementsByTagNameNS("*",name)[0];return n?.textContent?.trim()||null}
@@ -46,7 +54,7 @@ Deno.serve(async req=>{
   const b=await req.json(),id=b?.invoice_id;if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return new Response(JSON.stringify({error:"INVALID_INVOICE_ID"}),{status:400});
   const{data:i}=await db.from("facturas").select("*,monedas:moneda_id(codigo)").eq("id",id).single();if(!i)return new Response(JSON.stringify({error:"INVOICE_NOT_FOUND"}),{status:404});
   const{data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();const{data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);if(user.id!==i.usuario_responsable&&(profile?.active_company_id!==i.empresa_id||!p?.length))return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
-  const{data:company}=await db.from("companies").select("cuit").eq("id",i.empresa_id).maybeSingle();if(!company?.cuit)return new Response(JSON.stringify({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});const{data:arcaCfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name").eq("company_id",i.empresa_id).maybeSingle();let cfg:any;if(arcaCfg){if(!arcaCfg.enabled)return new Response(JSON.stringify({error:"ARCA_COMPANY_DISABLED"}),{status:409});if(Number(i.punto_venta)!==Number(arcaCfg.punto_venta))return new Response(JSON.stringify({error:"ARCA_PUNTO_VENTA_MISMATCH"}),{status:409});cfg={environment:arcaCfg.environment,cuit:company.cuit,cert:Deno.env.get(arcaCfg.cert_secret_name)||"",key:Deno.env.get(arcaCfg.private_key_secret_name)||""};}else{if(company.cuit!==GLOBAL_ARCA_CUIT)return new Response(JSON.stringify({error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});cfg={environment:GLOBAL_ENV,cuit:GLOBAL_ARCA_CUIT,cert:GLOBAL_CERT,key:GLOBAL_KEY};}if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
+  const{data:company}=await db.from("companies").select("cuit").eq("id",i.empresa_id).maybeSingle();if(!company?.cuit)return new Response(JSON.stringify({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});const{data:arcaCfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name").eq("company_id",i.empresa_id).maybeSingle();let cfg:any;if(arcaCfg){if(!arcaCfg.enabled)return new Response(JSON.stringify({error:"ARCA_COMPANY_DISABLED"}),{status:409});if(Number(i.punto_venta)!==Number(arcaCfg.punto_venta))return new Response(JSON.stringify({error:"ARCA_PUNTO_VENTA_MISMATCH"}),{status:409});cfg={environment:arcaCfg.environment,cuit:(arcaCfg.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit,cert:envPem(arcaCfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"),key:envPem(arcaCfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64")};}else{if(company.cuit!==GLOBAL_ARCA_CUIT)return new Response(JSON.stringify({error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});cfg={environment:GLOBAL_ENV,cuit:GLOBAL_ARCA_CUIT,cert:GLOBAL_CERT,key:GLOBAL_KEY};}if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
   await db.from("facturas").update({estado:"PENDIENTE_ARCA",arca_environment:cfg.environment==="production"?"PRODUCCION":"HOMOLOGACION",arca_service:"wsfev1",actualizada_en:new Date().toISOString()}).eq("id",id);
   try{
    const enriched={...i,moneda_codigo:i.monedas?.codigo};const o=await authorize(enriched,cfg),ok=o.result==="A"&&!!o.cae,v=o.venc&&/^\d{8}$/.test(o.venc)?o.venc.slice(0,4)+"-"+o.venc.slice(4,6)+"-"+o.venc.slice(6,8):null;
