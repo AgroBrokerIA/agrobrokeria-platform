@@ -26,8 +26,8 @@ export default function Home(){
    (async()=>{
      const [market,companies,operations,pubs] = await Promise.all([
        supabase.from("market_public_summary").select("commodity,precio_promedio,moneda,publicaciones").order("publicaciones",{ascending:false}).limit(4),
-       supabase.from("companies").select("id,pais_id"),
-       supabase.from("operaciones").select("id",{count:"exact",head:true}),
+       supabase.from("companies").select("id,pais_id,verificada"),
+       supabase.from("operaciones").select("id,estado"),
        supabase.from("publicaciones").select("cantidad_tn,estado")
      ]);
      if(!mounted)return;
@@ -42,10 +42,13 @@ export default function Home(){
      }
      const rows=(pubs.data||[]) as any[];
      const companyRows=(companies.data||[]) as any[];
+     const operationRows=(operations.data||[]) as any[];
      const tons=rows.reduce((a,r)=>a+Number(r.cantidad_tn||0),0);
-     const active=rows.filter(r=>String(r.estado||"").toUpperCase()==="PUBLICADA").length;
      const markets=new Set(companyRows.map(r=>r.pais_id).filter(Boolean)).size;
-     setStats({companies:companyRows.length,operations:operations.count||0,markets,tons,secure:active});
+     const verifiedCompanies=companyRows.filter(r=>Boolean(r.verificada)).length;
+     const closed=operationRows.filter(r=>["CERRADA","COMPLETADA","FINALIZADA","LIQUIDADA"].includes(String(r.estado||"").toUpperCase())).length;
+     const secure=operationRows.length?Math.round(closed/operationRows.length*100):0;
+     setStats({companies:verifiedCompanies,operations:operationRows.length,markets,tons,secure});
    })();
    return()=>{mounted=false};
  },[]);
