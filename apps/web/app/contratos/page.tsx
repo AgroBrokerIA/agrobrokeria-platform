@@ -1,66 +1,131 @@
 "use client";
-import {useEffect,useMemo,useState} from "react";
-import {supabase} from "@/lib/supabase/client";
+
+import { useEffect, useMemo, useState } from "react";
+import Link from "next/link";
+import { jsPDF } from "jspdf";
+import { supabase } from "@/lib/supabase/client";
 
 type C={id:string;operacion_id:string;numero_contrato:string;tipo_contrato:string|null;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
-type Op={id:string;codigo:string;tipo_operacion:string|null;publicacion_compra_id:string|null;publicacion_venta_id:string|null};
-type Pub={id:string;producto_id:number|null;provincia:string|null;localidad:string|null;pais_id:number|null;empresa_id:string|null};
-type Product={id:number;nombre:string};
-type Company={id:string;razon_social:string|null;nombre_comercial:string|null};
 
 const PRODUCTOS=["Soja","Maíz","Trigo","Girasol","Aceite de Soja","Harina de Soja","Pellets de Soja","Sorgo"];
+const MONEDAS=["USD","EUR","ARS","BRL"];
+const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
+
+type FormState={tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
+
+const initial:FormState={tipo:"F1",producto:"Soja",cantidad:"50000",precio:"350",condicion:"FAS",puerto:"Rosario",entrega:"Octubre 2026",pago:"Transferencia bancaria",observaciones:"Calidad según Cámara Arbitral de Cereales de Rosario.",vendedor:"",comprador:""};
+
+function esc(v:string){return v.replace(/[<>]/g,"");}
+function money(v:string){const n=Number(v||0);return Number.isFinite(n)?n.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}):"0,00"}
+
+function buildPdf(f:FormState){
+ const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"legal"});
+ const W=pdf.internal.pageSize.getWidth(); const H=pdf.internal.pageSize.getHeight(); const margin=54; let y=54;
+ const green=[0,150,95] as const; const dark=[12,25,42] as const;
+ const line=(title:string,text:string)=>{ if(y>H-95){pdf.addPage();y=54} pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(...dark);pdf.text(title,margin,y);y+=14;pdf.setFont("helvetica","normal");pdf.setFontSize(10);const lines=pdf.splitTextToSize(text,W-margin*2);pdf.text(lines,margin,y);y+=lines.length*13+11; };
+ pdf.setFillColor(...green);pdf.rect(0,0,W,12,"F");
+ pdf.setFont("helvetica","bold");pdf.setFontSize(19);pdf.setTextColor(...dark);pdf.text("AgroBroker",margin,55);pdf.setTextColor(0,190,120);pdf.text("IA",margin+90,55);
+ pdf.setFont("helvetica","bold");pdf.setTextColor(...dark);pdf.setFontSize(15);pdf.text(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1 (BLANCO)":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2",W/2,95,{align:"center"});
+ pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Documento generado por AgroBrokerIA",W-margin,55,{align:"right"});
+ y=130;
+ line("1. OBJETO",`Las partes acuerdan la compraventa de ${esc(f.producto)} conforme a las condiciones comerciales indicadas en este contrato.`);
+ line("2. CANTIDAD",`${money(f.cantidad)} toneladas métricas.`);
+ line("3. CALIDAD",esc(f.observaciones||"Según normas y especificaciones comerciales acordadas por las partes."));
+ line("4. PRECIO",`USD ${money(f.precio)} por tonelada métrica.`);
+ line("5. CONDICIÓN DE PRECIO",esc(f.condicion));
+ line("6. LUGAR DE ENTREGA",`Puerto de ${esc(f.puerto)}.`);
+ line("7. PLAZO DE ENTREGA",esc(f.entrega));
+ line("8. FORMA DE PAGO",esc(f.pago));
+ line("9. DOCUMENTACIÓN","Factura comercial, Carta de Porte, certificados de calidad y demás documentación que corresponda a la operación.");
+ line("10. CONFIDENCIALIDAD","Las partes se comprometen a mantener la confidencialidad de los términos del presente contrato.");
+ if(f.tipo==="F1") line("11. LEGISLACIÓN APLICABLE","República Argentina. Las controversias se someterán a la jurisdicción que corresponda según la operación y la normativa aplicable.");
+ else line("11. SOLUCIÓN DE CONTROVERSIAS","Las partes procurarán resolver de buena fe cualquier diferencia y, de corresponder, podrán acudir a mecanismos de arbitraje o jurisdicción pactados.");
+ line("12. PARTES",`VENDEDOR: ${esc(f.vendedor||"________________________________")}\nCOMPRADOR: ${esc(f.comprador||"________________________________")}`);
+ y=Math.min(y,H-75);pdf.setFontSize(8);pdf.setTextColor(80,95,110);pdf.text("Generado digitalmente por AgroBrokerIA · La validez jurídica depende de la información, firmas y requisitos aplicables a la operación.",margin,H-42);
+ return pdf;
+}
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[ops,setOps]=useState<Op[]>([]),[pubs,setPubs]=useState<Pub[]>([]),[products,setProducts]=useState<Product[]>([]),[companies,setCompanies]=useState<Company[]>([]);
- const [motivo,setMotivo]=useState("Nueva versión contractual"),[loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
- const [idiomaDestino,setIdiomaDestino]=useState("en");
- const [tab,setTab]=useState("");
- const [fProducto,setFProducto]=useState(""),[fEstado,setFEstado]=useState(""),[fTipo,setFTipo]=useState(""),[fOrigen,setFOrigen]=useState(""),[fDestino,setFDestino]=useState(""),[fDesde,setFDesde]=useState(""),[fHasta,setFHasta]=useState(""),[fMinVol,setFMinVol]=useState(""),[fMaxVol,setFMaxVol]=useState(""),[fMinPrecio,setFMinPrecio]=useState(""),[fMaxPrecio,setFMaxPrecio]=useState("");
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]);
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
+ const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
+ const [form,setForm]=useState<FormState>(initial);
+ const [selected,setSelected]=useState<C|null>(null);
 
  async function load(){
-  setLoading(true);setErr("");
-  const [c,v,o,p,pr,co]=await Promise.all([
-   supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
-   supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
-   supabase.from("operaciones").select("id,codigo,tipo_operacion,publicacion_compra_id,publicacion_venta_id"),
-   supabase.from("publicaciones").select("id,producto_id,provincia,localidad,pais_id,empresa_id"),
-   supabase.from("productos").select("id,nombre"),
-   supabase.from("companies").select("id,razon_social,nombre_comercial")
-  ]);
-  const firstErr=[c,v,o,p,pr,co].find(x=>x.error)?.error;
-  if(firstErr)setErr(firstErr.message);
-  setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);setOps((o.data||[]) as Op[]);setPubs((p.data||[]) as Pub[]);setProducts((pr.data||[]) as Product[]);setCompanies((co.data||[]) as Company[]);
-  setLoading(false);
+   setLoading(true);setError("");
+   const [c,v]=await Promise.all([
+     supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
+     supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false})
+   ]);
+   if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
+   setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);setLoading(false);
  }
- useEffect(()=>{load()},[]);
+ useEffect(()=>{void load()},[]);
 
- function meta(c:C){const op=ops.find(x=>x.id===c.operacion_id);const pub=pubs.find(x=>x.id===op?.publicacion_venta_id)||pubs.find(x=>x.id===op?.publicacion_compra_id);const product=products.find(x=>x.id===pub?.producto_id);const company=companies.find(x=>x.id===pub?.empresa_id);return {op,pub,product,company}}
- function estadoVista(c:C){const e=(c.estado||"").toUpperCase();if(e.includes("CANCEL"))return "Cancelado";if(e.includes("EN FIRMA"))return "En firma";if(e.includes("FIRM"))return "Firmado";if(e.includes("EJEC"))return "Ejecutado";if(e.includes("REV"))return "En revisión";if(e.includes("BORR")||e.includes("NEGOC"))return "En negociación";return e==="CONFIRMADO"?"Firmado":"En negociación"}
- const filtered=useMemo(()=>rows.filter(c=>{const m=meta(c),e=estadoVista(c),date=(c.fecha_firma||c.creado_en||"").slice(0,10),name=m.product?.nombre||"";return (!tab||e===tab)&&(!fProducto||name===fProducto)&&(!fEstado||e===fEstado)&&(!fTipo||((m.op?.tipo_operacion||"")===fTipo))&&(!fOrigen||((m.pub?.provincia||"")+" "+(m.pub?.localidad||"")).toLowerCase().includes(fOrigen.toLowerCase()))&&(!fDestino||((m.pub?.provincia||"")+" "+(m.pub?.localidad||"")).toLowerCase().includes(fDestino.toLowerCase()))&&(!fDesde||date>=fDesde)&&(!fHasta||date<=fHasta)&&(!fMinVol||Number(c.cantidad_tn||0)>=Number(fMinVol))&&(!fMaxVol||Number(c.cantidad_tn||0)<=Number(fMaxVol))&&(!fMinPrecio||Number(c.precio_tn||0)>=Number(fMinPrecio))&&(!fMaxPrecio||Number(c.precio_tn||0)<=Number(fMaxPrecio))}),[rows,ops,pubs,products,companies,tab,fProducto,fEstado,fTipo,fOrigen,fDestino,fDesde,fHasta,fMinVol,fMaxVol,fMinPrecio,fMaxPrecio]);
+ const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
+ const current=selected;
+ const contractText=useMemo(()=>current?.contenido||"",[current]);
 
- const counts={total:rows.length,firmados:rows.filter(c=>estadoVista(c)==="Firmado").length,neg:rows.filter(c=>estadoVista(c)==="En negociación").length,firma:rows.filter(c=>estadoVista(c)==="En firma").length,cancel:rows.filter(c=>estadoVista(c)==="Cancelado").length};
- const clear=()=>{setTab("");setFProducto("");setFEstado("");setFTipo("");setFOrigen("");setFDestino("");setFDesde("");setFHasta("");setFMinVol("");setFMaxVol("");setFMinPrecio("");setFMaxPrecio("")};
+ function download(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado en formato Legal.`)}
+ function preview(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
+ function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
+ function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
+ function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
+ 
+ return <main className="contract-builder-reference">
+  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Generá, personalizá y descargá contratos en formato legal (PDF) con validez internacional.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
+  {error&&<div className="contract-builder-alert error">{error}</div>}{message&&<div className="contract-builder-alert">{message}</div>}
 
- async function docx(id:string){setBusy(true);setErr("");try{const {data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Sesión expirada.");const r=await fetch("/api/contratos/docx",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({contractId:id})});if(!r.ok)throw new Error((await r.json()).error||"No se pudo generar DOCX");const blob=await r.blob(),url=URL.createObjectURL(blob),a=document.createElement("a");a.href=url;a.download="Contrato.docx";a.click();URL.revokeObjectURL(url);setMsg("Documento Word generado correctamente.")}catch(e){setErr(e instanceof Error?e.message:"Error")}finally{setBusy(false)}}
- async function traducir(id:string){setBusy(true);setErr("");try{const {data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Sesión expirada.");const r=await fetch(process.env.NEXT_PUBLIC_SUPABASE_URL+"/functions/v1/translate-document",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,"Content-Type":"application/json"},body:JSON.stringify({contract_id:id,idioma_origen:"es",idioma_destino:idiomaDestino})});const data=await r.json();if(!r.ok)throw new Error(data?.pending_external?"La traducción requiere configurar el proveedor externo.":data?.error||"No se pudo traducir.");setMsg("Traducción generada en "+idiomaDestino.toUpperCase()+".");await load()}catch(e){setErr(e instanceof Error?e.message:"Error")}finally{setBusy(false)}}
- async function version(id:string){setBusy(true);setErr("");try{const c=rows.find(x=>x.id===id);if(!c?.contenido)throw new Error("El contrato no tiene contenido.");const {data,error}=await supabase.rpc("crear_version_contrato",{p_contrato_id:id,p_motivo:motivo,p_contenido:c.contenido,p_estado:"BORRADOR"});if(error)throw new Error(error.message);setMsg("Nueva versión contractual creada.");await load()}catch(e){setErr(e instanceof Error?e.message:"Error")}finally{setBusy(false)}}
+  <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
- const prodFor=(c:C)=>meta(c).product?.nombre||PRODUCTOS[rows.indexOf(c)%PRODUCTOS.length];
- return <main className="contracts-reference">
-  <header className="contracts-head"><div><h1>Contratos</h1><p>Gestiona todos tus contratos de compraventa de granos y commodities</p></div><div className="contracts-head-actions"><button onClick={()=>setMsg("Las plantillas se gestionan desde el módulo contractual.")}>▣ Plantillas de contrato</button><button onClick={()=>setMsg("La firma digital se inicia desde el contrato seleccionado.")}>⌁ Firma digital</button><button className="contracts-new" onClick={()=>setMsg("Los contratos se generan desde operaciones confirmadas.")}>＋ Nuevo contrato</button></div></header>
-  {err&&<div className="contracts-alert error">{err}</div>}{msg&&<div className="contracts-alert">{msg}</div>}
-  <section className="contracts-kpis"><Kpi icon="▤" value={counts.total.toLocaleString("es-AR")} label="Contratos totales" trend="+18% este mes ↗" tone="green"/><Kpi icon="✎" value={counts.firmados.toLocaleString("es-AR")} label="Firmados" trend="+25% este mes ↗" tone="blue"/><Kpi icon="◷" value={counts.neg.toLocaleString("es-AR")} label="En negociación" trend="+12% este mes ↗" tone="orange"/><Kpi icon="♟" value={counts.firma.toLocaleString("es-AR")} label="En firma" trend="+33% este mes ↗" tone="purple"/><Kpi icon="×" value={counts.cancel.toLocaleString("es-AR")} label="Cancelados" trend="-10% este mes ↘" tone="red"/></section>
-  <div className="contracts-tabs">{["Todos los contratos","En negociación","En revisión","En firma","Firmados","Ejecutados","Cancelados"].map(x=>{const v=x==="Todos los contratos"?"":x;return <button key={x} className={tab===v?"active":""} onClick={()=>setTab(v)}>{x}</button>})}</div>
-  <section className="contracts-layout"><div className="contracts-table-card"><div className="contracts-table-head"><span># CONTRATO</span><span>PRODUCTO</span><span>VOLUMEN</span><span>PRECIO<br/>(USD/tn)</span><span>TIPO</span><span>COMPRADOR</span><span>VENDEDOR</span><span>ORIGEN</span><span>DESTINO</span><span>ESTADO</span><span>FECHA</span><span>ACCIONES</span></div>
-   {loading?<div className="contracts-empty">Cargando contratos…</div>:filtered.map((c,i)=>{const m=meta(c),e=estadoVista(c);return <div className="contract-row" key={c.id}><span className="contract-code">{c.numero_contrato}</span><span className="contract-product"><b>{["🫘","🌽","🌾","🌻","🫒","🌾","🫘","🌾"][i%8]}</b><strong>{prodFor(c)}</strong></span><span><strong>{Number(c.cantidad_tn||0).toLocaleString("es-AR")} TN</strong></span><span>{Number(c.precio_tn||0).toLocaleString("es-AR",{minimumFractionDigits:2})}</span><span><em className={"contract-type "+((m.op?.tipo_operacion||"F2")==="F1"?"f1":"f2")}>{m.op?.tipo_operacion||"F2"}</em></span><span>{m.company?.razon_social||"Comprador comercial"}</span><span>{m.company?.razon_social||"Vendedor comercial"}</span><span>🇦🇷 {m.pub?.localidad||m.pub?.provincia||"Argentina"}</span><span>🌎 Destino internacional</span><span><em className={"contract-status "+e.toLowerCase().replaceAll(" ","-").replace("ó","o")}>{e}</em></span><span>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):c.creado_en?new Date(c.creado_en).toLocaleDateString("es-AR"):"—"}</span><span className="contract-actions"><button onClick={()=>docx(c.id)} disabled={busy}>Ver</button><button onClick={()=>version(c.id)} disabled={busy||e==="Firmado"}>⋮</button></span></div>})}
-   {!loading&&!filtered.length&&<div className="contracts-empty">No hay contratos que coincidan con los filtros.</div>}
-  </div>
-  <aside className="contracts-filters"><div className="contract-filter-title"><h2>Filtros de contratos</h2><button onClick={clear}>Limpiar filtros</button></div><Filter label="Producto"><select value={fProducto} onChange={e=>setFProducto(e.target.value)}><option value="">Todos los productos</option>{PRODUCTOS.map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Estado"><select value={fEstado} onChange={e=>setFEstado(e.target.value)}><option value="">Todos los estados</option>{["En negociación","En revisión","En firma","Firmado","Ejecutado","Cancelado"].map(x=><option key={x}>{x}</option>)}</select></Filter><Filter label="Tipo de contrato"><select value={fTipo} onChange={e=>setFTipo(e.target.value)}><option value="">Todos los tipos</option><option>F1</option><option>F2</option></select></Filter><Filter label="País de origen"><select><option>Todos los países</option><option>Argentina</option></select></Filter><Filter label="País de destino"><select><option>Todos los países</option><option>Internacional</option></select></Filter><Filter label="Rango de fecha"><div className="contract-two"><input type="date" value={fDesde} onChange={e=>setFDesde(e.target.value)}/><input type="date" value={fHasta} onChange={e=>setFHasta(e.target.value)}/></div></Filter><Filter label="Rango de volumen (TN)"><div className="contract-two"><input placeholder="Mínimo" value={fMinVol} onChange={e=>setFMinVol(e.target.value)}/><input placeholder="Máximo" value={fMaxVol} onChange={e=>setFMaxVol(e.target.value)}/></div></Filter><Filter label="Rango de precio (USD/tn)"><div className="contract-two"><input placeholder="Mínimo" value={fMinPrecio} onChange={e=>setFMinPrecio(e.target.value)}/><input placeholder="Máximo" value={fMaxPrecio} onChange={e=>setFMaxPrecio(e.target.value)}/></div></Filter><button className="contracts-apply" onClick={()=>setMsg(filtered.length+" contratos coinciden con los filtros.")}>⚱ Aplicar filtros</button></aside></section>
-  <section className="contracts-bottom"><Bottom title="Contratos por estado"><div className="contract-donut"><b>{counts.total}<small>Contratos</small><small>totales</small></b></div><div className="contract-legend"><p>🟢 Firmados <b>{counts.firmados}</b></p><p>🔵 En negociación <b>{counts.neg}</b></p><p>🟣 En firma <b>{counts.firma}</b></p><p>🟡 En revisión <b>{rows.filter(c=>estadoVista(c)==="En revisión").length}</b></p><p>🔴 Cancelados <b>{counts.cancel}</b></p><p>🟦 Ejecutados <b>{rows.filter(c=>estadoVista(c)==="Ejecutado").length}</b></p></div></Bottom><Bottom title="Volumen por producto (TN)"><Bars items={PRODUCTOS.slice(0,8).map((x,i)=>[x,Math.max(4,42-i*5)+"%"])}/></Bottom><Bottom title="Principales destinos"><Bars items={["🇨🇳 China","🇮🇹 Italia","🇳🇱 Países Bajos","🇩🇪 Alemania","🇧🇷 Brasil","🇺🇾 Uruguay","🇪🇸 España","Otros"].map((x,i)=>[x,[28,18,14,12,10,8,6,14][i]+"%"])}/></Bottom><Bottom title="Actividad reciente"><div className="contract-activity">{rows.slice(0,5).map((c,i)=><p key={c.id}>▣ <span><b>Contrato {c.numero_contrato}</b> {estadoVista(c).toLowerCase()}</span><small>Hace {i+1} hora{i?"s":""}</small></p>)}</div></Bottom></section>
+  {tab==="tipos"||tab==="plantillas"?<section className="contract-builder-grid">
+    <div className="contract-builder-form">
+      <h2>Seleccionar tipo de contrato</h2>
+      <div className="contract-type-picks">
+        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato Blanco (Formal)</small></span><i>✓</i></button>
+        <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato Privado (No registrable)</small></span><i>✓</i></button>
+      </div>
+      <h2>Seleccionar commodity</h2>
+      <div className="contract-commodity-picks">{PRODUCTOS.slice(0,5).map((p,i)=><button key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻","🫒"][i]}</b><span>{p}</span></button>)}</div>
+      <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
+      <div className="contract-builder-fields">
+       <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
+       <label>Commodity<select value={form.producto} onChange={e=>update("producto",e.target.value)}>{PRODUCTOS.map(p=><option key={p}>{p}</option>)}</select></label>
+       <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
+       <label>Precio (USD/tn)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
+       <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
+       <label>Puerto de entrega<input value={form.puerto} onChange={e=>update("puerto",e.target.value)}/></label>
+       <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
+       <label>Forma de pago<select value={form.pago} onChange={e=>update("pago",e.target.value)}>{["Transferencia bancaria","Carta de crédito (LC)","Financiera","eCheq"].map(x=><option key={x}>{x}</option>)}</select></label>
+       <label>Vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social"/></label>
+       <label>Comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social"/></label>
+      </div>
+      <label className="contract-builder-observation">Observaciones (opcional)<textarea value={form.observaciones} onChange={e=>update("observaciones",e.target.value)} /></label>
+      <button className="contract-generate" onClick={()=>download(form.tipo)}>Generar contrato PDF&nbsp; →</button>
+      <div className="contract-output-actions"><button onClick={()=>download(form.tipo)}>▣ Descargar PDF</button><button onClick={printPdf}>▣ Imprimir</button><button onClick={emailPdf}>✉ Enviar por email</button><button onClick={sharePdf}>⌁ Compartir</button></div>
+    </div>
+    <div className="contract-previews">
+      <PreviewCard type="F1" form={form} onDownload={download} active={form.tipo==="F1"}/>
+      <PreviewCard type="F2" form={form} onDownload={download} active={form.tipo==="F2"}/>
+    </div>
+  </section>:null}
+
+  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("tipos");setForm(x=>({...x,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}</section>}
+
+  {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><article key={x}><b>{i+1}. {x}</b><p>Cláusula disponible para incorporar al modelo contractual y revisar antes de generar el PDF.</p></article>)}</section>}
+
+  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2><p>La generación del PDF queda separada de la firma. Seleccioná un contrato desde “Mis contratos” y utilizá el flujo de firma correspondiente a la operación.</p><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
+
+  {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
+  <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
  </main>
 }
-function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={"contract-kpi "+tone}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
-function Filter({label,children}:{label:string;children:any}){return <label className="contract-filter">{label}{children}</label>}
-function Bottom({title,children}:{title:string;children:any}){return <section className="contracts-bottom-card"><h2>{title}</h2>{children}</section>}
-function Bars({items}:{items:string[][]}){return <div className="contract-bars">{items.map((x,i)=><div key={i}><span>{x[0]}</span><i style={{width:x[1]}}/><b>{x[1]}</b></div>)}</div>}
+
+function PreviewCard({type,form,onDownload,active}:{type:"F1"|"F2";form:FormState;onDownload:(type:"F1"|"F2")=>void;active:boolean}){
+ return <article className={"contract-preview-card "+(active?"active":"")}>
+   <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Contrato registrable para operaciones formales.":"Contrato privado entre partes (no registrable)."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
+   <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1 (BLANCO)":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. OBJETO","Las partes acuerdan la compraventa de "+form.producto+" conforme a las condiciones comerciales establecidas."],["2. CANTIDAD",money(form.cantidad)+" toneladas métricas."],["3. CALIDAD",form.observaciones||"Según normas de la Cámara Arbitral de Cereales de Rosario."],["4. PRECIO","USD "+money(form.precio)+" por tonelada métrica."],["5. CONDICIÓN DE PRECIO",form.condicion],["6. LUGAR DE ENTREGA","Puerto de "+form.puerto+"."],["7. PLAZO DE ENTREGA",form.entrega],["8. FORMA DE PAGO",form.pago],["9. DOCUMENTACIÓN","Factura comercial, Carta de Porte, certificados y documentación requerida."],["10. CONFIDENCIALIDAD","Las partes se comprometen a mantener la confidencialidad de los términos."],["11. "+(type==="F1"?"LEGISLACIÓN APLICABLE":"SOLUCIÓN DE CONTROVERSIAS"),type==="F1"?"República Argentina y normativa aplicable.":"Las partes procurarán resolver de buena fe cualquier diferencia."]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
+ </article>
+}
