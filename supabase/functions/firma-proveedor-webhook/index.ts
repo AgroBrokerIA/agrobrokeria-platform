@@ -5,7 +5,7 @@ function safe(a:string,b:string){if(a.length!==b.length)return false;let x=0;for
 Deno.serve(async req=>{
  try{
   if(req.method!=="POST")return new Response("method",{status:405});
-  const raw=await req.text(),secret=Deno.env.get("SIGN_PROVIDER_WEBHOOK_SECRET");if(!secret)return new Response(JSON.stringify({error:"WEBHOOK_SECRET_NOT_CONFIGURED"}),{status:503});
+  const raw=await req.text(),secret=Deno.env.get("SIGN_PROVIDER_WEBHOOK_SECRET")||Deno.env.get("FIRMA_PROVIDER_WEBHOOK_SECRET");if(!secret)return new Response(JSON.stringify({error:"WEBHOOK_SECRET_NOT_CONFIGURED"}),{status:503});
   const sig=req.headers.get("x-signature")||"",expected=await hmac(secret,raw);if(!safe(sig,expected))return new Response(JSON.stringify({error:"INVALID_SIGNATURE"}),{status:401});
   const b=JSON.parse(raw),rid=String(b.requestId||b.externalReference||""),status=String(b.status||"");if(!rid)return new Response(JSON.stringify({error:"REQUEST_ID_REQUIRED"}),{status:400});
   let {data:s}=await db.from("firma_solicitudes").select("*").eq("proveedor_request_id",rid).maybeSingle();if(!s && /^[0-9a-f-]{36}$/i.test(rid)){const r=await db.from("firma_solicitudes").select("*").eq("id",rid).maybeSingle();s=r.data;}if(!s)return new Response(JSON.stringify({error:"SIGN_REQUEST_NOT_FOUND"}),{status:404});
