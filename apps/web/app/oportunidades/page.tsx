@@ -13,9 +13,9 @@ const icon=(n?:string|null)=>{const x=(n||"").toLowerCase();return x.includes("s
 const ago=(d:string)=>{const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
 
 export default function OportunidadesPage(){
- const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades");
+ const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades"),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[priceMin,setPriceMin]=useState(""),[priceMax,setPriceMax]=useState(""),[sort,setSort]=useState("opportunity"),[clock,setClock]=useState(0);
 
- useEffect(()=>{(async()=>{try{
+ useEffect(()=>{setClock(Date.now());(async()=>{try{
   const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
   const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
