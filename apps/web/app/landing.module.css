@@ -15,3 +15,25 @@
 @media(max-width:1100px){.navLinks{gap:15px}.navRight{min-width:auto}.hero{padding-left:6%;padding-right:6%}.quote{right:4%;width:350px}.heroCopy{max-width:560px}.heroTitle{font-size:42px}.cardsGrid{grid-template-columns:repeat(3,1fr)}.marketStrip{grid-template-columns:repeat(3,1fr);height:auto;padding:10px}.stat:nth-child(n+4){display:none}.stat{border:0}.frontier{grid-template-columns:1fr}}
 @media(max-width:800px){.nav{padding:0 16px}.navLinks{display:none}.brand{min-width:auto}.navRight{gap:5px}.language{display:none}.hero{min-height:650px;padding:42px 24px 120px;align-items:flex-start}.heroCopy{max-width:none}.heroTitle{font-size:40px}.quote{position:absolute;left:24px;right:24px;top:auto;bottom:95px;width:auto}.checks{grid-template-columns:1fr}.marketStrip{left:16px;right:16px;bottom:-66px;grid-template-columns:1fr 1fr}.stat{padding:6px}.stat:nth-child(n+3){display:none}.cardsSection{padding:105px 16px 35px}.cardsGrid{grid-template-columns:1fr 1fr}.frontier{padding:30px 16px 55px}}
 @media(max-width:520px){.brandName{font-size:16px}.tagline{font-size:7px}.login{display:none}.register{height:36px;padding:0 12px}.hero{min-height:720px}.heroTitle{font-size:34px;letter-spacing:-1.5px}.heroCopy p{font-size:14px}.heroActions{flex-direction:column}.primary,.secondary{width:100%}.quote{bottom:92px}.marketStrip{grid-template-columns:1fr}.stat:nth-child(2){display:none}.cardsGrid{grid-template-columns:1fr}.frontierText h2{font-size:26px}.world{min-height:180px}}
+
+/* ===== LANDING FINAL REFERENCE ===== */
+.landing{background:#f7faf8;color:#10251a}
+.nav{height:69px;padding:0 3.25%;box-shadow:0 1px 0 #e7ece9}
+.navLinks{gap:27px}
+.navLinks a{font-size:12px}
+.hero{min-height:503px;padding:40px 10.15% 91px}
+.hero:before{background:linear-gradient(90deg,rgba(5,31,19,.94),rgba(7,40,25,.86) 34%,rgba(8,43,27,.42) 66%,rgba(7,30,20,.20)),linear-gradient(180deg,rgba(0,0,0,.03),rgba(0,0,0,.42))}
+.heroTitle{font-size:47px;letter-spacing:-2.2px}
+.heroCopy p{font-size:16px;max-width:590px}
+.checks{gap:10px 35px}
+.primary{background:#00dc82;color:#063724}
+.quote{right:4.7%;top:43px;width:395px;background:rgba(17,20,24,.86);border-radius:14px}
+.quoteRow{padding:10px 0}
+.quotePrice{font-size:12px}
+.up{font-size:10px}
+.marketStrip{left:3.3%;right:3.3%;bottom:-28px;height:72px}
+.cardsSection{padding:72px 3.3% 42px}
+.cardImage{height:106px}
+.frontier{padding:36px 3.3% 70px}
+.insight{text-decoration:none;color:inherit}
+@media(max-width:1100px){.hero{padding-left:6%;padding-right:6%}}
