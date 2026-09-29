@@ -26,7 +26,7 @@ export default function Home(){
    (async()=>{
      const { data: market, error: marketError } = await supabase
        .from("market_public_summary")
-       .select("commodity,precio_promedio,moneda,publicaciones,actualizado_at")
+       .select("commodity,precio_promedio,moneda,publicaciones,actualizado_at,variacion")
        .order("publicaciones",{ascending:false})
        .limit(12);
      if(!mounted)return;
@@ -34,10 +34,12 @@ export default function Home(){
      const rows=(market||[]) as any[];
      if(rows.length){
        const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Girasol:"🌻"};
-       setQuotes(rows.slice(0,4).map((x:any)=>({
+       const preferred=["Soja","Maíz","Trigo","Girasol"];
+       const ordered=[...preferred.map(name=>rows.find(x=>x.commodity===name)).filter(Boolean),...rows.filter(x=>!preferred.includes(x.commodity))];
+       setQuotes(ordered.slice(0,4).map((x:any)=>({
          name:x.commodity,
          price:x.precio_promedio==null?"Sin cotización":(x.moneda||"USD")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}),
-         detail:x.publicaciones?fmt(Number(x.publicaciones))+" publicaciones":"",
+         detail:x.variacion==null?(x.publicaciones?fmt(Number(x.publicaciones))+" publicaciones":""):(Number(x.variacion)>=0?"▲ +":"▼ ")+Number(x.variacion).toLocaleString("es-AR",{minimumFractionDigits:1,maximumFractionDigits:1}),
          icon:icons[x.commodity]||"🌾"
        })));
        const publicationCount=rows.reduce((sum,row)=>sum+Number(row.publicaciones||0),0);
@@ -92,7 +94,7 @@ export default function Home(){
    </div>
    <aside className={styles.quote}>
     <div className={styles.quoteHead}><strong>Cotizaciones del día</strong><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1" target="_blank" rel="noreferrer">BCR - Rosario&nbsp; →</a></div>
-    <div className={styles.quoteRows}>{quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={styles.up}>{q.detail}</span></div>)}</div>
+    <div className={styles.quoteRows}>{quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={q.detail.startsWith("▼")?styles.down:styles.up}>{q.detail}</span></div>)}</div>
     <Link href="/pizarra" className={styles.quoteButton}>▥ &nbsp; Ver pizarra completa &nbsp; →</Link>
    </aside>
    <div className={styles.marketStrip}>{statItems.map(([icon,title,label])=><div className={styles.stat} key={label}><i className={styles.statIcon}>{icon}</i><div><strong>{title}</strong><small>{label}</small></div></div>)}</div>
