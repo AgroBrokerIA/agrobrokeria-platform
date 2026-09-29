@@ -62,11 +62,11 @@ export default function Home(){
   ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra oportunidades a partir de tus publicaciones y demandas.","/ia-matching"]
  ];
  const statItems=[
-  ["🏢","+"+fmt(stats.companies),"Empresas registradas"],
-  ["🤝","+"+fmt(stats.operations),"Operaciones registradas"],
-  ["◎","+"+fmt(stats.markets),"Mercados conectados"],
-  ["🚚","+"+fmt(Math.round(stats.tons)),"Toneladas publicadas"],
-  ["✓","+"+fmt(stats.secure),"Publicaciones activas"]
+  ["🏢","+"+fmt(stats.companies),"Empresas verificadas"],
+  ["🤝","+"+fmt(stats.operations),"Operaciones realizadas"],
+  ["◎","+"+fmt(stats.markets),"Países conectados"],
+  ["🚚","+"+fmt(Math.round(stats.tons)),"Toneladas comercializadas"],
+  ["✓",fmt(stats.secure)+"%","Transacciones seguras"]
  ];
 
  return <main className={styles.landing}>
