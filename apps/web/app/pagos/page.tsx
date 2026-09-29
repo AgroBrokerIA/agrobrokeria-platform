@@ -41,8 +41,8 @@ export default function PagosPage(){
  const balance=Math.max(0,commissionAvailable);
  const banks=methods.filter(m=>m.tipo==="BANCO"&&m.estado!=="INACTIVO");
  const payoutMethods=methods.filter(m=>m.tipo!=="BANCO"&&m.estado!=="INACTIVO");
- const months=useMemo(()=>{const now=new Date();return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const monthRows=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key);return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value:aggregate(monthRows)}})},[rows,curr]);
- const monthAmounts=months.map(m=>m.value==="Varias monedas"?0:Number(m.value.replace(/[^0-9,-]/g,"").replace(/\./g,"").replace(",","."))||0);
+ const months=useMemo(()=>{const now=new Date();return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const monthRows=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key);const totals=new Map<number,number>();for(const r of monthRows)totals.set(r.moneda_id||0,(totals.get(r.moneda_id||0)||0)+Number(r.importe||0));const amount=totals.size===1?Number([...totals.values()][0]||0):0;return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value:aggregate(monthRows),amount}})},[rows,curr]);
+ const monthAmounts=months.map(m=>m.amount);
  const maxMonth=Math.max(1,...monthAmounts);
  async function requestWithdrawal(){
   setMsg("");setError("");const n=Number(amount);if(!n||n<=0){setError("Ingresá un importe válido.");return}if(n>balance){setError("El importe supera el saldo disponible.");return}if(!bankId){setError("Seleccioná una cuenta bancaria.");return}
