@@ -8,7 +8,7 @@ Deno.serve(async req=>{
   const {contract_id}=await req.json();if(typeof contract_id!=="string"||!/^[0-9a-f-]{36}$/i.test(contract_id))return new Response(JSON.stringify({error:"INVALID_CONTRACT_ID"}),{status:400});
   const {data:c}=await db.from("contratos").select("id,operacion_id,numero_contrato,contenido,storage_path").eq("id",contract_id).single();if(!c)return new Response(JSON.stringify({error:"CONTRACT_NOT_FOUND"}),{status:404});
   const {data:p}=await db.from("operacion_participantes").select("empresa_id,rol").eq("operacion_id",c.operacion_id);if(!p?.some(x=>x.empresa_id))return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
-  const base=Deno.env.get("SIGN_PROVIDER_BASE_URL"),api=Deno.env.get("SIGN_PROVIDER_API_KEY");
+  const base=Deno.env.get("SIGN_PROVIDER_BASE_URL")||Deno.env.get("FIRMA_PROVIDER_URL"),api=Deno.env.get("SIGN_PROVIDER_API_KEY")||Deno.env.get("FIRMA_PROVIDER_API_KEY");
   if(!base||!api)return new Response(JSON.stringify({error:"SIGN_PROVIDER_NOT_CONFIGURED",message:"Configure SIGN_PROVIDER_BASE_URL y SIGN_PROVIDER_API_KEY para activar el proveedor externo."}),{status:503});
   const {data:signers}=await db.from("contrato_firmantes").select("id,empresa_id,rol,email,nombre,orden_firma").eq("contrato_id",contract_id).order("orden_firma");
   const payload={externalReference:c.id,document:{name:"Contrato-"+c.numero_contrato,hash:null,storagePath:c.storage_path,content:c.contenido},signers:(signers||[]).map(s=>({id:s.id,role:s.rol,email:s.email,name:s.nombre,order:s.orden_firma}))};
