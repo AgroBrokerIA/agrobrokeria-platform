@@ -81,7 +81,11 @@ export default function ContratosPage(){
  async function saveDraft(){
    if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
    setBusy(true);setError("");setMessage("");
-   const payload={tipo_contrato:form.tipo,producto:form.producto,cantidad_tn:Number(form.cantidad)||0,precio_tn:Number(form.precio)||0,condicion_precio:form.condicion,puerto_entrega:form.puerto,fecha_entrega:form.entrega,forma_pago:form.pago,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+   const op=operaciones.find(x=>x.id===form.operacionId);
+   if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
+   const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
+   const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
+   const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
