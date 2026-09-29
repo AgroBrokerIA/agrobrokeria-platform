@@ -16,7 +16,6 @@ const fallback:Quote[] = [
 ];
 
 const fmt=(v:number)=>v.toLocaleString("es-AR");
-const pct=(v:number)=>v>0?Math.min(99,Math.round(v)) : 0;
 
 export default function Home(){
  const [quotes,setQuotes]=useState<Quote[]>(fallback);
@@ -42,9 +41,11 @@ export default function Home(){
        })));
      }
      const rows=(pubs.data||[]) as any[];
+     const companyRows=(companies.data||[]) as any[];
      const tons=rows.reduce((a,r)=>a+Number(r.cantidad_tn||0),0);
-     const published=rows.filter(r=>String(r.estado||"").toUpperCase()==="PUBLICADA").length;
-     setStats({companies:companies.count||0,operations:operations.count||0,markets:0,tons,secure:published});
+     const active=rows.filter(r=>String(r.estado||"").toUpperCase()==="PUBLICADA").length;
+     const markets=new Set(companyRows.map(r=>r.pais_id).filter(Boolean)).size;
+     setStats({companies:companyRows.length,operations:operations.count||0,markets,tons,secure:active});
    })();
    return()=>{mounted=false};
  },[]);
