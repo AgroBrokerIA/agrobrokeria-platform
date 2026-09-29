@@ -13,9 +13,10 @@ const PRODUCTOS_BASE=["Soja","Maíz","Trigo","Girasol","Cebada","Sorgo","Aceite 
 const MONEDAS=["USD","EUR","ARS","BRL"];
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
 
-type FormState={tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
+type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
+type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string};
 
-const initial:FormState={tipo:"F1",producto:"Soja",cantidad:"50000",precio:"350",condicion:"FAS",puerto:"Rosario",entrega:"Octubre 2026",pago:"Transferencia bancaria",observaciones:"Calidad según Cámara Arbitral de Cereales de Rosario.",vendedor:"",comprador:""};
+const initial:FormState={operacionId:"",tipo:"F1",producto:"",cantidad:"",precio:"",condicion:"FAS",puerto:"",entrega:"",pago:"Transferencia bancaria",observaciones:"",vendedor:"",comprador:""};
 
 function esc(v:string){return v.replace(/[<>]/g,"");}
 function money(v:string){const n=Number(v||0);return Number.isFinite(n)?n.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}):"0,00"}
@@ -48,7 +49,7 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE),[puertos,setPuertos]=useState<string[]>([]);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
@@ -60,12 +61,14 @@ export default function ContratosPage(){
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
-     supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden")
+     supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
+     supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado").order("fecha_operacion",{ascending:false})
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
    setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
    if(!p.error&&p.data?.length)setProductos(p.data.map((x:any)=>x.nombre));
    if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
+   setOperaciones((op.data||[]) as Operation[]);
    setLoading(false);
  }
  useEffect(()=>{void load()},[]);
@@ -96,6 +99,7 @@ export default function ContratosPage(){
       <div className="contract-commodity-picks">{productos.slice(0,4).map((p,i)=><button type="button" key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻"][i]}</b><span>{p}</span></button>)}<button type="button" className="more-commodity" onClick={()=>document.getElementById("commodity-select")?.focus()}><b>•••</b><span>Otros</span></button></div>
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
       <div className="contract-builder-fields">
+       <label>Operación<select value={form.operacionId} onChange={e=>selectOperation(e.target.value)}><option value="">Seleccionar operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.estado}</option>)}</select></label>
        <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
@@ -109,6 +113,7 @@ export default function ContratosPage(){
       </div>
       <label className="contract-builder-observation">Observaciones (opcional)<textarea value={form.observaciones} onChange={e=>update("observaciones",e.target.value)} /></label>
       <button className="contract-generate" onClick={()=>download(form.tipo)}>Generar contrato PDF&nbsp; →</button>
+      <button className="contract-generate" disabled={busy||!form.operacionId} onClick={saveDraft}>{busy?"Guardando…":"Guardar borrador en la operación →"}</button>
       <div className="contract-output-actions"><button onClick={()=>download(form.tipo)}>▣ Descargar PDF</button><button onClick={printPdf}>▣ Imprimir</button><button onClick={emailPdf}>✉ Enviar por email</button><button onClick={sharePdf}>⌁ Compartir</button></div>
     </div>
     <div className="contract-previews">
