@@ -13,10 +13,10 @@ const PRODUCTOS_BASE=["Soja","Maíz","Trigo","Girasol","Cebada","Sorgo","Aceite 
 const MONEDAS=["USD","EUR","ARS","BRL"];
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
 
-type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
-type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string};
+type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
+type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null};
 
-const initial:FormState={operacionId:"",tipo:"F1",producto:"",cantidad:"",precio:"",condicion:"FAS",puerto:"",entrega:"",pago:"Transferencia bancaria",observaciones:"",vendedor:"",comprador:""};
+const initial:FormState={operacionId:"",tipo:"F1",producto:"",cantidad:"",precio:"",moneda:"",condicion:"FAS",puerto:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:""};
 
 function esc(v:string){return v.replace(/[<>]/g,"");}
 function money(v:string){const n=Number(v||0);return Number.isFinite(n)?n.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}):"0,00"}
@@ -33,16 +33,15 @@ function buildPdf(f:FormState){
  y=130;
  line("1. OBJETO",`Las partes acuerdan la compraventa de ${esc(f.producto)} conforme a las condiciones comerciales indicadas en este contrato.`);
  line("2. CANTIDAD",`${money(f.cantidad)} toneladas métricas.`);
- line("3. CALIDAD",esc(f.observaciones||"Según normas y especificaciones comerciales acordadas por las partes."));
- line("4. PRECIO",`USD ${money(f.precio)} por tonelada métrica.`);
+ line("3. CALIDAD",esc(f.observaciones||"No especificada en los datos registrados de la operación."));
+ line("4. PRECIO",f.precio&&f.moneda?`${esc(f.moneda)} ${money(f.precio)} por tonelada métrica.`:"No especificado en los datos registrados de la operación.");
  line("5. CONDICIÓN DE PRECIO",esc(f.condicion));
- line("6. LUGAR DE ENTREGA",`Puerto de ${esc(f.puerto)}.`);
+ line("6. LUGAR DE ENTREGA",f.puerto?esc(f.puerto):"No especificado en los datos registrados de la operación.");
  line("7. PLAZO DE ENTREGA",esc(f.entrega));
- line("8. FORMA DE PAGO",esc(f.pago));
- line("9. DOCUMENTACIÓN","Factura comercial, Carta de Porte, certificados de calidad y demás documentación que corresponda a la operación.");
- line("10. CONFIDENCIALIDAD","Las partes se comprometen a mantener la confidencialidad de los términos del presente contrato.");
- if(f.tipo==="F1") line("11. LEGISLACIÓN APLICABLE","República Argentina. Las controversias se someterán a la jurisdicción que corresponda según la operación y la normativa aplicable.");
- else line("11. SOLUCIÓN DE CONTROVERSIAS","Las partes procurarán resolver de buena fe cualquier diferencia y, de corresponder, podrán acudir a mecanismos de arbitraje o jurisdicción pactados.");
+ line("8. FORMA DE PAGO",f.pago?esc(f.pago):"No especificada en los datos registrados de la operación.");
+ line("9. DOCUMENTACIÓN","No especificada en los datos registrados de la operación.");
+ line("10. OBSERVACIONES",esc(f.observaciones||"Sin observaciones registradas."));
+
  line("12. PARTES",`VENDEDOR: ${esc(f.vendedor||"________________________________")}\nCOMPRADOR: ${esc(f.comprador||"________________________________")}`);
  y=Math.min(y,H-75);pdf.setFontSize(8);pdf.setTextColor(80,95,110);pdf.text("Generado digitalmente por AgroBrokerIA · La validez jurídica depende de la información, firmas y requisitos aplicables a la operación.",margin,H-42);
  return pdf;
@@ -62,13 +61,13 @@ export default function ContratosPage(){
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
-     supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado").order("fecha_operacion",{ascending:false})
+     supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado,monedas(codigo)").order("fecha_operacion",{ascending:false})
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
    setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
    if(!p.error&&p.data?.length)setProductos(p.data.map((x:any)=>x.nombre));
    if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
-   setOperaciones((op.data||[]) as Operation[]);
+   setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
    setLoading(false);
  }
  useEffect(()=>{void load()},[]);
@@ -76,7 +75,7 @@ export default function ContratosPage(){
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
    if(!op){ setForm(x=>({...x,operacionId:""})); return; }
-   setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? "")}));
+   setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda||""}));
  }
  async function saveDraft(){
    if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
@@ -85,19 +84,19 @@ export default function ContratosPage(){
    if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
    const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
    const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+   const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:form.moneda||null,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
  }
  function contractContent(f:FormState){
-   return JSON.stringify({tipo:f.tipo,producto:f.producto,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador});
+   return JSON.stringify({tipo:f.tipo,producto:f.producto,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador});
  }
 
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
  const current=selected;
 
- function download(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado en formato Legal.`)}
+ function download(tipo:"F1"|"F2"){if(!form.operacionId||!form.producto||!form.moneda){setMessage("Seleccioná una operación, producto y moneda antes de generar el PDF.");return;}setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado en formato Legal.`)}
  function preview(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
  function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
  function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
@@ -124,11 +123,11 @@ export default function ContratosPage(){
        <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
-       <label>Precio (USD/tn)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
+       <label>Precio / TN<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
        <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
-       <label>Puerto de entrega<select value={form.puerto} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto</option>{(puertos.length?puertos:["Rosario","San Lorenzo","General San Martín","Bahía Blanca","Quequén"]).map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+       <label>Puerto de entrega<select value={form.puerto} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto</option>{puertos.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
        <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
-       <label>Forma de pago<select value={form.pago} onChange={e=>update("pago",e.target.value)}>{["Transferencia bancaria","Carta de crédito (LC)","Financiera","eCheq"].map(x=><option key={x}>{x}</option>)}</select></label>
+       <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Se toma de la operación o se completa manualmente"/><option key={x}>{x}</option>)}</select></label>
        <label>Vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social"/></label>
        <label>Comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social"/></label>
       </div>
