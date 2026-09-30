@@ -6,7 +6,7 @@ const GOOGLE_SCOPE = "https://www.googleapis.com/auth/calendar.events";
 
 function supabaseAdmin() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const service = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const service = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   if (!url || !service) throw new Error("SUPABASE_SERVER_CONFIG_MISSING");
   return createClient(url, service);
 }
@@ -26,12 +26,7 @@ export async function POST(req: NextRequest) {
     const { data: { user } } = await userClient.auth.getUser();
     if (!user) return NextResponse.json({ error: "AUTH_REQUIRED" }, { status: 401 });
 
-    const { data: profile } = await userClient
-      .from("profiles")
-      .select("active_company_id")
-      .eq("id", user.id)
-      .maybeSingle();
-
+    const { data: profile } = await userClient.from("profiles").select("active_company_id").eq("id", user.id).maybeSingle();
     const companyId = profile?.active_company_id;
     if (!companyId) return NextResponse.json({ error: "ACTIVE_COMPANY_REQUIRED" }, { status: 409 });
 
@@ -51,19 +46,13 @@ export async function POST(req: NextRequest) {
     const admin = supabaseAdmin();
     await admin.from("google_oauth_states").delete().lt("expires_at", new Date().toISOString());
 
-    const redirectUri =
-      process.env.GOOGLE_OAUTH_REDIRECT_URI ||
-      new URL("/api/videollamadas/google/callback", req.url).toString();
+    const redirectUri = process.env.GOOGLE_OAUTH_REDIRECT_URI || new URL("/api/videollamadas/google/callback", req.url).toString();
 
-    const { data: stateRow, error: stateError } = await admin
-      .from("google_oauth_states")
-      .insert({
-        user_id: user.id,
-        company_id: companyId,
-        redirect_uri: redirectUri,
-      })
-      .select("id")
-      .single();
+    const { data: stateRow, error: stateError } = await admin.from("google_oauth_states").insert({
+      user_id: user.id,
+      company_id: companyId,
+      redirect_uri: redirectUri,
+    }).select("id").single();
 
     if (stateError || !stateRow) throw new Error("GOOGLE_OAUTH_STATE_CREATE_FAILED");
 
@@ -80,9 +69,6 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ ok: true, authorization_url: `${GOOGLE_AUTH_URL}?${params.toString()}` });
   } catch (e) {
-    return NextResponse.json(
-      { error: e instanceof Error ? e.message : "GOOGLE_OAUTH_START_FAILED" },
-      { status: 502 }
-    );
+    return NextResponse.json({ error: e instanceof Error ? e.message : "GOOGLE_OAUTH_START_FAILED" }, { status: 502 });
   }
 }
