@@ -44,13 +44,6 @@ type Empresa = {
   cuit: string | null;
 };
 
-const monedaNombre: Record<number, string> = {
-  1: "ARS",
-  2: "USD",
-  3: "EUR",
-  4: "BRL",
-};
-
 const estados = [
   "TODOS",
   "SOLICITADO",
@@ -77,6 +70,7 @@ export default function AdminRetirosPage() {
   const [retiros, setRetiros] = useState<Retiro[]>([]);
   const [medios, setMedios] = useState<MedioCobro[]>([]);
   const [empresas, setEmpresas] = useState<Empresa[]>([]);
+  const [monedas, setMonedas] = useState<Record<number, string>>({});
   const [mediosAdmin, setMediosAdmin] = useState<Array<MedioCobro & { empresa_id: string; empresa_razon_social: string | null; empresa_cuit: string | null; profile_id: string | null; motivo_rechazo: string | null; creado_at: string; actualizado_at: string }>>([]);
   const [medioSeleccionado, setMedioSeleccionado] = useState<(MedioCobro & { empresa_id: string; empresa_razon_social: string | null; empresa_cuit: string | null; profile_id: string | null; motivo_rechazo: string | null; creado_at: string; actualizado_at: string }) | null>(null);
   const [motivoRechazoMedio, setMotivoRechazoMedio] = useState("");
@@ -132,9 +126,16 @@ export default function AdminRetirosPage() {
 
     setAutorizado(true);
 
-    const { data: adminDB, error: adminError } = await supabase.rpc(
-      "admin_listar_retiros_comisiones"
-    );
+    const [{ data: adminDB, error: adminError }, { data: monedasDB, error: monedasError }] = await Promise.all([
+      supabase.rpc("admin_listar_retiros_comisiones"),
+      supabase.from("monedas").select("id,codigo").eq("activo", true),
+    ]);
+
+    if (monedasError) {
+      setError(`No se pudieron cargar las monedas: ${monedasError.message}`);
+    } else {
+      setMonedas(Object.fromEntries((monedasDB || []).map((m: { id: number; codigo: string }) => [m.id, m.codigo])));
+    }
 
     if (adminError) {
       setError(
@@ -532,7 +533,7 @@ export default function AdminRetirosPage() {
                     </td>
                     <td style={{ padding: 10 }}>{medio.nombre}</td>
                     <td style={{ padding: 10 }}>{medio.titular || "—"}</td>
-                    <td style={{ padding: 10 }}>{monedaNombre[medio.moneda_id || 0] || "—"}</td>
+                    <td style={{ padding: 10 }}>{monedas[medio.moneda_id || 0] || "—"}</td>
                     <td style={{ padding: 10 }}>{medio.es_predeterminado ? "Sí" : "No"}</td>
                     <td style={{ padding: 10 }}><strong>{medio.estado}</strong></td>
                     <td style={{ padding: 10 }}>
@@ -687,7 +688,7 @@ export default function AdminRetirosPage() {
                     <td style={{ padding: 12, fontWeight: 800 }}>
                       {formato(
                         numero(retiro.importe),
-                        monedaNombre[retiro.moneda_id] || "—"
+                        monedas[retiro.moneda_id] || "—"
                       )}
                     </td>
 
@@ -865,7 +866,7 @@ export default function AdminRetirosPage() {
                     <strong>Importe:</strong>{" "}
                     {formato(
                       numero(retiroSeleccionado.importe),
-                      monedaNombre[
+                      monedas[
                         retiroSeleccionado.moneda_id
                       ] || "—"
                     )}
