@@ -9,7 +9,7 @@ type Company={id:string;razon_social:string;cuit:string;rol:string};
 
 
 export default function FacturasPage(){
- const [rows,setRows]=useState<Factura[]>([]),[ops,setOps]=useState<Op[]>([]),[companies,setCompanies]=useState<Company[]>([]);
+ const [rows,setRows]=useState<Factura[]>([]),[ops,setOps]=useState<Op[]>([]),[companies,setCompanies]=useState<Company[]>([]),[currencies,setCurrencies]=useState<Record<string,string>>({});
  const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[alicuota,setAlicuota]=useState(""),[docTipo,setDocTipo]=useState(""),[cond,setCond]=useState("");
  const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
  const [tab,setTab]=useState(""),[fTipo,setFTipo]=useState(""),[fEstado,setFEstado]=useState(""),[fEmpresa,setFEmpresa]=useState(""),[fDesde,setFDesde]=useState(""),[fHasta,setFHasta]=useState(""),[fMin,setFMin]=useState(""),[fMax,setFMax]=useState(""),[fMoneda,setFMoneda]=useState(""),[page,setPage]=useState(1); const pageSize=8;
