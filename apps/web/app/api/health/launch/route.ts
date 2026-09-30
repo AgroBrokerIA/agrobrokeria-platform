@@ -192,16 +192,46 @@ export async function GET(request: NextRequest) {
         ? "Proveedor de traducción configurado."
         : "Faltan TRANSLATION_API_URL y/o TRANSLATION_API_KEY."
     };
-    checks.google_meet = {
-      ok: Boolean(process.env.GOOGLE_CLIENT_ID) &&
+    try {
+      const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+      if (!serviceKey) {
+        checks.google_meet = {
+          ok: false,
+          detail: "No se pudo verificar el almacenamiento seguro de OAuth de Google."
+        };
+      } else {
+        const admin = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey);
+        const { data: googleToken, error: googleTokenError } = await admin
+          .from("google_oauth_tokens")
+          .select("id,revoked_at,updated_at")
+          .eq("provider", "google")
+          .is("revoked_at", null)
+          .maybeSingle();
+
+        const configuredByEnv =
+          Boolean(process.env.GOOGLE_CLIENT_ID) &&
           Boolean(process.env.GOOGLE_CLIENT_SECRET) &&
-          Boolean(process.env.GOOGLE_REFRESH_TOKEN),
-      detail: process.env.GOOGLE_CLIENT_ID &&
-              process.env.GOOGLE_CLIENT_SECRET &&
-              process.env.GOOGLE_REFRESH_TOKEN
-        ? "OAuth de Google configurado."
-        : "Faltan credenciales OAuth de Google."
-    };
+          Boolean(process.env.GOOGLE_REFRESH_TOKEN);
+
+        checks.google_meet =
+          !googleTokenError && (Boolean(googleToken) || configuredByEnv)
+            ? {
+                ok: true,
+                detail: googleToken
+                  ? "OAuth de Google conectado mediante token seguro persistido."
+                  : "OAuth de Google configurado mediante variables de entorno."
+              }
+            : {
+                ok: false,
+                detail: googleTokenError?.message ?? "Faltan credenciales OAuth de Google."
+              };
+      }
+    } catch (error) {
+      checks.google_meet = {
+        ok: false,
+        detail: error instanceof Error ? error.message : "No se pudo verificar OAuth de Google."
+      };
+    }
     checks.market_cron_secret = {
       ok: Boolean(process.env.CRON_SECRET),
       detail: process.env.CRON_SECRET ? "CRON_SECRET configurado." : "Falta CRON_SECRET."
