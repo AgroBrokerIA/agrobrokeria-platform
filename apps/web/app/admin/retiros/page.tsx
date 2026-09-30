@@ -758,7 +758,7 @@ export default function AdminRetirosPage() {
               {medioSeleccionado.tipo_cuenta && <div><strong>Tipo de cuenta:</strong> {medioSeleccionado.tipo_cuenta}</div>}
               <div><strong>CBU:</strong> {mascaraCBU(medioSeleccionado.cbu)}</div>
               <div><strong>Alias:</strong> {medioSeleccionado.alias || "—"}</div>
-              <div><strong>Moneda:</strong> {monedaNombre[medioSeleccionado.moneda_id || 0] || "—"}</div>
+              <div><strong>Moneda:</strong> {monedas[medioSeleccionado.moneda_id || 0] || "—"}</div>
               <div><strong>Predeterminado:</strong> {medioSeleccionado.es_predeterminado ? "Sí" : "No"}</div>
               <div><strong>Estado:</strong> {medioSeleccionado.estado}</div>
             </div>
