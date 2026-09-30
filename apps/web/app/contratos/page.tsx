@@ -9,8 +9,6 @@ import "./reference.css";
 type C={id:string;operacion_id:string;numero_contrato:string;tipo_contrato:string|null;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
 
-const PRODUCTOS_BASE=["Soja","Maíz","Trigo","Girasol","Cebada","Sorgo","Aceite de soja crudo","Harina / Pellets de soja de alta proteína (Forraje)"];
-const MONEDAS=["USD","EUR","ARS","BRL"];
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
 
 type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
@@ -48,7 +46,7 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>(PRODUCTOS_BASE),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
