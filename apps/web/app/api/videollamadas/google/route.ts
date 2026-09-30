@@ -17,8 +17,9 @@ export async function POST(req: NextRequest) {
     const {data:profile}=await sb.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
     const companyId=profile?.active_company_id;
     if(!companyId) return NextResponse.json({error:"ACTIVE_COMPANY_REQUIRED"},{status:409});
-    const {data:cfg}=await sb.from("configuracion_empresa").select("google_meet_habilitado").eq("empresa_id",companyId).maybeSingle();
-    if(!cfg?.google_meet_habilitado) return NextResponse.json({error:"GOOGLE_MEET_NOT_AUTHORIZED",detail:"La integración requiere autorización OAuth de Google."},{status:409});
+    const {data:map}=await admin.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).eq("verified",true).maybeSingle();
+    const {data:cfg}=map?.empresa_id ? await admin.from("configuracion_empresa").select("google_meet_habilitado").eq("empresa_id",map.empresa_id).maybeSingle() : {data:null};
+    if(!cfg?.google_meet_habilitado) return NextResponse.json({error:"GOOGLE_MEET_NOT_AUTHORIZED",detail:"La integración de Google Meet no está habilitada para la empresa activa."},{status:409});
     if(v.operacion_id){
       const {data:participant}=await sb.from("operacion_participantes").select("id").eq("operacion_id",v.operacion_id).eq("empresa_id",companyId).limit(1).maybeSingle();
       if(!participant && v.creador_profile_id!==user.id) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
