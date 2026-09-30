@@ -1049,7 +1049,7 @@ export default function OperacionesPage() {
         operacion_id: operacion.id,
         acuerdo_id: null,
         numero_contrato:
-          `CON-2026-${operacion.codigo.replace(
+          `CON-${operacion.codigo.replace(
             /^OP-/,
             ""
           )}`,
@@ -2667,7 +2667,7 @@ Firma: ______________________________
       <section className="operations-layout">
         <div className="operations-main-card">
           <div className="operations-table-head">
-            <span># OPERACIÓN</span><span>PRODUCTO</span><span>VOLUMEN</span><span>PRECIO (USD/tn)</span><span>TIPO</span><span>ORIGEN</span><span>DESTINO</span><span>CONTRAPARTE</span><span>ESTADO</span><span>FECHA</span><span>ACCIONES</span>
+            <span># OPERACIÓN</span><span>PRODUCTO</span><span>VOLUMEN</span><span>PRECIO / TN</span><span>TIPO</span><span>ORIGEN</span><span>DESTINO</span><span>CONTRAPARTE</span><span>ESTADO</span><span>FECHA</span><span>ACCIONES</span>
           </div>
           {loading ? <div className="operations-empty">Cargando operaciones…</div> :
             operacionesFiltradas.map((operacion)=>{
@@ -2702,7 +2702,7 @@ Firma: ______________________________
           <Filter label="País de destino"><input value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)} placeholder="Buscar destino" /></Filter>
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
           <Filter label="Rango de volumen (TN)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinVol} onChange={e=>setFiltroMinVol(e.target.value)}/><input placeholder="Máximo" value={filtroMaxVol} onChange={e=>setFiltroMaxVol(e.target.value)}/></div></Filter>
-          <Filter label="Rango de precio (USD/tn)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
+          <Filter label="Rango de precio / TN"><div className="op-two"><input placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
           <button className="operations-apply" onClick={()=>setMensaje(`${operacionesFiltradas.length} operaciones coinciden con los filtros.`)}>⚱ Aplicar filtros</button>
         </aside>
       </section>
