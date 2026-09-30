@@ -27,7 +27,11 @@ export default function Videollamadas(){
  }
  useEffect(()=>{void load();const google=new URLSearchParams(window.location.search).get("google");if(google==="connected")setNotice("Google quedó conectado correctamente.");else if(google&&google!=="connected")setError("No se pudo completar la autorización de Google ("+google+").")},[]);
  useEffect(()=>{if(!running){setElapsed(0);return}const started=selected?.inicio_at?new Date(selected.inicio_at).getTime():Date.now();const tick=()=>setElapsed(Math.max(0,Math.floor((Date.now()-started)/1000)));tick();const id=window.setInterval(tick,1000);return()=>window.clearInterval(id)},[running,selected]);
- async function conectarGoogle(){\n  setBusy(true);setError("");\n  try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");const response=await fetch("/api/videollamadas/google/start",{method:"POST",headers:{Authorization:`Bearer ${session.access_token}`}});const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo iniciar la autorización de Google.");window.location.assign(result.authorization_url)}catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Google.")}finally{setBusy(false)}\n }\n async function crear(){
+ async function conectarGoogle(){
+  setBusy(true);setError("");
+  try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");const response=await fetch("/api/videollamadas/google/start",{method:"POST",headers:{Authorization:`Bearer ${session.access_token}`}});const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo iniciar la autorización de Google.");window.location.assign(result.authorization_url)}catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Google.")}finally{setBusy(false)}
+ }
+ async function crear(){
   if(!operationId)return setError("Seleccioná una operación.");if(!startAt)return setError("Indicá fecha y hora de inicio.");
   setBusy(true);setError("");
   try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");
