@@ -20,11 +20,19 @@ export async function POST(req: NextRequest) {
     if(!cfg?.google_meet_habilitado) return NextResponse.json({error:"GOOGLE_MEET_NOT_AUTHORIZED",detail:"La integración requiere autorización OAuth de Google."},{status:409});
     const {data:participant}=await sb.from("operacion_participantes").select("id").eq("operacion_id",v.operacion_id).eq("empresa_id",companyId).limit(1).maybeSingle();
     if(!participant) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
-    const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET,refreshToken=process.env.GOOGLE_REFRESH_TOKEN;
+
+    const {data:stored}=await admin.from("google_oauth_tokens").select("refresh_token").eq("provider","google").is("revoked_at",null).maybeSingle();
+    const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET,refreshToken=stored?.refresh_token||process.env.GOOGLE_REFRESH_TOKEN;
     if(!clientId||!clientSecret||!refreshToken) return NextResponse.json({error:"GOOGLE_CREDENTIALS_PENDING",detail:"Faltan credenciales OAuth de producción."},{status:409});
+
     const tr=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:clientId,client_secret:clientSecret,refresh_token:refreshToken,grant_type:"refresh_token"})});
-    if(!tr.ok) throw new Error("GOOGLE_OAUTH_FAILED");
-    const td=await tr.json(); const start=v.inicio_at||new Date(Date.now()+3600000).toISOString(); const end=new Date(new Date(start).getTime()+3600000).toISOString();
+    const td=await tr.json().catch(()=>({}));
+    if(!tr.ok){
+      if(stored?.refresh_token) await admin.from("google_oauth_tokens").update({revoked_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq("provider","google");
+      return NextResponse.json({error:"GOOGLE_REAUTH_REQUIRED",detail:"La autorización de Google debe renovarse."},{status:409});
+    }
+    const start=v.inicio_at||new Date(Date.now()+3600000).toISOString();
+    const end=new Date(new Date(start).getTime()+3600000).toISOString();
     const gr=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",{method:"POST",headers:{Authorization:`Bearer ${td.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({summary:v.titulo||"Reunión comercial AgroBrokerIA",start:{dateTime:start},end:{dateTime:end},conferenceData:{createRequest:{requestId:v.id,conferenceSolutionKey:{type:"hangoutsMeet"}}},description:`Operación AgroBrokerIA: ${v.operacion_id}`})});
     if(!gr.ok) throw new Error("GOOGLE_MEET_CREATE_FAILED");
     const gd=await gr.json(); const link=gd.hangoutLink||gd.conferenceData?.entryPoints?.find((e:{entryPointType?:string})=>e.entryPointType==="video")?.uri;
