@@ -39,18 +39,24 @@ export default function TransaccionesPage(){
   const mc=Object.fromEntries((mons||[]).map((x:any)=>[x.id,x.codigo]));
   const out:Tx[]=[];
   for(const x of pay.data||[]) out.push({id:"p-"+x.id,date:x.fecha_pago||x.creado_en,type:"Cobro",description:x.metodo_pago?("Pago · "+x.metodo_pago):"Pago de operación",ref:x.operacion_id?("OP-"+String(x.operacion_id).slice(0,8).toUpperCase()):"PAGO-"+String(x.id).slice(0,8).toUpperCase(),company:"No registrada",currency:mc[x.moneda_id]||"—",amount:Number(x.importe||0),status:/CONFIRM|PAGAD|RECIB/i.test(x.estado||"")?"Recibido":x.estado||"En proceso",operationId:x.operacion_id});
-  for(const x of com.data||[]) out.push({id:"c-"+x.id,date:x.creada_en,type:"Comisión",description:"Comisión generada",ref:"COM-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"USD",amount:Number(x.importe_calculado||0),status:x.estado||"Disponible",operationId:x.operacion_id});
-  for(const x of ops.data||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"USD",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
+  for(const x of com.data||[]) out.push({id:"c-"+x.id,date:x.creada_en,type:"Comisión",description:"Comisión generada",ref:"COM-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"—",amount:Number(x.importe_calculado||0),status:x.estado||"Disponible",operationId:x.operacion_id});
+  for(const x of ops.data||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"—",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
   out.sort((a,b)=>+new Date(b.date)-+new Date(a.date));setRows(out);setSelected(out[0]||null);setLoading(false);
  })()},[]);
  const filtered=useMemo(()=>rows.filter(r=>(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,query,type,status,currency]);
  const totals=useMemo(()=>({in:rows.filter(r=>r.amount>0&&r.type!=="Comisión").reduce((s,r)=>s+r.amount,0),out:rows.filter(r=>r.amount<0).reduce((s,r)=>s+Math.abs(r.amount),0),comm:rows.filter(r=>r.type==="Comisión").reduce((s,r)=>s+r.amount,0)}),[rows]);
- const currencies=Array.from(new Set(rows.map(r=>r.currency).filter(c=>c&&c!=="—")));\n const totalsByCurrency=(predicate:(r:Tx)=>boolean)=>Array.from(new Set(rows.filter(predicate).map(r=>r.currency))).map(c=>`${c} ${rows.filter(r=>predicate(r)&&r.currency===c).reduce((s,r)=>s+Math.abs(r.amount),0).toLocaleString("en-US",{maximumFractionDigits:0})}`).join(" · ")||"—";\n const totalInDisplay=totalsByCurrency(r=>r.amount>0&&r.type!=="Comisión");\n const totalOutDisplay=totalsByCurrency(r=>r.amount<0);\n const totalCommDisplay=totalsByCurrency(r=>r.type==="Comisión");
+ const currencies=Array.from(new Set(rows.map(r=>r.currency).filter(c=>c&&c!=="—")));
+ const totalsByCurrency=(predicate:(r:Tx)=>boolean)=>Array.from(new Set(rows.filter(predicate).map(r=>r.currency))).map(c=>`${c} ${rows.filter(r=>predicate(r)&&r.currency===c).reduce((s,r)=>s+Math.abs(r.amount),0).toLocaleString("en-US",{maximumFractionDigits:0})}`).join(" · ")||"—";
+ const totalInDisplay=totalsByCurrency(r=>r.amount>0&&r.type!=="Comisión");
+ const totalOutDisplay=totalsByCurrency(r=>r.amount<0);
+ const totalCommDisplay=totalsByCurrency(r=>r.type==="Comisión");
  const statuses=Array.from(new Set(rows.map(r=>r.status)));
  const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize));
  const safePage=Math.min(page,pageCount);
  const pageRows=filtered.slice((safePage-1)*pageSize,safePage*pageSize);
- function exportCsv(){const header=["Fecha","Tipo","Descripción","Referencia","Empresa","Moneda","Monto","Estado"];const lines=filtered.map(r=>[r.date,r.type,r.description,r.ref,r.company,r.currency,String(r.amount),r.status].map(v=>JSON.stringify(String(v))).join(","));const blob=new Blob([header.join(",")+"\n"+lines.join("\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="agrobrokeria-transacciones.csv";a.click();URL.revokeObjectURL(a.href)}
+ function exportCsv(){const header=["Fecha","Tipo","Descripción","Referencia","Empresa","Moneda","Monto","Estado"];const lines=filtered.map(r=>[r.date,r.type,r.description,r.ref,r.company,r.currency,String(r.amount),r.status].map(v=>JSON.stringify(String(v))).join(","));const blob=new Blob([header.join(",")+"
+"+lines.join("
+")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="agrobrokeria-transacciones.csv";a.click();URL.revokeObjectURL(a.href)}
  useEffect(()=>{setPage(1)},[query,type,status,currency,pageSize]);
  return <main className="transactions-page">
   <header className="transactions-hero"><div><h1>Transacciones</h1><p>Gestiona todas las transacciones financieras de tus operaciones, pagos, comisiones y retiros.</p></div><button className="new-transaction" onClick={()=>{window.location.href="/pagos"}}>＋ Nueva transacción</button></header>
