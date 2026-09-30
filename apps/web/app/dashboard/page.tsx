@@ -10,7 +10,7 @@ type Quote={id:string;price:number|null;previous_value:number|null;variation:num
 type Activity={id:string;titulo:string|null;mensaje:string|null;creada_en:string|null;leida:boolean};
 const iconFor=(name:string)=>name.toLowerCase().includes("soja")?"🌱":name.toLowerCase().includes("maíz")||name.toLowerCase().includes("maiz")?"🌽":name.toLowerCase().includes("trigo")?"🌾":name.toLowerCase().includes("girasol")?"🌻":"🌾";
 const productName=(p:Pub)=>Array.isArray(p.productos)?p.productos[0]?.nombre||"Commodity":p.productos?.nombre||"Commodity";
-const money=(value:number|null,currency:string)=>value==null?"Sin cotización":`${currency||"USD"} ${Number(value).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(value:number|null,currency:string)=>value==null?"Sin cotización":`${currency||"Sin moneda"} ${Number(value).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 export default function Dashboard(){
  const router=useRouter();
@@ -55,7 +55,7 @@ export default function Dashboard(){
   {error&&<div className="module-alert error">{error}</div>}
 
   <section className="dashboard-price-row">
-   {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{code==="GIRASOL"?"Rosario":"MATba · Rosario"}</small><em>{money(q?.price||null,q?.currency||"USD")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
+   {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{code==="GIRASOL"?"Rosario":"MATba · Rosario"}</small><em>{money(q?.price||null,q?.currency||"")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
    <Link href="/mercado" className="dashboard-board-link"><b>📊</b><strong>Ver pizarra completa →</strong><small>Precios en tiempo real<br/>Bolsa de Comercio de Rosario</small></Link>
   </section>
 
@@ -85,5 +85,5 @@ export default function Dashboard(){
 }
 
 function DashboardList({title,items,type,monedas}:{title:string;items:Pub[];type:"offer"|"demand";monedas:Record<number,string>}){
- return <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-card-head"><h2>{title}</h2><Link href={type==="offer"?"/marketplace":"/marketplace?tipo=DEMANDA"}>Ver todas →</Link></div><div className="dashboard-list-items">{items.map(p=>{const name=productName(p);return <div className="dashboard-list-item" key={p.id}><b className="commodity-thumb">{iconFor(name)}</b><span className={type==="offer"?"tag-offer":"tag-demand"}>{type==="offer"?"OFERTA":"DEMANDA"}</span><span className="item-main"><strong>{name}</strong><small>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</small><em>{[p.puerto,p.localidad,p.provincia].filter(Boolean).join(", ")||"Ubicación no informada"}</em></span><span className="item-place">{p.provincia?.includes("Santa")?"🇦🇷":"🌎"} {p.provincia||"Global"}</span><span className="item-price">{money(p.precio_tn,p.moneda_id?(monedas[p.moneda_id]||""):"USD")}/tn</span><Link href={`/marketplace?publicacion=${p.id}`}>Ver detalle</Link></div>})}{!items.length&&<div className="dashboard-empty-line">No hay publicaciones activas.</div>}</div></section>
+ return <section className="dashboard-panel dashboard-list-panel"><div className="dashboard-card-head"><h2>{title}</h2><Link href={type==="offer"?"/marketplace":"/marketplace?tipo=DEMANDA"}>Ver todas →</Link></div><div className="dashboard-list-items">{items.map(p=>{const name=productName(p);return <div className="dashboard-list-item" key={p.id}><b className="commodity-thumb">{iconFor(name)}</b><span className={type==="offer"?"tag-offer":"tag-demand"}>{type==="offer"?"OFERTA":"DEMANDA"}</span><span className="item-main"><strong>{name}</strong><small>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</small><em>{[p.puerto,p.localidad,p.provincia].filter(Boolean).join(", ")||"Ubicación no informada"}</em></span><span className="item-place">{p.provincia?.includes("Santa")?"🇦🇷":"🌎"} {p.provincia||"Global"}</span><span className="item-price">{money(p.precio_tn,p.moneda_id?(monedas[p.moneda_id]||""):"")}/tn</span><Link href={`/marketplace?publicacion=${p.id}`}>Ver detalle</Link></div>})}{!items.length&&<div className="dashboard-empty-line">No hay publicaciones activas.</div>}</div></section>
 }
