@@ -5,7 +5,7 @@ import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 
 type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;publicacion?:Publication};
-type Publication={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
+type Publication={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
 
 const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const icon=(n?:string|null)=>{const x=(n||"").toLowerCase();return x.includes("soja")?"🫘":x.includes("maíz")||x.includes("maiz")?"🌽":x.includes("trigo")?"🌾":x.includes("girasol")?"🌻":x.includes("aceite")?"🫒":x.includes("harina")?"🌾":"🫘"};
@@ -19,7 +19,7 @@ export default function OportunidadesPage(){
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
   const{data:os,error:oe}=await supabase.from("oportunidades").select("*").eq("empresa_id",p.active_company_id).order("indice_compatibilidad",{ascending:false}).order("creada_en",{ascending:false}); if(oe)throw oe;
   const base=(os||[]) as Opportunity[], ids=base.map(x=>x.publicacion_id); let pubs:Publication[]=[];
-  if(ids.length){const{data:ps,error:pe}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,provincia,localidad,puerto,productos(nombre),paises(nombre,codigo_iso),empresas(razon_social,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas)").in("id",ids);if(pe)throw pe;pubs=(ps||[]) as unknown as Publication[]}
+  if(ids.length){const{data:ps,error:pe}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,provincia,localidad,puerto,incoterms(codigo),productos(nombre),paises(nombre,codigo_iso),empresas(razon_social,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas)").in("id",ids);if(pe)throw pe;pubs=(ps||[]) as unknown as Publication[]}
   const map=new Map(pubs.map(x=>[x.id,x]));setItems(base.map(x=>({...x,publicacion:map.get(x.publicacion_id)})));
  }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar las oportunidades.")}finally{setLoading(false)}})()},[]);
 
