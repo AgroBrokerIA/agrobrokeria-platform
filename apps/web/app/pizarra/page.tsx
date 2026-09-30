@@ -8,7 +8,7 @@ type Row={code:string;name:string;q?:Quote};
 
 const names:Record<string,string>={SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol","ACEITE_SOJA":"Aceite de Soja",PELLETS_SOJA:"Pellets de Soja",HARINA_SOJA:"Harina de Soja",SORGO:"Sorgo"};
 const icon=(code:string)=>code==="SOJA"?"🫘":code==="MAIZ"?"🌽":code==="TRIGO"?"🌾":code==="GIRASOL"?"🌻":code==="ACEITE_SOJA"?"🫒":code==="HARINA_SOJA"?"🌾":"🫘";
-const money=(q?:Quote)=>q?.price==null?"Sin cotización":`${q.currency||"USD"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(q?:Quote)=>q?.price==null?"Sin cotización":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 
 export default function PizarraPage(){
  const[quotes,setQuotes]=useState<Quote[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[boardTab,setBoardTab]=useState("Granos"),[range,setRange]=useState("1D"),[compare,setCompare]=useState("Soja"),[detail,setDetail]=useState<Quote|null>(null),[market,setMarket]=useState("BCR"),[productFilter,setProductFilter]=useState("ALL"),[priceType,setPriceType]=useState("PIZARRA_CAC");
