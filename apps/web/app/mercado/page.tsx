@@ -16,7 +16,7 @@ export default function MercadoPage(){
  const[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[marketTab,setMarketTab]=useState("Granos"),[range,setRange]=useState("1D"),[internationalMarket,setInternationalMarket]=useState("CHICAGO"),[tradeCondition,setTradeCondition]=useState("FOB");
  async function load(){
   setLoading(true);setError("");
-  const [qr,cr,pr,cur]=await Promise.all([
+  const [qr,cr,cur,pr]=await Promise.all([
    supabase.from("market_quotes").select("id,source,market_date,obtained_at,price,currency,unit,price_type,position,market,port,freshness,commodity_id,product_id,variation,previous_value").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(200),
    supabase.from("commodities").select("id,codigo"),
    supabase.from("monedas").select("id,codigo"),
