@@ -19,8 +19,10 @@ export async function POST(req: NextRequest) {
     if(!companyId) return NextResponse.json({error:"ACTIVE_COMPANY_REQUIRED"},{status:409});
     const {data:cfg}=await sb.from("configuracion_empresa").select("google_meet_habilitado").eq("empresa_id",companyId).maybeSingle();
     if(!cfg?.google_meet_habilitado) return NextResponse.json({error:"GOOGLE_MEET_NOT_AUTHORIZED",detail:"La integración requiere autorización OAuth de Google."},{status:409});
-    const {data:participant}=await sb.from("operacion_participantes").select("id").eq("operacion_id",v.operacion_id).eq("empresa_id",companyId).limit(1).maybeSingle();
-    if(!participant) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
+    if(v.operacion_id){
+      const {data:participant}=await sb.from("operacion_participantes").select("id").eq("operacion_id",v.operacion_id).eq("empresa_id",companyId).limit(1).maybeSingle();
+      if(!participant && v.creador_profile_id!==user.id) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
+    }
 
     const {data:stored}=await admin.from("google_oauth_tokens").select("refresh_token").eq("provider","google").is("revoked_at",null).maybeSingle();
     const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET,refreshToken=stored?.refresh_token||process.env.GOOGLE_REFRESH_TOKEN;
@@ -34,7 +36,7 @@ export async function POST(req: NextRequest) {
     }
     const start=v.inicio_at||new Date(Date.now()+3600000).toISOString();
     const end=new Date(new Date(start).getTime()+3600000).toISOString();
-    const gr=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",{method:"POST",headers:{Authorization:`Bearer ${td.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({summary:v.titulo||"Reunión comercial AgroBrokerIA",start:{dateTime:start},end:{dateTime:end},conferenceData:{createRequest:{requestId:v.id,conferenceSolutionKey:{type:"hangoutsMeet"}}},description:`Operación AgroBrokerIA: ${v.operacion_id}`})});
+    const gr=await fetch("https://www.googleapis.com/calendar/v3/calendars/primary/events?conferenceDataVersion=1",{method:"POST",headers:{Authorization:`Bearer ${td.access_token}`,"Content-Type":"application/json"},body:JSON.stringify({summary:v.titulo||"Reunión comercial AgroBrokerIA",start:{dateTime:start},end:{dateTime:end},conferenceData:{createRequest:{requestId:v.id,conferenceSolutionKey:{type:"hangoutsMeet"}}},description:v.operacion_id?`Operación AgroBrokerIA: ${v.operacion_id}`:"Reunión general AgroBrokerIA"})});
     if(!gr.ok) throw new Error("GOOGLE_MEET_CREATE_FAILED");
     const gd=await gr.json(); const link=gd.hangoutLink||gd.conferenceData?.entryPoints?.find((e:{entryPointType?:string})=>e.entryPointType==="video")?.uri;
     if(!link) throw new Error("GOOGLE_MEET_LINK_MISSING");
