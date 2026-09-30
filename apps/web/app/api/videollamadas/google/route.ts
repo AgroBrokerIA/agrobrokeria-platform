@@ -5,7 +5,8 @@ export async function POST(req: NextRequest) {
   try {
     const token=(req.headers.get("authorization")||"").replace(/^Bearer /i,"");
     if(!token) return NextResponse.json({error:"AUTH_REQUIRED"},{status:401});
-    const url=process.env.NEXT_PUBLIC_SUPABASE_URL!, anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, service=process.env.SUPABASE_SERVICE_ROLE_KEY!;
+    const url=process.env.NEXT_PUBLIC_SUPABASE_URL!, anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, service=process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    if(!url||!anon||!service) return NextResponse.json({error:"SUPABASE_SERVER_CONFIG_MISSING"},{status:500});
     const sb=createClient(url,anon,{global:{headers:{Authorization:`Bearer ${token}`}}}), admin=createClient(url,service);
     const {data:{user}}=await sb.auth.getUser();
     if(!user) return NextResponse.json({error:"AUTH_REQUIRED"},{status:401});
