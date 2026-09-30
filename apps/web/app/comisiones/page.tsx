@@ -7,14 +7,14 @@ import { supabase } from "@/lib/supabase/client";
 type Comision={id:string;operacion_id:string;empresa_id:string|null;profile_id:string|null;tipo_comision:string;origen_comision:string|null;tipo_ganancia:string;concepto:string;modalidad_calculo:string;cantidad_tn:number;valor_unitario:number;porcentaje:number;valor_base:number;subtotal:number;moneda_id:number;iva_porcentaje:number;iva_importe:number;total:number;estado:string;factura_estado:string;saldo_pendiente:number;saldo_pagado:number;medio_pago:string|null;fecha_pago:string|null;referencia_pago:string|null;observaciones:string|null;creado_at:string};
 type Operacion={id:string;codigo:string;modalidad_comercial:string|null};
 type Movimiento={id:string;operacion_id:string;tipo_movimiento:string;concepto:string;moneda_id:number;importe:number;signo:number;estado:string;referencia:string|null;fecha_movimiento:string};
-const monedas:Record<number,string>={1:"ARS",2:"USD",3:"EUR",4:"BRL"};
+
 const n=(v:number|null|undefined)=>Number(v||0);
 const money=(v:number,ccy="")=>(ccy?ccy+" ":"")+n(v).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
 const shortDate=(v:string)=>v?new Date(v).toLocaleDateString("es-AR"):"—";
 const gain=(v:string)=>({USD_TN:"USD/TN",ARS_TN:"ARS/TN",PORCENTAJE:"%",DIFERENCIAL:"Dif.",FIJA:"Fija"} as Record<string,string>)[v]||v||"—";
 
 export default function ComisionesPage(){
- const [rows,setRows]=useState<Comision[]>([]),[ops,setOps]=useState<Operacion[]>([]),[moves,setMoves]=useState<Movimiento[]>([]);
+ const [rows,setRows]=useState<Comision[]>([]),[ops,setOps]=useState<Operacion[]>([]),[moves,setMoves]=useState<Movimiento[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({});
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[tab,setTab]=useState("TODAS"),[estado,setEstado]=useState(""),[pago,setPago]=useState(""),[producto,setProducto]=useState(""),[intermediario,setIntermediario]=useState("");
  const [fromDate,setFromDate]=useState(""),[toDate,setToDate]=useState(""),[minVol,setMinVol]=useState(""),[maxVol,setMaxVol]=useState(""),[minRate,setMinRate]=useState(""),[maxRate,setMaxRate]=useState("");
  const [showMoves,setShowMoves]=useState(false),[selected,setSelected]=useState<Comision|null>(null),[amount,setAmount]=useState(""),[method,setMethod]=useState(""),[reference,setReference]=useState(""),[saving,setSaving]=useState(false);
@@ -23,12 +23,13 @@ export default function ComisionesPage(){
   setLoading(true);setError("");
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){setError("Necesitás iniciar sesión para consultar las comisiones.");setLoading(false);return}
-  const [c,m]=await Promise.all([
+  const [c,m,mc]=await Promise.all([
    supabase.from("operacion_comisiones").select("*").order("creado_at",{ascending:false}),
-   supabase.from("operacion_movimientos_economicos").select("*").order("fecha_movimiento",{ascending:false})
+   supabase.from("operacion_movimientos_economicos").select("*").order("fecha_movimiento",{ascending:false}),
+   supabase.from("monedas").select("id,codigo")
   ]);
   if(c.error){setError("No se pudieron cargar las comisiones: "+c.error.message);setLoading(false);return}
-  setRows((c.data||[]) as Comision[]);setMoves((m.data||[]) as Movimiento[]);
+  setRows((c.data||[]) as Comision[]);setMoves((m.data||[]) as Movimiento[]);setMonedas(Object.fromEntries((mc.data||[]).map((x:any)=>[x.id,x.codigo])));
   const ids=[...new Set((c.data||[]).map((x:any)=>x.operacion_id).filter(Boolean))];
   if(ids.length){const o=await supabase.from("operaciones").select("id,codigo,modalidad_comercial").in("id",ids);setOps((o.data||[]) as Operacion[])}else setOps([]);
   setLoading(false);
@@ -58,7 +59,7 @@ export default function ComisionesPage(){
   return list;
  },[rows,tab,estado,pago,producto,intermediario,fromDate,toDate,minVol,maxVol,minRate,maxRate,opMap]);
  const totals=useMemo(()=>({total:filtered.reduce((a,x)=>a+n(x.total),0),pending:filtered.reduce((a,x)=>a+n(x.saldo_pendiente),0),paid:filtered.reduce((a,x)=>a+n(x.saldo_pagado),0),intermediaries:new Set(filtered.map(x=>x.empresa_id||x.profile_id).filter(Boolean)).size}),[filtered]);
- const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario||1,[rows]);
+ const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario??0,[rows]);
  const statusCounts=useMemo(()=>({paid:filtered.filter(x=>String(x.estado).toUpperCase()==="ABONADA").length,pending:filtered.filter(x=>["PENDIENTE","A_PAGAR"].includes(String(x.estado).toUpperCase())).length,process:filtered.filter(x=>!["ABONADA","PENDIENTE","A_PAGAR","ANULADA"].includes(String(x.estado).toUpperCase())).length,cancelled:filtered.filter(x=>String(x.estado).toUpperCase()==="ANULADA").length}),[filtered]);
  const productSummary=useMemo(()=>Object.entries(filtered.reduce<Record<string,number>>((a,x)=>{const k=x.concepto||"Sin producto";a[k]=(a[k]||0)+n(x.total);return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,6),[filtered]);
  async function pay(){
@@ -76,7 +77,7 @@ export default function ComisionesPage(){
    <Kpi icon="◷" value={money(totals.pending)} label="Pendientes de pago" trend={`${filtered.filter(x=>n(x.saldo_pendiente)>0).length} registros`} tone="blue"/>
    <Kpi icon="✓" value={money(totals.paid)} label="Pagadas" trend={`${statusCounts.paid} registros abonados`} tone="purple"/>
    <Kpi icon="♟" value={String(totals.intermediaries)} label="Intermediarios con comisión" trend="Según registros" tone="yellow"/>
-   <Kpi icon="▥" value={money(fixed)} label="Comisión AgroBrokerIA" trend="Valor registrado por TN" tone="red"/>
+   <Kpi icon="▥" value={fixed?money(fixed,monedas[rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.moneda_id||0]||""):"No registrada"} label="Comisión AgroBrokerIA" trend={fixed?"Valor registrado por TN":"Sin comisión automática registrada"} tone="red"/>
   </section>
   <nav className="commission-ref-tabs">{tabs.map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
   <section className="commission-ref-layout">
