@@ -2644,7 +2644,7 @@ Firma: ______________________________
     <main className="operations-reference">
       <header className="operations-head">
         <div><h1>Operaciones</h1><p>Gestiona todas tus operaciones de granos y commodities, desde la negociación hasta la liquidación</p></div>
-        <button className="operations-new" onClick={()=>setMensaje("Para crear una operación, iniciá una negociación desde Ofertas o Demandas.")}>＋ Nueva operación</button>
+        <button className="operations-new" onClick={()=>window.location.href="/ofertas"}>＋ Nueva operación</button>
       </header>
 
       {error && <div className="operations-alert error">{error}</div>}
@@ -2703,7 +2703,7 @@ Firma: ______________________________
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
           <Filter label="Rango de volumen (TN)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinVol} onChange={e=>setFiltroMinVol(e.target.value)}/><input placeholder="Máximo" value={filtroMaxVol} onChange={e=>setFiltroMaxVol(e.target.value)}/></div></Filter>
           <Filter label="Rango de precio / TN"><div className="op-two"><input placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
-          <button className="operations-apply" onClick={()=>setMensaje(`${operacionesFiltradas.length} operaciones coinciden con los filtros.`)}>⚱ Aplicar filtros</button>
+          <button className="operations-apply" onClick={()=>document.getElementById("operations-table")?.scrollIntoView({behavior:"smooth"})}>⚱ Aplicar filtros</button>
         </aside>
       </section>
 
