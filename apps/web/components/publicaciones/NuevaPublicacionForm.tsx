@@ -327,11 +327,11 @@ export default function NuevaPublicacionForm() {
 
       setForm({
         tipo: "VENTA",
-        producto_id: productos.find((p) => p.codigo === "MAIZ")?.id ?? 1,
+        producto_id: 0,
         cantidad_tn: "",
         precio_tn: "",
-        moneda_id: monedas.find((m) => m.codigo === "USD")?.id ?? 2,
-        incoterm_id: incoterms.find((i) => i.codigo === "FOB")?.id ?? 1,
+        moneda_id: 0,
+        incoterm_id: 0,
         provincia: "",
         localidad: "",
         puerto: "",
