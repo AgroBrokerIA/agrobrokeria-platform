@@ -49,6 +49,9 @@ type LugarRecepcion = {
   descripcion: string | null;
 };
 
+type GeoProvincia = { iso2: string; name: string; };
+type GeoLocalidad = { id: string; name: string; postalCode?: string | null; latitude?: number | null; longitude?: number | null; };
+
 async function obtenerEmpresaDelUsuario() {
   const {
     data: { user },
@@ -81,6 +84,9 @@ export default function NuevaPublicacionForm() {
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
   const [puertos, setPuertos] = useState<Puerto[]>([]);
   const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
+  const [provincias, setProvincias] = useState<GeoProvincia[]>([]);
+  const [localidades, setLocalidades] = useState<GeoLocalidad[]>([]);
+  const [cargandoLocalidades, setCargandoLocalidades] = useState(false);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
@@ -110,7 +116,42 @@ export default function NuevaPublicacionForm() {
 
   useEffect(() => {
     void cargarDatos();
+    void cargarProvincias();
   }, []);
+
+  async function cargarProvincias() {
+    try {
+      const response = await fetch("/api/geo?country=AR");
+      const data = await response.json();
+      setProvincias(Array.isArray(data.states) ? data.states : []);
+    } catch (e) {
+      console.error("No se pudieron cargar las provincias:", e);
+      setProvincias([]);
+    }
+  }
+
+  useEffect(() => {
+    const provincia = provincias.find((item) => item.name === form.provincia);
+    if (!provincia) {
+      setLocalidades([]);
+      return;
+    }
+    let activo = true;
+    setCargandoLocalidades(true);
+    fetch("/api/geo?country=AR&state=" + encodeURIComponent(provincia.iso2))
+      .then((response) => response.json())
+      .then((data) => {
+        if (activo) setLocalidades(Array.isArray(data.cities) ? data.cities : []);
+      })
+      .catch((e) => {
+        console.error("No se pudieron cargar las localidades:", e);
+        if (activo) setLocalidades([]);
+      })
+      .finally(() => {
+        if (activo) setCargandoLocalidades(false);
+      });
+    return () => { activo = false; };
+  }, [form.provincia, provincias]);
 
   async function cargarDatos() {
     try {
@@ -368,8 +409,27 @@ export default function NuevaPublicacionForm() {
         <label>Precio por TN<input type="number" min="0.01" step="0.01" value={form.precio_tn} onChange={(e) => actualizarCampo("precio_tn", e.target.value)} /></label>
         <label>Moneda<select value={form.moneda_id} onChange={(e) => actualizarCampo("moneda_id", Number(e.target.value))}>{monedas.map((moneda) => <option key={moneda.id} value={moneda.id}>{moneda.codigo} - {moneda.nombre}</option>)}</select></label>
         <label>Incoterm<select value={form.incoterm_id} onChange={(e) => actualizarCampo("incoterm_id", Number(e.target.value))}>{incoterms.map((incoterm) => <option key={incoterm.id} value={incoterm.id}>{incoterm.codigo} - {incoterm.descripcion}</option>)}</select></label>
-        <label>Provincia<input value={form.provincia} onChange={(e) => actualizarCampo("provincia", e.target.value)} /></label>
-        <label>Localidad<input value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} /></label>
+        <label>Provincia
+          <select value={form.provincia} onChange={(e) => {
+            actualizarCampo("provincia", e.target.value);
+            actualizarCampo("localidad", "");
+          }}>
+            <option value="">Seleccionar provincia...</option>
+            {provincias.map((provincia) => (
+              <option key={provincia.iso2} value={provincia.name}>{provincia.name}</option>
+            ))}
+          </select>
+        </label>
+        <label>Localidad
+          <select value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} disabled={!form.provincia || cargandoLocalidades}>
+            <option value="">{cargandoLocalidades ? "Cargando localidades..." : "Seleccionar localidad..."}</option>
+            {localidades.map((localidad) => (
+              <option key={localidad.id} value={localidad.name}>
+                {localidad.name}{localidad.postalCode ? " · CP " + localidad.postalCode : ""}
+              </option>
+            ))}
+          </select>
+        </label>
       </div>
 
       <section style={{ border: "1px solid #dbe5e0", borderRadius: 14, padding: 18, background: "#f8fffb" }}>
