@@ -35,8 +35,8 @@ export default function Dashboard(){
  } void load()},[router]);
 
  const grouped=useMemo(()=>{const m=new Map<string,Quote[]>();for(const q of quotes){const code=commodities[q.commodity_id||""]||"OTRO";if(!m.has(code))m.set(code,[]);m.get(code)!.push(q)}return m},[quotes,commodities]);
- const marketCards=["SOJA","MAIZ","TRIGO","GIRASOL"].map(code=>({code,q:(grouped.get(code)||[])[0]}));
- const priceRows=marketCards.map(({code,q})=>({code,label:code==="SOJA"?"Soja":code==="MAIZ"?"Maíz":code==="TRIGO"?"Trigo":"Girasol",q}));
+ const marketCards=Array.from(grouped.entries()).filter(([,rows])=>rows.length>0).slice(0,4).map(([code,rows])=>({code,q:rows[0]}));
+ const priceRows=marketCards.map(({code,q})=>({code,label:code,q}));
  const change=(q?:Quote)=>q?.variation==null?"":`${q.variation>=0?"+":""}${Number(q.variation).toFixed(2)}%`;
 
  if(loading)return <main className="dashboard-reference"><div className="dashboard-loading">Cargando AgroBrokerIA…</div></main>;
@@ -55,7 +55,7 @@ export default function Dashboard(){
   {error&&<div className="module-alert error">{error}</div>}
 
   <section className="dashboard-price-row">
-   {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{code==="GIRASOL"?"Rosario":"MATba · Rosario"}</small><em>{money(q?.price||null,q?.currency||"")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
+   {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{q?.unit||"Unidad no informada"}{q?.currency?` · ${q.currency}`:""}</small><em>{money(q?.price||null,q?.currency||"")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
    <Link href="/mercado" className="dashboard-board-link"><b>📊</b><strong>Ver pizarra completa →</strong><small>Precios en tiempo real<br/>Bolsa de Comercio de Rosario</small></Link>
   </section>
 
