@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Regla inmutable de comisión de plataforma: USD 1/TN.
-    // Se valida contra el catálogo de monedas, sin hardcodear el ID de USD.
+    // La moneda de la operación no cambia esta comisión de plataforma.
     try {
       const { data: usd } = await supabase
         .from("monedas")
