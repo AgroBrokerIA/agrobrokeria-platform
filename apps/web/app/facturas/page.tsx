@@ -17,7 +17,7 @@ export default function FacturasPage(){
  async function load(){
    setLoading(true);setErr("");
    const [{data:f,error:fe},{data:o,error:oe},{data:m,error:me}]=await Promise.all([
-     supabase.from("facturas").select("id,operacion_id,contrato_id,empresa_id,empresa_receptor_id,doc_tipo_receptor,iva_alicuota,numero_factura,tipo_factura,tipo_comprobante_codigo,punto_venta,numero_comprobante,fecha_emision,cuit_emisor,cuit_receptor,razon_social_emisor,razon_social_receptor,importe_neto,importe_iva,importe_total,moneda_id,cae,caea,cae_vencimiento,estado,arca_mensaje,creada_en").order("creada_en",{ascending:false}),
+     supabase.from("facturas").select("id,operacion_id,contrato_id,empresa_id,empresa_receptor_id,producto_id,cantidad_tn,doc_tipo_receptor,iva_alicuota,numero_factura,tipo_factura,tipo_comprobante_codigo,punto_venta,numero_comprobante,fecha_emision,cuit_emisor,cuit_receptor,razon_social_emisor,razon_social_receptor,importe_neto,importe_iva,importe_total,moneda_id,cae,caea,cae_vencimiento,estado,arca_mensaje,creada_en").order("creada_en",{ascending:false}),
      supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,importe_total,publicacion_compra_id,publicacion_venta_id").order("fecha_operacion",{ascending:false}),
      supabase.from("monedas").select("id,codigo")
    ]);
