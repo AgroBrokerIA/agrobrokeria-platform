@@ -20,7 +20,11 @@ type Operacion = {
   importe_total: number;
   moneda_id: number | null;
   fecha_operacion: string;
+  publicacion_compra_id?: string | null;
+  publicacion_venta_id?: string | null;
 };
+
+type OperacionMeta = { producto: string; origen: string; destino: string; contraparte: string; };
 
 type Workflow = {
   id: string;
@@ -210,6 +214,7 @@ const ETAPAS = [
 
 export default function OperacionesPage() {
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
+  const [operacionMeta, setOperacionMeta] = useState<Record<string, OperacionMeta>>({});
   const [monedas, setMonedas] = useState<Record<number, string>>({});
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
   const [loading, setLoading] = useState(true);
@@ -456,7 +461,7 @@ export default function OperacionesPage() {
       } = await supabase
         .from("operaciones")
         .select(
-          "id, codigo, estado, tipo_operacion, precio_tn, cantidad_tn, importe_total, moneda_id, fecha_operacion"
+          "id, codigo, estado, tipo_operacion, precio_tn, cantidad_tn, importe_total, moneda_id, fecha_operacion, publicacion_compra_id, publicacion_venta_id"
         )
         .order("fecha_operacion", {
           ascending: false,
@@ -519,8 +524,7 @@ export default function OperacionesPage() {
       if (monedaError) console.error("No se pudieron cargar las monedas:", monedaError);
       setMonedas(Object.fromEntries((monedaRows || []).map((m) => [m.id, m.codigo])));
 
-      setOperaciones(
-        (operacionesDB || []).map((item) => ({
+      const operacionesNormalizadas = (operacionesDB || []).map((item) => ({
           id: item.id,
           codigo: item.codigo,
           estado: item.estado,
@@ -530,8 +534,35 @@ export default function OperacionesPage() {
           importe_total: Number(item.importe_total),
           moneda_id: item.moneda_id ?? null,
           fecha_operacion: item.fecha_operacion,
-        }))
-      );
+          publicacion_compra_id: item.publicacion_compra_id ?? null,
+          publicacion_venta_id: item.publicacion_venta_id ?? null,
+        }));
+
+      setOperaciones(operacionesNormalizadas);
+
+      const publicationIds = [...new Set(operacionesNormalizadas.flatMap((item) => [item.publicacion_compra_id, item.publicacion_venta_id]).filter(Boolean))] as string[];
+      const meta: Record<string, OperacionMeta> = {};
+      if (publicationIds.length) {
+        const { data: pubs } = await supabase.from("publicaciones").select("id, empresa_id, producto_id, provincia, localidad, puerto").in("id", publicationIds);
+        const productIds = [...new Set((pubs || []).map((p: any) => p.producto_id).filter(Boolean))];
+        const companyIds = [...new Set((pubs || []).map((p: any) => p.empresa_id).filter(Boolean))];
+        const [{ data: products }, { data: companies }] = await Promise.all([
+          productIds.length ? supabase.from("productos").select("id,nombre").in("id", productIds) : Promise.resolve({ data: [] as any[] }),
+          companyIds.length ? supabase.from("empresas").select("id,razon_social,nombre_comercial").in("id", companyIds) : Promise.resolve({ data: [] as any[] }),
+        ]);
+        const productMap = new Map((products || []).map((p: any) => [String(p.id), String(p.nombre || "Producto")]));
+        const companyMap = new Map((companies || []).map((x: any) => [String(x.id), String(x.nombre_comercial || x.razon_social || "Empresa registrada")]));
+        const pubMap = new Map((pubs || []).map((p: any) => [String(p.id), p]));
+        for (const op of operacionesNormalizadas) {
+          const venta = op.publicacion_venta_id ? pubMap.get(op.publicacion_venta_id) : null;
+          const compra = op.publicacion_compra_id ? pubMap.get(op.publicacion_compra_id) : null;
+          const origen = venta ? [venta.localidad, venta.provincia, venta.puerto].filter(Boolean).join(" · ") : "No informado";
+          const destino = compra ? [compra.localidad, compra.provincia, compra.puerto].filter(Boolean).join(" · ") : "No informado";
+          const counterpart = compra && venta ? (companyMap.get(String(venta.empresa_id)) || companyMap.get(String(compra.empresa_id)) || "Contraparte registrada") : "No informado";
+          meta[op.id] = { producto: productMap.get(String((venta || compra)?.producto_id)) || "Producto registrado", origen, destino, contraparte: counterpart };
+        }
+      }
+      setOperacionMeta(meta);
 
       setWorkflows(workflowsNormalizados);
 
@@ -2619,7 +2650,8 @@ Firma: ______________________________
       workflow?.orden === 9 || /CERR|FINAL/i.test(operacion.estado) ? "Finalizadas" :
       /CANCEL/i.test(operacion.estado) ? "Canceladas" :
       "En liquidación";
-    const texto = `${operacion.codigo} ${operacion.tipo_operacion} ${etapa}`.toLowerCase();
+    const meta = operacionMeta[operacion.id] || { producto: "", origen: "", destino: "", contraparte: "" };
+    const texto = `${operacion.codigo} ${operacion.tipo_operacion} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
     return (!filtroEstado || estadoVista === filtroEstado) &&
       (!filtroTipo || operacion.tipo_operacion === filtroTipo) &&
@@ -2674,17 +2706,17 @@ Firma: ______________________________
               const workflow=obtenerWorkflow(operacion.id), orden=workflow?.orden||0;
               const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
-              const producto="Commodity";
+              const meta=operacionMeta[operacion.id] || {producto:"Producto registrado",origen:"No informado",destino:"No informado",contraparte:"No informado"};
               const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion.id):undefined;
               return <div className="operation-directory-row" key={operacion.id}>
                 <span className="op-code">{operacion.codigo}</span>
-                <span className="op-product"><b>🌾</b><strong>{producto}</strong></span>
+                <span className="op-product"><b>🌾</b><strong>{meta.producto}</strong></span>
                 <span><strong>{formatoNumero(operacion.cantidad_tn)} TN</strong></span>
                 <span><strong>{formatoNumero(operacion.precio_tn)}</strong></span>
                 <span><em className={"op-condition "+(operacion.tipo_operacion==="F1"?"f1":"f2")}>{operacion.tipo_operacion}</em></span>
-                <span>🌎 <small>Origen registrado</small></span>
-                <span>🌎 <small>Destino registrado</small></span>
-                <span><small>Contraparte comercial</small></span>
+                <span>🌎 <small>{meta.origen}</small></span>
+                <span>🌎 <small>{meta.destino}</small></span>
+                <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
                 <span className="op-actions">{action?<button onClick={action} className="op-more">⋮</button>:<button className="op-more" onClick={()=>setMensaje(`Operación ${operacion.codigo}: ${workflow?.etapa_actual||"sin etapa"}.`)}>⋮</button>}</span>
