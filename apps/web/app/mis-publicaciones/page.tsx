@@ -38,6 +38,12 @@ export default function MisPublicacionesPage() {
     const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
     setMonedas(Object.fromEntries((monedaData || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
 
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setPublicaciones([]); setLoading(false); return; }
+
+    const { data: empresa } = await supabase.from("empresas").select("id").eq("cuenta_id", user.id).eq("activa", true).limit(1).maybeSingle();
+    if (!empresa?.id) { setPublicaciones([]); setLoading(false); return; }
+
     const { data, error } = await supabase
       .from("publicaciones")
       .select(`
@@ -53,6 +59,7 @@ export default function MisPublicacionesPage() {
         provincia,
         productos(nombre)
       `)
+      .eq("empresa_id", empresa.id)
       .order("creada_en", {
         ascending: false,
       });
