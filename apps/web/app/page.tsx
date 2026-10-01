@@ -76,7 +76,7 @@ export default function Home(){
   <nav className={styles.nav}>
    <Link href="/" className={styles.brand}><i className={styles.logo}/><span><b className={styles.brandName}>AgroBroker<em>IA</em></b><small className={styles.tagline}>Conectando el mundo agro</small></span></Link>
    <div className={styles.navLinks}>
-    <Link href="/">Inicio</Link><Link href="/marketplace">Mercado</Link><Link href="/ofertas-recibidas">Ofertas</Link><Link href="/demandas">Demandas</Link><Link href="/empresas">Empresas</Link><Link href="/mercado">Precios</Link><Link href="/ia-matching">IA Matching</Link><Link href="/recursos">Recursos⌄</Link>
+    <Link href="/">Inicio</Link><Link href="/marketplace">Mercado</Link><Link href="/ofertas-recibidas">Ofertas</Link><Link href="/marketplace?tipo=DEMANDA">Demandas</Link><Link href="/empresas">Empresas</Link><Link href="/mercado">Precios</Link><Link href="/oportunidades">IA Matching</Link><Link href="/ayuda">Recursos⌄</Link>
    </div>
    <div className={styles.navRight}><Link href="/configuracion?tab=idioma" className={styles.language}>◎ ES⌄</Link><Link href="/login" className={styles.login}>Iniciar sesión</Link><Link href="/register" className={styles.register}>Crear cuenta</Link></div>
   </nav>
