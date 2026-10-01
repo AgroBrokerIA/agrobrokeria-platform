@@ -45,7 +45,7 @@ export default function MensajesPage(){
   const {data:c}=await supabase.from("companies").select("*").eq("id",first.empresa_id).maybeSingle();
   if(!c)return;
   const x=c as Record<string,any>;
-  setEmpresa({nombre:x.nombre||x.razon_social||x.legal_name||x.name||"Empresa participante",rol:first.rol==="VENDEDOR"?"Productor":first.rol==="COMPRADOR"?"Comprador":first.rol==="INTERMEDIARIO"?"Intermediario":first.rol||"Participante",pais:x.pais||"País no informado",verificada:Boolean(x.verificada??x.verified??true),confiable:Boolean(x.confiable??true),productos:[],direccion:[x.localidad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",telefono:x.telefono||"No informado",email:x.email||"No informado"});
+  setEmpresa({nombre:x.nombre||x.razon_social||x.legal_name||x.name||"Empresa participante",rol:first.rol==="VENDEDOR"?"Productor":first.rol==="COMPRADOR"?"Comprador":first.rol==="INTERMEDIARIO"?"Intermediario":first.rol||"Participante",pais:x.pais||"País no informado",verificada:Boolean(x.verificada??x.verified??false),confiable:Boolean(x.confiable??false),productos:[],direccion:[x.localidad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",telefono:x.telefono||"No informado",email:x.email||"No informado"});
  }
  const fecha=(s:string)=>new Date(s).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
