@@ -45,7 +45,7 @@ export default function MercadoPage(){
  const nameFor=(q:Quote)=>productMeta(q)?.nombre||names.get(codeFor(q))||codeFor(q);
  const categoryFor=(q:Quote)=>String(productMeta(q)?.categoria||"").toLowerCase();
  const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q)}return m},[quotes,products,commodities]);
- const cards=Array.from(latestByProduct.values()).slice(0,8).map(q=>({code:codeFor(q),name:nameFor(q),q}));
+ const cards:Array<{code:string;name:string;q?:Quote}>=Array.from(latestByProduct.values()).slice(0,8).map(q=>({code:codeFor(q),name:nameFor(q),q}));
  const tabQuotes=quotes.filter(q=>{
    const p=String(q.price_type||"").toUpperCase();
    if(marketTab==="Futuros")return p.includes("FUT");
