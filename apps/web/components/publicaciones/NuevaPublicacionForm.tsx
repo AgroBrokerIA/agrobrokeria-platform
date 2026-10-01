@@ -73,39 +73,6 @@ async function obtenerEmpresaDelUsuario() {
   return data.id;
 }
 
-const puertosFallback: Puerto[] = [
-  ["AR-ROS", "Puerto Rosario", "Argentina", "Santa Fe", "Rosario", "FLUVIAL_CEREALERO"],
-  ["AR-SLO", "Puerto San Lorenzo", "Argentina", "Santa Fe", "San Lorenzo", "FLUVIAL_CEREALERO"],
-  ["AR-GSM", "Puerto General San Martín", "Argentina", "Santa Fe", "General San Martín", "FLUVIAL_CEREALERO"],
-  ["AR-VCO", "Puerto Villa Constitución", "Argentina", "Santa Fe", "Villa Constitución", "FLUVIAL_CEREALERO"],
-  ["AR-SNI", "Puerto San Nicolás", "Argentina", "Buenos Aires", "San Nicolás de los Arroyos", "FLUVIAL_CEREALERO"],
-  ["AR-RAM", "Puerto Ramallo", "Argentina", "Buenos Aires", "Ramallo", "FLUVIAL_CEREALERO"],
-  ["AR-SPD", "Puerto San Pedro", "Argentina", "Buenos Aires", "San Pedro", "FLUVIAL_CEREALERO"],
-  ["AR-ZAR", "Puerto Zárate", "Argentina", "Buenos Aires", "Zárate", "FLUVIAL"],
-  ["AR-QUE", "Puerto Quequén", "Argentina", "Buenos Aires", "Quequén", "MARITIMO_CEREALERO"],
-  ["AR-BBB", "Puerto Bahía Blanca", "Argentina", "Buenos Aires", "Bahía Blanca", "MARITIMO_CEREALERO"],
-  ["AR-BAI", "Puerto Buenos Aires", "Argentina", "Buenos Aires", "Buenos Aires", "MARITIMO"],
-  ["AR-LPL", "Puerto La Plata", "Argentina", "Buenos Aires", "La Plata", "MARITIMO"],
-].map(([codigo, nombre, pais, provincia, localidad, tipo]) => ({
-  codigo,
-  nombre,
-  pais,
-  provincia,
-  localidad,
-  tipo,
-}));
-
-const lugaresFallback: LugarRecepcion[] = [
-  { codigo: "PUERTO", nombre: "Puerto / Terminal portuaria", descripcion: "Entrega o recepción en puerto o terminal." },
-  { codigo: "ACOPIO", nombre: "Acopio", descripcion: "Planta de acopio o centro de recepción." },
-  { codigo: "PLANTA", nombre: "Planta industrial", descripcion: "Molinera, aceitera, procesadora o industria." },
-  { codigo: "CAMPO", nombre: "Campo / establecimiento", descripcion: "Retiro o recepción directamente en establecimiento." },
-  { codigo: "DEPOSITO", nombre: "Depósito / silo", descripcion: "Depósito, silo, elevador o almacenamiento." },
-  { codigo: "TERMINAL", nombre: "Terminal logística", descripcion: "Terminal multimodal o centro logístico." },
-  { codigo: "FRONTERA", nombre: "Paso fronterizo", descripcion: "Punto de entrega para comercio internacional terrestre." },
-  { codigo: "OTRO", nombre: "Otro lugar", descripcion: "Otro punto acordado entre las partes." },
-];
-
 export default function NuevaPublicacionForm() {
   const router = useRouter();
 
@@ -117,11 +84,11 @@ export default function NuevaPublicacionForm() {
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
-    producto_id: 1,
+    producto_id: 0,
     cantidad_tn: "",
     precio_tn: "",
-    moneda_id: 2,
-    incoterm_id: 1,
+    moneda_id: 0,
+    incoterm_id: 0,
     provincia: "",
     localidad: "",
     puerto: "",
@@ -189,32 +156,10 @@ export default function NuevaPublicacionForm() {
       setProductos(productosData);
       setMonedas(monedasData);
       setIncoterms(incotermsData);
-      setPuertos(
-        puertosResult.error || !puertosResult.data?.length
-          ? puertosFallback
-          : (puertosResult.data as Puerto[])
-      );
-      setLugares(
-        lugaresResult.error || !lugaresResult.data?.length
-          ? lugaresFallback
-          : (lugaresResult.data as LugarRecepcion[])
-      );
-
-      if (puertosResult.error) {
-        console.warn("No se pudo cargar el catálogo de puertos; se usa el catálogo básico.", puertosResult.error);
-      }
-
-      const maiz = productosData.find((producto) => producto.codigo === "MAIZ");
-      const usd = monedasData.find((moneda) => moneda.codigo === "USD");
-      const fob = incotermsData.find((incoterm) => incoterm.codigo === "FOB");
+      setPuertos((puertosResult.data as Puerto[]) ?? []);
+      setLugares((lugaresResult.data as LugarRecepcion[]) ?? []);
 
       if (!id) {
-        setForm((anterior) => ({
-          ...anterior,
-          producto_id: maiz?.id ?? 1,
-          moneda_id: usd?.id ?? 2,
-          incoterm_id: fob?.id ?? 1,
-        }));
         setCargando(false);
         return;
       }
