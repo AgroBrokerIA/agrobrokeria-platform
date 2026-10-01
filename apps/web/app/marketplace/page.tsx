@@ -4,6 +4,7 @@ import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;estado:string;provincia:string|null;localidad:string|null;puerto:string|null;puertos?:string[]|null;creada_en:string|null;calidad?:string|null;productos?:{nombre:string}|null;monedas?:{codigo:string}|null;incoterms?:{codigo:string}|null;empresas?:{razon_social:string;verificada?:boolean|null}|null;paises?:{nombre:string;codigo_iso:string}|null;provincias?:{nombre:string;codigo:string}|null;localidades?:{nombre:string}|null};
 const icon=(n:string)=>{n=n.toLowerCase();return n.includes("soja")?"🫘":n.includes("maiz")||n.includes("maíz")?"🌽":n.includes("trigo")?"🌾":n.includes("girasol")?"🌻":"🌾"};
+const productoCoincide=(nombre:string|undefined,filtro:string)=>{if(!filtro)return true;const n=(nombre||"").toLowerCase();const f=filtro.toLowerCase();if(f==="aceites")return n.includes("aceite");if(f==="harinas")return n.includes("harina");if(f==="subproductos")return ["pellet","expeller","afrechillo","subproducto"].some(x=>n.includes(x));return n===f;};
 const flag=(iso?:string)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const ago=(d?:string|null)=>{if(!d)return"—";const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
 export default function MarketplacePage(){
@@ -17,7 +18,7 @@ export default function MarketplacePage(){
   const min=precioMin.trim()===""?null:Number(precioMin);
   const max=precioMax.trim()===""?null:Number(precioMax);
   return p.tipo===(isDemand?"COMPRA":"VENTA")
-    &&(!producto||p.productos?.nombre===producto)
+    &&productoCoincide(p.productos?.nombre,producto)
     &&(!pais||p.paises?.codigo_iso===pais)
     &&(!provincia||p.provincias?.codigo===provincia||p.provincia===provincia)
     &&(!ciudad||p.localidades?.nombre===ciudad||p.localidad===ciudad)
