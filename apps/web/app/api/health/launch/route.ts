@@ -181,10 +181,10 @@ export async function GET(request: NextRequest) {
 
     // Integraciones externas necesarias para el alcance funcional comprometido.
     checks.signature_provider = {
-      ok: Boolean(process.env.SIGN_PROVIDER_BASE_URL) && Boolean(process.env.SIGN_PROVIDER_API_KEY),
-      detail: process.env.SIGN_PROVIDER_BASE_URL && process.env.SIGN_PROVIDER_API_KEY
+      ok: Boolean(process.env.SIGN_PROVIDER_BASE_URL || process.env.FIRMA_PROVIDER_URL) && Boolean(process.env.SIGN_PROVIDER_API_KEY || process.env.FIRMA_PROVIDER_API_KEY),
+      detail: (process.env.SIGN_PROVIDER_BASE_URL || process.env.FIRMA_PROVIDER_URL) && (process.env.SIGN_PROVIDER_API_KEY || process.env.FIRMA_PROVIDER_API_KEY)
         ? "Proveedor de firma configurado."
-        : "Faltan SIGN_PROVIDER_BASE_URL y/o SIGN_PROVIDER_API_KEY."
+        : "Faltan SIGN_PROVIDER_BASE_URL/FIRMA_PROVIDER_URL y/o SIGN_PROVIDER_API_KEY/FIRMA_PROVIDER_API_KEY."
     };
     checks.translation_provider = {
       ok: Boolean(process.env.TRANSLATION_API_URL) && Boolean(process.env.TRANSLATION_API_KEY),
