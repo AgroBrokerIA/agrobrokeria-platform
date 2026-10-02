@@ -57,7 +57,7 @@ export async function GET(req: NextRequest) {
       "agreement_write:self"
     ].join(" ");
 
-    const url = new URL(authBase + "/public/oauth/v2");
+    const url = new URL(authBase + "/public/oauth");
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
