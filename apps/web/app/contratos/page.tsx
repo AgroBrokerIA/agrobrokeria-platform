@@ -47,7 +47,7 @@ function buildPdf(f:FormState){
 
 export default function ContratosPage(){
  const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]);
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[adobeBusy,setAdobeBusy]=useState(false),[adobeStatus,setAdobeStatus]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
  const [selected,setSelected]=useState<C|null>(null);
@@ -68,7 +68,18 @@ export default function ContratosPage(){
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
    setLoading(false);
  }
- useEffect(()=>{void load()},[]);
+ useEffect(()=>{void load(); const status=new URLSearchParams(window.location.search).get("firma"); if(status){setAdobeStatus(status); setMessage(status==="connected"?"Adobe Acrobat Sign conectado correctamente.":status==="denied"?"Autorización de Adobe Sign cancelada.":status==="token_exchange_failed"?"Adobe Sign no pudo completar el intercambio OAuth.":status==="expired_state"?"La autorización de Adobe Sign expiró.":"No se pudo completar la conexión con Adobe Sign.");}},[]);
+ async function conectarAdobe(){
+   setAdobeBusy(true);setError("");setMessage("");
+   try{
+     const {data:{session}}=await supabase.auth.getSession();
+     if(!session?.access_token) throw new Error("Necesitás iniciar sesión.");
+     const res=await fetch("/api/firma/adobe/authorize",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"});
+     const data=await res.json().catch(()=>({}));
+     if(!res.ok||typeof data.authorization_url!=="string") throw new Error(data.error||"No se pudo iniciar OAuth de Adobe Sign.");
+     window.location.href=data.authorization_url;
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Adobe Sign.");setAdobeBusy(false)}
+ }
 
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
@@ -146,7 +157,7 @@ export default function ContratosPage(){
 
   {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
-  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2><p>La generación del PDF queda separada de la firma. Seleccioná un contrato desde “Mis contratos” y utilizá el flujo de firma correspondiente a la operación.</p><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
+  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas electrónicas</h2><p>Conectá Adobe Acrobat Sign mediante OAuth para enviar contratos reales a firma y conservar el estado de la solicitud dentro de AgroBrokerIA.</p>{adobeStatus==="connected"&&<div className="contract-builder-alert">✓ Adobe Acrobat Sign está conectado.</div>}<button className="contract-route-button" disabled={adobeBusy} onClick={conectarAdobe}>{adobeBusy?"Conectando…":"Conectar Adobe Acrobat Sign →"}</button><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
 
   {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
   <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
