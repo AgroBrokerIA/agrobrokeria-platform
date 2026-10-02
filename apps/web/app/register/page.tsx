@@ -14,6 +14,15 @@ export default function RegisterPage() {
   const [acepto, setAcepto] = useState(false);
   function update(field: keyof typeof form, value: string) { setForm((current) => ({ ...current, [field]: value })); }
 
+  async function registrarseConGoogle() {
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) { alert(error.message); setLoading(false); }
+  }
+
   async function registrarse() {
     if (!acepto) { alert("Debés aceptar los Términos y Condiciones y la Política de Privacidad."); return; }
     if (!form.nombre.trim() || !form.email.trim() || form.password.length < 8) { alert("Completá nombre, correo y una contraseña de al menos 8 caracteres."); return; } if (form.password !== form.confirmPassword) { alert("Las contraseñas no coinciden."); return; }
@@ -38,6 +47,8 @@ export default function RegisterPage() {
             <label>Correo electrónico<input type="email" placeholder="tu@email.com" value={form.email} onChange={(e)=>update("email",e.target.value)} required /></label>
             <div className="auth-two-col"><label>Contraseña<input type="password" placeholder="Mínimo 8 caracteres" value={form.password} onChange={(e)=>update("password",e.target.value)} minLength={8} required /></label><label>Confirmar contraseña<input type="password" placeholder="Repetí la contraseña" value={form.confirmPassword} onChange={(e)=>update("confirmPassword",e.target.value)} minLength={8} required /></label></div>
             <label className="auth-legal-check"><input type="checkbox" checked={acepto} onChange={(e)=>setAcepto(e.target.checked)} /> Acepto la <Link href="/terminos">documentación legal vigente</Link>.</label><button className="auth-submit" type="submit" disabled={loading||!acepto}>{loading ? "Creando cuenta..." : "Crear cuenta"}</button>
+            <div className="auth-divider"><span>o</span></div>
+            <button className="auth-submit" type="button" onClick={registrarseConGoogle} disabled={loading}>Registrarse con Google</button>
           </form>
           <p className="auth-legal">Al registrarte aceptás nuestros Términos y Condiciones y Política de Privacidad.</p><p className="auth-switch">¿Ya tenés cuenta? <Link href="/login">Ingresá aquí</Link></p>
         </div>
