@@ -61,24 +61,23 @@ export async function GET(request: NextRequest) {
     }
 
     let activeCompanyId = profile?.active_company_id ?? null;
+    let resolvedProfileIds = [user.id];
+    if (admin && user.email) {
+      const { data: emailProfile } = await admin
+        .from("profiles")
+        .select("id")
+        .eq("email", user.email)
+        .maybeSingle();
+      if (emailProfile?.id) resolvedProfileIds.push(emailProfile.id);
+    }
 
-    // Final fallback: use the only active administrator membership for this account.
+    // Final fallback: use an active administrator membership belonging to this account.
     // The membership profile can be resolved by auth id or by the profile email.
     if (!activeCompanyId) {
-      const profileIds = [user.id];
-      if (admin && user.email) {
-        const { data: emailProfile } = await admin
-          .from("profiles")
-          .select("id")
-          .eq("email", user.email)
-          .maybeSingle();
-        if (emailProfile?.id) profileIds.push(emailProfile.id);
-      }
-
       const { data: memberships } = await (admin ?? supabase)
         .from("company_users")
         .select("company_id,profile_id,rol,activo")
-        .in("profile_id", profileIds)
+        .in("profile_id", resolvedProfileIds)
         .eq("activo", true);
 
       const adminMembership = (memberships ?? []).find(
@@ -95,12 +94,16 @@ export async function GET(request: NextRequest) {
       }, { status: 403 });
     }
 
-    const { data: membership } = await (admin ?? supabase)
+    const { data: membershipsForCompany } = await (admin ?? supabase)
       .from("company_users")
-      .select("rol,activo")
+      .select("rol,activo,profile_id")
       .eq("company_id", activeCompanyId)
-      .eq("activo", true)
-      .maybeSingle();
+      .in("profile_id", resolvedProfileIds)
+      .eq("activo", true);
+
+    const membership = (membershipsForCompany ?? []).find(
+      (item) => String(item.rol).toLowerCase() === "administrador"
+    );
 
     if (!membership || String(membership.rol).toLowerCase() !== "administrador") {
       return NextResponse.json({
