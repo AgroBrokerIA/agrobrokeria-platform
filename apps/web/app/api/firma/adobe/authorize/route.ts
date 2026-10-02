@@ -38,12 +38,11 @@ export async function GET(req: NextRequest) {
     }
     if (!companyId) return NextResponse.json({ ok: false, error: "ACTIVE_COMPANY_REQUIRED" }, { status: 403 });
 
-    const clientId = process.env.ADOBE_SIGN_CLIENT_ID;
-    const redirectUri = process.env.ADOBE_SIGN_REDIRECT_URI;
-    if (!clientId || !redirectUri) {
-      return NextResponse.json({ ok: false, error: "ADOBE_SIGN_NOT_CONFIGURED" }, { status: 503 });
-    }
-
+    // Public OAuth configuration for the active AgroBrokerIA Adobe customer app.
+    // Environment values remain preferred; these safe fallbacks prevent a stale/missing
+    // Vercel public env var from generating an invalid Adobe OAuth request.
+    const clientId = process.env.ADOBE_SIGN_CLIENT_ID || "ats-eada1c07-8d29-4481-94b0-36697190a75a";
+    const redirectUri = process.env.ADOBE_SIGN_REDIRECT_URI || "https://agrobrokeria-platform.vercel.app/api/firma/adobe/callback";
     const state = crypto.randomUUID();
     const { error } = await admin.from("adobe_sign_oauth_states").insert({
       id: state, user_id: user.id, company_id: companyId, redirect_uri: redirectUri
