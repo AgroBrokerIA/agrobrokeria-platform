@@ -76,7 +76,7 @@ function validarRespuesta(
   operacion: string
 ) {
   if (response.status < 200 || response.status >= 300) {
-    const cuerpo = ["token", "sign", "auth", "cuit"].reduce(
+    const cuerpo = ["token", "sign", "auth", "cuit", "cuitRepresentada"].reduce(
       (texto, tag) => redactarXmlTag(texto, tag),
       response.body
     ).slice(0, 3000);
@@ -88,7 +88,7 @@ function validarRespuesta(
   }
 
   if (!response.body.includes("Envelope")) {
-    const cuerpo = ["token", "sign", "auth", "cuit"].reduce(
+    const cuerpo = ["token", "sign", "auth", "cuit", "cuitRepresentada"].reduce(
       (texto, tag) => redactarXmlTag(texto, tag),
       response.body
     ).slice(0, 1200);
