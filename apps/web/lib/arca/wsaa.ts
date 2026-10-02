@@ -22,9 +22,12 @@ function generarTRA(): string {
   const ahora = new Date();
   const expiracion = new Date(ahora.getTime() + 10 * 60 * 1000);
   const uniqueId = generarUniqueId();
+  // ARCA's WSAA DN is fixed by environment; it is NOT the taxpayer CUIT.
+  // The taxpayer CUIT belongs to the certificate/source DN and to the business
+  // request, while <destination> identifies ARCA's WSAA endpoint.
   const destination = arcaConfig.environment === "PRODUCCION"
-    ? "cn=wsaa,o=afip,c=ar,serialNumber=CUIT " + arcaConfig.cuit
-    : "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT " + arcaConfig.cuit;
+    ? "cn=wsaa,o=afip,c=ar,serialNumber=CUIT 33693450239"
+    : "cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
 
   if (!arcaConfig.cuit) {
     throw new Error("Falta ARCA_CUIT para construir el Ticket de Acceso.");
