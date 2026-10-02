@@ -8,14 +8,14 @@ type Medio={id:string;empresa_id:string;tipo:"BANCO"|"FINANCIERA";nombre:string;
 type Currency={id:number;codigo:string;nombre:string|null};
 
 const methods=[
- {name:"Transferencia bancaria",desc:"Local e internacional",icon:"🏦",tone:"blue",status:"Disponible"},
- {name:"Transferencia SWIFT",desc:"Pagos internacionales",icon:"🌐",tone:"blue",status:"Disponible"},
- {name:"Carta de crédito (LC)",desc:"Comercio internacional",icon:"▤",tone:"blue",status:"Disponible"},
- {name:"Financiera",desc:"A través de entidades",icon:"▤",tone:"green",status:"Disponible"},
- {name:"Cuenta de garantía (Escrow)",desc:"Pago seguro con liberación",icon:"🤝",tone:"purple",status:"Disponible"},
- {name:"Criptomonedas",desc:"USDT, BTC, ETH",icon:"₿",tone:"amber",status:"En configuración"},
- {name:"PayPal",desc:"Pagos internacionales",icon:"P",tone:"paypal",status:"Disponible"},
- {name:"Otros métodos",desc:"Cheque, pagaré, etc.",icon:"▣",tone:"pink",status:"Disponible"}
+ {name:"Transferencia bancaria",desc:"Local e internacional",icon:"🏦",tone:"blue"},
+ {name:"Transferencia SWIFT",desc:"Pagos internacionales",icon:"🌐",tone:"blue"},
+ {name:"Carta de crédito (LC)",desc:"Comercio internacional",icon:"▤",tone:"blue"},
+ {name:"Financiera",desc:"A través de entidades",icon:"▤",tone:"green"},
+ {name:"Cuenta de garantía (Escrow)",desc:"Pago seguro con liberación",icon:"🤝",tone:"purple"},
+ {name:"Criptomonedas",desc:"USDT, BTC, ETH",icon:"₿",tone:"amber"},
+ {name:"PayPal",desc:"Pagos internacionales",icon:"P",tone:"paypal"},
+ {name:"Otros métodos",desc:"Cheque, pagaré, etc.",icon:"▣",tone:"pink"}
 ];
 
 export default function MediosCobroPage(){
@@ -31,7 +31,7 @@ export default function MediosCobroPage(){
  return <main className="payment-methods-reference">
   <header className="pm-hero"><div><h1>Métodos de pago</h1><p>Configura y gestiona los métodos de pago disponibles para tus operaciones, comisiones y retiros.</p></div><button className="pm-primary" onClick={()=>setOpen(true)}>＋ Agregar método de pago</button></header>
   <nav className="pm-tabs">{[["Métodos de pago","/medios-cobro"],["Pagos recibidos","/pagos"],["Pagos enviados","/transacciones"],["Proveedores","/empresas"],["Bancos","/cuentas-bancarias"],["Monedas","/configuracion"],["Límites","/seguridad"],["Historial","/historial"]].map(([x,h],i)=><Link key={x} href={h} className={i===0?"active":""}>{x}</Link>)}</nav>
-  <section className="pm-method-grid">{methods.map(m=>{const configured=Array.from(configuredNames).some(n=>n.includes(m.name.split(" ")[0].toLowerCase()));const state=configured?"Configurado":"Disponible";return <button key={m.name} className="pm-method-card" onClick={()=>{const found=medios.find(x=>x.nombre.toLowerCase().includes(m.name.split(" ")[0].toLowerCase()));if(found)setSelected(found)}}><span className={"pm-method-icon "+m.tone}>{m.icon}</span><div><b>{m.name}</b><small>{m.desc}</small><em className={"pm-state "+(configured?"active":"available")}>{state}</em></div></button>})}</section>
+  <section className="pm-method-grid">{methods.map(m=>{const configured=Array.from(configuredNames).some(n=>n.includes(m.name.split(" ")[0].toLowerCase()));const state=configured?"Configurado":"Disponible";return <button key={m.name} className="pm-method-card" onClick={()=>{const found=medios.find(x=>x.nombre.toLowerCase().includes(m.name.split(" ")[0].toLowerCase()));if(found)setSelected(found)}}><span className={"pm-method-icon "+m.tone}>{m.icon}</span><div><b>{m.name}</b><small>{m.desc}</small><em className={"pm-state "+(configured?"active":"available")}>{configured?"Configurado":"No configurado"}</em></div></button>})}</section>
   {error&&<div className="pm-error">{error}</div>}
   <section className="pm-configured"><div className="pm-configured-title"><h2>Métodos de pago configurados</h2><div className="pm-search"><span>⌕</span><input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Buscar métodos..."/></div></div><table><thead><tr><th>Método</th><th>Tipo</th><th>Moneda</th><th>País / Región</th><th>Estado</th><th>Límite por operación</th><th>Acciones</th></tr></thead><tbody>{loading?<tr><td colSpan={7} className="pm-empty">Cargando métodos…</td></tr>:filtered.map(m=><tr key={m.id} onClick={()=>setSelected(m)}><td><span className="pm-row-icon">▤</span><b>{m.nombre}</b></td><td>{m.tipo==="BANCO"?"Local":"Intermediado"}</td><td>{currency(m.moneda_id)}</td><td>Según datos registrados</td><td><em className="pm-state active">Activo</em></td><td>Sin límite</td><td><button className="pm-dots" onClick={e=>{e.stopPropagation();setSelected(m)}} title="Ver detalle">•••</button></td></tr>)}{!loading&&!filtered.length&&<tr><td colSpan={7} className="pm-empty">No hay métodos configurados.</td></tr>}</tbody></table></section>
   <aside className="pm-detail"><h2>Detalle del método de pago <button onClick={()=>setSelected(null)}>×</button></h2>{selected?<><div className="pm-detail-head"><span className="pm-method-icon blue">🏦</span><div><b>{selected.nombre}</b><small>Pagos locales e internacionales</small></div><em className="pm-state active">Activo</em></div><nav className="pm-detail-tabs"><span className="active">Información</span><span>Límites</span><span>Seguridad</span><span>Instrucciones</span></nav><dl><div><dt>Tipo</dt><dd>Transferencia bancaria</dd></div><div><dt>Moneda</dt><dd>{currency(selected.moneda_id)}</dd></div><div><dt>País</dt><dd>País no especificado</dd></div><div><dt>Titular de la cuenta</dt><dd>{selected.titular||"—"}</dd></div><div><dt>Banco</dt><dd>{selected.banco||selected.nombre}</dd></div><div><dt>CBU</dt><dd>{selected.cbu||"—"}</dd></div><div><dt>Alias</dt><dd>{selected.alias||"—"}</dd></div><div><dt>CUIT</dt><dd>{selected.cuit_cuil||"—"}</dd></div><div><dt>Estado</dt><dd><em className="pm-state active">● Activo</em></dd></div></dl><div className="pm-detail-actions"><Link href="/configuracion">✎ Editar</Link><button onClick={async()=>{if(!selected)return;const{error:e}=await supabase.from("medios_cobro").update({estado:"INACTIVO"}).eq("id",selected.id);if(e)setError(e.message);else{setSelected(null);await load()}}}>⏻ Desactivar</button></div></>:<p className="pm-empty">Seleccioná un método.</p>}
