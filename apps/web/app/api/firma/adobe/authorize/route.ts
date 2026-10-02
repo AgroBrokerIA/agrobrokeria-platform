@@ -41,15 +41,15 @@ export async function GET(req: NextRequest) {
     // Public OAuth configuration for the active AgroBrokerIA Adobe customer app.
     // Environment values remain preferred; these safe fallbacks prevent a stale/missing
     // Vercel public env var from generating an invalid Adobe OAuth request.
-    const clientId = process.env.ADOBE_SIGN_CLIENT_ID || "ats-eada1c07-8d29-4481-94b0-36697190a75a";
-    const redirectUri = process.env.ADOBE_SIGN_REDIRECT_URI || "https://agrobrokeria-platform.vercel.app/api/firma/adobe/callback";
+    const clientId = "ats-eada1c07-8d29-4481-94b0-36697190a75a";
+    const redirectUri = "https://agrobrokeria-platform.vercel.app/api/firma/adobe/callback";
     const state = crypto.randomUUID();
     const { error } = await admin.from("adobe_sign_oauth_states").insert({
       id: state, user_id: user.id, company_id: companyId, redirect_uri: redirectUri
     });
     if (error) throw new Error("ADOBE_SIGN_STATE_STORE_FAILED");
 
-    const authBase = (process.env.ADOBE_SIGN_AUTH_BASE_URL || "https://secure.na3.adobesign.com").replace(/\/$/, "");
+    const authBase = "https://secure.na3.adobesign.com";
     const scope = [
       "user_read:account",
       "agreement_read:account",
