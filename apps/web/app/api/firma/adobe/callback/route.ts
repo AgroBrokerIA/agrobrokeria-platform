@@ -48,23 +48,42 @@ export async function GET(req: NextRequest) {
     const clientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
     if (!clientSecret) return redirect(req, "credentials_pending");
 
-    const tokenBase = "https://api.na3.adobesign.com";
-    const tokenResponse = await fetch(tokenBase + "/oauth/v2/token", {
-      method: "POST",
-      headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
-      body: new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: stateRow.redirect_uri
-      }),
-      cache: "no-store"
+    const tokenBody = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: stateRow.redirect_uri
     });
-
-    const tokenData = await tokenResponse.json().catch(() => ({}));
-    if (!tokenResponse.ok || typeof tokenData.access_token !== "string" || typeof tokenData.refresh_token !== "string") {
-      return redirect(req, "token_exchange_failed");
+    // Adobe's current commercial documentation exposes the token endpoint on the
+    // account's API shard. Keep the secure shard as a compatibility fallback.
+    const tokenEndpoints = [
+      "https://api.na3.adobesign.com/oauth/v2/token",
+      "https://secure.na3.adobesign.com/oauth/v2/token"
+    ];
+    let tokenResponse: Response | null = null;
+    let tokenData: any = {};
+    let lastProviderError = "";
+    for (const endpoint of tokenEndpoints) {
+      const response = await fetch(endpoint, {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
+        body: tokenBody,
+        cache: "no-store"
+      });
+      const data = await response.json().catch(() => ({}));
+      tokenResponse = response;
+      tokenData = data;
+      if (response.ok && typeof data.access_token === "string" && typeof data.refresh_token === "string") break;
+      const codeName = typeof data.error === "string" ? data.error : "unknown_error";
+      const description = typeof data.error_description === "string" ? data.error_description : "";
+      lastProviderError = codeName + (description ? ":" + description : "");
+    }
+    if (!tokenResponse?.ok || typeof tokenData.access_token !== "string" || typeof tokenData.refresh_token !== "string") {
+      const target = new URL("/contratos", req.url);
+      target.searchParams.set("firma", "token_exchange_failed");
+      if (lastProviderError) target.searchParams.set("detail", lastProviderError.slice(0, 180));
+      return NextResponse.redirect(target);
     }
 
     const apiAccessPoint = String(tokenData.api_access_point || "");
