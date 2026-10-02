@@ -4,13 +4,30 @@ import Link from "next/link";
 
 const menu = [
   { nombre: "🏠 Dashboard", ruta: "/dashboard" },
-  { nombre: "🌽 Marketplace", ruta: "/marketplace" },
-  { nombre: "🤖 Inteligencia IA", ruta: "/ia" },
-  { nombre: "🚢 Logística", ruta: "/logistica" },
+  { nombre: "📊 Mercado", ruta: "/mercado" },
+  { nombre: "🏷️ Marketplace", ruta: "/marketplace" },
+  { nombre: "📈 Pizarra", ruta: "/pizarra" },
+  { nombre: "🤖 Oportunidades IA", ruta: "/oportunidades" },
+  { nombre: "🔎 Buscar", ruta: "/buscar" },
+  { nombre: "📨 Ofertas recibidas", ruta: "/ofertas-recibidas" },
   { nombre: "💬 Mensajes", ruta: "/mensajes" },
   { nombre: "📄 Operaciones", ruta: "/operaciones" },
+  { nombre: "📝 Contratos", ruta: "/contratos" },
+  { nombre: "✍️ Firmas", ruta: "/firmar" },
+  { nombre: "💰 Facturación", ruta: "/facturas" },
+  { nombre: "💳 Pagos", ruta: "/pagos" },
+  { nombre: "🏦 Cuentas bancarias", ruta: "/cuentas-bancarias" },
+  { nombre: "💵 Medios de cobro", ruta: "/medios-cobro" },
+  { nombre: "📁 Documentación", ruta: "/documentos" },
+  { nombre: "🚢 Logística", ruta: "/logistica" },
+  { nombre: "💼 Comisiones", ruta: "/comisiones" },
+  { nombre: "↗️ Retiros de comisiones", ruta: "/retiros-comisiones" },
+  { nombre: "🏢 Empresas", ruta: "/empresas" },
+  { nombre: "🔐 Verificaciones", ruta: "/verificaciones" },
+  { nombre: "🛡️ Seguridad", ruta: "/seguridad" },
+  { nombre: "📊 Reportes", ruta: "/reportes" },
   { nombre: "👤 Perfil", ruta: "/perfil" },
-  { nombre: "⚙ Administración", ruta: "/administracion" },
+  { nombre: "⚙️ Administración", ruta: "/administracion" },
 ];
 
 export default function Sidebar() {
@@ -22,6 +39,7 @@ export default function Sidebar() {
         color: "white",
         minHeight: "100vh",
         padding: 20,
+        overflowY: "auto",
       }}
     >
       <h2 style={{ marginBottom: 30, color: "#22c55e" }}>
@@ -36,7 +54,7 @@ export default function Sidebar() {
             display: "block",
             color: "white",
             textDecoration: "none",
-            padding: "12px 0",
+            padding: "10px 0",
           }}
         >
           {item.nombre}
