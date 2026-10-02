@@ -44,9 +44,9 @@ export async function GET(req: NextRequest) {
 
     if (!consumed) return redirect(req, "state_replayed");
 
-    const clientId = process.env.ADOBE_SIGN_CLIENT_ID;
+    const clientId = process.env.ADOBE_SIGN_CLIENT_ID || "ats-eada1c07-8d29-4481-94b0-36697190a75a";
     const clientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
-    if (!clientId || !clientSecret) return redirect(req, "credentials_pending");
+    if (!clientSecret) return redirect(req, "credentials_pending");
 
     const authBase = (process.env.ADOBE_SIGN_AUTH_BASE_URL || "https://secure.na3.adobesign.com").replace(/\/$/, "");
     const tokenResponse = await fetch(authBase + "/oauth/v2/token", {
