@@ -25,26 +25,88 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ ok: false, error: "Sesión no válida." }, { status: 401 });
 
-    const { data: profile, error: profileError } = await supabase
-      .from("profiles")
-      .select("active_company_id")
-      .eq("id", user.id)
-      .maybeSingle();
+    // Resolve the commercial profile with the same authenticated account.
+    // Some existing accounts have a profile row keyed differently from auth.users.id.
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
+    const admin = serviceKey
+      ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey)
+      : null;
 
-    if (profileError || !profile?.active_company_id) {
-      return NextResponse.json({ ok: false, error: "No hay empresa activa para esta cuenta." }, { status: 403 });
+    let profile: { active_company_id: string | null } | null = null;
+
+    if (admin) {
+      const byId = await admin
+        .from("profiles")
+        .select("active_company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!byId.error && byId.data) profile = byId.data;
+
+      if (!profile && user.email) {
+        const byEmail = await admin
+          .from("profiles")
+          .select("active_company_id")
+          .eq("email", user.email)
+          .maybeSingle();
+        if (!byEmail.error && byEmail.data) profile = byEmail.data;
+      }
+    } else {
+      const byId = await supabase
+        .from("profiles")
+        .select("active_company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (!byId.error && byId.data) profile = byId.data;
     }
 
-    const { data: membership } = await supabase
+    let activeCompanyId = profile?.active_company_id ?? null;
+
+    // Final fallback: use the only active administrator membership for this account.
+    // The membership profile can be resolved by auth id or by the profile email.
+    if (!activeCompanyId) {
+      const profileIds = [user.id];
+      if (admin && user.email) {
+        const { data: emailProfile } = await admin
+          .from("profiles")
+          .select("id")
+          .eq("email", user.email)
+          .maybeSingle();
+        if (emailProfile?.id) profileIds.push(emailProfile.id);
+      }
+
+      const { data: memberships } = await (admin ?? supabase)
+        .from("company_users")
+        .select("company_id,profile_id,rol,activo")
+        .in("profile_id", profileIds)
+        .eq("activo", true);
+
+      const adminMembership = (memberships ?? []).find(
+        (item) => String(item.rol).toLowerCase() === "administrador"
+      );
+
+      activeCompanyId = adminMembership?.company_id ?? null;
+    }
+
+    if (!activeCompanyId) {
+      return NextResponse.json({
+        ok: false,
+        error: "No hay empresa activa con permisos de administrador para esta cuenta."
+      }, { status: 403 });
+    }
+
+    const { data: membership } = await (admin ?? supabase)
       .from("company_users")
       .select("rol,activo")
-      .eq("company_id", profile.active_company_id)
-      .eq("profile_id", user.id)
+      .eq("company_id", activeCompanyId)
       .eq("activo", true)
       .maybeSingle();
 
     if (!membership || String(membership.rol).toLowerCase() !== "administrador") {
-      return NextResponse.json({ ok: false, error: "Solo un administrador puede ejecutar el preflight de lanzamiento." }, { status: 403 });
+      return NextResponse.json({
+        ok: false,
+        error: "Solo un administrador puede ejecutar el preflight de lanzamiento."
+      }, { status: 403 });
     }
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
