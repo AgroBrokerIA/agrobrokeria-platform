@@ -28,8 +28,8 @@ export const arcaConfig = {
     : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
 
   wscpeUrl: isProduction
-    ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"
-    : "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
+    ? "https://cpea-ws.arca.gob.ar/wscpe/services/soap"
+    : "https://cpea-ws-qaext.arca.gob.ar/wscpe/services/soap",
 };
 
 export function getArcaCertificateMaterial() {
