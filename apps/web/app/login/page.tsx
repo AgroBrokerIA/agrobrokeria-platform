@@ -58,8 +58,6 @@ export default function LoginPage() {
             {error && <div className="auth-error">{error}</div>}
             <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
           </form>
-          <div className="auth-divider"><span>o continuá con</span></div>
-          <div className="social-auth"><button type="button" disabled>Google</button><button type="button" disabled>Microsoft</button></div>
           <p className="auth-switch">¿No tenés cuenta? <Link href="/register">Registrate</Link></p>
         </div>
       </section>
