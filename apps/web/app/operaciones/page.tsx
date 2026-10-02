@@ -335,47 +335,25 @@ export default function OperacionesPage() {
   }
 
   async function cargarIntermediariosDisponibles() {
-    const { data: companyUsers, error: errorCompanyUsers } = await supabase
-      .from("company_users")
-      .select("company_id")
-      .eq("rol", "intermediario")
-      .eq("activo", true);
-
-    if (errorCompanyUsers) {
-      console.error(errorCompanyUsers);
-      setError(`No se pudieron cargar los intermediarios: ${errorCompanyUsers.message}`);
-      return;
-    }
-
-    const companyIds = [...new Set(
-      (companyUsers || []).map((item) => item.company_id).filter(Boolean)
-    )];
-
-    if (companyIds.length === 0) {
-      setIntermediariosDisponibles([]);
-      return;
-    }
-
-    const { data: empresas, error: errorEmpresas } = await supabase
+    const { data: empresas, error } = await supabase
       .from("empresas")
-      .select("id, razon_social, nombre_comercial, cuit")
-      .in("id", companyIds)
-      .eq("activa", true);
+      .select("id, razon_social, nombre_comercial, cuit, tipo_empresa, activa")
+      .eq("tipo_empresa", "INTERMEDIARIO")
+      .eq("activa", true)
+      .order("razon_social", { ascending: true });
 
-    if (errorEmpresas) {
-      console.error(errorEmpresas);
-      setError(`No se pudieron cargar las empresas intermediarias: ${errorEmpresas.message}`);
+    if (error) {
+      console.error(error);
+      setError(`No se pudieron cargar los intermediarios: ${error.message}`);
       return;
     }
 
-    const disponibles: IntermediarioDisponible[] = (empresas || [])
-      .map((empresa) => ({
-        empresa_id: String(empresa.id),
-        razon_social: empresa.razon_social || "Empresa sin razón social",
-        nombre_comercial: empresa.nombre_comercial || null,
-        cuit: empresa.cuit || null,
-      }))
-      .sort((a, b) => a.razon_social.localeCompare(b.razon_social));
+    const disponibles: IntermediarioDisponible[] = (empresas || []).map((empresa) => ({
+      empresa_id: String(empresa.id),
+      razon_social: empresa.razon_social || "Empresa sin razón social",
+      nombre_comercial: empresa.nombre_comercial || null,
+      cuit: empresa.cuit || null,
+    }));
 
     setIntermediariosDisponibles(disponibles);
   }
