@@ -1,7 +1,7 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "https://serviciosjava.arca.gob.ar/wscpe/";
+const WSCPE_NS = "https://serviciosjava.afip.gob.ar/wscpe/";
 const WSCPE_SOAP_ACTION_BASE = WSCPE_NS;
 
 function enviarSOAP(soap: string, soapAction?: string): Promise<{
