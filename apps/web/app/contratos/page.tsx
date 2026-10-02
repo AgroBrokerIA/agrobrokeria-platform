@@ -27,7 +27,7 @@ function buildPdf(f:FormState){
  pdf.setFillColor(...green);pdf.rect(0,0,W,12,"F");
  pdf.setFont("helvetica","bold");pdf.setFontSize(19);pdf.setTextColor(...dark);pdf.text("AgroBroker",margin,55);pdf.setTextColor(0,190,120);pdf.text("IA",margin+90,55);
  pdf.setFont("helvetica","bold");pdf.setTextColor(...dark);pdf.setFontSize(15);pdf.text(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1 (BLANCO)":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2",W/2,95,{align:"center"});
- pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Documento generado por AgroBrokerIA",W-margin,55,{align:"right"});
+ pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Documento generado por AgroBrokerIA · Borrador",W-margin,55,{align:"right"});
  y=130;
  line("1. OBJETO",`Las partes acuerdan la compraventa de ${esc(f.producto)} conforme a las condiciones comerciales indicadas en este contrato.`);
  line("2. CANTIDAD",`${money(f.cantidad)} toneladas métricas.`);
@@ -124,7 +124,7 @@ export default function ContratosPage(){
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
  const current=selected;
 
- function download(tipo:"F1"|"F2"){if(!form.operacionId||!form.producto||!form.moneda){setMessage("Seleccioná una operación, producto y moneda antes de generar el PDF.");return;}setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado en formato Legal.`)}
+ function download(tipo:"F1"|"F2"){if(!form.operacionId||!form.producto||!form.moneda){setMessage("Seleccioná una operación, producto y moneda antes de generar el PDF.");return;}setForm(x=>({...x,tipo}));setTimeout(()=>buildPdf({...form,tipo}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado con los datos registrados.`)}
  function preview(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
  function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
  function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
@@ -140,15 +140,15 @@ export default function ContratosPage(){
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
-        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato Blanco (Formal)</small></span><i>✓</i></button>
-        <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato Privado (No registrable)</small></span><i>✓</i></button>
+        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
+        <button className={form.tipo==="F2"?"selected f2":""} onClick={()=>preview("F2")}><b>▤</b><span><strong>F2</strong><small>Contrato F2</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
       <div className="contract-commodity-picks">{productos.slice(0,4).map((p,i)=><button type="button" key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻"][i]}</b><span>{p}</span></button>)}<button type="button" className="more-commodity" onClick={()=>document.getElementById("commodity-select")?.focus()}><b>•••</b><span>Otros</span></button></div>
-      <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1 · Blanco (Formal)":"F2 · Privado"}</span></div>
+      <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1":"F2"}</span></div>
       <div className="contract-builder-fields">
        <label>Operación<select value={form.operacionId} onChange={e=>selectOperation(e.target.value)}><option value="">Seleccionar operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.estado}</option>)}</select></label>
-       <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1 - Blanco (Formal)</option><option value="F2">F2 - Privado</option></select></label>
+       <label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1"|"F2")}><option value="F1">F1</option><option value="F2">F2</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio / TN<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
@@ -172,7 +172,7 @@ export default function ContratosPage(){
 
   {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("tipos");setForm(x=>({...x,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}</section>}
 
-  {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Blanco</b><span>Modelo formal para operaciones registrables.</span></button><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F2",condicion:"FOB"}));setMessage("Plantilla F2 cargada.")}}><b>F2 · Privado</b><span>Modelo privado entre comprador y vendedor.</span></button></div></section>}
+  {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Blanco</b><span>Modelo F1 para la operación seleccionada.</span></button><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F2",condicion:"FOB"}));setMessage("Plantilla F2 cargada.")}}><b>F2 · Privado</b><span>Modelo F2 para la operación seleccionada.</span></button></div></section>}
 
   {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
@@ -185,7 +185,7 @@ export default function ContratosPage(){
 
 function PreviewCard({type,form,onDownload,active}:{type:"F1"|"F2";form:FormState;onDownload:(type:"F1"|"F2")=>void;active:boolean}){
  return <article className={"contract-preview-card "+(active?"active":"")}>
-   <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Contrato registrable para operaciones formales.":"Contrato privado entre partes (no registrable)."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
+   <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Documento F1 generado a partir de los datos registrados.":"Documento F2 generado a partir de los datos registrados."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
    <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1 (BLANCO)":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. OBJETO",form.producto||"No especificado"],["2. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas.":"No especificada"],["3. CALIDAD",form.observaciones||"No especificada"],["4. PRECIO",form.precio&&form.moneda?form.moneda+" "+money(form.precio)+" por tonelada métrica.":"No especificado"],["5. CONDICIÓN DE PRECIO",form.condicion||"No especificada"],["6. LUGAR DE ENTREGA",form.puerto||"No especificado"],["7. PLAZO DE ENTREGA",form.entrega||"No especificado"],["8. FORMA DE PAGO",form.pago||"No especificada"],["9. DOCUMENTACIÓN","No especificada"],["10. OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
  </article>
 }
