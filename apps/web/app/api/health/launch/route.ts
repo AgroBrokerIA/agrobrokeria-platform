@@ -243,13 +243,48 @@ export async function GET(request: NextRequest) {
       checks.arca_connectivity = { ok: false, detail: "No se ejecutó: faltan configuración o credenciales ARCA." };
     }
 
-    // Integraciones externas necesarias para el alcance funcional comprometido.
-    checks.signature_provider = {
-      ok: Boolean(process.env.SIGN_PROVIDER_BASE_URL || process.env.FIRMA_PROVIDER_URL) && Boolean(process.env.SIGN_PROVIDER_API_KEY || process.env.FIRMA_PROVIDER_API_KEY),
-      detail: (process.env.SIGN_PROVIDER_BASE_URL || process.env.FIRMA_PROVIDER_URL) && (process.env.SIGN_PROVIDER_API_KEY || process.env.FIRMA_PROVIDER_API_KEY)
-        ? "Proveedor de firma configurado."
-        : "Faltan SIGN_PROVIDER_BASE_URL/FIRMA_PROVIDER_URL y/o SIGN_PROVIDER_API_KEY/FIRMA_PROVIDER_API_KEY."
-    };
+    // Firma electrónica: Adobe Acrobat Sign se considera listo solo cuando
+    // las credenciales OAuth existen y existe un token conectado y no revocado.
+    try {
+      const adobeConfigured =
+        Boolean(process.env.ADOBE_SIGN_CLIENT_ID) &&
+        Boolean(process.env.ADOBE_SIGN_CLIENT_SECRET) &&
+        Boolean(process.env.ADOBE_SIGN_REDIRECT_URI);
+
+      if (!adobeConfigured) {
+        checks.signature_provider = {
+          ok: false,
+          detail: "Faltan ADOBE_SIGN_CLIENT_ID, ADOBE_SIGN_CLIENT_SECRET y/o ADOBE_SIGN_REDIRECT_URI."
+        };
+      } else {
+        const { data: adobeToken, error: adobeTokenError } = await checkDb
+          .from("adobe_sign_oauth_tokens")
+          .select("id,expires_at,revoked_at,api_access_point")
+          .eq("provider", "adobe_sign")
+          .is("revoked_at", null)
+          .order("updated_at", { ascending: false })
+          .limit(1)
+          .maybeSingle();
+
+        checks.signature_provider =
+          !adobeTokenError && Boolean(adobeToken?.id) && /^https:\/\//i.test(String(adobeToken?.api_access_point || ""))
+            ? {
+                ok: true,
+                detail: new Date(String(adobeToken.expires_at)).getTime() > Date.now()
+                  ? "Adobe Acrobat Sign conectado mediante OAuth."
+                  : "Adobe Acrobat Sign conectado; el access token expiró y se renovará mediante refresh token."
+              }
+            : {
+                ok: false,
+                detail: adobeTokenError?.message ?? "Adobe Acrobat Sign aún no fue autorizado mediante OAuth."
+              };
+      }
+    } catch (error) {
+      checks.signature_provider = {
+        ok: false,
+        detail: error instanceof Error ? error.message : "No se pudo verificar Adobe Acrobat Sign."
+      };
+    }
     checks.translation_provider = {
       ok: Boolean(process.env.TRANSLATION_API_URL) && Boolean(process.env.TRANSLATION_API_KEY),
       detail: process.env.TRANSLATION_API_URL && process.env.TRANSLATION_API_KEY
