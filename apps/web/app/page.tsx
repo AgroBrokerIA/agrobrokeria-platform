@@ -62,7 +62,7 @@ export default function Home(){
   ["◎","Mercado internacional","Conectá con empresas de todo el mundo.","/marketplace"],
   ["▤","Contratos y documentación","Generá, firmá y gestioná toda la documentación en un solo lugar.","/contratos"],
   ["🚚","Logística integrada","Coordiná transporte, cartas de porte y entrega.","/logistica"],
-  ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra las mejores oportunidades para vos.","/ia-matching"]
+  ["✦","Oportunidades con IA","La Inteligencia Artificial encuentra las mejores oportunidades para vos.","/oportunidades"]
  ];
  const statItems=[
   ["▦",fmt(stats.quotes),"Cotizaciones del mercado"],
