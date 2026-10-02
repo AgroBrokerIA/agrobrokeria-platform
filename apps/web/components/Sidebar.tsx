@@ -13,7 +13,6 @@ const menu = [
   { nombre: "💬 Mensajes", ruta: "/mensajes" },
   { nombre: "📄 Operaciones", ruta: "/operaciones" },
   { nombre: "📝 Contratos", ruta: "/contratos" },
-  { nombre: "✍️ Firmas", ruta: "/firmar" },
   { nombre: "💰 Facturación", ruta: "/facturas" },
   { nombre: "💳 Pagos", ruta: "/pagos" },
   { nombre: "🏦 Cuentas bancarias", ruta: "/cuentas-bancarias" },
