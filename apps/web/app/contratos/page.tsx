@@ -81,6 +81,25 @@ export default function ContratosPage(){
    }catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Adobe Sign.");setAdobeBusy(false)}
  }
 
+ async function enviarAFirma(contratoId:string){
+   setAdobeBusy(true);setError("");setMessage("");
+   try{
+     const {data:{session}}=await supabase.auth.getSession();
+     if(!session?.access_token) throw new Error("Necesitás iniciar sesión.");
+     const {data,error}=await supabase.functions.invoke("firma-proveedor",{
+       body:{contract_id:contratoId},
+       headers:{Authorization:"Bearer "+session.access_token}
+     });
+     if(error) throw new Error(error.message||"No se pudo enviar el contrato a firma.");
+     if(!data?.ok) throw new Error(data?.error||"Adobe Acrobat Sign no pudo crear la solicitud de firma.");
+     setMessage("Contrato enviado a Adobe Acrobat Sign. ID de acuerdo: "+String(data.agreement_id||"generado")+" · Estado: "+String(data.status||"OUT_FOR_SIGNATURE"));
+     await load();
+   }catch(e){
+     const msg=e instanceof Error?e.message:"No se pudo enviar el contrato a firma.";
+     setError(msg==="NO_VALID_SIGNERS"?"El contrato todavía no tiene firmantes válidos con email cargados.":msg==="ADOBE_SIGN_NOT_CONNECTED"?"Primero conectá Adobe Acrobat Sign.":msg);
+   }finally{setAdobeBusy(false)}
+ }
+
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
    if(!op){ setForm(x=>({...x,operacionId:""})); return; }
@@ -157,7 +176,7 @@ export default function ContratosPage(){
 
   {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
-  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas electrónicas</h2><p>Conectá Adobe Acrobat Sign mediante OAuth para enviar contratos reales a firma y conservar el estado de la solicitud dentro de AgroBrokerIA.</p>{adobeStatus==="connected"&&<div className="contract-builder-alert">✓ Adobe Acrobat Sign está conectado.</div>}<button className="contract-route-button" disabled={adobeBusy} onClick={conectarAdobe}>{adobeBusy?"Conectando…":"Conectar Adobe Acrobat Sign →"}</button><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
+  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas electrónicas</h2><p>Desde acá seleccionás un contrato, conectás Adobe Acrobat Sign y enviás el documento real a firma. El estado queda registrado en AgroBrokerIA.</p>{adobeStatus==="connected"&&<div className="contract-builder-alert">✓ Adobe Acrobat Sign está conectado.</div>}<button className="contract-route-button" disabled={adobeBusy} onClick={conectarAdobe}>{adobeBusy?"Conectando…":"Conectar Adobe Acrobat Sign →"}</button><div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><div className="contract-sign-actions"><button type="button" onClick={()=>{setSelected(c);setMessage("Contrato seleccionado para firma: "+c.numero_contrato)}}>Seleccionar</button><button type="button" disabled={adobeBusy||c.estado==="FIRMADO"} onClick={()=>void enviarAFirma(c.id)}>{adobeBusy&&selected?.id===c.id?"Enviando…":"Enviar a firma →"}</button></div></article>)}</div><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
 
   {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
   <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
