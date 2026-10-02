@@ -110,10 +110,11 @@ export async function GET(request: NextRequest) {
     }
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
+    const checkDb = admin ?? supabase;
     const requiredTables = ["empresas", "publicaciones", "ofertas_negociacion", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "medios_cobro", "retiros_comisiones"];
 
     for (const table of requiredTables) {
-      const { error } = await supabase.from(table).select("*", { count: "exact", head: true });
+      const { error } = await checkDb.from(table).select("*", { count: "exact", head: true });
       checks["db_" + table] = error
         ? { ok: false, detail: error.message }
         : { ok: true };
@@ -124,7 +125,7 @@ export async function GET(request: NextRequest) {
     // Integridad estructural del workflow: el flujo comercial publicado debe
     // conservar exactamente las 10 etapas obligatorias definidas para granos.
     try {
-      const { data: workflow } = await supabase
+      const { data: workflow } = await checkDb
         .from("workflows")
         .select("id,nombre,activo")
         .eq("activo", true)
@@ -137,7 +138,7 @@ export async function GET(request: NextRequest) {
           detail: "No existe un workflow activo de Operación de granos."
         };
       } else {
-        const { data: stages, error: stagesError } = await supabase
+        const { data: stages, error: stagesError } = await checkDb
           .from("workflow_etapas")
           .select("id,orden,nombre,obligatoria")
           .eq("workflow_id", workflow.id)
@@ -167,7 +168,7 @@ export async function GET(request: NextRequest) {
     // Regla inmutable de comisión de plataforma: USD 1/TN.
     // La moneda de la operación no cambia esta comisión de plataforma.
     try {
-      const { data: usd } = await supabase
+      const { data: usd } = await checkDb
         .from("monedas")
         .select("id")
         .eq("codigo", "USD")
@@ -179,7 +180,7 @@ export async function GET(request: NextRequest) {
           detail: "No se encontró la moneda USD en el catálogo."
         };
       } else {
-        const { data: platformCommissions, error: commissionError } = await supabase
+        const { data: platformCommissions, error: commissionError } = await checkDb
           .from("operacion_comisiones")
           .select("valor_unitario,moneda_id")
           .eq("tipo_comision", "PLATAFORMA");
