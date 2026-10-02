@@ -48,8 +48,8 @@ export async function GET(req: NextRequest) {
     const clientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
     if (!clientSecret) return redirect(req, "credentials_pending");
 
-    const authBase = "https://secure.na3.adobesign.com";
-    const tokenResponse = await fetch(authBase + "/oauth/v2/token", {
+    const tokenBase = "https://api.na3.adobesign.com";
+    const tokenResponse = await fetch(tokenBase + "/oauth/v2/token", {
       method: "POST",
       headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
       body: new URLSearchParams({
