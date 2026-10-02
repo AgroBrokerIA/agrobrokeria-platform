@@ -62,6 +62,26 @@ async function obtenerEmpresaDelUsuario() {
     throw new Error("No hay un usuario autenticado.");
   }
 
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles")
+    .select("active_company_id")
+    .eq("id", user.id)
+    .maybeSingle();
+
+  if (profileError) throw new Error(`No se pudo obtener el perfil: ${profileError.message}`);
+
+  if (profile?.active_company_id) {
+    const { data: activeCompany, error: activeCompanyError } = await supabase
+      .from("empresas")
+      .select("id")
+      .eq("id", profile.active_company_id)
+      .eq("activa", true)
+      .maybeSingle();
+
+    if (activeCompanyError) throw new Error(`No se pudo validar la empresa activa: ${activeCompanyError.message}`);
+    if (activeCompany?.id) return activeCompany.id;
+  }
+
   const { data, error } = await supabase
     .from("empresas")
     .select("id")
