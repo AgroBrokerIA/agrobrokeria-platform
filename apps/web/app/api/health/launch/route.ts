@@ -270,7 +270,7 @@ export async function GET(request: NextRequest) {
           !adobeTokenError && Boolean(adobeToken?.id) && /^https:\/\//i.test(String(adobeToken?.api_access_point || ""))
             ? {
                 ok: true,
-                detail: new Date(String(adobeToken.expires_at)).getTime() > Date.now()
+                detail: new Date(String(adobeToken?.expires_at || 0)).getTime() > Date.now()
                   ? "Adobe Acrobat Sign conectado mediante OAuth."
                   : "Adobe Acrobat Sign conectado; el access token expiró y se renovará mediante refresh token."
               }
