@@ -52,12 +52,12 @@ export async function GET(req: NextRequest) {
 
     const authBase = (process.env.ADOBE_SIGN_AUTH_BASE_URL || "https://secure.na3.adobesign.com").replace(/\/$/, "");
     const scope = [
-      "user_read:self",
-      "agreement_read:self",
-      "agreement_write:self"
+      "user_read:account",
+      "agreement_read:account",
+      "agreement_write:account"
     ].join(" ");
 
-    const url = new URL(authBase + "/public/oauth");
+    const url = new URL(authBase + "/public/oauth/v2");
     url.searchParams.set("redirect_uri", redirectUri);
     url.searchParams.set("response_type", "code");
     url.searchParams.set("client_id", clientId);
