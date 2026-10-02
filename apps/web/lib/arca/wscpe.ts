@@ -127,7 +127,7 @@ export async function probarWSCPEAutenticado() {
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuit>${arcaConfig.cuit}</cuit>
+        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
@@ -150,7 +150,7 @@ export async function consultarProvinciasWSCPE() {
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuit>${arcaConfig.cuit}</cuit>
+        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
