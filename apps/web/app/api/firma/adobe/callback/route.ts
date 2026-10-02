@@ -20,6 +20,7 @@ export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
   const error = req.nextUrl.searchParams.get("error");
+  const returnedApiAccessPoint = req.nextUrl.searchParams.get("api_access_point");
   if (error) return redirect(req, "denied");
   if (!code || !state) return redirect(req, "invalid_callback");
 
@@ -58,6 +59,9 @@ export async function GET(req: NextRequest) {
     // Adobe's current commercial documentation exposes the token endpoint on the
     // account's API shard. Keep the secure shard as a compatibility fallback.
     const tokenEndpoints = [
+      ...(returnedApiAccessPoint && /^https:\/\//i.test(returnedApiAccessPoint)
+        ? [returnedApiAccessPoint.replace(/\/$/, "") + "/oauth/v2/token"]
+        : []),
       "https://api.na3.adobesign.com/oauth/v2/token",
       "https://secure.na3.adobesign.com/oauth/v2/token"
     ];
