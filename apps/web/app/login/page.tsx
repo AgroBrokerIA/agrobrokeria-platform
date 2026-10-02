@@ -23,6 +23,16 @@ export default function LoginPage() {
     finally { setLoading(false); }
   }
 
+  async function iniciarConGoogle() {
+    setError("");
+    setLoading(true);
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: { redirectTo: `${window.location.origin}/auth/callback` },
+    });
+    if (error) { setError(error.message); setLoading(false); }
+  }
+
   async function iniciarSesion() {
     setError("");
     if (!email || !password) { setError("Ingresá tu correo electrónico y contraseña."); return; }
@@ -61,6 +71,8 @@ export default function LoginPage() {
             <div className="auth-row"><label className="remember"><input type="checkbox" /> Recordarme</label><button type="button" onClick={recuperarPassword} disabled={loading} className="auth-link-button">¿Olvidaste tu contraseña?</button></div>
             {error && <div className="auth-error">{error}</div>}
             <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
+            <div className="auth-divider"><span>o</span></div>
+            <button className="auth-submit" type="button" onClick={iniciarConGoogle} disabled={loading}>Continuar con Google</button>
           </form>
           <p className="auth-switch">¿No tenés cuenta? <Link href="/register">Registrate</Link></p>
         </div>
