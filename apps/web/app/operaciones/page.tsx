@@ -335,108 +335,47 @@ export default function OperacionesPage() {
   }
 
   async function cargarIntermediariosDisponibles() {
-    const { data: companyUsers, error: errorCompanyUsers } =
-      await supabase
-        .from("company_users")
-        .select("company_id")
-        .eq("rol", "intermediario")
-        .eq("activo", true);
+    const { data: companyUsers, error: errorCompanyUsers } = await supabase
+      .from("company_users")
+      .select("company_id")
+      .eq("rol", "intermediario")
+      .eq("activo", true);
 
     if (errorCompanyUsers) {
       console.error(errorCompanyUsers);
-      setError(
-        `No se pudieron cargar los intermediarios: ${errorCompanyUsers.message}`
-      );
+      setError(`No se pudieron cargar los intermediarios: ${errorCompanyUsers.message}`);
       return;
     }
 
-    const companyIds = [
-      ...new Set(
-        (companyUsers || [])
-          .map((item) => item.company_id)
-          .filter(Boolean)
-      ),
-    ];
+    const companyIds = [...new Set(
+      (companyUsers || []).map((item) => item.company_id).filter(Boolean)
+    )];
 
     if (companyIds.length === 0) {
       setIntermediariosDisponibles([]);
       return;
     }
 
-    const { data: companies, error: errorCompanies } =
-      await supabase
-        .from("companies")
-        .select("id, razon_social, nombre_comercial, cuit")
-        .in("id", companyIds);
-
-    if (errorCompanies) {
-      console.error(errorCompanies);
-      setError(
-        `No se pudieron cargar las empresas intermediarias: ${errorCompanies.message}`
-      );
-      return;
-    }
-
-    const cuits = [
-      ...new Set(
-        (companies || [])
-          .map((company) => company.cuit)
-          .filter(Boolean)
-      ),
-    ];
-
-    if (cuits.length === 0) {
-      setIntermediariosDisponibles([]);
-      return;
-    }
-
-    const { data: empresas, error: errorEmpresas } =
-      await supabase
-        .from("empresas")
-        .select("id, razon_social, nombre_comercial, cuit")
-        .in("cuit", cuits)
-        .eq("activa", true);
+    const { data: empresas, error: errorEmpresas } = await supabase
+      .from("empresas")
+      .select("id, razon_social, nombre_comercial, cuit")
+      .in("id", companyIds)
+      .eq("activa", true);
 
     if (errorEmpresas) {
       console.error(errorEmpresas);
-      setError(
-        `No se pudieron vincular las empresas intermediarias: ${errorEmpresas.message}`
-      );
+      setError(`No se pudieron cargar las empresas intermediarias: ${errorEmpresas.message}`);
       return;
     }
 
-    const empresasPorCuit = new Map(
-      (empresas || []).map((empresa) => [
-        empresa.cuit,
-        empresa,
-      ])
-    );
-
-    const disponibles: IntermediarioDisponible[] = (companies || [])
-      .flatMap((company) => {
-        const empresa = empresasPorCuit.get(company.cuit);
-
-        if (!empresa) return [];
-
-        return [{
-          empresa_id: empresa.id,
-          razon_social:
-            empresa.razon_social ||
-            company.razon_social ||
-            "Empresa sin razón social",
-          nombre_comercial:
-            empresa.nombre_comercial ||
-            company.nombre_comercial ||
-            null,
-          cuit:
-            empresa.cuit ||
-            company.cuit ||
-            null,
-        }];
-      })
-      .sort((a, b) =>
-        a.razon_social.localeCompare(b.razon_social)
-      );
+    const disponibles: IntermediarioDisponible[] = (empresas || [])
+      .map((empresa) => ({
+        empresa_id: String(empresa.id),
+        razon_social: empresa.razon_social || "Empresa sin razón social",
+        nombre_comercial: empresa.nombre_comercial || null,
+        cuit: empresa.cuit || null,
+      }))
+      .sort((a, b) => a.razon_social.localeCompare(b.razon_social));
 
     setIntermediariosDisponibles(disponibles);
   }
