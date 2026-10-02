@@ -285,12 +285,31 @@ export async function GET(request: NextRequest) {
         detail: error instanceof Error ? error.message : "No se pudo verificar Adobe Acrobat Sign."
       };
     }
-    checks.translation_provider = {
-      ok: Boolean(process.env.TRANSLATION_API_URL) && Boolean(process.env.TRANSLATION_API_KEY),
-      detail: process.env.TRANSLATION_API_URL && process.env.TRANSLATION_API_KEY
-        ? "Proveedor de traducción configurado."
-        : "Faltan TRANSLATION_API_URL y/o TRANSLATION_API_KEY."
-    };
+    try {
+      const hasProvider = Boolean(process.env.TRANSLATION_API_URL) && Boolean(process.env.TRANSLATION_API_KEY);
+      if (hasProvider) {
+        checks.translation_provider = {
+          ok: true,
+          detail: "Proveedor de traducción configurado."
+        };
+      } else {
+        const { data: translationRows, error: translationError } = await checkDb
+          .from("traducciones_ui")
+          .select("idioma")
+          .in("idioma", ["es", "en", "pt", "it", "fr", "de"]);
+        const languages = new Set((translationRows ?? []).map((row) => row.idioma));
+        checks.translation_provider = translationError
+          ? { ok: false, detail: translationError.message }
+          : languages.size >= 6
+            ? { ok: true, detail: "Catálogo UI multilingüe operativo para ES, EN, PT, IT, FR y DE." }
+            : { ok: false, detail: "No hay proveedor externo ni catálogo UI completo de 6 idiomas." };
+      }
+    } catch (error) {
+      checks.translation_provider = {
+        ok: false,
+        detail: error instanceof Error ? error.message : "No se pudo verificar traducciones."
+      };
+    }
     try {
       const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
       if (!serviceKey) {
