@@ -233,10 +233,11 @@ export async function GET(request: NextRequest) {
         await consultarProvinciasWSCPE();
         checks.arca_connectivity = { ok: true, detail: "WSCPE respondió correctamente." };
       } catch (error) {
-        checks.arca_connectivity = {
-          ok: false,
-          detail: error instanceof Error ? error.message : "No fue posible verificar WSCPE."
-        };
+        const raw = error instanceof Error ? error.message : "No fue posible verificar WSCPE.";
+        const detail = raw.includes("Computador no autorizado a acceder al servicio")
+          ? "ARCA rechazó el acceso al WSCPE: el certificado de producción aún no está delegado/autorizado para ese servicio, o se está usando otro certificado. Autorizar el certificado en Administrador de Relaciones de Clave Fiscal y volver a verificar."
+          : raw;
+        checks.arca_connectivity = { ok: false, detail };
       }
     } else {
       checks.arca_connectivity = { ok: false, detail: "No se ejecutó: faltan configuración o credenciales ARCA." };
