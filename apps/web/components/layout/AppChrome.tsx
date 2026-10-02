@@ -7,7 +7,7 @@ import Sidebar from "./Sidebar";
 import PageContainer from "./PageContainer";
 import { supabase } from "@/lib/supabase/client";
 
-const PUBLIC_ROUTES = ["/", "/login", "/register", "/reset-password"];
+const PUBLIC_ROUTES = ["/", "/login", "/register", "/reset-password", "/terminos", "/ayuda", "/como-verificamos"];
 
 export default function AppChrome({ children }: { children: ReactNode }) {
   const pathname = usePathname();
