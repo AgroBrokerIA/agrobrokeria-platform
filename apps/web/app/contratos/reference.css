@@ -15,3 +15,15 @@
 .contract-language-bar{margin-top:10px;background:#fff;border:1px solid #dfe6ef;border-radius:8px;padding:8px;display:flex;align-items:center;gap:4px;flex-wrap:wrap}.contract-language-bar span{font-size:8px;color:#657084;font-weight:900;margin-right:6px}.contract-language-bar button{border:1px solid #dfe3ea;background:#fff;border-radius:5px;padding:5px 7px;font-size:8px;color:#1c2a5e;cursor:pointer}.contract-language-bar button.active{border-color:#0a9c63;color:#078e5b;background:#effaf5}
 @media(max-width:1200px){.contract-builder-grid{grid-template-columns:1fr}.contract-previews{grid-template-columns:1fr 1fr}}
 @media(max-width:800px){.contract-builder-reference{padding:16px 12px 30px}.contract-builder-head{align-items:flex-start;flex-direction:column}.contract-builder-actions{width:100%;overflow:auto}.contract-builder-tabs{overflow:auto;width:100%}.contract-builder-grid,.contract-previews{grid-template-columns:1fr}.contract-commodity-picks{grid-template-columns:repeat(3,1fr)}.contract-builder-fields{grid-template-columns:1fr}.contract-output-actions{grid-template-columns:1fr 1fr}.contract-list-panel>button{grid-template-columns:1fr}.paper-clause{grid-template-columns:82px 1fr}.contract-template-grid{grid-template-columns:1fr}}
+
+.contract-sign-list{display:grid;gap:12px;margin-top:18px}
+.contract-sign-card{display:flex;align-items:center;justify-content:space-between;gap:16px;border:1px solid #d9e4e5;border-radius:12px;padding:14px 16px;background:#fff}
+.contract-sign-card.selected{border-color:#00965f;box-shadow:0 0 0 2px rgba(0,150,95,.08)}
+.contract-sign-card>div:first-child{display:grid;gap:4px}
+.contract-sign-card strong{font-size:15px;color:#0c1930}
+.contract-sign-card span,.contract-sign-card small{color:#64748b;font-size:12px}
+.contract-sign-actions{display:flex;gap:8px;flex-wrap:wrap}
+.contract-sign-actions button{border:1px solid #cbd5e1;border-radius:8px;background:#fff;padding:8px 11px;cursor:pointer}
+.contract-sign-actions button:last-child{background:#00965f;color:#fff;border-color:#00965f}
+.contract-sign-actions button:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:760px){.contract-sign-card{align-items:flex-start;flex-direction:column}.contract-sign-actions{width:100%}.contract-sign-actions button{flex:1}}
