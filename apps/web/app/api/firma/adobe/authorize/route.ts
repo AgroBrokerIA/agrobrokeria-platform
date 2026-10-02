@@ -64,7 +64,7 @@ export async function GET(req: NextRequest) {
     url.searchParams.set("state", state);
     url.searchParams.set("scope", scope);
 
-    return NextResponse.redirect(url);
+    return NextResponse.json({ ok: true, authorization_url: url.toString() });
   } catch (error) {
     return NextResponse.json({ ok: false, error: error instanceof Error ? error.message : "ADOBE_SIGN_AUTHORIZE_ERROR" }, { status: 500 });
   }
