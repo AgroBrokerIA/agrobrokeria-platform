@@ -10,15 +10,10 @@ function adminClient() {
   return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key);
 }
 
-function redirect(req: NextRequest, status: string, detail?: string) {
+function redirect(req: NextRequest, status: string) {
   const url = new URL("/contratos", req.url);
   url.searchParams.set("firma", status);
-  if (detail) url.searchParams.set("detail", detail.slice(0, 180));
   return NextResponse.redirect(url);
-}
-
-function normalizeSecret(value: string) {
-  return value.trim().replace(/^["'](.*)["']$/s, "$1").trim();
 }
 
 export async function GET(req: NextRequest) {
@@ -51,9 +46,16 @@ export async function GET(req: NextRequest) {
     if (!consumed) return redirect(req, "state_replayed");
 
     const clientId = "ats-eada1c07-8d29-4481-94b0-36697190a75a";
-    const rawSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
-    const clientSecret = rawSecret ? normalizeSecret(rawSecret) : "";
-    if (!clientSecret) return redirect(req, "credentials_pending", "ADOBE_SIGN_CLIENT_SECRET missing or empty at runtime");
+    const clientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
+    if (!clientSecret) return redirect(req, "credentials_pending");
+
+    const tokenBody = new URLSearchParams({
+      grant_type: "authorization_code",
+      code,
+      client_id: clientId,
+      client_secret: clientSecret,
+      redirect_uri: stateRow.redirect_uri
+    });
 
     const tokenEndpoints = [
       ...(returnedApiAccessPoint && /^https:\/\//i.test(returnedApiAccessPoint)
@@ -68,34 +70,26 @@ export async function GET(req: NextRequest) {
     let lastProviderError = "";
 
     for (const endpoint of tokenEndpoints) {
-      const tokenBody = new URLSearchParams({
-        grant_type: "authorization_code",
-        code,
-        client_id: clientId,
-        client_secret: clientSecret,
-        redirect_uri: stateRow.redirect_uri
-      });
-
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
-        body: tokenBody.toString(),
+        body: tokenBody,
         cache: "no-store"
       });
-
       const data = await response.json().catch(() => ({}));
       tokenResponse = response;
       tokenData = data;
-
       if (response.ok && typeof data.access_token === "string" && typeof data.refresh_token === "string") break;
-
       const codeName = typeof data.error === "string" ? data.error : "unknown_error";
       const description = typeof data.error_description === "string" ? data.error_description : "";
       lastProviderError = codeName + (description ? ":" + description : "");
     }
 
     if (!tokenResponse?.ok || typeof tokenData.access_token !== "string" || typeof tokenData.refresh_token !== "string") {
-      return redirect(req, "token_exchange_failed", lastProviderError || "Adobe token exchange failed");
+      const target = new URL("/contratos", req.url);
+      target.searchParams.set("firma", "token_exchange_failed");
+      if (lastProviderError) target.searchParams.set("detail", lastProviderError.slice(0, 180));
+      return NextResponse.redirect(target);
     }
 
     const apiAccessPoint = String(tokenData.api_access_point || "");
