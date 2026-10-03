@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useEffect, useState, useRef } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
@@ -14,6 +14,8 @@ export default function Header() {
   const [notificaciones, setNotificaciones] = useState(0);
   const [empresaVerificada, setEmpresaVerificada] = useState(false);
   const [busqueda, setBusqueda] = useState("");
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   async function cargar() {
     const { data: { user } } = await supabase.auth.getUser();
@@ -41,12 +43,20 @@ export default function Header() {
   }
 
   useEffect(() => {
+    const cerrar = (e: MouseEvent) => { if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuAbierto(false); };
+    document.addEventListener("mousedown", cerrar);
+    return () => document.removeEventListener("mousedown", cerrar);
+  }, []);
+
+  useEffect(() => {
     let activo = true; void cargar();
     const onLanguage = () => setIdioma((localStorage.getItem("agrobrokeria.language") || "es").toUpperCase());
     window.addEventListener("agrobrokeria:language-changed", onLanguage);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { if (activo) void cargar(); });
     return () => { activo = false; subscription.unsubscribe(); window.removeEventListener("agrobrokeria:language-changed", onLanguage); };
   }, []);
+
+  async function cerrarSesion() { await supabase.auth.signOut(); setMenuAbierto(false); router.replace("/login"); }
 
   function ejecutarBusqueda(e: React.FormEvent) {
     e.preventDefault();
@@ -66,7 +76,16 @@ export default function Header() {
       <button type="button" className="header-language" onClick={() => router.push("/idioma")} aria-label="Idioma">🇪🇸 <strong>{idioma}</strong>⌄</button>
       <Link href="/notificaciones" className="header-icon header-notify" aria-label="Notificaciones">♧{notificaciones > 0 && <i>{notificaciones > 99 ? "99+" : notificaciones}</i>}</Link>
       <Link href="/mensajes" className="header-icon header-message" aria-label="Mensajes">✉{mensajes > 0 && <i>{mensajes}</i>}</Link>
-      {usuario ? <Link href="/perfil" className="user-menu"><span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>{condicion} | AgroBrokerIA</small></div><span className="user-chevron">⌄</span></Link> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
+      {usuario ? <div className="user-menu-wrap" ref={menuRef}>
+        <button type="button" className="user-menu user-menu-button" onClick={() => setMenuAbierto(v => !v)} aria-expanded={menuAbierto} aria-haspopup="menu">
+          <span className="user-avatar">{usuario.charAt(0).toUpperCase()}</span><div className="user-meta"><strong>{usuario}</strong><small>{condicion} | AgroBrokerIA</small></div><span className="user-chevron">{menuAbierto ? "⌃" : "⌄"}</span>
+        </button>
+        {menuAbierto && <div className="user-dropdown" role="menu">
+          <Link href="/perfil#seguridad" onClick={() => setMenuAbierto(false)} role="menuitem">🔑 <span>Cambiar contraseña</span></Link>
+          <Link href="/ayuda" onClick={() => setMenuAbierto(false)} role="menuitem">❓ <span>Ayuda</span></Link>
+          <button type="button" onClick={cerrarSesion} role="menuitem">↪ <span>Cerrar sesión</span></button>
+        </div>}
+      </div> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
     </div>
   </header>;
 }
