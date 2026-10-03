@@ -61,7 +61,7 @@ export async function GET(request: NextRequest) {
     }
 
     let activeCompanyId = profile?.active_company_id ?? null;
-    let resolvedProfileIds = [user.id];
+    const resolvedProfileIds = [user.id];
     if (admin && user.email) {
       const { data: emailProfile } = await admin
         .from("profiles")
