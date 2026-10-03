@@ -50,7 +50,7 @@ export default function PagosPage(){
  }
  return <main className="payments-page">
   <header className="payments-hero"><div><h1>Pagos</h1><p>Gestiona los pagos de tus operaciones, comisiones y retiros de forma segura.</p></div></header>
-  <nav className="payments-tabs"><Link className="active" href="/pagos">Resumen</Link><Link href="/transacciones">Transacciones</Link><Link href="/cuentas-bancarias">Cuentas bancarias</Link><Link href="/medios-cobro">Métodos de pago</Link><Link href="/retiros-comisiones">Retiros / comisiones</Link><Link href="/facturas">Facturas</Link><Link href="/configuracion">Configuración</Link></nav>
+  <nav className="payments-tabs"><Link className="active" href="/pagos">Resumen</Link><Link href="/transacciones">Transacciones</Link><Link href="/medios-cobro">Medios de cobro</Link><Link href="/cuentas-bancarias">Cuentas bancarias</Link><Link href="/retiros-comisiones">Retiros</Link><Link href="/facturas">Facturación</Link></nav>
   {error&&<div className="module-alert module-alert-error">{error}</div>}{msg&&<div className="module-alert">{msg}</div>}
   <section className="payment-kpis">
    <div className="payment-kpi green"><div className="payment-kpi-icon">✓</div><div><small>Pagos recibidos</small><strong>{received}</strong><em>Total de pagos registrados</em></div></div>
