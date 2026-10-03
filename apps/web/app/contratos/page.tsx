@@ -56,7 +56,7 @@ export default function ContratosPage(){
 
  async function load(){
    setLoading(true);setError("");
-   const [c,v,p,port,op]=await Promise.all([
+   const [c,v,p,port,op,ext]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
