@@ -22,7 +22,7 @@ export default function RetirosComisionesPage(){
   if(pe||!profile?.active_company_id){setError("No se pudo determinar la empresa activa.");setLoading(false);return}
   const empresa=profile.active_company_id;
   const [mc,m,c,r]=await Promise.all([
-   supabase.from("monedas").select("id,codigo").eq("activo",true).order("id"),
+   supabase.from("monedas").select("id,codigo").order("id"),
    supabase.from("medios_cobro").select("id,tipo,nombre,titular,banco,cbu,alias,moneda_id,es_predeterminado,estado").eq("empresa_id",empresa).neq("estado","INACTIVO").order("es_predeterminado",{ascending:false}),
    supabase.from("billeteras_comisiones").select("moneda_id,saldo_disponible,saldo_en_retiro,saldo_retirado").eq("empresa_id",empresa),
    supabase.from("retiros_comisiones").select("id,medio_cobro_id,moneda_id,importe,estado,referencia,fecha_solicitud,fecha_pago,motivo_rechazo").eq("empresa_id",empresa).order("fecha_solicitud",{ascending:false})
