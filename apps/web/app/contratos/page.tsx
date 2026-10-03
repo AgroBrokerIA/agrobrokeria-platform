@@ -32,7 +32,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  const field=(v:string)=>v||"_______________________________";
  const wrap=(t:string,x:number,y:number,w:number,size=9,gap=11)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const ls=pdf.splitTextToSize(t,w);pdf.text(ls,x,y);return y+ls.length*gap};
  const title=(t:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);pdf.text(t,W/2,42,{align:"center"});};
- title(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – FORMATO F1":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2");
+ title(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2");
  pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento el contrato "+f.tipo+", celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
  let y=98;
  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
@@ -79,7 +79,7 @@ function buildPdf(f:FormState){
  const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
  const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Conste por el presente documento que se celebra el ${dateText}, bajo las condiciones que se detallan a continuación.`,m,76);};
  if(f.tipo==="F1"){
-   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS – FORMATO F1");
+   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS – F1");
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;
    pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
@@ -105,17 +105,17 @@ function buildPdf(f:FormState){
    const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"],["Por el Intermediario",f.intermediario||"____________________________"]];
    sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
  } else {
-   pageTitle("ACUERDO DE ABASTECIMIENTO CONTINUO DE GRANOS","CONTRATO MARCO REGENERATIVO - FORMATO F2");
+   pageTitle("ACUERDO DE ABASTECIMIENTO CONTINUO DE GRANOS","CONTRATO MARCO REGENERATIVO - F2");
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
    y=drawWrapped(pdf,`EL VENDEDOR (PROVEEDOR): ${field("",f.vendedor)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y,W-2*m,9);
    y=drawWrapped(pdf,`EL COMPRADOR (RECEPTOR): ${field("",f.comprador)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
    y=drawWrapped(pdf,`EL INTERMEDIARIO (BRÓKER): ${field("",f.intermediario)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
-   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. ESPECIFICACIONES DE LOGÍSTICA Y ABASTECIMIENTO (FORMATO F2)",m,y);y+=15;
+   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. ESPECIFICACIONES DE LOGÍSTICA Y ABASTECIMIENTO (F2)",m,y);y+=15;
    const rows=[["Especie / Grano",field("",f.producto),"Campaña Agrícola",f.campania||"2025 / 2026"],["Volumen Total Comprometido",f.cantidad?money(f.cantidad)+" Tons.":"____________ Tons.","Tolerancia Contractual","+/- 5 %"],["Esquema de Entregas / Cupos","Mensual [ ] Quincenal [ ] Según Plan de Cargas [ ]","Frecuencia de Carga","Programada F2"],["Precio Base / Fórmula",f.precio?"USD "+money(f.precio)+" por Tonelada":"USD ________ por Tonelada","Fijación de Precio","Pizarra [ ] Mercado [ ] Fijo [ ]"],["Procedencia de la Carga",f.procedencia||"________________________","Condición de Entrega",f.condicion||"Puesta en Destino / FAS / FOB"],["Destino Final / Puerto",f.puerto||"________________________","Plazo del Acuerdo","Hasta completar volumen"]];
    const c1=120,c2=175,c3=115,c4=W-2*m-c1-c2-c3;for(const r of rows){const h=30;let x=m;[c1,c2,c3,c4].forEach(w=>{pdf.setDrawColor(175,190,205);pdf.rect(x,y,w,h);x+=w});pdf.setFont("helvetica","bold");pdf.setFontSize(7.2);pdf.setTextColor(...green);pdf.text(r[0],m+4,y+11);pdf.text(r[2],m+c1+c2+4,y+11);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(r[1],c2-8),m+c1+4,y+11);pdf.text(pdf.splitTextToSize(r[3],c4-8),m+c1+c2+c3+4,y+11);y+=h;}
    y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. CLÁUSULAS GENERALES",m,y);y+=18;
-   y=drawWrapped(pdf,"PRIMERA: NATURALEZA DEL FORMATO F2: El presente acuerdo rige bajo la modalidad F2 de abastecimiento programado. El Vendedor se obliga a asegurar la disponibilidad de los cupos y camiones/vagones de acuerdo al cronograma logístico pactado, garantizando un flujo continuo de mercadería hacia el destino fijado por el Comprador.",m,y,W-2*m,8.5,10);y+=8;
+   y=drawWrapped(pdf,"PRIMERA: NATURALEZA DEL F2: El presente acuerdo rige bajo la modalidad F2 de abastecimiento programado. El Vendedor se obliga a asegurar la disponibilidad de los cupos y camiones/vagones de acuerdo al cronograma logístico pactado, garantizando un flujo continuo de mercadería hacia el destino fijado por el Comprador.",m,y,W-2*m,8.5,10);y+=8;
    y=drawWrapped(pdf,"SEGUNDA: CALIDAD Y TOLERANCIAS: Todos los embarques deberán cumplir estrictamente con el estándar de comercialización oficial. Las determinaciones de calidad (humedad, materias extrañas, daño por insectos o factores climáticos) se realizarán en la balanza de destino, aplicándose las mermas y rebajas correspondientes de acuerdo a las tablas vigentes del sector agrícola.",m,y,W-2*m,8.5,10);y+=8;
    y=drawWrapped(pdf,`TERCERA: COMISIONES DE INTERMEDIACIÓN: Las partes operativas (Vendedor y Comprador) reconocen de manera irrevocable la intervención directa del Intermediario en la estructuración de este canal de abastecimiento. Se fija una comisión de ${f.comision||"____________________"} (porcentaje o monto fijo por tonelada), que se devengará y liquidará automáticamente sobre cada entrega efectiva y parcial de granos, debiendo acreditarse al Intermediario dentro de los cinco (5) días hábiles posteriores a cada cobro.`,m,y,W-2*m,8.5,10);
    pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.text("CUARTA: NO CIRCUNVENCIÓN Y EXCLUSIVIDAD",m,y);y=drawWrapped(pdf,"El Comprador y el Vendedor se obligan mutuamente a no entablar negociaciones de suministro directo, contratos laterales ni extensiones de cupos que eludan o excluyan la participación y el cobro de comisiones del Intermediario respecto de las partes o de la procedencia aquí descrita, por un plazo de tres (3) años contados desde la firma de este documento.",m,y+14,W-2*m,9,11);y+=10;pdf.setFont("helvetica","bold");pdf.text("QUINTA: JURISDICCIÓN ARBITRAL",m,y);y=drawWrapped(pdf,`Ante cualquier discrepancia en la interpretación de los rendimientos, mermas o ejecución comercial de este contrato marco F2, las partes se someten de común acuerdo a la competencia exclusiva de la Cámara Arbitral de Cereales de la jurisdicción aplicable, renunciando expresamente a la vía judicial ordinaria.`,m,y+14,W-2*m,9,11);y+=30;
@@ -315,8 +315,36 @@ export default function ContratosPage(){
  const effectiveForm={...form,intermediario:hasIntermediary?(form.intermediario||"EL INTERMEDIARIO"):""};
  const current=selected;
 
- function download(tipo:"F1"|"F2"){if(!form.operacionId||!form.producto){setMessage("Seleccioná una operación y producto antes de generar el PDF.");return;}setForm(x=>({...x,tipo,moneda:"USD"}));setTimeout(()=>buildPdf({...effectiveForm,tipo,moneda:"USD"}).save(`AgroBrokerIA-Contrato-${tipo}.pdf`),0);setMessage(`PDF ${tipo} generado; sin cláusulas de intermediación cuando no existe intermediario.`)}
- function downloadConfidentiality(){const name=hasIntermediary?"AgroBrokerIA-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Confidencialidad-Operacion.pdf";buildConfidentialityPdf(effectiveForm).save(name);setMessage(hasIntermediary?"Contrato de confidencialidad, no circunvención y comisiones generado según el modelo cargado.":"Contrato de confidencialidad de la operación generado sin cláusulas de intermediación ni comisión.");}
+ function savePdfFile(pdf:jsPDF,filename:string){
+  const blob=pdf.output("blob");
+  const url=URL.createObjectURL(blob);
+  const anchor=document.createElement("a");
+  anchor.href=url;
+  anchor.download=filename;
+  anchor.rel="noopener";
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  window.setTimeout(()=>URL.revokeObjectURL(url),1500);
+ }
+ function download(tipo:"F1"|"F2"){
+  if(!form.operacionId||!form.producto){setMessage("Seleccioná una operación y producto antes de generar el PDF.");return;}
+  try{
+   const next={...effectiveForm,tipo,moneda:"USD"};
+   setForm(x=>({...x,tipo,moneda:"USD"}));
+   savePdfFile(buildPdf(next),`AgroBrokerIA-Contrato-${tipo}.pdf`);
+   setError("");
+   setMessage(`PDF ${tipo} descargado correctamente.`);
+  }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
+ }
+ function downloadConfidentiality(){
+  try{
+   const name=hasIntermediary?"AgroBrokerIA-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Confidencialidad-Operacion.pdf";
+   savePdfFile(buildConfidentialityPdf(effectiveForm),name);
+   setError("");
+   setMessage(hasIntermediary?"Contrato de confidencialidad, no circunvención y comisiones descargado correctamente.":"Contrato de confidencialidad de la operación descargado correctamente.");
+  }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
+ }
  function preview(tipo:"F1"|"F2"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
  function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
  function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
