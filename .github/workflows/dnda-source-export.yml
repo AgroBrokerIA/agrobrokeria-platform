@@ -1,0 +1,33 @@
+name: DNDA Source Export
+on:
+  push:
+    branches: [dnda-export]
+jobs:
+  export:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+      - name: Build DNDA source package
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p dnda-package
+          cat > dnda-package/DNDA-README.txt <<'EOF'
+AgroBrokerIA - Deposito tecnico de codigo fuente
+Version: snapshot de la rama dnda-export
+Incluye: aplicacion web, APIs, logica de matching/IA, integraciones, migraciones y funciones Supabase, tests y configuracion de desarrollo.
+Exclusiones: credenciales, secretos, archivos .env, certificados/claves privadas, dependencias instaladas y artefactos de build.
+Este paquete corresponde al estado del repositorio en el commit que genero este workflow.
+EOF
+          rsync -a --exclude='.git/' --exclude='.github/' --exclude='node_modules/' --exclude='.next/' --exclude='.vercel/' --exclude='coverage/' --exclude='dist/' --exclude='build/' --exclude='.env' --exclude='.env.local' --exclude='.env.*.local' --exclude='*.pem' --exclude='*.key' --exclude='*.p12' --exclude='*.pfx' --exclude='*.crt' ./ dnda-package/
+          printf '\nCommit: ' >> dnda-package/DNDA-README.txt
+          git rev-parse HEAD >> dnda-package/DNDA-README.txt
+          cd dnda-package
+          zip -qr ../AgroBrokerIA-DNDA-codigo-fuente.zip .
+      - uses: actions/upload-artifact@v4
+        with:
+          name: AgroBrokerIA-DNDA-codigo-fuente
+          path: AgroBrokerIA-DNDA-codigo-fuente.zip
+          retention-days: 30
