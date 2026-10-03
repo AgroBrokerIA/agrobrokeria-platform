@@ -311,7 +311,7 @@ export default function NuevaPublicacionForm() {
   }, [puertos, busquedaPuerto]);
 
   function seleccionarTodosLosPuertos() {
-    const codigos = puertosFiltrados.map((p) => p.nombre);
+    const codigos = puertosFiltrados.map((p) => p.codigo);
     setPuertosSeleccionados((actuales) => {
       const nuevos = Array.from(new Set([...actuales, ...codigos]));
       setForm((anterior) => ({ ...anterior, puerto: nuevos[0] ?? "" }));
@@ -469,10 +469,10 @@ export default function NuevaPublicacionForm() {
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8, marginTop: 14, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
           {puertosFiltrados.map((puerto) => {
-            const checked = puertosSeleccionados.includes(puerto.nombre);
+            const checked = puertosSeleccionados.includes(puerto.codigo);
             return (
               <label key={puerto.codigo} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 11, borderRadius: 10, border: checked ? "1px solid #10b981" : "1px solid #e2e8f0", background: checked ? "#ecfdf5" : "#fff", cursor: "pointer" }}>
-                <input type="checkbox" checked={checked} onChange={() => alternarPuerto(puerto.nombre)} style={{ marginTop: 3 }} />
+                <input type="checkbox" checked={checked} onChange={() => alternarPuerto(puerto.codigo)} style={{ marginTop: 3 }} />
                 <span>
                   <strong style={{ display: "block" }}>{puerto.nombre}</strong>
                   <small style={{ color: "#64748b" }}>{[puerto.localidad, puerto.provincia, puerto.pais].filter(Boolean).join(" · ")}</small>
@@ -486,7 +486,7 @@ export default function NuevaPublicacionForm() {
           Puerto principal
           <select value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
             <option value="">Seleccionar puerto principal...</option>
-            {puertos.filter((p) => puertosSeleccionados.includes(p.nombre)).map((p) => <option key={p.codigo} value={p.nombre}>{p.nombre}</option>)}
+            {puertos.filter((p) => puertosSeleccionados.includes(p.codigo)).map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}
           </select>
         </label>
       </section>
