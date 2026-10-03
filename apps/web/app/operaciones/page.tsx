@@ -2374,7 +2374,7 @@ Firma: ______________________________
 
     if (!workflow) {
       setError(
-        "La liquidación fue confirmada, pero la operación no tiene workflow asociado."
+        "La operación no tiene workflow asociado."
       );
       return false;
     }
@@ -2382,28 +2382,6 @@ Firma: ______________________________
     if (workflow.orden !== 9) {
       setError(
         `No se puede cerrar la operación porque está en la etapa ${workflow.etapa_actual}.`
-      );
-      return false;
-    }
-
-    const { data: etapaCerrada, error: errorEtapaCerrada } =
-      await supabase
-        .from("workflow_etapas")
-        .select("id, nombre, orden")
-        .eq("workflow_id", workflow.workflow_id)
-        .eq("orden", 10)
-        .maybeSingle();
-
-    if (errorEtapaCerrada) {
-      setError(
-        `No se pudo localizar la etapa Cerrada: ${errorEtapaCerrada.message}`
-      );
-      return false;
-    }
-
-    if (!etapaCerrada) {
-      setError(
-        "No existe la etapa 10 (Cerrada) en este workflow."
       );
       return false;
     }
@@ -2422,15 +2400,9 @@ Firma: ______________________________
       return false;
     }
 
-    const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaCerrada.id, "CERRADA");
-
-    if (errorAvance) {
-      setError(
-        `La liquidación y la comisión fueron registradas, pero no se pudo actualizar el workflow: ${errorAvance.message}`
-      );
-      return false;
-    }
-
+    // El RPC de cierre confirma la liquidación, registra la comisión de plataforma
+    // y cierra atómicamente la operación y su workflow. No debe intentarse un
+    // segundo avance secuencial hacia la etapa 10.
     setMensaje(
       "✅ Liquidación confirmada. Comisión AgroBroker IA registrada y operación cerrada."
     );
@@ -2439,7 +2411,6 @@ Firma: ______________________________
 
     return true;
   }
-
 
   async function verificarLiberacionOperativa(
     operacionId: string
