@@ -378,7 +378,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Ajustes (${currencyCode || "moneda de operación"})`}
+          label="Ajustes (USD)"
           value={datos.ajustes_usd}
           type="number"
           onChange={(v) =>
@@ -387,7 +387,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Deducciones (${currencyCode || "moneda de operación"})`}
+          label="Deducciones (USD)"
           value={datos.deducciones_usd}
           type="number"
           onChange={(v) =>
@@ -402,7 +402,7 @@ export default function Liquidacion({
         />
 
         <Campo
-          label={`Importe neto a liquidar (${currencyCode || "moneda de operación"})`}
+          label="Importe neto a liquidar (USD)"
           value={calculos.neto.toFixed(2)}
           readOnly
         />
