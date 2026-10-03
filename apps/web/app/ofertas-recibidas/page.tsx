@@ -229,10 +229,8 @@ export default function OfertasRecibidasPage() {
         error: errorEmpresa,
       } = await supabase
         .from("empresas")
-        .select(
-          "id, razon_social, nombre_comercial, cuit"
-        )
-        .eq("razon_social", company.razon_social)
+        .select("id, razon_social, nombre_comercial, cuit")
+        .eq("id", perfilEmpresa.company_id)
         .limit(1)
         .maybeSingle();
 
