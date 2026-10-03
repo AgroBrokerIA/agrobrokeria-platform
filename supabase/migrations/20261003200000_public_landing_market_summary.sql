@@ -12,7 +12,7 @@ as $function$
   delete from public.market_public_summary;
 
   insert into public.market_public_summary(
-    commodity, precio_promedio, moneda, publicaciones, actualizado_at, variacion
+    commodity, precio_promedio, moneda, publicaciones, actualizado_at, variacion, fecha_mercado
   )
   with ranked_market as (
     select
@@ -35,7 +35,8 @@ as $function$
   ),
   market as (
     select commodity, round(price::numeric,2) as precio, moneda,
-           0::bigint as publicaciones, actualizado_at, variation as variacion
+           0::bigint as publicaciones, actualizado_at, variation as variacion,
+           market_date as fecha_mercado
     from ranked_market
     where rn=1
   ),
@@ -46,21 +47,24 @@ as $function$
       coalesce(m.codigo,'USD')::text moneda,
       count(*)::bigint publicaciones,
       max(p.actualizada_en) actualizado_at,
-      null::numeric variacion
+      null::numeric variacion,
+      null::date fecha_mercado
     from public.publicaciones p
     left join public.productos pr on pr.id=p.producto_id
     left join public.monedas m on m.id=p.moneda_id
     where p.estado='PUBLICADA' and p.precio_tn is not null and p.precio_tn>0
     group by coalesce(nullif(trim(pr.nombre),''), nullif(trim(p.tipo),''), 'Sin especificar'),m.codigo
   )
-  select commodity,precio,moneda,publicaciones,actualizado_at,variacion from market
+  select commodity,precio,moneda,publicaciones,actualizado_at,variacion,fecha_mercado from market
   union all
-  select p.commodity,p.precio,p.moneda,p.publicaciones,p.actualizado_at,p.variacion
+  select p.commodity,p.precio,p.moneda,p.publicaciones,p.actualizado_at,p.variacion,p.fecha_mercado
   from pub p
   where not exists (
     select 1 from market m where lower(m.commodity)=lower(p.commodity)
   );
 $function$;
+
+alter table public.market_public_summary add column if not exists fecha_mercado date;
 
 create schema if not exists private;
 
