@@ -22,7 +22,6 @@ const menu: MenuItem[] = [
   { icon: "🔎", key: "nav.buscar", fallback: "Buscar", ruta: "/buscar" },
   { icon: "📨", key: "nav.ofertas", fallback: "Ofertas recibidas", ruta: "/ofertas-recibidas" },
   { icon: "💬", key: "nav.mensajes", fallback: "Mensajes", ruta: "/mensajes" },
-  { icon: "🔔", key: "nav.notificaciones", fallback: "Notificaciones", ruta: "/notificaciones" },
   { icon: "📹", key: "nav.videollamadas", fallback: "Videollamadas", ruta: "/videollamadas" },
   { icon: "📄", key: "nav.operaciones", fallback: "Operaciones", ruta: "/operaciones" },
   { icon: "📝", key: "nav.contratos", fallback: "Contratos", ruta: "/contratos" },
@@ -33,11 +32,14 @@ const menu: MenuItem[] = [
   { icon: "💼", key: "nav.comisiones", fallback: "Comisiones", ruta: "/comisiones" },
   { icon: "🏢", key: "nav.empresas", fallback: "Empresas", ruta: "/empresas" },
   { icon: "🔐", key: "nav.verificaciones", fallback: "Verificaciones", ruta: "/verificaciones" },
-  { icon: "🛡️", key: "nav.seguridad", fallback: "Seguridad", ruta: "/seguridad" },
   { icon: "📊", key: "nav.reportes", fallback: "Reportes", ruta: "/reportes" },
+  { icon: "🔔", key: "nav.notificaciones", fallback: "Notificaciones", ruta: "/notificaciones" },
   { icon: "👤", key: "nav.perfil", fallback: "Perfil", ruta: "/perfil" },
   { icon: "⚙️", key: "nav.administracion", fallback: "Administración", ruta: "/administracion" },
-];
+  { icon: "🛡️", key: "nav.seguridad", fallback: "Seguridad", ruta: "/seguridad" },
+  { icon: "⚙️", key: "nav.configuracion", fallback: "Configuración", ruta: "/configuracion" },
+  { icon: "❓", key: "nav.ayuda", fallback: "Ayuda", ruta: "/ayuda" },
+
 
 const translations: Record<string, Record<string, string>> = {
   es: {}, en: {
