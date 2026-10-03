@@ -21,9 +21,9 @@ export default function CumplimientosPage(){
   try{
    const {data:{user}}=await supabase.auth.getUser();
    if(!user) throw new Error("Necesitás iniciar sesión.");
-   const {data:cu,error:cue}=await supabase.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true).limit(1);
-   if(cue) throw cue;
-   const companyId=(cu?.[0] as any)?.company_id;
+   const {data:profile,error:profileError}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
+   if(profileError) throw profileError;
+   const companyId=(profile as any)?.active_company_id;
    if(!companyId) throw new Error("No se encontró una empresa activa.");
    const {data:c}=await supabase.from("companies").select("id,nombre,razon_social").eq("id",companyId).maybeSingle();
    setCompany(c);
