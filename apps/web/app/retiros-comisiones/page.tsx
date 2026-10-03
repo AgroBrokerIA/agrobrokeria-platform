@@ -37,7 +37,7 @@ export default function RetirosComisionesPage(){
  const disponibles=useMemo(()=>medios.filter(x=>x.estado==="VALIDADO"&&(!x.moneda_id||moneda===null||Number(x.moneda_id)===moneda)),[medios,moneda]);
  const disponible=Math.max(0,moneda===null?0:n(saldo[moneda]));
  useEffect(()=>{const p=disponibles.find(x=>x.es_predeterminado);setMedio(p?.id||disponibles[0]?.id||"")},[disponibles]);
- const totals=useMemo(()=>{const processing=retiros.filter(x=>["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).reduce((a,x)=>a+n(x.importe),0);const released=retiros.filter(x=>String(x.estado).toUpperCase()==="PAGADO").reduce((a,x)=>a+n(x.importe),0);return{processing,released,count:retiros.filter(x=>["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).length}},[retiros]);
+ const totals=useMemo(()=>{const processing=retiros.filter(x=>x.moneda_id===moneda&&["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).reduce((a,x)=>a+n(x.importe),0);const released=retiros.filter(x=>x.moneda_id===moneda&&String(x.estado).toUpperCase()==="PAGADO").reduce((a,x)=>a+n(x.importe),0);return{processing,released,count:retiros.filter(x=>x.moneda_id===moneda&&["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).length}},[retiros]);
  const retirosVisibles=useMemo(()=>{const x=retiros.filter(r=>{const s=String(r.estado).toUpperCase();if(tab==="PROCESO")return ["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(s);if(tab==="HIST")return ["PAGADO","RECHAZADO","CANCELADO"].includes(s);return true});return x},[retiros,tab]);
 
  async function solicitar(){
