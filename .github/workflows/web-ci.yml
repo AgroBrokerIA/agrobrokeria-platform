@@ -1,4 +1,5 @@
 name: Web CI
+# Launch validation: production-ready main branch
 
 on:
   push:
