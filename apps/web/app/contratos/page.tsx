@@ -13,6 +13,7 @@ const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Ita
 
 type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
 type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null};
+type Extension={id:string;operacion_id:string;contrato_id:string;motivo:string;justificativo:string;dias_solicitados:number;vencimiento_solicitado_at:string;evidencia_url:string|null;estado_revision:string;dias_aprobados:number|null;vencimiento_aprobado_at:string|null;observaciones_revision:string|null;created_at:string};
 
 const initial:FormState={operacionId:"",tipo:"F1",producto:"",cantidad:"",precio:"",moneda:"",condicion:"FAS",puerto:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:""};
 
@@ -46,7 +47,8 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]);
+ const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[adobeBusy,setAdobeBusy]=useState(false),[adobeStatus,setAdobeStatus]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
@@ -59,13 +61,15 @@ export default function ContratosPage(){
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
-     supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado,monedas(codigo)").order("fecha_operacion",{ascending:false})
+     supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado,monedas(codigo)").order("fecha_operacion",{ascending:false}),
+     supabase.from("prorrogas_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,dias_solicitados,vencimiento_solicitado_at,evidencia_url,estado_revision,dias_aprobados,vencimiento_aprobado_at,observaciones_revision,created_at").order("created_at",{ascending:false})
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
    setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
    if(!p.error&&p.data?.length)setProductos(p.data.map((x:any)=>x.nombre));
    if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
+   setExtensions((ext.data||[]) as Extension[]);
    setLoading(false);
  }
  useEffect(()=>{void load(); (async()=>{ try{ const {data:{session}}=await supabase.auth.getSession(); if(!session?.access_token)return; const res=await fetch("/api/firma/adobe/status",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"}); const data=await res.json().catch(()=>({})); if(res.ok&&data.connected){setAdobeStatus("connected");} else {setAdobeStatus("");} const status=new URLSearchParams(window.location.search).get("firma"); if(status==="connected"&&!data.connected){setMessage("Adobe Sign no confirmó una conexión válida. Volvé a conectar desde este botón.");} else if(status){setMessage(status==="connected"?"Adobe Acrobat Sign conectado correctamente.":status==="denied"?"Autorización de Adobe Sign cancelada.":status==="token_exchange_failed"?`Adobe Sign rechazó el intercambio OAuth.${new URLSearchParams(window.location.search).get("detail")?" Detalle: "+new URLSearchParams(window.location.search).get("detail"):""}`:status==="expired_state"?"La autorización de Adobe Sign expiró.":status==="invalid_callback"?"La prueba OAuth llegó al callback sin estado de seguridad; iniciá la conexión desde AgroBrokerIA.":"No se pudo completar la conexión con Adobe Sign.");} }catch{setAdobeStatus("");}finally{setAdobeBusy(false)} })();},[]);
@@ -79,6 +83,21 @@ export default function ContratosPage(){
      if(!res.ok||typeof data.authorization_url!=="string") throw new Error(data.error||"No se pudo iniciar OAuth de Adobe Sign.");
      window.location.href=data.authorization_url;
    }catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Adobe Sign.");setAdobeBusy(false)}
+ }
+
+ async function solicitarExtension(){
+   if(!selected?.operacion_id){setMessage("Seleccioná primero un contrato en Mis contratos.");return;}
+   const days=Number(extensionDays);
+   if(!Number.isInteger(days)||days<1||days>30){setError("La prórroga debe ser de 1 a 30 días.");return;}
+   if(extensionReason.trim().length<3){setError("Indicá el motivo de la prórroga.");return;}
+   if(extensionJustification.trim().length<10){setError("El justificativo debe explicar con detalle por qué necesitás más tiempo.");return;}
+   setExtensionBusy(true);setError("");setMessage("");
+   try{
+     const {error}=await supabase.rpc("solicitar_prorroga_contrato",{p_operacion_id:selected.operacion_id,p_dias_solicitados:days,p_motivo:extensionReason.trim(),p_justificativo:extensionJustification.trim(),p_evidencia_url:extensionEvidence.trim()||null,p_datos_adicionales:{detalle_necesidad:extensionDetails.trim()||null}});
+     if(error) throw error;
+     setMessage("Solicitud de prórroga enviada para auditoría. El plazo no cambia hasta que sea aprobada.");
+     setExtensionReason("");setExtensionJustification("");setExtensionEvidence("");setExtensionDetails("");setExtensionDays("1"); await load();
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar la prórroga.");} finally{setExtensionBusy(false);}
  }
 
  async function enviarAFirma(contratoId:string){
@@ -170,7 +189,16 @@ export default function ContratosPage(){
     </div>
   </section>:null}
 
-  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("tipos");setForm(x=>({...x,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}</section>}
+  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
+   {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
+    <label>Días adicionales solicitados<input type="number" min="1" max="30" value={extensionDays} onChange={e=>setExtensionDays(e.target.value)}/></label>
+    <label>Motivo<textarea value={extensionReason} onChange={e=>setExtensionReason(e.target.value)} placeholder="Por qué no se puede cerrar todavía"/></label>
+    <label>Justificativo detallado<textarea value={extensionJustification} onChange={e=>setExtensionJustification(e.target.value)} placeholder="Todos los datos necesarios: qué falta, dependencias, fechas, responsables y por qué necesitás ese plazo."/></label>
+    <label>Evidencia / comprobante (opcional)<input value={extensionEvidence} onChange={e=>setExtensionEvidence(e.target.value)} placeholder="URL o referencia del respaldo"/></label>
+    <label>Datos adicionales para auditoría (opcional)<textarea value={extensionDetails} onChange={e=>setExtensionDetails(e.target.value)} placeholder="Documentación pendiente, fecha estimada, proveedor, entidad financiera u otros datos."/></label>
+   </div><button className="contract-generate" disabled={extensionBusy} onClick={()=>void solicitarExtension()}>{extensionBusy?"Enviando…":"Solicitar prórroga para cerrar el contrato →"}</button></div>}
+   <section className="contract-info-panel" style={{marginTop:16}}><h2>Historial de prórrogas auditadas</h2>{extensions.filter(x=>!selected||x.contrato_id===selected.id).length===0?<p>No hay solicitudes de prórroga para este contrato.</p>:extensions.filter(x=>!selected||x.contrato_id===selected.id).map(x=><article key={x.id}><b>{x.estado_revision} · {x.dias_solicitados} día(s) solicitados</b><span>{new Date(x.created_at).toLocaleString("es-AR")} · solicitado hasta {new Date(x.vencimiento_solicitado_at).toLocaleString("es-AR")}</span><span>{x.motivo}</span><small>{x.justificativo}</small>{x.dias_aprobados&&<span>Aprobados: {x.dias_aprobados} día(s) · nuevo vencimiento: {x.vencimiento_aprobado_at?new Date(x.vencimiento_aprobado_at).toLocaleString("es-AR"):"-"}</span>}{x.observaciones_revision&&<small>Auditoría: {x.observaciones_revision}</small>}</article>)}</section>
+  </section>}
 
   {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Blanco</b><span>Modelo F1 para la operación seleccionada.</span></button><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F2",condicion:"FOB"}));setMessage("Plantilla F2 cargada.")}}><b>F2 · Privado</b><span>Modelo F2 para la operación seleccionada.</span></button></div></section>}
 
