@@ -15,6 +15,7 @@ type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;campania:strin
 type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null};
 type Extension={id:string;operacion_id:string;contrato_id:string;motivo:string;justificativo:string;dias_solicitados:number;vencimiento_solicitado_at:string;evidencia_url:string|null;estado_revision:string;dias_aprobados:number|null;vencimiento_aprobado_at:string|null;observaciones_revision:string|null;created_at:string};
 type ConfidentialityStatus={rol:"COMPRADOR"|"VENDEDOR"|"INTERMEDIARIO";company_id:string;requerido:boolean;aceptado:boolean;aceptado_at:string|null;version:string|null;hash_sha256:string|null;documento_codigo?:string|null;documento_titulo?:string|null};
+type ExternalDoc={id:string;nombre_archivo:string|null;url_archivo:string|null;aprobado:boolean|null;firmado_externamente:boolean|null;sha256:string|null;creado_en:string|null;operacion_id:string};
 
 const initial:FormState={operacionId:"",tipo:"F1",producto:"",campania:"",cantidad:"",precio:"",moneda:"",condicion:"FAS",puerto:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:"",intermediario:"",procedencia:"",jurisdiccion:"",ciudadArbitral:"",comision:""};
 
@@ -156,7 +157,7 @@ function buildConfidentialityPdf(f:FormState){
 export default function ContratosPage(){
  const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
  const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
- const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[adobeBusy,setAdobeBusy]=useState(false),[adobeStatus,setAdobeStatus]=useState("");
+ const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[externalDocs,setExternalDocs]=useState<ExternalDoc[]>([]),[externalDocId,setExternalDocId]=useState(""),[externalSha,setExternalSha]=useState(""),[externalBusy,setExternalBusy]=useState(false);
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
  const [selected,setSelected]=useState<C|null>(null);
@@ -182,19 +183,7 @@ export default function ContratosPage(){
    if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
    setLoading(false);
  }
- useEffect(()=>{void load(); (async()=>{ try{ const {data:{session}}=await supabase.auth.getSession(); if(!session?.access_token)return; const res=await fetch("/api/firma/adobe/status",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"}); const data=await res.json().catch(()=>({})); if(res.ok&&data.connected){setAdobeStatus("connected");} else {setAdobeStatus("");} const status=new URLSearchParams(window.location.search).get("firma"); if(status==="connected"&&!data.connected){setMessage("Adobe Sign no confirmó una conexión válida. Volvé a conectar desde este botón.");} else if(status){setMessage(status==="connected"?"Adobe Acrobat Sign conectado correctamente.":status==="denied"?"Autorización de Adobe Sign cancelada.":status==="token_exchange_failed"?`Adobe Sign rechazó el intercambio OAuth.${new URLSearchParams(window.location.search).get("detail")?" Detalle: "+new URLSearchParams(window.location.search).get("detail"):""}`:status==="expired_state"?"La autorización de Adobe Sign expiró.":status==="invalid_callback"?"La prueba OAuth llegó al callback sin estado de seguridad; iniciá la conexión desde AgroBrokerIA.":"No se pudo completar la conexión con Adobe Sign.");} }catch{setAdobeStatus("");}finally{setAdobeBusy(false)} })();},[]);
- async function conectarAdobe(){
-   setAdobeBusy(true);setError("");setMessage("");
-   try{
-     const {data:{session}}=await supabase.auth.getSession();
-     if(!session?.access_token) throw new Error("Necesitás iniciar sesión.");
-     const res=await fetch("/api/firma/adobe/authorize",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"});
-     const data=await res.json().catch(()=>({}));
-     if(!res.ok||typeof data.authorization_url!=="string") throw new Error(data.error||"No se pudo iniciar OAuth de Adobe Sign.");
-     window.location.href=data.authorization_url;
-   }catch(e){setError(e instanceof Error?e.message:"No se pudo conectar Adobe Sign.");setAdobeBusy(false)}
- }
-
+ useEffect(()=>{void load();},[]);
  async function solicitarExtension(){
    if(!selected?.operacion_id){setMessage("Seleccioná primero un contrato en Mis contratos.");return;}
    const days=Number(extensionDays);
@@ -210,23 +199,28 @@ export default function ContratosPage(){
    }catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar la prórroga.");} finally{setExtensionBusy(false);}
  }
 
- async function enviarAFirma(contratoId:string){
-   setAdobeBusy(true);setError("");setMessage("");
+ async function confirmarFirmaExterna(){
+   if(!selected?.id){setError("Seleccioná primero un contrato.");return;}
+   if(!externalDocId){setError("Seleccioná el documento firmado externamente.");return;}
+   if(!/^[0-9a-fA-F]{64}$/.test(externalSha.trim())){setError("Ingresá el SHA-256 de 64 caracteres hexadecimales del PDF firmado.");return;}
+   setExternalBusy(true);setError("");setMessage("");
    try{
-     const {data:{session}}=await supabase.auth.getSession();
-     if(!session?.access_token) throw new Error("Necesitás iniciar sesión.");
-     const {data,error}=await supabase.functions.invoke("firma-proveedor",{
-       body:{contract_id:contratoId},
-       headers:{Authorization:"Bearer "+session.access_token}
-     });
-     if(error) throw new Error(error.message||"No se pudo enviar el contrato a firma.");
-     if(!data?.ok) throw new Error(data?.error||"Adobe Acrobat Sign no pudo crear la solicitud de firma.");
-     setMessage("Contrato enviado a Adobe Acrobat Sign. ID de acuerdo: "+String(data.agreement_id||"generado")+" · Estado: "+String(data.status||"OUT_FOR_SIGNATURE"));
-     await load();
-   }catch(e){
-     const msg=e instanceof Error?e.message:"No se pudo enviar el contrato a firma.";
-     setError(msg==="NO_VALID_SIGNERS"?"El contrato todavía no tiene firmantes válidos con email cargados.":msg==="ADOBE_SIGN_NOT_CONNECTED"?"Primero conectá Adobe Acrobat Sign.":msg);
-   }finally{setAdobeBusy(false)}
+     const {data,error}=await supabase.rpc("confirmar_firma_externa",{p_contrato_id:selected.id,p_documento_id:externalDocId,p_sha256:externalSha.trim(),p_nombre_archivo:externalDocs.find(d=>d.id===externalDocId)?.nombre_archivo||null});
+     if(error)throw error;
+     setMessage("Firma externa confirmada. El contrato quedó registrado con evidencia EXTERNA_MANUAL y SHA-256.");
+     setExternalSha(""); await load();
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo confirmar la firma externa.");}
+   finally{setExternalBusy(false);}
+ }
+ async function cargarDocumentosFirma(operationId:string){
+   const {data,error}=await supabase.from("documentos_operacion").select("id,nombre_archivo,url_archivo,aprobado,firmado_externamente,sha256,creado_en,operacion_id").eq("operacion_id",operationId).order("creado_en",{ascending:false});
+   if(error){setError(error.message);setExternalDocs([]);return;}
+   setExternalDocs((data||[]) as ExternalDoc[]);
+   const first=(data||[]).find((d:any)=>d.aprobado&&d.url_archivo&&!d.firmado_externamente);
+   setExternalDocId(first?.id||"");
+ }
+ function calculateShaFromFile(file:File){
+   void file.arrayBuffer().then(buf=>crypto.subtle.digest("SHA-256",buf)).then(hash=>{const hex=Array.from(new Uint8Array(hash)).map(b=>b.toString(16).padStart(2,"0")).join("");setExternalSha(hex);setMessage("SHA-256 calculado. Registrá ese mismo PDF en Documentos antes de confirmar la firma.");}).catch(()=>setError("No se pudo calcular el SHA-256 del archivo."));
  }
 
  function selectOperation(id:string){
@@ -235,6 +229,7 @@ export default function ContratosPage(){
    setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda||""}));
    void cargarConfidencialidad(id);
    void cargarPartesOperacion(id);
+   void cargarDocumentosFirma(id);
  }
  async function cargarPartesOperacion(operationId:string){
    const {data}=await supabase.from("partes_operacion").select("rol,nombre_razon_social").eq("operacion_id",operationId);
@@ -360,9 +355,9 @@ export default function ContratosPage(){
 
   {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
-  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas electrónicas</h2><p>Desde acá seleccionás un contrato, conectás Adobe Acrobat Sign y enviás el documento real a firma. El estado queda registrado en AgroBrokerIA.</p>{adobeStatus==="connected"&&<div className="contract-builder-alert">✓ Adobe Acrobat Sign está conectado.</div>}<button className="contract-route-button" disabled={adobeBusy} onClick={conectarAdobe}>{adobeBusy?"Conectando…":adobeStatus==="connected"?"Adobe Acrobat Sign conectado ✓":"Conectar Adobe Acrobat Sign →"}</button><div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><div className="contract-sign-actions"><button type="button" onClick={()=>{setSelected(c);setMessage("Contrato seleccionado para firma: "+c.numero_contrato)}}>Seleccionar</button><button type="button" disabled={adobeBusy||c.estado==="FIRMADO"} onClick={()=>void enviarAFirma(c.id)}>{adobeBusy&&selected?.id===c.id?"Enviando…":"Enviar a firma →"}</button></div></article>)}</div><Link className="contract-route-button" href="/operaciones">Ir a operaciones →</Link></section>}
+  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firma externa/manual</h2><p>AgroBrokerIA utiliza firma externa/manual como flujo de lanzamiento. El PDF se firma fuera de la plataforma, luego se registra el documento firmado, su SHA-256 y la evidencia de confirmación. Una firma manuscrita escaneada no se etiqueta como firma digital verificada.</p><div className="contract-builder-alert">Flujo: Contrato generado → Pendiente de firma externa → Firmado externamente → Documento cargado → Contrato confirmado.</div>{selected?<div className="contract-info-panel" style={{marginTop:16}}><h3>{selected.numero_contrato}</h3><p>{selected.tipo_contrato||"Contrato"} · Estado actual: {selected.estado}</p><label>Documento firmado externamente<select value={externalDocId} onChange={e=>setExternalDocId(e.target.value)}><option value="">Seleccionar documento</option>{externalDocs.map(d=><option key={d.id} value={d.id}>{d.nombre_archivo||"Documento"} · {d.aprobado?"Aprobado":"Pendiente"}{d.firmado_externamente?" · Ya confirmado":""}</option>)}</select></label>{externalDocId&&externalDocs.find(d=>d.id===externalDocId)?.url_archivo&&<p><a href={externalDocs.find(d=>d.id===externalDocId)?.url_archivo||"#"} target="_blank" rel="noreferrer">Abrir documento registrado ↗</a></p>}<label>SHA-256 del PDF firmado<input value={externalSha} onChange={e=>setExternalSha(e.target.value)} placeholder="64 caracteres hexadecimales"/></label><label>Calcular SHA-256 desde el PDF (opcional)<input type="file" accept="application/pdf" onChange={e=>{const file=e.target.files?.[0];if(file)calculateShaFromFile(file)}}/></label><button className="contract-generate" disabled={externalBusy||!externalDocId} onClick={()=>void confirmarFirmaExterna()}>{externalBusy?"Confirmando…":"Confirmar firma externa →"}</button></div>:<p>Seleccioná un contrato desde <button type="button" onClick={()=>setTab("mis")}>Mis contratos</button>.</p>}<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);setMessage("Contrato seleccionado para firma externa: "+c.numero_contrato)}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
 
-  {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
+{tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
   <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
  </main>
 }
