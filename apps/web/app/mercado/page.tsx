@@ -67,7 +67,7 @@ export default function MercadoPage(){
  const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
  const tabQuoteRows=tabQuotes.map(q=>({code:codeFor(q),name:nameFor(q),q}));
  const catalogRows=catalogForTab.map(p=>({code:p.codigo,name:p.nombre,q:latestByProduct.get(String(p.id))}));
- const displayRows=marketTab==="Granos"?cards:((marketTab==="Aceites"||marketTab==="Harinas"||marketTab==="Subproductos")?catalogRows:tabQuoteRows);
+ const displayRows=["Granos","Aceites","Harinas","Subproductos"].includes(marketTab)?catalogRows:tabQuoteRows;
  const soja=quotes.filter(q=>(commodities[q.commodity_id||""]||"").toUpperCase()==="SOJA").slice(0,rangeSize[range]||30).reverse();
  const international=quotes.filter(q=>(q.market||"").toUpperCase()===internationalMarket).slice(0,6);
  const futures=quotes.filter(q=>String(q.price_type).toUpperCase().includes("FUT")).slice(0,8);
