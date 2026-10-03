@@ -16,6 +16,12 @@ function redirect(req: NextRequest, status: string) {
   return NextResponse.redirect(url);
 }
 
+function normalizeAdobeSecret(value: string) {
+  // Vercel can preserve surrounding whitespace/quotes when a secret was pasted
+  // from a local .env file. Adobe expects the exact application secret.
+  return value.trim().replace(/^["'](.*)["']$/s, "$1").trim();
+}
+
 export async function GET(req: NextRequest) {
   const code = req.nextUrl.searchParams.get("code");
   const state = req.nextUrl.searchParams.get("state");
@@ -46,7 +52,8 @@ export async function GET(req: NextRequest) {
     if (!consumed) return redirect(req, "state_replayed");
 
     const clientId = "ats-eada1c07-8d29-4481-94b0-36697190a75a";
-    const clientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
+    const rawClientSecret = process.env.ADOBE_SIGN_CLIENT_SECRET;
+    const clientSecret = rawClientSecret ? normalizeAdobeSecret(rawClientSecret) : "";
     if (!clientSecret) return redirect(req, "credentials_pending");
 
     const tokenBody = new URLSearchParams({
@@ -73,7 +80,7 @@ export async function GET(req: NextRequest) {
       const response = await fetch(endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/x-www-form-urlencoded", "Cache-Control": "no-cache" },
-        body: tokenBody,
+        body: tokenBody.toString(),
         cache: "no-store"
       });
       const data = await response.json().catch(() => ({}));
