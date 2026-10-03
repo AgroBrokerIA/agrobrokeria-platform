@@ -24,7 +24,7 @@ const empty = {
   tipo_cp:"", sucursal:"", cod_grano:"", peso_bruto_kg:"", peso_tara_kg:"",
   cuit_solicitante:"", origen_provincia:"", origen_localidad:"", nro_renspa:"",
   destino_cuit:"", destino_provincia:"", destino_localidad:"", planta:"", destinatario_cuit:"",
-  km_recorrer:"", chofer_cuit:"", cuit_pagador_flete:"", cuit_intermediario_flete:"",
+  km_recorrer:"", dominio_camion:"", chofer_cuit:"", cuit_pagador_flete:"", cuit_intermediario_flete:"",
   cosecha:"", codigo_turno:"", tarifa:"", corresponde_retiro_productor:"false", es_destino_campo:"false", mercaderia_fumigada:"false"
 };
 
@@ -55,6 +55,7 @@ export default function CartaPortePage(){
     if(!selected) return;
     const l=logMap.get(selected);
     setForm(l ? {
+      ...empty,
       estado:l.estado||"PENDIENTE", carta_porte_numero:l.carta_porte_numero||"",
       carta_porte_estado:l.carta_porte_estado||"BORRADOR", carta_porte_origen:l.carta_porte_origen||"PENDIENTE_INTEGRACION_OFICIAL",
       carta_porte_codigo:l.carta_porte_codigo||"", carta_porte_fecha_emision:l.carta_porte_fecha_emision?.slice(0,16)||"",
@@ -71,7 +72,7 @@ export default function CartaPortePage(){
     if(!selected){setError("Seleccioná una operación.");return}
     setEmitting(true);setError("");setMessage("");
     const payload={operation_id:selected,...form,sucursal:form.sucursal?Number(form.sucursal):undefined,es_destino_campo:form.es_destino_campo==="true",corresponde_retiro_productor:form.corresponde_retiro_productor==="true",mercaderia_fumigada:form.mercaderia_fumigada==="true"};
-    const {data,e}=await supabase.functions.invoke("carta-porte-arca",{body:payload});
+    const {data,error:e}=await supabase.functions.invoke("carta-porte-arca",{body:payload});
     if(e){setError(e.message||"No se pudo invocar WSCPE.");setEmitting(false);return}
     if(!data?.ok){setError(data?.error||data?.errors?.map((x:any)=>x.code+": "+x.description).join(" | ")||"ARCA no autorizó la Carta de Porte.");setEmitting(false);return}
     setMessage("Carta de Porte autorizada por ARCA. CTG "+data.nro_ctg+" · orden "+data.nro_orden+".");
