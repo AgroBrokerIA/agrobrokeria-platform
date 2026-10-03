@@ -29,18 +29,19 @@ function rowClass(t:string){if(t==="Cobro")return"green";if(t==="Comisión")retu
 export default function TransaccionesPage(){
  const[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
  useEffect(()=>{(async()=>{setLoading(true);
-  const [pay,com,ops]=await Promise.all([
-   supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").order("creado_en",{ascending:false}).limit(120),
-   supabase.from("comisiones").select("id,operacion_id,importe_calculado,estado,creada_en,moneda_id").order("creada_en",{ascending:false}).limit(80),
-   supabase.from("operaciones").select("id,codigo,importe_total,estado,fecha_operacion,creada_en,moneda_id").order("creada_en",{ascending:false}).limit(80)
-  ]);
-  const ids=Array.from(new Set([...(pay.data||[]),...(com.data||[]),...(ops.data||[])].map((x:any)=>x.moneda_id).filter(Boolean)));
+  const {data:ops}=await supabase.from("operaciones").select("id,codigo,importe_total,estado,fecha_operacion,creada_en,moneda_id").order("creada_en",{ascending:false}).limit(80);
+  const operationIds=(ops||[]).map((x:any)=>x.id).filter(Boolean);
+  const [pay,com]=operationIds.length?await Promise.all([
+   supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").in("operacion_id",operationIds).order("creado_en",{ascending:false}).limit(120),
+   supabase.from("comisiones").select("id,operacion_id,importe_calculado,estado,creada_en,moneda_id").in("operacion_id",operationIds).order("creada_en",{ascending:false}).limit(80)
+  ]):[{data:[]},{data:[]}];
+  const ids=Array.from(new Set([...(pay.data||[]),...(com.data||[]),...(ops||[])].map((x:any)=>x.moneda_id).filter(Boolean)));
   const {data:mons}=ids.length?await supabase.from("monedas").select("id,codigo").in("id",ids):{data:[] as any[]};
   const mc=Object.fromEntries((mons||[]).map((x:any)=>[x.id,x.codigo]));
   const out:Tx[]=[];
   for(const x of pay.data||[]) out.push({id:"p-"+x.id,date:x.fecha_pago||x.creado_en,type:"Pago",description:x.metodo_pago?("Pago · "+x.metodo_pago):"Pago de operación",ref:x.operacion_id?("OP-"+String(x.operacion_id).slice(0,8).toUpperCase()):"PAGO-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"Moneda",amount:Number(x.importe||0),status:/CONFIRM|PAGAD|RECIB/i.test(x.estado||"")?"Recibido":x.estado||"En proceso",operationId:x.operacion_id});
   for(const x of com.data||[]) out.push({id:"c-"+x.id,date:x.creada_en,type:"Comisión",description:"Comisión generada",ref:"COM-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"Moneda",amount:Number(x.importe_calculado||0),status:x.estado||"Disponible",operationId:x.operacion_id});
-  for(const x of ops.data||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
+  for(const x of ops||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
   out.sort((a,b)=>+new Date(b.date)-+new Date(a.date));setRows(out);setSelected(out[0]||null);setLoading(false);
  })()},[]);
  const filtered=useMemo(()=>rows.filter(r=>(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,query,type,status,currency]);
