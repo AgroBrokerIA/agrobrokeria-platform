@@ -125,6 +125,9 @@ export default function PublicationForm(props: any) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
+  const [provincias, setProvincias] = useState<{id:number;nombre:string;codigo:string}[]>([]);
+  const [localidades, setLocalidades] = useState<{id:number;nombre:string;provincia_id:number}[]>([]);
+  const [puertos, setPuertos] = useState<{id:number;nombre:string;codigo:string}[]>([]);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
@@ -178,6 +181,14 @@ export default function PublicationForm(props: any) {
       setProductos(productosData);
       setMonedas(monedasData);
       setIncoterms(incotermsData);
+      const [{data:provData,error:provError},{data:portData,error:portError}]=await Promise.all([
+        supabase.from("provincias").select("id,nombre,codigo").order("nombre"),
+        supabase.from("puertos").select("id,nombre,codigo").order("nombre")
+      ]);
+      if(provError) throw provError;
+      if(portError) throw portError;
+      setProvincias((provData||[]) as {id:number;nombre:string;codigo:string}[]);
+      setPuertos((portData||[]) as {id:number;nombre:string;codigo:string}[]);
 
       /*
        * VALORES PREDETERMINADOS
@@ -228,6 +239,7 @@ export default function PublicationForm(props: any) {
     }
   }
 
+  useEffect(()=>{const provincia=provincias.find(x=>x.nombre===form.provincia);if(!provincia){setLocalidades([]);return;}supabase.from("localidades").select("id,nombre,provincia_id").eq("provincia_id",provincia.id).order("nombre").then(({data,error})=>{if(!error)setLocalidades((data||[]) as {id:number;nombre:string;provincia_id:number}[]);});},[form.provincia,provincias]);
   function actualizarCampo(
     campo: keyof Formulario,
     valor: string | number
@@ -689,18 +701,7 @@ export default function PublicationForm(props: any) {
             Provincia
           </label>
 
-          <input
-            type="text"
-            value={form.provincia}
-            onChange={(e) =>
-              actualizarCampo(
-                "provincia",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Santa Fe"
-            style={inputStyle}
-          />
+          <select value={form.provincia} onChange={(e)=>{actualizarCampo("provincia",e.target.value);actualizarCampo("localidad","");}} style={inputStyle}><option value="">Seleccioná una provincia</option>{provincias.map(x=><option key={x.id} value={x.nombre}>{x.nombre}</option>)}</select>
         </div>
 
         {/* LOCALIDAD */}
@@ -710,18 +711,7 @@ export default function PublicationForm(props: any) {
             Localidad
           </label>
 
-          <input
-            type="text"
-            value={form.localidad}
-            onChange={(e) =>
-              actualizarCampo(
-                "localidad",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Rosario"
-            style={inputStyle}
-          />
+          <select value={form.localidad} onChange={(e)=>actualizarCampo("localidad",e.target.value)} disabled={!form.provincia} style={inputStyle}><option value="">{form.provincia?"Seleccioná una localidad":"Primero seleccioná una provincia"}</option>{localidades.map(x=><option key={x.id} value={x.nombre}>{x.nombre}</option>)}</select>
         </div>
 
         {/* PUERTO */}
@@ -731,18 +721,7 @@ export default function PublicationForm(props: any) {
             Puerto
           </label>
 
-          <input
-            type="text"
-            value={form.puerto}
-            onChange={(e) =>
-              actualizarCampo(
-                "puerto",
-                e.target.value
-              )
-            }
-            placeholder="Ej: Puerto Rosario"
-            style={inputStyle}
-          />
+          <select value={form.puerto} onChange={(e)=>actualizarCampo("puerto",e.target.value)} style={inputStyle}><option value="">Seleccioná un puerto</option>{puertos.map(x=><option key={x.id} value={x.nombre}>{x.nombre}</option>)}</select>
         </div>
 
         {/* CALIDAD */}
