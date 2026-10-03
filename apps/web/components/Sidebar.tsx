@@ -1,3 +1,4 @@
+// i18n sidebar pending
 "use client";
 
 import Link from "next/link";
@@ -35,34 +36,9 @@ const menu = [
 
 export default function Sidebar() {
   return (
-    <aside
-      style={{
-        width: 260,
-        background: "#111827",
-        color: "white",
-        minHeight: "100vh",
-        padding: 20,
-        overflowY: "auto",
-      }}
-    >
-      <h2 style={{ marginBottom: 30, color: "#22c55e" }}>
-        AgroBroker IA
-      </h2>
-
-      {menu.map((item) => (
-        <Link
-          key={item.ruta}
-          href={item.ruta}
-          style={{
-            display: "block",
-            color: "white",
-            textDecoration: "none",
-            padding: "10px 0",
-          }}
-        >
-          {item.nombre}
-        </Link>
-      ))}
+    <aside style={{width:260,background:"#111827",color:"white",minHeight:"100vh",padding:20,overflowY:"auto"}}>
+      <h2 style={{marginBottom:30,color:"#22c55e"}}>AgroBroker IA</h2>
+      {menu.map((item)=><Link key={item.ruta} href={item.ruta} style={{display:"block",color:"white",textDecoration:"none",padding:"10px 0"}}>{item.nombre}</Link>)}
     </aside>
   );
 }
