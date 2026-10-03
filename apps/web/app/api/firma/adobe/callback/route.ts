@@ -19,7 +19,15 @@ function redirect(req: NextRequest, status: string) {
 function normalizeAdobeSecret(value: string) {
   // Vercel can preserve surrounding whitespace/quotes when a secret was pasted
   // from a local .env file. Adobe expects the exact application secret.
-  return value.trim().replace(/^["'](.*)["']$/s, "$1").trim();
+  let normalized = value.trim();
+  if (normalized.length >= 2) {
+    const first = normalized[0];
+    const last = normalized[normalized.length - 1];
+    if ((first === "\"" && last === "\"") || (first === "'" && last === "'")) {
+      normalized = normalized.slice(1, -1).trim();
+    }
+  }
+  return normalized;
 }
 
 export async function GET(req: NextRequest) {
