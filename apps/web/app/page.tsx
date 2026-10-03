@@ -26,37 +26,34 @@ export default function Home(){
    let mounted=true;
    (async()=>{
      const { data: market, error: marketError } = await supabase
-       .from("market_quotes")
-       .select("commodity_id,price,currency,market_date,source,variation")
-       .eq("market","ROSARIO")
-       .eq("price_type","PIZARRA_CAC")
-       .eq("status","ACTIVE")
-       .not("price","is",null)
-       .order("market_date",{ascending:false})
-       .order("created_at",{ascending:false})
-       .limit(40);
+       .from("market_public_summary")
+       .select("commodity,precio_promedio,moneda,actualizado_at,variacion")
+       .order("actualizado_at",{ascending:false})
+       .limit(12);
      if(!mounted)return;
      if(marketError) return;
-     const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾"};
-     const names:Record<string,string>={"290206c3-0400-47e2-bfcd-16d6b93b6fde":"Soja","d119de42-8ddc-43cf-a307-c540d3bb6d34":"Maíz","fd74acb3-0c2c-43e4-861c-538539cb9c71":"Trigo","61f4942b-260f-4f94-86b3-5c8858dc8231":"Sorgo"};
-     const seen=new Set<string>(); const rows=(market||[]).filter((x:any)=>{const n=names[x.commodity_id];if(!n||seen.has(n))return false;seen.add(n);return true;});
+     const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾",Girasol:"🌻"};
+     const preferred=["Soja","Maíz","Trigo","Sorgo"];
+     const rows=(market||[]).filter((x:any)=>x.commodity&&x.precio_promedio!=null);
+     const ordered=[...preferred.map(name=>rows.find(x=>String(x.commodity).toLowerCase()===name.toLowerCase())).filter(Boolean),...rows.filter(x=>!preferred.some(name=>String(x.commodity).toLowerCase()===name.toLowerCase()))];
      if(rows.length){
-       setQuotes(rows.slice(0,4).map((x:any)=>{const name=names[x.commodity_id];return {
-         name, price:(x.currency||"ARS")+" "+Number(x.price).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
-         detail:new Date(x.market_date+"T12:00:00").toLocaleDateString("es-AR")+" · "+(x.source||"BCR/CAC"),
-         icon:icons[name]||"🌾"
-       }}));
-       const latest=rows.map((x:any)=>x.market_date).sort().at(-1);
-       setStats({quotes:rows.length,publications:0,commodities:rows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
+       setQuotes(ordered.slice(0,4).map((x:any)=>({
+         name:String(x.commodity),
+         price:(x.moneda||"ARS")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
+         detail:new Date(x.actualizado_at||Date.now()).toLocaleDateString("es-AR")+" · BCR Rosario",
+         icon:icons[String(x.commodity)]||"🌾"
+       })));
+       const latest=rows.map((x:any)=>x.actualizado_at).filter(Boolean).sort().at(-1);
+       setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
      }
-     const [{count:companiesCount},{data:publications}] = await Promise.all([
-       supabase.from("companies").select("id",{count:"exact",head:true}),
-       supabase.from("publicaciones").select("tipo,estado").in("estado",["PUBLICADA","ACTIVA","ABIERTA"])
-     ]);
-     if(mounted) setPublicCounts({
-       offers:(publications||[]).filter((x:any)=>String(x.tipo||"").toUpperCase().includes("OFERTA")||String(x.tipo||"").toUpperCase().includes("VENTA")).length,
-       demands:(publications||[]).filter((x:any)=>String(x.tipo||"").toUpperCase().includes("DEMANDA")||String(x.tipo||"").toUpperCase().includes("COMPRA")).length,
-       companies:Number(companiesCount||0)
+     const {data:landingSummary,error:landingError}=await supabase
+       .from("landing_public_summary")
+       .select("verified_companies,active_offers,active_demands")
+       .maybeSingle();
+     if(mounted && !landingError) setPublicCounts({
+       offers:Number(landingSummary?.active_offers||0),
+       demands:Number(landingSummary?.active_demands||0),
+       companies:Number(landingSummary?.verified_companies||0)
      });
    })();
    return()=>{mounted=false};
