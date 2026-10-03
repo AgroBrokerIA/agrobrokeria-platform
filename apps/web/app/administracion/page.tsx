@@ -3,7 +3,6 @@
 import Link from "next/link";
 
 const cards = [
-  ["🚀","Preflight de lanzamiento","Verificación real de Core, ARCA e integraciones antes de publicar.","/administracion/preflight"],
   ["⚙️","Administración","Gestión administrativa y configuración operativa de la plataforma.","/admin"],
   ["🛡️","Seguridad","Revisar controles y estado de seguridad de la plataforma.","/seguridad"],
   ["📊","Reportes","Consultar indicadores, operaciones e información histórica.","/reportes"],
