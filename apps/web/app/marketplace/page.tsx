@@ -1,6 +1,5 @@
 "use client";
 import {useEffect,useMemo,useState} from "react";
-import {useSearchParams} from "next/navigation";
 import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 type Pub={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;estado:string;provincia:string|null;localidad:string|null;puerto:string|null;puertos?:string[]|null;creada_en:string|null;calidad?:string|null;productos?:{nombre:string}|null;monedas?:{codigo:string}|null;incoterms?:{codigo:string}|null;empresas?:{razon_social:string;verificada?:boolean|null}|null;paises?:{nombre:string;codigo_iso:string}|null;provincias?:{nombre:string;codigo:string}|null;localidades?:{nombre:string}|null};
@@ -9,8 +8,7 @@ const productoCoincide=(nombre:string|undefined,filtro:string)=>{if(!filtro)retu
 const flag=(iso?:string)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const ago=(d?:string|null)=>{if(!d)return"—";const m=Math.max(1,Math.round((Date.now()-new Date(d).getTime())/60000));return m<60?`Hace ${m} min`:`Hace ${Math.round(m/60)} horas`};
 export default function MarketplacePage(){
- const searchParams=useSearchParams();
- const isDemand=searchParams.get("tipo")==="DEMANDA";
+ const isDemand=typeof window!=="undefined"&&new URLSearchParams(window.location.search).get("tipo")==="DEMANDA";
  const[rows,setRows]=useState<Pub[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[provincia,setProvincia]=useState(""),[ciudad,setCiudad]=useState(""),[condicion,setCondicion]=useState(""),[precioMin,setPrecioMin]=useState(""),[precioMax,setPrecioMax]=useState(""),[paises,setPaises]=useState<any[]>([]),[provincias,setProvincias]=useState<any[]>([]),[ciudades,setCiudades]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<any[]>([]);
  async function load(){const[a,b,catalogo]=await Promise.all([supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,estado,provincia,localidad,puerto,puertos,creada_en,productos(nombre),monedas(codigo),incoterms(codigo),paises(nombre,codigo_iso),provincias(nombre,codigo),localidades(nombre),empresas(razon_social,verificada)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}),supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),supabase.from("catalogo_puertos").select("codigo,nombre").eq("activo",true).order("nombre")]);if(a.error||b.error)setError(a.error?.message||b.error?.message||"No se pudieron cargar las ofertas.");setRows((a.data||[]) as unknown as Pub[]);setProductos((b.data||[]).map((x:any)=>x.nombre));setPuertos((catalogo.data||[]) as any[]);setLoading(false)}
  useEffect(()=>{void load();fetch("/api/geo").then(r=>r.json()).then(d=>setPaises(d.countries||[]))},[]);
