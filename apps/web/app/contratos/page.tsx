@@ -219,7 +219,7 @@ export default function ContratosPage(){
    setBusy(false);
  }
  function contractContent(f:FormState){
-   return JSON.stringify({tipo:f.tipo,producto:f.producto,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador});
+   return JSON.stringify({tipo:f.tipo,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador,intermediario:f.intermediario,procedencia:f.procedencia,comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
  }
 
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
