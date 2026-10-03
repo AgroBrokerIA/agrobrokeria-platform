@@ -25,7 +25,7 @@ export default function HistorialPage(){
  useEffect(()=>{(async()=>{setLoading(true);
   const [ops,cts,pays,docs,aud,mons]=await Promise.all([
    supabase.from("operaciones").select("id,codigo,estado,precio_tn,cantidad_tn,importe_total,moneda_id,fecha_operacion,creada_en,tipo_operacion").order("fecha_operacion",{ascending:false}).limit(120),
-   supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma,creado_en").order("creado_en",{ascending:false}).limit(80),
+   supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,creado_en").order("creado_en",{ascending:false}).limit(80),
    supabase.from("pagos").select("id,operacion_id,importe,estado,fecha_pago,creado_en").order("fecha_pago",{ascending:false}).limit(80),
    supabase.from("documentos_operacion").select("id,operacion_id,tipo_documento,nombre_archivo,creado_en,aprobado").order("creado_en",{ascending:false}).limit(80),
    supabase.from("auditoria").select("id,accion,descripcion,registro_id,creado_en").order("creado_en",{ascending:false}).limit(100),
@@ -34,7 +34,7 @@ export default function HistorialPage(){
   const rows:Activity[]=[];
   const monedas=new Map((mons.data||[]).map((m:any)=>[m.id,m.codigo]));
   for(const x of (ops.data||[])) rows.push({id:"op-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Operación",description:x.tipo_operacion||"Operación comercial",reference:x.codigo||x.id.slice(0,8),company:"",country:"",amount:x.cantidad_tn?new Intl.NumberFormat("es-AR").format(x.cantidad_tn)+" TN":money(x.importe_total,monedas.get((x as any).moneda_id)),status:x.estado||"En proceso",operationId:x.id});
-  for(const x of (cts.data||[])) rows.push({id:"ct-"+x.id,date:x.fecha_firma||x.creado_en,type:"Contrato",description:"Contrato "+(x.estado||"registrado").toLowerCase(),reference:x.numero_contrato||x.id.slice(0,8),company:"",country:"",amount:"—",status:x.estado||"Firmado",operationId:x.id});
+  for(const x of (cts.data||[])) rows.push({id:"ct-"+x.id,date:x.fecha_firma||x.creado_en,type:"Contrato",description:"Contrato "+(x.estado||"registrado").toLowerCase(),reference:x.numero_contrato||x.id.slice(0,8),company:"",country:"",amount:"—",status:x.estado||"Firmado",operationId:x.operacion_id});
   for(const x of (pays.data||[])) rows.push({id:"pay-"+x.id,date:x.fecha_pago||x.creado_en,type:"Pago",description:"Pago registrado",reference:x.id.slice(0,12).toUpperCase(),company:"",country:"",amount:money(x.importe),status:x.estado||"Procesado",operationId:x.operacion_id});
   for(const x of (docs.data||[])) rows.push({id:"doc-"+x.id,date:x.creado_en,type:"Documento",description:x.nombre_archivo||x.tipo_documento||"Documento de operación",reference:x.id.slice(0,12).toUpperCase(),company:"",country:"",amount:"—",status:x.aprobado?"Generado":"Pendiente",operationId:x.operacion_id});
   for(const x of (aud.data||[])) rows.push({id:"aud-"+x.id,date:x.creado_en,type:"Sistema",description:x.descripcion||x.accion||"Actividad registrada",reference:x.registro_id?.slice(0,12).toUpperCase()||"—",company:"",country:"",amount:"—",status:"Completada"});
