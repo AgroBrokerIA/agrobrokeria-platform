@@ -24,12 +24,12 @@ export default function RetirosComisionesPage(){
   const [mc,m,c,r]=await Promise.all([
    supabase.from("monedas").select("id,codigo").eq("activo",true).order("id"),
    supabase.from("medios_cobro").select("id,tipo,nombre,titular,banco,cbu,alias,moneda_id,es_predeterminado,estado").eq("empresa_id",empresa).neq("estado","INACTIVO").order("es_predeterminado",{ascending:false}),
-   supabase.from("operacion_comisiones").select("moneda_id,saldo_pagado,saldo_reservado,estado").eq("empresa_id",empresa),
+   supabase.from("billeteras_comisiones").select("moneda_id,saldo_disponible,saldo_en_retiro,saldo_retirado").eq("empresa_id",empresa),
    supabase.from("retiros_comisiones").select("id,medio_cobro_id,moneda_id,importe,estado,referencia,fecha_solicitud,fecha_pago,motivo_rechazo").eq("empresa_id",empresa).order("fecha_solicitud",{ascending:false})
   ]);
   if(mc.error)setError("No se pudieron cargar las monedas: "+mc.error.message);else { const map=Object.fromEntries((mc.data||[]).map((x:{id:number;codigo:string})=>[x.id,x.codigo])); setMonedas(map); if(moneda===null){ const first=Object.keys(map)[0]; if(first)setMoneda(Number(first)); } }
   if(m.error)setError("No se pudieron cargar los medios de cobro: "+m.error.message);else setMedios((m.data||[]) as MedioCobro[]);
-  if(c.error)setError("No se pudo calcular el saldo disponible: "+c.error.message);else{const s:Record<number,number>={};for(const x of c.data||[]){const id=Number(x.moneda_id),paid=n(x.saldo_pagado),reserved=n(x.saldo_reservado);if(String(x.estado).toUpperCase()==="ABONADA"||paid>0)s[id]=(s[id]||0)+Math.max(paid-reserved,0)}setSaldo(s)}
+  if(c.error)setError("No se pudo cargar el saldo de la billetera: "+c.error.message);else{const s:Record<number,number>={};for(const x of c.data||[]){const id=Number(x.moneda_id);s[id]=n(x.saldo_disponible)}setSaldo(s)}
   if(r.error)setError("No se pudieron cargar los retiros: "+r.error.message);else setRetiros((r.data||[]) as Retiro[]);
   setLoading(false);
  }
@@ -37,8 +37,8 @@ export default function RetirosComisionesPage(){
  const disponibles=useMemo(()=>medios.filter(x=>x.estado==="VALIDADO"&&(!x.moneda_id||moneda===null||Number(x.moneda_id)===moneda)),[medios,moneda]);
  const disponible=Math.max(0,moneda===null?0:n(saldo[moneda]));
  useEffect(()=>{const p=disponibles.find(x=>x.es_predeterminado);setMedio(p?.id||disponibles[0]?.id||"")},[disponibles]);
- const totals=useMemo(()=>{const processing=retiros.filter(x=>["PENDIENTE","EN_PROCESO"].includes(String(x.estado).toUpperCase())).reduce((a,x)=>a+n(x.importe),0);const released=retiros.filter(x=>String(x.estado).toUpperCase()==="COMPLETADO").reduce((a,x)=>a+n(x.importe),0);return{processing,released,count:retiros.filter(x=>["PENDIENTE","EN_PROCESO"].includes(String(x.estado).toUpperCase())).length}},[retiros]);
- const retirosVisibles=useMemo(()=>{const x=retiros.filter(r=>{const s=String(r.estado).toUpperCase();if(tab==="PROCESO")return ["PENDIENTE","EN_PROCESO"].includes(s);if(tab==="HIST")return ["COMPLETADO","RECHAZADO"].includes(s);return true});return x},[retiros,tab]);
+ const totals=useMemo(()=>{const processing=retiros.filter(x=>["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).reduce((a,x)=>a+n(x.importe),0);const released=retiros.filter(x=>String(x.estado).toUpperCase()==="PAGADO").reduce((a,x)=>a+n(x.importe),0);return{processing,released,count:retiros.filter(x=>["SOLICITADO","EN_REVISION","APROBADO","PROCESANDO"].includes(String(x.estado).toUpperCase())).length}},[retiros]);
+ const retirosVisibles=useMemo(()=>{const x=retiros.filter(r=>{const s=String(r.estado).toUpperCase();if(tab==="PROCESO")return ["PENDIENTE","EN_PROCESO"].includes(s);if(tab==="HIST")return ["PAGADO","RECHAZADO","CANCELADO"].includes(s);return true});return x},[retiros,tab]);
 
  async function solicitar(){
   setError("");setMessage("");const amount=n(importe);
@@ -48,7 +48,7 @@ export default function RetirosComisionesPage(){
   if(!medio){setError("Seleccioná un medio de cobro validado.");return}
   const {data:{user}}=await supabase.auth.getUser();if(!user){setError("Necesitás iniciar sesión.");return}
   const {data:profile,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(pe||!profile?.active_company_id){setError("No se pudo determinar la empresa activa.");return}
-  setSaving(true);const {error:e}=await supabase.rpc("solicitar_retiro_comision",{p_empresa_id:profile.active_company_id,p_profile_id:user.id,p_medio_cobro_id:medio,p_moneda_id:moneda,p_importe:amount});
+  setSaving(true);const {error:e}=await supabase.rpc("solicitar_retiro_comision",{p_empresa_id:profile.active_company_id,p_profile_id:user.id,p_medio_cobro_id:medio,p_moneda_id:moneda,p_importe:amount,p_cuenta_retiro_id:null});
   if(e)setError("No se pudo solicitar el retiro: "+e.message);else{setImporte("");setMessage("Solicitud registrada por "+money(amount,monedas[moneda])+".");await cargar()}setSaving(false);
  }
  function mask(v:string|null){if(!v)return"—";return v.length<=8?v:v.slice(0,4)+"••••••••"+v.slice(-4)}
@@ -69,8 +69,8 @@ export default function RetirosComisionesPage(){
  
  </main>
 }
-function statusLabel(s:string){const x=s.toUpperCase();if(x==="COMPLETADO")return"Completado";if(x==="RECHAZADO")return"Rechazado";if(x==="PENDIENTE")return"Pendiente";if(x==="EN_PROCESO")return"En proceso";return s||"En proceso"}
-function statusClass(s:string){const x=s.toUpperCase();return x==="COMPLETADO"?"done":x==="RECHAZADO"?"rejected":x==="PENDIENTE"?"pending":"process"}
+function statusLabel(s:string){const x=s.toUpperCase();if(x==="PAGADO")return"Pagado";if(x==="RECHAZADO")return"Rechazado";if(x==="CANCELADO")return"Cancelado";if(x==="SOLICITADO")return"Solicitado";if(x==="EN_REVISION")return"En revisión";if(x==="APROBADO"||x==="PROCESANDO")return"Procesando";return s||"En proceso"}
+function statusClass(s:string){const x=s.toUpperCase();return x==="PAGADO"?"done":x==="RECHAZADO"||x==="CANCELADO"?"rejected":x==="SOLICITADO"||x==="EN_REVISION"?"pending":"process"}
 function Kpi({icon,value,label,trend,tone}:{icon:string;value:string;label:string;trend:string;tone:string}){return <div className={"withdraw-kpi "+tone}><b>{icon}</b><span><strong>{value}</strong><small>{label}</small><i>{trend}</i></span></div>}
 function Panel({title,children}:{title:string;children:React.ReactNode}){return <section className="withdraw-panel"><h2>{title}</h2>{children}</section>}
 
