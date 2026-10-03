@@ -1,0 +1,11 @@
+create index if not exists idx_campanas_prospeccion_created_by on public.campanas_prospeccion(created_by);
+create index if not exists idx_echeq_eventos_echeq_id on public.echeq_eventos(echeq_id);
+create index if not exists idx_echeq_operaciones_empresa_emisora_id on public.echeq_operaciones(empresa_emisora_id);
+create index if not exists idx_echeq_operaciones_moneda_id on public.echeq_operaciones(moneda_id);
+create index if not exists idx_prospectos_campana_prospecto_id on public.prospectos_campana(prospecto_id);
+create index if not exists idx_prospectos_comerciales_company_id on public.prospectos_comerciales(company_id);
+create index if not exists idx_prospectos_comerciales_created_by on public.prospectos_comerciales(created_by);
+create index if not exists idx_prospectos_comerciales_empresa_id on public.prospectos_comerciales(empresa_id);
+create index if not exists idx_transacciones_pago_externo_empresa_id on public.transacciones_pago_externo(empresa_id);
+create index if not exists idx_transacciones_pago_externo_integracion_id on public.transacciones_pago_externo(integracion_id);
+create index if not exists idx_transacciones_pago_externo_moneda_id on public.transacciones_pago_externo(moneda_id);
