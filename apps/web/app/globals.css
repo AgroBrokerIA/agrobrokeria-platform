@@ -690,3 +690,71 @@ body{background:var(--ab-bg)}
   .payments-tabs,.pm-tabs,.withdraw-tabs{gap:4px;padding:4px}
   .payments-tabs a,.pm-tabs a,.pm-tabs button,.withdraw-tabs button{min-height:38px;height:38px;padding:0 12px;font-size:8px}
 }
+
+/* ===== MODULE TYPOGRAPHY & NAVIGATION SPACING ===== */
+.transactions-hero h1,
+.bank-accounts-hero h1,
+.vt-hero h1,
+.security-head h1,
+.profile-head h1{font-size:27px!important;line-height:1.15!important;letter-spacing:-.5px!important}
+.transactions-hero p,
+.bank-accounts-hero p,
+.vt-hero p,
+.security-head p,
+.profile-head p{font-size:11px!important;line-height:1.45!important;margin-top:6px!important}
+.transactions-tabs,
+.bank-tabs,
+.vt-tabs,
+.security-tabs,
+.profile-tabs{
+  display:flex!important;align-items:stretch!important;gap:5px!important;
+  padding:4px!important;overflow-x:auto!important;overflow-y:hidden!important;
+  white-space:nowrap!important;
+}
+.transactions-tabs button,
+.bank-tabs a,
+.bank-tabs button,
+.vt-tabs a,
+.vt-tabs button,
+.security-tabs a,
+.security-tabs button,
+.profile-tabs a,
+.profile-tabs button{
+  flex:0 0 auto!important;
+  height:38px!important;min-height:38px!important;
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  gap:7px!important;padding:0 15px!important;
+  border:1px solid transparent!important;border-radius:6px!important;
+  border-right:1px solid #edf1f5!important;
+  background:#fff!important;color:#263d53!important;
+  font-size:9px!important;font-weight:700!important;
+  text-decoration:none!important;white-space:nowrap!important;
+}
+.transactions-tabs button.active,
+.bank-tabs a.active,
+.bank-tabs button.active,
+.vt-tabs a.active,
+.vt-tabs button.active,
+.security-tabs a.active,
+.security-tabs button.active,
+.profile-tabs a.active,
+.profile-tabs button.active{
+  background:#078d54!important;color:#fff!important;border-color:#078d54!important;
+  border-radius:6px!important;
+}
+.security-tabs{gap:5px!important}
+.security-tabs a,.security-tabs button{font-size:9px!important;padding:0 14px!important}
+.profile-tabs a,.profile-tabs button{font-size:9px!important;padding:0 14px!important}
+.vt-tabs a,.vt-tabs button{font-size:9px!important;padding:0 14px!important}
+.bank-tabs a,.bank-tabs button{font-size:9px!important;padding:0 14px!important}
+.transactions-tabs button{font-size:9px!important;padding:0 17px!important}
+@media(max-width:900px){
+  .transactions-hero h1,.bank-accounts-hero h1,.vt-hero h1,.security-head h1,.profile-head h1{font-size:24px!important}
+}
+@media(max-width:650px){
+  .transactions-tabs,.bank-tabs,.vt-tabs,.security-tabs,.profile-tabs{gap:4px!important;padding:3px!important}
+  .transactions-tabs button,.bank-tabs a,.bank-tabs button,.vt-tabs a,.vt-tabs button,
+  .security-tabs a,.security-tabs button,.profile-tabs a,.profile-tabs button{
+    height:36px!important;min-height:36px!important;padding:0 11px!important;font-size:8px!important
+  }
+}
