@@ -39,7 +39,7 @@ const menu: MenuItem[] = [
   { icon: "🛡️", key: "nav.seguridad", fallback: "Seguridad", ruta: "/seguridad" },
   { icon: "⚙️", key: "nav.configuracion", fallback: "Configuración", ruta: "/configuracion" },
   { icon: "❓", key: "nav.ayuda", fallback: "Ayuda", ruta: "/ayuda" },
-
+];
 
 const translations: Record<string, Record<string, string>> = {
   es: {}, en: {
