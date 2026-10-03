@@ -241,11 +241,28 @@ export default function NuevaPublicacionForm() {
         return;
       }
 
-      const puertosGuardados = Array.isArray(publicacion.puertos)
+      const valoresPuertoGuardados = Array.isArray(publicacion.puertos)
         ? publicacion.puertos.filter(Boolean)
         : publicacion.puerto
           ? [publicacion.puerto]
           : [];
+      // Las publicaciones antiguas podían persistir el nombre del puerto.
+      // Normalizamos aquí a códigos estables para que sigan apareciendo
+      // seleccionadas después de la migración al catálogo multi-select.
+      const puertosGuardados = valoresPuertoGuardados
+        .map((valor: string) => {
+          const porCodigo = (puertosResult.data as Puerto[] | null)?.find(
+            (puerto) => puerto.codigo === valor
+          );
+          if (porCodigo) return porCodigo.codigo;
+
+          const porNombre = (puertosResult.data as Puerto[] | null)?.find(
+            (puerto) => puerto.nombre === valor
+          );
+          return porNombre?.codigo ?? null;
+        })
+        .filter((codigo): codigo is string => Boolean(codigo));
+
       const lugaresGuardados = Array.isArray(publicacion.lugares_recepcion)
         ? publicacion.lugares_recepcion.filter(Boolean)
         : [];
