@@ -183,7 +183,7 @@ export default function ContratosPage(){
    if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
    setLoading(false);
  }
- useEffect(()=>{void load();},[]);
+ useEffect(()=>{void load(); const requested=new URLSearchParams(window.location.search).get("tab"); if(requested==="firmas")setTab("firmas");},[]);
  async function solicitarExtension(){
    if(!selected?.operacion_id){setMessage("Seleccioná primero un contrato en Mis contratos.");return;}
    const days=Number(extensionDays);
