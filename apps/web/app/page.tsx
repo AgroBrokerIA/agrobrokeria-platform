@@ -27,7 +27,7 @@ export default function Home(){
    (async()=>{
      const { data: market, error: marketError } = await supabase
        .from("market_public_summary")
-       .select("commodity,precio_promedio,moneda,actualizado_at,variacion")
+       .select("commodity,precio_promedio,moneda,fecha_mercado,actualizado_at,variacion")
        .order("actualizado_at",{ascending:false})
        .limit(12);
      if(!mounted)return;
@@ -40,10 +40,10 @@ export default function Home(){
        setQuotes(ordered.slice(0,4).map((x:any)=>({
          name:String(x.commodity),
          price:(x.moneda||"ARS")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
-         detail:new Date(x.actualizado_at||Date.now()).toLocaleDateString("es-AR")+" · BCR Rosario",
+         detail:x.fecha_mercado?new Date(String(x.fecha_mercado)+"T12:00:00").toLocaleDateString("es-AR")+" · BCR Rosario":"Fecha de mercado no disponible · BCR Rosario",
          icon:icons[String(x.commodity)]||"🌾"
        })));
-       const latest=rows.map((x:any)=>x.actualizado_at).filter(Boolean).sort().at(-1);
+       const latest=rows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
        setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
      }
      const {data:landingSummary,error:landingError}=await supabase
