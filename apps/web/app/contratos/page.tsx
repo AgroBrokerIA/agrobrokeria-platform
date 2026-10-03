@@ -14,6 +14,7 @@ const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Ita
 type FormState={operacionId:string;tipo:"F1"|"F2";producto:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string};
 type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null};
 type Extension={id:string;operacion_id:string;contrato_id:string;motivo:string;justificativo:string;dias_solicitados:number;vencimiento_solicitado_at:string;evidencia_url:string|null;estado_revision:string;dias_aprobados:number|null;vencimiento_aprobado_at:string|null;observaciones_revision:string|null;created_at:string};
+type ConfidentialityStatus={rol:"COMPRADOR"|"VENDEDOR"|"INTERMEDIARIO";requerido:boolean;aceptado:boolean;aceptado_at:string|null;version:string|null;hash_sha256:string|null};
 
 const initial:FormState={operacionId:"",tipo:"F1",producto:"",cantidad:"",precio:"",moneda:"",condicion:"FAS",puerto:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:""};
 
@@ -47,7 +48,7 @@ function buildPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
  const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[adobeBusy,setAdobeBusy]=useState(false),[adobeStatus,setAdobeStatus]=useState("");
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false);
@@ -56,13 +57,15 @@ export default function ContratosPage(){
 
  async function load(){
    setLoading(true);setError("");
-   const [c,v,p,port,op,ext]=await Promise.all([
+   const selectedOperationId=selected?.operacion_id||form.operacionId||null;
+   const [c,v,p,port,op,ext,conf]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
      supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado,monedas(codigo)").order("fecha_operacion",{ascending:false}),
-     supabase.from("prorrogas_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,dias_solicitados,vencimiento_solicitado_at,evidencia_url,estado_revision,dias_aprobados,vencimiento_aprobado_at,observaciones_revision,created_at").order("created_at",{ascending:false})
+     supabase.from("prorrogas_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,dias_solicitados,vencimiento_solicitado_at,evidencia_url,estado_revision,dias_aprobados,vencimiento_aprobado_at,observaciones_revision,created_at").order("created_at",{ascending:false}),
+     selectedOperationId?supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:selectedOperationId}):Promise.resolve({data:[],error:null})
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
    setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
@@ -70,6 +73,7 @@ export default function ContratosPage(){
    if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
    setExtensions((ext.data||[]) as Extension[]);
+   if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
    setLoading(false);
  }
  useEffect(()=>{void load(); (async()=>{ try{ const {data:{session}}=await supabase.auth.getSession(); if(!session?.access_token)return; const res=await fetch("/api/firma/adobe/status",{headers:{Authorization:"Bearer "+session.access_token},cache:"no-store"}); const data=await res.json().catch(()=>({})); if(res.ok&&data.connected){setAdobeStatus("connected");} else {setAdobeStatus("");} const status=new URLSearchParams(window.location.search).get("firma"); if(status==="connected"&&!data.connected){setMessage("Adobe Sign no confirmó una conexión válida. Volvé a conectar desde este botón.");} else if(status){setMessage(status==="connected"?"Adobe Acrobat Sign conectado correctamente.":status==="denied"?"Autorización de Adobe Sign cancelada.":status==="token_exchange_failed"?`Adobe Sign rechazó el intercambio OAuth.${new URLSearchParams(window.location.search).get("detail")?" Detalle: "+new URLSearchParams(window.location.search).get("detail"):""}`:status==="expired_state"?"La autorización de Adobe Sign expiró.":status==="invalid_callback"?"La prueba OAuth llegó al callback sin estado de seguridad; iniciá la conexión desde AgroBrokerIA.":"No se pudo completar la conexión con Adobe Sign.");} }catch{setAdobeStatus("");}finally{setAdobeBusy(false)} })();},[]);
@@ -121,8 +125,28 @@ export default function ContratosPage(){
 
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
-   if(!op){ setForm(x=>({...x,operacionId:""})); return; }
+   if(!op){ setForm(x=>({...x,operacionId:""})); setConfidentiality([]); return; }
    setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda||""}));
+   void cargarConfidencialidad(id);
+ }
+ async function cargarConfidencialidad(operationId:string){
+   const {data,error}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:operationId});
+   if(error){setError(error.message);setConfidentiality([]);return;}
+   setConfidentiality((data||[]) as ConfidentialityStatus[]);
+ }
+ async function aceptarConfidencialidad(rol:ConfidentialityStatus["rol"]){
+   if(!form.operacionId)return;
+   setConfidentialityBusy(true);setError("");setMessage("");
+   try{
+     const {data:{session}}=await supabase.auth.getSession();
+     const ua=typeof navigator!=="undefined"?navigator.userAgent:null;
+     const ip=null;
+     const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip,p_user_agent:ua});
+     if(error)throw error;
+     setMessage("Confidencialidad aceptada y registrada para "+rol+". Esta aceptación queda auditada y es obligatoria para cerrar la operación.");
+     await cargarConfidencialidad(form.operacionId);
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo registrar la aceptación.");}
+   finally{setConfidentialityBusy(false);}
  }
  async function saveDraft(){
    if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
@@ -179,6 +203,14 @@ export default function ContratosPage(){
        <label>Comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social"/></label>
       </div>
       <label className="contract-builder-observation">Observaciones (opcional)<textarea value={form.observaciones} onChange={e=>update("observaciones",e.target.value)} /></label>
+      {form.operacionId&&<section className="contract-info-panel" style={{marginTop:16}}>
+       <h2>Confidencialidad obligatoria de la operación</h2>
+       <p>Antes de confirmar/cerrar cualquier F1 o F2, todas las partes que participan en esta operación deben aceptar el <b>Contrato de Confidencialidad, No Circunvención y Reconocimiento de Comisiones</b>. La aceptación queda registrada con versión y huella del documento.</p>
+       <div className="contract-sign-list">
+        {confidentiality.length===0?<p>Cargando partes requeridas…</p>:confidentiality.map(c=><article className="contract-sign-card" key={c.rol}><div><strong>{c.rol}</strong><span>{c.aceptado?"✓ Aceptado":"Pendiente de aceptación"}</span><small>{c.aceptado_at?new Date(c.aceptado_at).toLocaleString("es-AR"):"Debe aceptarse antes del cierre"}{c.version?" · Versión "+c.version:""}</small></div><div className="contract-sign-actions"><button type="button" disabled={confidentialityBusy||c.aceptado} onClick={()=>void aceptarConfidencialidad(c.rol)}>{c.aceptado?"Aceptado ✓":"Aceptar contrato →"}</button></div></article>)}
+       </div>
+       {confidentiality.length>0&&confidentiality.some(c=>!c.aceptado)&&<div className="contract-builder-alert error">La operación no puede cerrarse mientras exista una aceptación de confidencialidad pendiente.</div>}
+      </section>}
       <button className="contract-generate" onClick={()=>download(form.tipo)}>Generar contrato PDF&nbsp; →</button>
       <button className="contract-generate" disabled={busy||!form.operacionId} onClick={saveDraft}>{busy?"Guardando…":"Guardar borrador en la operación →"}</button>
       <div className="contract-output-actions"><button onClick={()=>download(form.tipo)}>▣ Descargar PDF</button><button onClick={printPdf}>▣ Imprimir</button><button onClick={emailPdf}>✉ Enviar por email</button><button onClick={sharePdf}>⌁ Compartir</button></div>
@@ -190,7 +222,7 @@ export default function ContratosPage(){
   </section>:null}
 
   {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));setMessage("Contrato seleccionado.")}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
-   {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
+   {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2>Confidencialidad de este contrato</h2><p>La aceptación es obligatoria antes del cierre. Si existe un intermediario, también debe aceptar; si no existe, no se agrega ni se conserva un firmante/intermediario ficticio.</p>{selected.operacion_id&&<div className="contract-sign-list">{confidentiality.map(c=><article className="contract-sign-card" key={c.rol}><div><strong>{c.rol}</strong><span>{c.aceptado?"✓ Aceptado":"Pendiente"}</span></div><button type="button" disabled={confidentialityBusy||c.aceptado} onClick={()=>void aceptarConfidencialidad(c.rol)}>{c.aceptado?"Aceptado ✓":"Aceptar →"}</button></article>)}</div>}<h2 style={{marginTop:18}}>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
     <label>Días adicionales solicitados<input type="number" min="1" max="30" value={extensionDays} onChange={e=>setExtensionDays(e.target.value)}/></label>
     <label>Motivo<textarea value={extensionReason} onChange={e=>setExtensionReason(e.target.value)} placeholder="Por qué no se puede cerrar todavía"/></label>
     <label>Justificativo detallado<textarea value={extensionJustification} onChange={e=>setExtensionJustification(e.target.value)} placeholder="Todos los datos necesarios: qué falta, dependencias, fechas, responsables y por qué necesitás ese plazo."/></label>
