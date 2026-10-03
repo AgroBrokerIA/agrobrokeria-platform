@@ -29,7 +29,7 @@ export default function MercadoPage(){
   setProducts(Object.fromEntries((prod.data||[]).map((x:any)=>[String(x.id),x as ProductMeta])));
   const pubs=(pr.data||[]) as Pub[];setOffers(pubs.filter(x=>x.tipo!=="DEMANDA").slice(0,5));setDemands(pubs.filter(x=>x.tipo==="DEMANDA").slice(0,5));setLoading(false);
  }
- useEffect(()=>{void load()},[]);
+ useEffect(()=>{const params=new URLSearchParams(window.location.search);const tab=params.get("tab");if(tab&&["Granos","Aceites","Harinas","Subproductos","Futuros","FOB","FAS","CIF","Mercados internacionales"].includes(tab))setMarketTab(tab);void load()},[]);
  async function sync(){
   setSyncing(true);setSyncMsg("");setError("");
   try{const{data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Necesitás iniciar sesión.");
