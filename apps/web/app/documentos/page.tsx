@@ -5,6 +5,7 @@ import {supabase} from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 
 type Documento={id:string;tipo_documento:string|null;nombre_archivo:string|null;url_archivo:string|null;version:number|null;obligatorio:boolean|null;aprobado:boolean|null;observaciones:string|null;creado_en:string|null;operacion_id:string};
+type DocumentoRow=Documento & {name:string;type:string;op:string;date:string|null;estado:string;url:string|null;operationId:string};
 type Contrato={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;archivo_pdf:string|null};
 type DocumentoEmpresa={id:string;tipo_documento:string;nombre_archivo:string|null;url_archivo:string|null;fecha_vencimiento:string|null;verificado:boolean|null;observaciones:string|null;creado_en:string|null};
 type Operacion={id:string;codigo:string;tipo_operacion:string|null;cantidad_tn:number;precio_tn:number;moneda_id:number|null;importe_total:number;fecha_operacion:string;publicacion_compra_id:string|null;publicacion_venta_id:string|null};
