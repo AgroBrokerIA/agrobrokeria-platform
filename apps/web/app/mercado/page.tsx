@@ -47,7 +47,7 @@ export default function MercadoPage(){
  const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q)}return m},[quotes,products,commodities]);
  const catalogProducts=useMemo(()=>Object.values(products),[products]);
  const catalogForTab=useMemo(()=>{
-   if(marketTab==="Aceites")return catalogProducts.filter(p=>String(p.categoria||"").toLowerCase().includes("aceite"));
+   if(marketTab==="Aceites")return catalogProducts.filter(p=>String(p.nombre||"").toLowerCase().includes("aceite")||String(p.categoria||"").toLowerCase().includes("aceite"));
    if(marketTab==="Harinas")return catalogProducts.filter(p=>String(p.categoria||"").toLowerCase().includes("harina"));
    if(marketTab==="Subproductos")return catalogProducts.filter(p=>String(p.categoria||"").toLowerCase().includes("subproducto"));
    if(marketTab==="Granos")return catalogProducts.filter(p=>["cereal","oleaginosa","legumbre","pseudocereal","especialidad","semilla"].some(x=>String(p.categoria||"").toLowerCase().includes(x)));
