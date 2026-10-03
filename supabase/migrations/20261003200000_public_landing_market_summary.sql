@@ -1,6 +1,8 @@
 -- Public landing data and current BCR/CAC summary hardening.
 -- Operational tables remain private; the public landing reads only aggregate counters.
 
+drop view if exists public.landing_public_summary;
+
 create or replace function public.refresh_market_public_summary_data()
 returns void
 language sql
