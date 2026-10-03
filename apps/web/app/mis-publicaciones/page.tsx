@@ -41,7 +41,9 @@ export default function MisPublicacionesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setPublicaciones([]); setLoading(false); return; }
 
-    const { data: empresa } = await supabase.from("empresas").select("id").eq("cuenta_id", user.id).eq("activa", true).limit(1).maybeSingle();
+    const { data: profile, error: profileError } = await supabase.from("profiles").select("active_company_id").eq("id", user.id).single();
+    if (profileError) throw profileError;
+    const empresa = profile?.active_company_id ? { id: profile.active_company_id } : null;
     if (!empresa?.id) { setPublicaciones([]); setLoading(false); return; }
 
     const { data, error } = await supabase
