@@ -26,32 +26,28 @@ export default function Home(){
    let mounted=true;
    (async()=>{
      const { data: market, error: marketError } = await supabase
-       .from("market_public_summary")
-       .select("commodity,precio_promedio,moneda,publicaciones,actualizado_at,variacion")
-       .order("publicaciones",{ascending:false})
-       .limit(12);
+       .from("market_quotes")
+       .select("commodity_id,price,currency,market_date,source,variation")
+       .eq("market","ROSARIO")
+       .eq("price_type","PIZARRA_CAC")
+       .eq("status","ACTIVE")
+       .not("price","is",null)
+       .order("market_date",{ascending:false})
+       .order("created_at",{ascending:false})
+       .limit(40);
      if(!mounted)return;
      if(marketError) return;
-     const rows=(market||[]) as any[];
+     const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾"};
+     const names:Record<string,string>={"290206c3-0400-47e2-bfcd-16d6b93b6fde":"Soja","d119de42-8ddc-43cf-a307-c540d3bb6d34":"Maíz","fd74acb3-0c2c-43e4-861c-538539cb9c71":"Trigo","61f4942b-260f-4f94-86b3-5c8858dc8231":"Sorgo"};
+     const seen=new Set<string>(); const rows=(market||[]).filter((x:any)=>{const n=names[x.commodity_id];if(!n||seen.has(n))return false;seen.add(n);return true;});
      if(rows.length){
-       const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Girasol:"🌻"};
-       const preferred=["Soja","Maíz","Trigo","Girasol"];
-       const ordered=[...preferred.map(name=>rows.find(x=>x.commodity===name)).filter(Boolean),...rows.filter(x=>!preferred.includes(x.commodity))];
-       setQuotes(ordered.slice(0,4).map((x:any)=>({
-         name:x.commodity,
-         price:x.precio_promedio==null?"Sin cotización":(x.moneda||"USD")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}),
-         detail:x.variacion==null?(x.publicaciones?fmt(Number(x.publicaciones))+" publicaciones":""):(Number(x.variacion)>=0?"▲ +":"▼ ")+Number(x.variacion).toLocaleString("es-AR",{minimumFractionDigits:1,maximumFractionDigits:1}),
-         icon:icons[x.commodity]||"🌾"
-       })));
-       const publicationCount=rows.reduce((sum,row)=>sum+Number(row.publicaciones||0),0);
-       const latest=rows.map(row=>row.actualizado_at).filter(Boolean).sort().at(-1);
-       setStats({
-         quotes:rows.length,
-         publications:publicationCount,
-         commodities:new Set(rows.map(row=>row.commodity).filter(Boolean)).size,
-         updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",
-         source:"BCR",
-       });
+       setQuotes(rows.slice(0,4).map((x:any)=>{const name=names[x.commodity_id];return {
+         name, price:(x.currency||"ARS")+" "+Number(x.price).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
+         detail:new Date(x.market_date+"T12:00:00").toLocaleDateString("es-AR")+" · "+(x.source||"BCR/CAC"),
+         icon:icons[name]||"🌾"
+       }}));
+       const latest=rows.map((x:any)=>x.market_date).sort().at(-1);
+       setStats({quotes:rows.length,publications:0,commodities:rows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
      }
      const [{count:companiesCount},{data:publications}] = await Promise.all([
        supabase.from("companies").select("id",{count:"exact",head:true}),
