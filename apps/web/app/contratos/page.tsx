@@ -52,11 +52,16 @@ function buildPdfWithoutIntermediary(f:FormState){
  for(const [a,b] of rows){const h=27;pdf.setDrawColor(175,190,205);pdf.rect(m,y,c1,h);pdf.rect(m+c1,y,c2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(b,c2-12),m+c1+6,y+11);y+=h;}
  y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. CLÁUSULAS CONTRACTUALES",m,y);y+=17;
  const clauses=[
-  ["PRIMERA: OBJETO","El Vendedor se obliga a transferir la propiedad y a entregar la cantidad de granos especificada en las condiciones particulares, y el Comprador se obliga a recibirla y pagar el precio estipulado."],
-  ["SEGUNDA: CALIDAD","La mercadería deberá cumplir con los estándares de calidad comercial vigentes para el producto y lugar de entrega. Las determinaciones de calidad y peso se realizarán conforme a las condiciones comerciales pactadas."],
-  ["TERCERA: CONFIDENCIALIDAD","Las partes se obligan a mantener la confidencialidad de los términos de la operación y de la información comercial no pública intercambiada con motivo de la misma. La aceptación del documento de confidencialidad de la operación es condición documental para su cierre en AgroBrokerIA."],
-  ["CUARTA: DOCUMENTACIÓN Y ENTREGA","La documentación, lugar y período de entrega serán los consignados en las condiciones particulares y en los documentos operativos asociados a la operación."],
-  ["QUINTA: JURISDICCIÓN","La ley aplicable y la jurisdicción serán las consignadas en la operación y deberán completarse antes de la firma definitiva."]
+  ["PRIMERA: OBJETO","El Vendedor se obliga a vender y el Comprador a comprar el producto, cantidad y campaña indicados en las Condiciones Particulares."],
+  ["SEGUNDA: CANTIDAD","La cantidad contractual será la indicada en las Condiciones Particulares, expresada en toneladas métricas, con la tolerancia que allí se establezca."],
+  ["TERCERA: CALIDAD","La mercadería deberá cumplir las normas de calidad comercial aplicables al producto y las condiciones pactadas entre las partes."],
+  ["CUARTA: PRECIO","El precio pactado será USD "+(f.precio?money(f.precio):"________")+" por tonelada métrica, salvo la fórmula o condición expresamente indicada en las Condiciones Particulares."],
+  ["QUINTA: CONDICIÓN DE PRECIO","La condición comercial será la indicada en las Condiciones Particulares (por ejemplo, FAS, FOB o CIF), sin alterar los demás términos del contrato."],
+  ["SEXTA: LUGAR DE ENTREGA","El lugar, puerto o destino de entrega será el consignado en las Condiciones Particulares y en los documentos operativos de la operación."],
+  ["SÉPTIMA: PLAZO DE ENTREGA","La entrega se realizará dentro del período indicado en las Condiciones Particulares, sujeto a la coordinación logística correspondiente."],
+  ["OCTAVA: FORMA DE PAGO","El medio, plazo y condiciones de pago serán los indicados en las Condiciones Particulares y documentación comercial asociada."],
+  ["NOVENA: DOCUMENTACIÓN","Las partes deberán entregar la factura comercial, Carta de Porte, certificados de calidad y demás documentación que resulte aplicable a la operación."],
+  ["DÉCIMA: LEGISLACIÓN APLICABLE","La ley y jurisdicción aplicables serán las consignadas en el contrato y deberán quedar definidas antes de la firma definitiva."]
  ];
  for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
  y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("En prueba de conformidad, se firma el presente contrato por las partes intervinientes.",m,y);y+=42;
