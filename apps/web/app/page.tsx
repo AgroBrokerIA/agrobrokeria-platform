@@ -47,7 +47,7 @@ export default function Home(){
        setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
      }
      const {data:landingSummary,error:landingError}=await supabase
-       .from("landing_public_summary")
+       .from("landing_public_counters")
        .select("verified_companies,active_offers,active_demands")
        .maybeSingle();
      if(mounted && !landingError) setPublicCounts({
