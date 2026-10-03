@@ -56,7 +56,7 @@ export default function Dashboard(){
 
   <section className="dashboard-price-row">
    {priceRows.map(({code,label,q})=><div className="dashboard-price-card" key={code}><b>{iconFor(label)}</b><div><strong>{label}</strong><small>{q?.unit||"Unidad no informada"}{q?.currency?` · ${q.currency}`:""}</small><em>{money(q?.price||null,q?.currency||"")}</em><span className={Number(q?.variation||0)>=0?"up":"down"}>{q?.variation==null?"Sin variación":change(q)} ↗</span></div><div className="dashboard-mini-chart"><span/></div></div>)}
-   <Link href="/mercado" className="dashboard-board-link"><b>📊</b><strong>Ver pizarra completa →</strong><small>Precios en tiempo real<br/>Bolsa de Comercio de Rosario</small></Link>
+   <Link href="/mercado" className="dashboard-board-link"><b>📊</b><strong>Ver pizarra completa →</strong><small>Cotizaciones registradas<br/>Fuente según publicación</small></Link>
   </section>
 
   <section className="dashboard-actions-row">
@@ -76,7 +76,7 @@ export default function Dashboard(){
 
   <section className="dashboard-feature-strip">
    <div><b>🌐</b><span><strong>Comercio internacional</strong><small>Conectamos mercados globales</small></span></div>
-   <div><b>🛡</b><span><strong>Seguridad y confianza</strong><small>Empresas verificadas y KYC</small></span></div>
+   <div><b>🛡</b><span><strong>Seguridad y confianza</strong><small>Estado de verificación registrado</small></span></div>
    <div><b>文</b><span><strong>Multi-idioma</strong><small>Traducción automática</small></span></div>
    <div><b>▤</b><span><strong>Contratos digitales</strong><small>Modelos LOI, SCO y contratos</small></span></div>
    <div><b>🚚</b><span><strong>Logística integrada</strong><small>Seguimiento de embarques</small></span></div>
