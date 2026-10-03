@@ -112,7 +112,7 @@ export default function Home(){
     <article className={styles.publicPanel}><div className={styles.panelTop}><h3>Qué se puede hacer al registrarse</h3><span>Operación protegida</span></div><ul className={styles.featureList}><li>Publicar ofertas y demandas</li><li>Comparar referencias y condiciones</li><li>Negociar y recibir contraofertas</li><li>Generar acuerdos y contratos</li><li>Coordinar documentación y logística</li></ul><Link href="/register" className={styles.panelCta}>Registrarme para operar →</Link></article>
    </div>
   </section>
-  <section id="ofertas" className={styles.publicSection alt}>
+  <section id="ofertas" className={`${styles.publicSection} ${styles.alt}`}>
    <div className={styles.sectionTitle}><span>OFERTAS</span><h2>Lo que se ofrece en el sistema</h2><p>Las publicaciones públicas se muestran como referencia. Hoy no hay ofertas activas públicas registradas.</p></div>
    <div className={styles.publicEmpty}><strong>{publicCounts.offers}</strong><span>ofertas activas públicas</span><small>Cuando existan publicaciones activas, aparecerán aquí con producto, volumen, ubicación y condiciones. La negociación requiere registro.</small><Link href="/register" className={styles.panelCta}>Publicar o recibir ofertas →</Link></div>
   </section>
@@ -120,7 +120,7 @@ export default function Home(){
    <div className={styles.sectionTitle}><span>DEMANDAS</span><h2>Lo que están buscando los compradores</h2><p>La vista pública muestra únicamente demandas realmente activas del sistema, sin datos privados de las empresas.</p></div>
    <div className={styles.publicEmpty}><strong>{publicCounts.demands}</strong><span>demandas activas públicas</span><small>Las demandas reales aparecerán aquí cuando estén publicadas. El contacto y la negociación se habilitan después del registro.</small><Link href="/register" className={styles.panelCta}>Quiero encontrar oportunidades →</Link></div>
   </section>
-  <section id="empresas" className={styles.publicSection alt}>
+  <section id="empresas" className={`${styles.publicSection} ${styles.alt}`}>
    <div className={styles.sectionTitle}><span>EMPRESAS</span><h2>Una red de empresas verificables</h2><p>Productores, acopios, compradores, traders, intermediarios, corredores, transportistas y prestadores pueden formar parte de la red.</p></div>
    <div className={styles.companyIntro}><div className={styles.companyNumber}><strong>{publicCounts.companies}</strong><span>empresa registrada actualmente</span></div><div><h3>Verificación antes de confiar</h3><p>AgroBrokerIA permite consultar la existencia y estado de los participantes registrados y centraliza procesos de verificación, documentación, cumplimiento y trazabilidad.</p><Link href="/register" className={styles.panelCta}>Crear cuenta y verificar empresas →</Link></div></div>
   </section>
@@ -129,7 +129,7 @@ export default function Home(){
    <div className={styles.priceBoard}>{quotes.map(q=><div key={q.name}><span>{q.icon}</span><b>{q.name}</b><strong>{q.price}</strong><small>{q.detail}</small></div>)}</div>
    <div className={styles.sourceNote}>Fuente oficial: Bolsa de Comercio de Rosario / Cámara Arbitral de Cereales. La cotización local publicada para 01/10/2026 informa Soja $552.500, Maíz $287.900, Trigo $333.000 y Sorgo $295.523 por tonelada. <a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0" target="_blank" rel="noreferrer">Ver BCR →</a></div>
   </section>
-  <section id="ia-matching" className={styles.publicSection alt}>
+  <section id="ia-matching" className={`${styles.publicSection} ${styles.alt}`}>
    <div className={styles.sectionTitle}><span>IA MATCHING</span><h2>La IA encuentra coincidencias que de otra forma llevarían horas</h2><p>El motor relaciona producto, cantidad, calidad, ubicación, precio, modalidad, fechas y preferencias para detectar oportunidades compatibles.</p></div>
    <div className={styles.aiGrid}><article><b>01</b><h3>Entiende lo que buscás</h3><p>Analiza ofertas, demandas y condiciones comerciales en lugar de limitarse a palabras clave.</p></article><article><b>02</b><h3>Encuentra coincidencias</h3><p>Prioriza oportunidades compatibles y ayuda a reducir búsquedas, mensajes y tiempo perdido.</p></article><article><b>03</b><h3>Favorece a todos</h3><p>El productor encuentra compradores, el comprador encuentra mercadería y los intermediarios pueden detectar negocios con mejor contexto.</p></article><article><b>04</b><h3>La decisión sigue siendo humana</h3><p>La IA recomienda; la negociación, aceptación y contratación quedan bajo control de los participantes.</p></article></div>
   </section>
