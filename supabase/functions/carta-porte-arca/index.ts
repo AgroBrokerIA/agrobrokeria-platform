@@ -96,13 +96,15 @@ Deno.serve(async req=>{
     const {data:company}=await db.from("empresas").select("id,cuit").eq("id",companyId).maybeSingle();
     if(!company?.cuit)return json({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"},409);
     const {data:cfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cuit_secret_name").eq("company_id",companyId).maybeSingle();
-    if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
-    const environment=cfg.environment==="production"?"production":"homologacion";
-    const cuit=(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit;
-    const cert=envPem(cfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"), key=envPem(cfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64");
+    const configured=!!cfg?.enabled;
+    const environment=(cfg?.environment||Deno.env.get("ARCA_WSCPE_ENVIRONMENT")||"production")==="production"?"production":"homologacion";
+    const cuit=(cfg?.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||Deno.env.get("ARCA_WSCPE_CUIT")||company.cuit;
+    const cert=envPem(cfg?.cert_secret_name||"ARCA_WSCPE_CERT_PEM","ARCA_WSCPE_CERTIFICATE_BASE64")||envPem("ARCA_CERT_PEM","ARCA_CERTIFICATE_BASE64");
+    const key=envPem(cfg?.private_key_secret_name||"ARCA_WSCPE_PRIVATE_KEY_PEM","ARCA_WSCPE_PRIVATE_KEY_BASE64")||envPem("ARCA_PRIVATE_KEY_PEM","ARCA_PRIVATE_KEY_BASE64");
+    if(!configured && (!Deno.env.get("ARCA_WSCPE_CUIT") && !Deno.env.get("ARCA_CUIT")))return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
     if(!cert||!key)return json({error:"ARCA_WSCPE_CREDENTIALS_NOT_CONFIGURED"},409);
 
-    const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg.punto_venta);
+    const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg?.punto_venta||Deno.env.get("ARCA_WSCPE_PUNTO_VENTA")||1);
     if(!Number.isInteger(sucursal)||sucursal<1)throw new Error("WSCPE_INVALID_SUCURSAL");
     const cuitSolicitante=requiredString(b.cuit_solicitante,cuit);
     const tipoGrano=requiredString(b.cod_grano,"COD_GRANO");
