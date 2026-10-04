@@ -758,3 +758,8 @@ body{background:var(--ab-bg)}
     height:36px!important;min-height:36px!important;padding:0 11px!important;font-size:8px!important
   }
 }
+
+/* ARCA connectivity verification */
+.arca-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
+.arca-actions button{border:1px solid rgba(25,173,112,.35);background:#fff;border-radius:10px;padding:9px 13px;font:inherit;font-weight:700;cursor:pointer}
+.arca-actions button:disabled{opacity:.6;cursor:wait}
