@@ -1,74 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { createClient } from "@supabase/supabase-js";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authClient() {
-  return createClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
-  );
-}
-
-function adminClient() {
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
-  if (!key) throw new Error("SUPABASE_SERVER_CONFIG_MISSING");
-  return createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, key);
-}
+const FUNCTION_URL = "https://hlviozkqskdhdaykgtis.supabase.co/functions/v1/adobe-oauth";
 
 export async function GET(req: NextRequest) {
+  const auth = req.headers.get("authorization");
+  if (!auth?.startsWith("Bearer ")) {
+    return NextResponse.json({ ok: false, error: "AUTH_REQUIRED" }, { status: 401 });
+  }
   try {
-    const auth = req.headers.get("authorization");
-    const token = auth?.startsWith("Bearer ") ? auth.slice(7).trim() : "";
-    if (!token) return NextResponse.json({ ok: false, error: "AUTH_REQUIRED" }, { status: 401 });
-
-    const supabase = authClient();
-    const { data: { user } } = await supabase.auth.getUser(token);
-    if (!user) return NextResponse.json({ ok: false, error: "AUTH_REQUIRED" }, { status: 401 });
-
-    const admin = adminClient();
-    let companyId: string | null = null;
-    const byId = await admin.from("profiles").select("active_company_id").eq("id", user.id).maybeSingle();
-    if (byId.data?.active_company_id) companyId = byId.data.active_company_id;
-    if (!companyId && user.email) {
-      const byEmail = await admin.from("profiles").select("active_company_id").eq("email", user.email).maybeSingle();
-      companyId = byEmail.data?.active_company_id ?? null;
-    }
-    if (!companyId) return NextResponse.json({ ok: false, error: "ACTIVE_COMPANY_REQUIRED" }, { status: 403 });
-
-    const clientId = "ats-eada1c07-8d29-4481-94b0-36697190a75a";
-    const redirectUri = "https://agrobrokeria.online/api/firma/adobe/callback";
-    const state = crypto.randomUUID();
-
-    const { error } = await admin.from("adobe_sign_oauth_states").insert({
-      id: state,
-      user_id: user.id,
-      company_id: companyId,
-      redirect_uri: redirectUri
+    const response = await fetch(FUNCTION_URL, {
+      method: "POST",
+      headers: { Authorization: auth, "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "authorize" }),
+      cache: "no-store"
     });
-    if (error) throw new Error("ADOBE_SIGN_STATE_STORE_FAILED");
-
-    const authBase = "https://secure.na3.adobesign.com";
-    const scope = [
-      "user_read:account",
-      "agreement_read:account",
-      "agreement_write:account"
-    ].join(" ");
-
-    const url = new URL(authBase + "/public/oauth/v2");
-    url.searchParams.set("redirect_uri", redirectUri);
-    url.searchParams.set("response_type", "code");
-    url.searchParams.set("client_id", clientId);
-    url.searchParams.set("state", state);
-    url.searchParams.set("scope", scope);
-
-    return NextResponse.json({ ok: true, authorization_url: url.toString() });
-  } catch (error) {
-    return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : "ADOBE_SIGN_AUTHORIZE_ERROR" },
-      { status: 500 }
-    );
+    const body = await response.json().catch(() => ({ ok: false, error: "ADOBE_SIGN_AUTHORIZE_ERROR" }));
+    return NextResponse.json(body, { status: response.status, headers: { "Cache-Control": "no-store" } });
+  } catch {
+    return NextResponse.json({ ok: false, error: "ADOBE_SIGN_AUTHORIZE_UNAVAILABLE" }, { status: 502 });
   }
 }
