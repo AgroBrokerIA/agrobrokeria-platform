@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.1";
+import { createClient, corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.112.1";
 import forge from "npm:node-forge@1.3.1";
 
 const URL=Deno.env.get("SUPABASE_URL")!, ANON=Deno.env.get("SUPABASE_ANON_KEY")!, SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -30,9 +30,9 @@ function makeCms(certPem:string,keyPem:string){if(!certPem||!keyPem)throw new Er
  const cert=forge.pki.certificateFromPem(certPem),key=forge.pki.privateKeyFromPem(keyPem),now=new Date();
  const fmt=(d:Date)=>{const z=new Date(d.getTime()-3*60*60*1000);return z.toISOString().replace(/\.\d{3}Z$/,"-03:00")};
  const tra='<?xml version="1.0" encoding="UTF-8"?><loginTicketRequest version="1.0"><header><uniqueId>'+Math.floor(now.getTime()/1000)+'</uniqueId><generationTime>'+fmt(new Date(now.getTime()-60000))+'</generationTime><expirationTime>'+fmt(new Date(now.getTime()+600000))+'</expirationTime></header><service>wsfe</service></loginTicketRequest>';
- const p7=forge.pkcs7.createSignedData();p7.content=forge.util.createBuffer(tra,"utf8");p7.addCertificate(cert);p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[{type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}]});p7.sign({detached:true});return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
+ const p7=forge.pkcs7.createSignedData();p7.content=forge.util.createBuffer(tra,"utf8");p7.addCertificate(cert);p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[{type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}]});p7.sign({detached:false});return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
 }
-async function getToken(cfg:{environment:string,cert:string,key:string,cuit?:string}){const key=cacheKey(cfg),now=Date.now();const cached=tokenCache.get(key);if(cached&&cached.expiresAt>now+60000)return cached;const pending=tokenInflight.get(key);if(pending)return pending;const p=(async()=>{const ep=endpoints(cfg.environment),cms=makeCms(cfg.cert,cfg.key);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.afip.gov.ar/ws/services/LoginCms"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsaa,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8"},body});const xml=await r.text();if(!r.ok)throw new Error("ARCA_WSAA_HTTP_"+r.status);const token=nodeText(xml,"token"),sign=nodeText(xml,"sign"),exp=nodeText(xml,"expirationTime");if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");const expiresAt=exp?Date.parse(exp):now+10*60*60*1000;const out={token,sign,expiresAt};tokenCache.set(key,out);return out})().finally(()=>tokenInflight.delete(key));tokenInflight.set(key,p);return p}
+async function getToken(cfg:{environment:string,cert:string,key:string,cuit?:string}){const key=cacheKey(cfg),now=Date.now();const cached=tokenCache.get(key);if(cached&&cached.expiresAt>now+60000)return cached;const pending=tokenInflight.get(key);if(pending)return pending;const p=(async()=>{const ep=endpoints(cfg.environment),cms=makeCms(cfg.cert,cfg.key);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.view.sua.dvadac.desein.afip.gov"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsaa,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":""},body});const xml=await r.text();if(!r.ok){const m=xml.match(/(?:faultstring|descripcion|description|errorCode|codigo)[^>]*>([^<]{1,500})</i);const raw=(m?.[1]||"").trim();const code=(raw.match(/(?:coe\\.|cms\\.|xml\\.|wsn\\.|wsaa\\.)[A-Za-z0-9_.-]+/)||[])[0];throw new Error(code||("ARCA_WSAA_FAULT_"+raw.replace(/[^A-Za-z0-9_.: -]/g,"").slice(0,180)||("ARCA_WSAA_HTTP_"+r.status)))};const token=nodeText(xml,"token"),sign=nodeText(xml,"sign"),exp=nodeText(xml,"expirationTime");if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");const expiresAt=exp?Date.parse(exp):now+10*60*60*1000;const out={token,sign,expiresAt};tokenCache.set(key,out);return out})().finally(()=>tokenInflight.delete(key));tokenInflight.set(key,p);return p}
 async function soap(method:string,inner:string,a:{token:string,sign:string},cfg:{environment:string,cuit:string}){const ep=endpoints(cfg.environment);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><'+method+' xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>'+esc(a.token)+'</Token><Sign>'+esc(a.sign)+'</Sign><Cuit>'+esc(cfg.cuit)+'</Cuit></Auth>'+inner+'</'+method+'></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsfe,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":'"http://ar.gov.afip.dif.FEV1/'+method+'"'},body});const xml=await r.text();if(!r.ok||hasSoapFault(xml))throw new Error("ARCA_"+method+"_HTTP_"+r.status);return{ok:r.ok,status:r.status,xml}}
 async function authorize(i:any,cfg:{environment:string,cuit:string,cert:string,key:string}){
  const a=await getToken(cfg);
@@ -46,12 +46,40 @@ async function authorize(i:any,cfg:{environment:string,cuit:string,cert:string,k
  const inner="<FeCAEReq><FeCabReq><CantReg>1</CantReg><PtoVta>"+i.punto_venta+"</PtoVta><CbteTipo>"+i.tipo_comprobante_codigo+"</CbteTipo></FeCabReq><FeDetReq><FECAEDetRequest><Concepto>1</Concepto><DocTipo>"+Number(i.doc_tipo_receptor)+"</DocTipo><DocNro>"+esc(i.cuit_receptor)+"</DocNro><CbteDesde>"+next+"</CbteDesde><CbteHasta>"+next+"</CbteHasta><CbteFch>"+date+"</CbteFch><ImpTotal>"+total+"</ImpTotal><ImpTotConc>0.00</ImpTotConc><ImpNeto>"+net+"</ImpNeto><ImpOpEx>0.00</ImpOpEx><ImpIVA>"+iva+"</ImpIVA><ImpTrib>0.00</ImpTrib><MonId>"+mon+"</MonId><MonCotiz>1</MonCotiz>"+cond+ivaXml+"</FECAEDetRequest></FeDetReq></FeCAEReq>";
  let res:any;try{res=await soap("FECAESolicitar",inner,a,cfg)}catch(first){const q=await soap("FECompConsultar","<PtoVta>"+i.punto_venta+"</PtoVta><CbteTipo>"+i.tipo_comprobante_codigo+"</CbteTipo><CbteNro>"+next+"</CbteNro>",a,cfg);const qCae=nodeText(q.xml,"CAE");if(qCae)return{request:inner,response:q.xml,result:"A",cae:qCae,venc:nodeText(q.xml,"CAEFchVto"),cbte:next,codes:allText(q.xml,"Code"),messages:allText(q.xml,"Msg"),reconciled:true};throw first}return{request:inner,response:res.xml,result:nodeText(res.xml,"Resultado"),cae:nodeText(res.xml,"CAE"),venc:nodeText(res.xml,"CAEFchVto"),cbte:Number(nodeText(res.xml,"CbteDesde")||next),codes:allText(res.xml,"Code"),messages:allText(res.xml,"Msg")}
 }
+const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Headers":"authorization, x-client-info, apikey, content-type, x-retry-count, traceparent, tracestate, baggage","Access-Control-Allow-Methods":"POST, OPTIONS"};
+function withCors(r:Response){const h=new Headers(r.headers);for(const [k,v] of Object.entries(corsHeaders))h.set(k,v);return new Response(r.body,{status:r.status,statusText:r.statusText,headers:h})}
 Deno.serve(async req=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
+ const __handler=async()=>{
+ if(req.method==="OPTIONS")return new Response("ok",{headers:corsHeaders});
  try{
   if(req.method!=="POST")return new Response(JSON.stringify({error:"METHOD_NOT_ALLOWED"}),{status:405});
   const bearer=req.headers.get("authorization");if(!bearer?.startsWith("Bearer "))return new Response(JSON.stringify({error:"AUTH_REQUIRED"}),{status:401});
   const uc=createClient(URL,ANON,{global:{headers:{Authorization:bearer}}});const{data:{user}}=await uc.auth.getUser();if(!user)return new Response(JSON.stringify({error:"AUTH_REQUIRED"}),{status:401});
-  const b=await req.json(),id=b?.invoice_id;if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return new Response(JSON.stringify({error:"INVALID_INVOICE_ID"}),{status:400});
+  const b=await req.json(),action=b?.action,id=b?.invoice_id;
+  if(action==="test_connection"){
+    const{data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
+    if(!profile?.active_company_id)return new Response(JSON.stringify({ok:false,error:"ACTIVE_COMPANY_NOT_CONFIGURED"}),{status:409});
+    const{data:company}=await db.from("companies").select("cuit,razon_social").eq("id",profile.active_company_id).maybeSingle();
+    if(!company?.cuit)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});
+    const{data:arcaCfg}=await db.from("arca_company_config").select("environment,enabled,cuit_secret_name,cert_secret_name,private_key_secret_name").eq("company_id",profile.active_company_id).maybeSingle();
+    if(arcaCfg&&!arcaCfg.enabled)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_DISABLED"}),{status:409});
+    const environment=arcaCfg?.environment||GLOBAL_ENV;
+    const configuredCuit=(arcaCfg?.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit;
+    if(configuredCuit!==company.cuit)return new Response(JSON.stringify({ok:false,error:"ARCA_CUIT_MISMATCH"}),{status:409});
+    const cert=arcaCfg?.cert_secret_name?envPem(arcaCfg.cert_secret_name,"ARCA_CERTIFICATE_BASE64"):GLOBAL_CERT;
+    const key=arcaCfg?.private_key_secret_name?envPem(arcaCfg.private_key_secret_name,"ARCA_PRIVATE_KEY_BASE64"):GLOBAL_KEY;
+    if(company.cuit!==GLOBAL_ARCA_CUIT&&!arcaCfg)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});
+    try{
+      await getToken({environment,cuit:configuredCuit,cert,key});
+      return new Response(JSON.stringify({ok:true,test:"ARCA_WSAA",environment:environment==="production"?"PRODUCCION":"HOMOLOGACION",service:"wsfe",message:"Autenticación WSAA aceptada"}),{headers:{"content-type":"application/json"}});
+    }catch(e){
+      const code=e instanceof Error?e.message:"ARCA_WSAA_ERROR"; console.error("ARCA_WSAA_TEST_ERROR", {code});
+      const safe=/^(coe\.|cms\.|xml\.|wsn\.|wsaa\.)/.test(code)?code:/^ARCA_(WSAA_HTTP_\d+|WSAA_INVALID_RESPONSE|SOAP_TIMEOUT|CREDENTIALS_NOT_CONFIGURED)$/.test(code)?code:"ARCA_WSAA_ERROR";
+      return new Response(JSON.stringify({ok:false,test:"ARCA_WSAA",error:safe}),{status:200,headers:{"content-type":"application/json"}});
+    }
+  }
+  if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return new Response(JSON.stringify({error:"INVALID_INVOICE_ID"}),{status:400});
   const{data:i}=await db.from("facturas").select("*,monedas:moneda_id(codigo)").eq("id",id).single();if(!i)return new Response(JSON.stringify({error:"INVOICE_NOT_FOUND"}),{status:404});
   const{data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();const{data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);if(user.id!==i.usuario_responsable&&(profile?.active_company_id!==i.empresa_id||!p?.length))return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
   const{data:company}=await db.from("companies").select("cuit").eq("id",i.empresa_id).maybeSingle();if(!company?.cuit)return new Response(JSON.stringify({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});const{data:arcaCfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name").eq("company_id",i.empresa_id).maybeSingle();let cfg:any;if(arcaCfg){if(!arcaCfg.enabled)return new Response(JSON.stringify({error:"ARCA_COMPANY_DISABLED"}),{status:409});if(Number(i.punto_venta)!==Number(arcaCfg.punto_venta))return new Response(JSON.stringify({error:"ARCA_PUNTO_VENTA_MISMATCH"}),{status:409});cfg={environment:arcaCfg.environment,cuit:(arcaCfg.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit,cert:envPem(arcaCfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"),key:envPem(arcaCfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64")};}else{if(company.cuit!==GLOBAL_ARCA_CUIT)return new Response(JSON.stringify({error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});cfg={environment:GLOBAL_ENV,cuit:GLOBAL_ARCA_CUIT,cert:GLOBAL_CERT,key:GLOBAL_KEY};}if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
@@ -65,4 +93,6 @@ Deno.serve(async req=>{
    const msg=e instanceof Error?e.message:"ARCA_INTEGRATION_ERROR";await db.from("facturas").update({estado:"ERROR_INTEGRACION",arca_mensaje:msg,actualizada_en:new Date().toISOString()}).eq("id",id);await db.from("factura_eventos").insert({factura_id:id,actor_profile_id:user.id,evento:"ARCA_ERROR",metadata:{error:msg}});return new Response(JSON.stringify({ok:false,error:msg}),{status:502});
   }
  }catch(e){return new Response(JSON.stringify({error:e instanceof Error?e.message:"INTERNAL_ERROR"}),{status:500})}
+};
+ return withCors(await __handler());
 });
