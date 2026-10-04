@@ -13,6 +13,7 @@ function adminClient() {
 function redirect(req: NextRequest, status: string) {
   const url = new URL("/contratos", req.url);
   url.searchParams.set("firma", status);
+  url.searchParams.set("tab", "firmas");
   return NextResponse.redirect(url);
 }
 
