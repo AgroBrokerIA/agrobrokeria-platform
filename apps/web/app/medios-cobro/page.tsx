@@ -8,14 +8,8 @@ type Medio={id:string;empresa_id:string;tipo:"BANCO"|"FINANCIERA";nombre:string;
 type Currency={id:number;codigo:string;nombre:string|null};
 
 const methods=[
- {name:"Transferencia bancaria",desc:"Local e internacional",icon:"🏦",tone:"blue"},
- {name:"Transferencia SWIFT",desc:"Pagos internacionales",icon:"🌐",tone:"blue"},
- {name:"Carta de crédito (LC)",desc:"Comercio internacional",icon:"▤",tone:"blue"},
- {name:"Financiera",desc:"A través de entidades",icon:"▤",tone:"green"},
- {name:"Cuenta de garantía (Escrow)",desc:"Pago seguro con liberación",icon:"🤝",tone:"purple"},
- {name:"Criptomonedas",desc:"USDT, BTC, ETH",icon:"₿",tone:"amber"},
- {name:"PayPal",desc:"Pagos internacionales",icon:"P",tone:"paypal"},
- {name:"Otros métodos",desc:"Cheque, pagaré, etc.",icon:"▣",tone:"pink"}
+ {name:"Transferencia bancaria",desc:"Pago mediante cuenta bancaria registrada",icon:"🏦",tone:"blue"},
+ {name:"Mercado Pago",desc:"Método de pago disponible para definir en el contrato",icon:"MP",tone:"blue"}
 ];
 
 export default function MediosCobroPage(){
