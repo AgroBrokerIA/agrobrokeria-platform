@@ -82,6 +82,7 @@ export default function Header() {
         </button>
         {menuAbierto && <div className="user-dropdown" role="menu">
           <Link href="/perfil#seguridad" onClick={() => setMenuAbierto(false)} role="menuitem">🔑 <span>Cambiar contraseña</span></Link>
+          <Link href="/configuracion" onClick={() => setMenuAbierto(false)} role="menuitem">⚙ <span>Configuración</span></Link>
           <Link href="/ayuda" onClick={() => setMenuAbierto(false)} role="menuitem">❓ <span>Ayuda</span></Link>
           <button type="button" onClick={cerrarSesion} role="menuitem">↪ <span>Cerrar sesión</span></button>
         </div>}
