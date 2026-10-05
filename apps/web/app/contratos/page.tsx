@@ -32,7 +32,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  const field=(v:string)=>v||"_______________________________";
  const wrap=(t:string,x:number,y:number,w:number,size=9,gap=11)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const ls=pdf.splitTextToSize(t,w);pdf.text(ls,x,y);return y+ls.length*gap};
  const title=(t:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);pdf.text(t,W/2,42,{align:"center"});};
- title(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2");
+ title(f.tipo==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS":"CONTRATO DE ABASTECIMIENTO DE GRANOS");
  pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento el contrato "+f.tipo+", celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
  let y=98;
  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
@@ -79,7 +79,7 @@ function buildPdf(f:FormState){
  const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
  const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Conste por el presente documento que se celebra el ${dateText}, bajo las condiciones que se detallan a continuación.`,m,76);};
  if(f.tipo==="F1"){
-   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS – F1");
+   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS");
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;
    pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
@@ -105,7 +105,7 @@ function buildPdf(f:FormState){
    const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"],["Por el Intermediario",f.intermediario||"____________________________"]];
    sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
  } else {
-   pageTitle("ACUERDO DE ABASTECIMIENTO CONTINUO DE GRANOS","CONTRATO MARCO REGENERATIVO - F2");
+   pageTitle("CONTRATO DE ABASTECIMIENTO DE GRANOS","CONTRATO MARCO REGENERATIVO");
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
    y=drawWrapped(pdf,`EL VENDEDOR (PROVEEDOR): ${field("",f.vendedor)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y,W-2*m,9);
@@ -431,7 +431,7 @@ export default function ContratosPage(){
 function PreviewCard({type,form,onDownload,active}:{type:"F1"|"F2";form:FormState;onDownload:(type:"F1"|"F2")=>void;active:boolean}){
  return <article className={"contract-preview-card "+(active?"active":"")}>
    <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Documento F1 generado a partir de los datos registrados.":"Documento F2 generado a partir de los datos registrados."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
-   <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS – F1 (BLANCO)":"CONTRATO PRIVADO DE COMPRAVENTA DE GRANOS – F2"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],["2. OBJETO",form.producto||"No especificado"],["3. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas.":"No especificada"],["4. CALIDAD",form.observaciones||"No especificada"],["5. PRECIO","USD "+(form.precio?money(form.precio):"________")+" por tonelada métrica."],["6. CONDICIÓN DE PRECIO",form.condicion||"No especificada"],["7. LUGAR DE ENTREGA",form.puerto||"No especificado"],["8. PLAZO DE ENTREGA",form.entrega||"No especificado"],["9. FORMA DE PAGO",form.pago||"No especificada"],["10. DOCUMENTACIÓN","Factura comercial, Carta de Porte, Certificado de Calidad y documentación aplicable."],["11. LEGISLACIÓN APLICABLE","Se completará según la operación y jurisdicción pactada."],["12. OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
+   <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS":"CONTRATO DE ABASTECIMIENTO DE GRANOS"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],["2. OBJETO",form.producto||"No especificado"],["3. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas.":"No especificada"],["4. CALIDAD",form.observaciones||"No especificada"],["5. PRECIO","USD "+(form.precio?money(form.precio):"________")+" por tonelada métrica."],["6. CONDICIÓN DE PRECIO",form.condicion||"No especificada"],["7. LUGAR DE ENTREGA",form.puerto||"No especificado"],["8. PLAZO DE ENTREGA",form.entrega||"No especificado"],["9. FORMA DE PAGO",form.pago||"No especificada"],["10. DOCUMENTACIÓN","Factura comercial, Carta de Porte, Certificado de Calidad y documentación aplicable."],["11. LEGISLACIÓN APLICABLE","Se completará según la operación y jurisdicción pactada."],["12. OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
  </article>
 }
 
