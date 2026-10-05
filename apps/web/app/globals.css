@@ -793,3 +793,8 @@ body{background:var(--ab-bg)}
 /* ===== CONTRACT TITLE CLEANUP ===== */
 .contract-paper h3{text-transform:none}
 @media(max-width:700px){.profile-editor-grid{grid-template-columns:1fr}.billing-head-actions{width:100%;justify-content:flex-start}.billing-head-actions>a,.billing-head-actions .billing-new{flex:1;justify-content:center}}
+
+/* Profile editor completion */
+.profile-editor-grid select{width:100%;box-sizing:border-box;padding:10px 11px;border:1px solid #dfe6eb;border-radius:8px;background:#fff;color:#20363a;font-size:12px}
+.profile-check{display:flex!important;align-items:center;gap:8px!important;flex-direction:row!important;padding:10px 0}
+.profile-check input{width:16px!important;height:16px!important}
