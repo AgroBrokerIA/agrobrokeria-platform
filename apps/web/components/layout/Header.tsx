@@ -52,8 +52,10 @@ export default function Header() {
     let activo = true; void cargar();
     const onLanguage = () => setIdioma((localStorage.getItem("agrobrokeria.language") || "es").toUpperCase());
     window.addEventListener("agrobrokeria:language-changed", onLanguage);
+    const onProfile = () => { if (activo) void cargar(); };
+    window.addEventListener("agrobrokeria:profile-changed", onProfile);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { if (activo) void cargar(); });
-    return () => { activo = false; subscription.unsubscribe(); window.removeEventListener("agrobrokeria:language-changed", onLanguage); };
+    return () => { activo = false; subscription.unsubscribe(); window.removeEventListener("agrobrokeria:language-changed", onLanguage); window.removeEventListener("agrobrokeria:profile-changed", onProfile); };
   }, []);
 
   async function cerrarSesion() { await supabase.auth.signOut(); setMenuAbierto(false); router.replace("/login"); }
