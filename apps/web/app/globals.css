@@ -763,3 +763,33 @@ body{background:var(--ab-bg)}
 .arca-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:14px}
 .arca-actions button{border:1px solid rgba(25,173,112,.35);background:#fff;border-radius:10px;padding:9px 13px;font:inherit;font-weight:700;cursor:pointer}
 .arca-actions button:disabled{opacity:.6;cursor:wait}
+
+
+/* ===== PROFILE INLINE EDITOR + ACCOUNT MENU ===== */
+.user-menu-wrap{position:relative}
+.user-menu-button{border:0;background:transparent;cursor:pointer;color:inherit}
+.user-dropdown{position:absolute;right:0;top:calc(100% + 8px);width:205px;background:#fff;border:1px solid #dfe6e7;border-radius:12px;box-shadow:0 14px 32px rgba(16,47,49,.16);padding:6px;z-index:80}
+.user-dropdown a,.user-dropdown button{width:100%;display:flex;align-items:center;gap:9px;padding:10px 11px;border:0;border-radius:8px;background:#fff;color:#20363a;text-decoration:none;font-size:11px;text-align:left;cursor:pointer}
+.user-dropdown a:hover,.user-dropdown button:hover{background:#f1f7f4;color:#078d54}
+.profile-editor-card{background:#fff;border:1px solid #dce5eb;border-radius:10px;box-shadow:0 8px 24px rgba(16,37,74,.07);padding:18px;margin-bottom:10px}
+.profile-editor-head{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:14px}
+.profile-editor-head h2{margin:0;font-size:18px;color:#10254a}.profile-editor-head p{margin:4px 0 0;font-size:11px;color:#667789}
+.profile-editor-close{border:0;background:#f3f6f8;color:#536575;width:30px;height:30px;border-radius:7px;font-size:20px;cursor:pointer}
+.profile-editor-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.profile-editor-grid label{display:grid;gap:5px;color:#34495b;font-size:10px;font-weight:800}
+.profile-editor-grid input{width:100%;height:36px;border:1px solid #d5dfe5;border-radius:7px;padding:0 10px;background:#fff;color:#172c3d;font-size:12px;outline:0}
+.profile-editor-grid input:focus{border-color:#0a9d63;box-shadow:0 0 0 3px #0a9d6315}
+.profile-editor-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:15px}
+.profile-editor-actions button{height:36px;border-radius:7px;padding:0 14px;font-size:10px;font-weight:800;cursor:pointer}
+.profile-editor-cancel{border:1px solid #d4dee5;background:#fff;color:#405464}.profile-editor-save{border:1px solid #078d54;background:#078d54;color:#fff}.profile-editor-save:disabled{opacity:.6;cursor:wait}
+.profile-editor-error{background:#fff0f0;border:1px solid #f0cccc;color:#a33;padding:9px 11px;border-radius:7px;font-size:10px;margin-bottom:12px}
+
+/* ===== FACTURACION · HEADER ALIGNMENT ===== */
+.billing-head-actions{align-items:center;justify-content:flex-end;flex-wrap:wrap}
+.billing-head-actions>a{height:40px;display:inline-flex;align-items:center;padding:0 12px;border:1px solid #dfe6eb;border-radius:8px;background:#fff;color:#274053;text-decoration:none;font-size:10px;font-weight:800}
+.billing-head-actions>a:hover{border-color:#a9d9bd;background:#f5fbf7;color:#078d54}
+.billing-head-actions .billing-new{height:42px}
+
+/* ===== CONTRACT TITLE CLEANUP ===== */
+.contract-paper h3{text-transform:none}
+@media(max-width:700px){.profile-editor-grid{grid-template-columns:1fr}.billing-head-actions{width:100%;justify-content:flex-start}.billing-head-actions>a,.billing-head-actions .billing-new{flex:1;justify-content:center}}
