@@ -153,6 +153,6 @@ export default function Home(){
    ].map(([t,d])=><article key={t}><h3>{t}</h3><p>{d}</p></article>)}</div>
    <div className={styles.registerBanner}><div><strong>La información pública te muestra cómo funciona.</strong><span>El registro abre la parte operativa: publicar, negociar, verificar, contratar y cerrar negocios.</span></div><Link href="/register">Crear cuenta gratis →</Link></div>
   </section>
-  <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><Link href="/register">Crear cuenta →</Link></footer>
+  <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><div style={{display:"flex",gap:"16px",alignItems:"center",flexWrap:"wrap"}}><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><a href="mailto:soporte@agrobrokeria.online">Contacto</a><Link href="/register">Crear cuenta →</Link></div></footer>
  </main>
 }
