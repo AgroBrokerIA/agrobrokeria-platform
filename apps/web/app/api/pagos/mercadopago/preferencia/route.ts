@@ -22,6 +22,7 @@ export async function POST(request: NextRequest) {
     };
 
     if (!body.empresa_cobradora_id) return NextResponse.json({ error: "SELLER_REQUIRED" }, { status: 400 });
+    if (!body.operacion_id) return NextResponse.json({ error: "OPERATION_REQUIRED" }, { status: 400 });
     const amount = Number(body.importe);
     const fee = Number(body.marketplace_fee || 0);
     if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "INVALID_AMOUNT" }, { status: 400 });
