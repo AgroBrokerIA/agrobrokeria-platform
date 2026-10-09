@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import { mercadoPagoAuthorizationUrl } from "@/lib/mercadopago/server";
-import { signState } from "@/lib/mercadopago/crypto";
+import { encryptSecret, signState } from "@/lib/mercadopago/crypto";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -38,14 +39,27 @@ export async function GET(request: NextRequest) {
       .maybeSingle();
     if (membershipError || !membership) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
 
+    const nonce = crypto.randomBytes(16).toString("hex");
+    const codeVerifier = crypto.randomBytes(32).toString("base64url");
+    const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const admin = getSupabaseAdmin();
+    const { error: stateError } = await admin.from("mercadopago_oauth_states").insert({
+      nonce,
+      company_id: profile.active_company_id,
+      profile_id: user.id,
+      code_verifier_enc: encryptSecret(codeVerifier),
+      expires_at: expiresAt,
+    });
+    if (stateError) throw stateError;
     const payload = Buffer.from(JSON.stringify({
       companyId: profile.active_company_id,
       profileId: user.id,
-      nonce: crypto.randomBytes(16).toString("hex"),
+      nonce,
       exp: Date.now() + 10 * 60 * 1000,
     })).toString("base64url");
     const state = `${payload}.${signState(payload)}`;
-    return NextResponse.redirect(mercadoPagoAuthorizationUrl(state));
+    return NextResponse.redirect(mercadoPagoAuthorizationUrl(state, codeChallenge));
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : "MP_CONNECT_ERROR" }, { status: 500 });
   }
