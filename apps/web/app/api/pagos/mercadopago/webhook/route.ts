@@ -84,6 +84,23 @@ export async function POST(request: NextRequest) {
     }
     if (!tx) return NextResponse.json({ received:true, matched:false });
 
+    // Reconcile the provider response against the original transaction before
+    // changing any financial state. This prevents cross-account, test-mode,
+    // wrong-currency, and amount-mismatch notifications from being recorded as paid.
+    if (payment.live_mode !== true) throw new Error("PAYMENT_NOT_LIVE");
+    if (String(payment.collector_id || "") !== String(connection.mp_user_id)) {
+      throw new Error("PAYMENT_COLLECTOR_MISMATCH");
+    }
+    if (String(payment.external_reference || "") !== String(tx.id)) {
+      throw new Error("PAYMENT_REFERENCE_MISMATCH");
+    }
+    if (String(payment.currency_id || "") !== "ARS") {
+      throw new Error("PAYMENT_CURRENCY_MISMATCH");
+    }
+    if (Math.abs(Number(payment.transaction_amount) - Number(tx.importe)) > 0.01) {
+      throw new Error("PAYMENT_AMOUNT_MISMATCH");
+    }
+
     await admin.from("eventos_pago_externo").update({
       transaccion_id:tx.id,
       procesado:false,
