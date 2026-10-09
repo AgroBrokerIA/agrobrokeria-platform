@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=invalid_state`);
     }
     const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
-      companyId:string; profileId:string; exp:number;
+      companyId:string; profileId:string; nonce:string; exp:number;
     };
     if (!decoded.companyId || !decoded.profileId || !decoded.nonce || !decoded.exp || decoded.exp < Date.now()) {
       return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=expired_state`);
