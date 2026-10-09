@@ -38,6 +38,18 @@ export async function GET(request: NextRequest) {
       return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=expired_or_used_state`);
     }
 
+    // Resolve the internal company mapping before exchanging or storing seller tokens.
+    // A connected seller without empresa_id cannot be reconciled to internal payments.
+    const { data: map, error: mapError } = await admin
+      .from("company_empresa_map")
+      .select("empresa_id")
+      .eq("company_id", decoded.companyId)
+      .maybeSingle();
+    if (mapError) throw mapError;
+    if (!map?.empresa_id) {
+      return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=company_mapping_required`);
+    }
+
     const { data: consumedState, error: consumeError } = await admin
       .from("mercadopago_oauth_states")
       .update({ consumed_at: new Date().toISOString() })
@@ -53,16 +65,10 @@ export async function GET(request: NextRequest) {
     const codeVerifier = decryptSecret(oauthState.code_verifier_enc);
     const tokens = await exchangeAuthorizationCode(code, codeVerifier);
 
-    const { data: map } = await admin
-      .from("company_empresa_map")
-      .select("empresa_id")
-      .eq("company_id", decoded.companyId)
-      .maybeSingle();
-
     const expiresAt = new Date(Date.now() + Number(tokens.expires_in || 15552000) * 1000).toISOString();
     const { error: saveError } = await admin.from("mercadopago_conexiones").upsert({
       company_id: decoded.companyId,
-      empresa_id: map?.empresa_id || null,
+      empresa_id: map.empresa_id,
       profile_id: decoded.profileId,
       mp_user_id: String(tokens.user_id),
       public_key: tokens.public_key,
@@ -78,8 +84,8 @@ export async function GET(request: NextRequest) {
 
     if (saveError) throw saveError;
 
-    if (map?.empresa_id) {
-      await admin.from("integraciones_pago").upsert({
+    {
+      const { error: integrationError } = await admin.from("integraciones_pago").upsert({
         empresa_id: map.empresa_id,
         proveedor: "MERCADOPAGO",
         ambiente: tokens.live_mode ? "PRODUCCION" : "SANDBOX",
@@ -87,6 +93,7 @@ export async function GET(request: NextRequest) {
         metadata: { application_id: process.env.MP_CLIENT_ID || null, mp_user_id: String(tokens.user_id), mode: "MARKETPLACE_SPLIT_1_1" },
         actualizado_at: new Date().toISOString(),
       }, { onConflict: "empresa_id,proveedor,ambiente" });
+      if (integrationError) throw integrationError;
     }
 
     return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=connected`);
