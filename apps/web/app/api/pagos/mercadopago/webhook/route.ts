@@ -34,10 +34,10 @@ export async function POST(request: NextRequest) {
   let body: any = {};
   try { body = await request.json(); } catch {}
 
-  // Do not persist simulated/test notifications in production business records.
-  // Mercado Pago production payments must explicitly arrive with live_mode=true.
-  if (body?.live_mode !== true) {
-    return NextResponse.json({ received: true, ignored: "NON_PRODUCTION_EVENT" });
+  // Both environments are accepted for reconciliation; the transaction environment
+  // determines whether the event may create an internal confirmed payment.
+  if (typeof body?.live_mode !== "boolean") {
+    return NextResponse.json({ error: "INVALID_EVENT_MODE" }, { status: 400 });
   }
 
   const eventId = body?.id ? String(body.id) : null;
@@ -87,7 +87,7 @@ export async function POST(request: NextRequest) {
     // Reconcile the provider response against the original transaction before
     // changing any financial state. This prevents cross-account, test-mode,
     // wrong-currency, and amount-mismatch notifications from being recorded as paid.
-    if (payment.live_mode !== true) throw new Error("PAYMENT_NOT_LIVE");
+    if (payment.live_mode !== (tx.ambiente === "PRODUCCION")) throw new Error("PAYMENT_ENVIRONMENT_MISMATCH");
     if (String(payment.collector_id || "") !== String(connection.mp_user_id)) {
       throw new Error("PAYMENT_COLLECTOR_MISMATCH");
     }
@@ -122,7 +122,7 @@ export async function POST(request: NextRequest) {
       actualizado_at:new Date().toISOString(),
     }).eq("id",tx.id);
 
-    if (status === "APPROVED" && tx.operacion_id && !tx.pago_id) {
+    if (status === "APPROVED" && tx.ambiente === "PRODUCCION" && tx.operacion_id && !tx.pago_id) {
       if (!connection.empresa_id) throw new Error("SELLER_COMPANY_MAPPING_MISSING");
       const meta = tx.provider_response || {};
       const buyerCompanyId = meta.empresa_pagadora_id as string|undefined;
