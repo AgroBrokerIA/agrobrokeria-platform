@@ -205,7 +205,6 @@ export async function POST(request: NextRequest) {
         error_code:String(data?.error || response.status),
         error_message:String(data?.message || "Mercado Pago rechazó la preferencia."),
         provider_response:{
-          ...(txError ? {} : {}),
           ...(data && typeof data === "object" ? data : {}),
           empresa_pagadora_id: buyerCompanyId,
           empresa_cobradora_id: body.empresa_cobradora_id,
