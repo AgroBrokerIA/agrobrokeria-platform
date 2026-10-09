@@ -122,6 +122,14 @@ export async function POST(request: NextRequest) {
       actualizado_at:new Date().toISOString(),
     }).eq("id",tx.id);
 
+    // Keep the internal payment state aligned when Mercado Pago reports a reversal.
+    if (tx.pago_id && (status === "REFUNDED" || status === "CHARGED_BACK")) {
+      const { error: reversalError } = await admin.from("pagos")
+        .update({ estado: status === "REFUNDED" ? "DEVUELTO" : "CONTRACARGO" })
+        .eq("id", tx.pago_id);
+      if (reversalError) throw reversalError;
+    }
+
     if (status === "APPROVED" && tx.ambiente === "PRODUCCION" && tx.operacion_id && !tx.pago_id) {
       if (!connection.empresa_id) throw new Error("SELLER_COMPANY_MAPPING_MISSING");
       const meta = tx.provider_response || {};
