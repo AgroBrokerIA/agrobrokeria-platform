@@ -95,7 +95,13 @@ export async function POST(request: NextRequest) {
       external_payment_id:String(payment.id),
       estado:providerState,
       provider_status:payment.status || null,
-      provider_response:payment,
+      provider_response:{
+        ...payment,
+        // Keep internal reconciliation metadata across webhook retries.
+        empresa_pagadora_id: tx.provider_response?.empresa_pagadora_id || null,
+        empresa_cobradora_id: tx.provider_response?.empresa_cobradora_id || null,
+        marketplace_fee: tx.provider_response?.marketplace_fee || 0,
+      },
       actualizado_at:new Date().toISOString(),
     }).eq("id",tx.id);
 
