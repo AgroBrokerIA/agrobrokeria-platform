@@ -204,7 +204,19 @@ export async function POST(request: NextRequest) {
         estado:"ERROR",
         error_code:String(data?.error || response.status),
         error_message:String(data?.message || "Mercado Pago rechazó la preferencia."),
-        provider_response:data || {},
+        provider_response:{
+          ...(txError ? {} : {}),
+          ...(data && typeof data === "object" ? data : {}),
+          empresa_pagadora_id: buyerCompanyId,
+          empresa_cobradora_id: body.empresa_cobradora_id,
+          marketplace_fee_ars: marketplaceFee,
+          marketplace_fee_usd: platformCommissionUsd,
+          platform_commission_usd_per_tonne: 1,
+          mep_sell_ars: mepRate,
+          mep_source: mepSource,
+          mep_quoted_at: mepRateTimestamp,
+          mep_policy: "USD_1_PER_TONNE_X_MEP_SELL",
+        },
         actualizado_at:new Date().toISOString(),
       }).eq("id",txId);
       return NextResponse.json({ error:"MERCADOPAGO_PREFERENCE_ERROR", detail:data?.message || data?.error }, { status:502 });
