@@ -15,7 +15,7 @@ export function mercadoPagoRedirectUri() {
   return process.env.MP_REDIRECT_URI || "https://agrobrokeria.online/api/pagos/mercadopago/oauth/callback";
 }
 
-export function mercadoPagoAuthorizationUrl(state: string) {
+export function mercadoPagoAuthorizationUrl(state: string, codeChallenge: string) {
   const { appId } = mercadoPagoConfig();
   const params = new URLSearchParams({
     client_id: appId,
@@ -23,11 +23,13 @@ export function mercadoPagoAuthorizationUrl(state: string) {
     platform_id: "mp",
     redirect_uri: mercadoPagoRedirectUri(),
     state,
+    code_challenge: codeChallenge,
+    code_challenge_method: "S256",
   });
   return `${AUTH_BASE}/authorization?${params.toString()}`;
 }
 
-export async function exchangeAuthorizationCode(code: string) {
+export async function exchangeAuthorizationCode(code: string, codeVerifier: string) {
   const { appId, appSecret } = mercadoPagoConfig();
   const response = await fetch(`${MERCADO_PAGO_API}/oauth/token`, {
     method: "POST",
@@ -38,6 +40,7 @@ export async function exchangeAuthorizationCode(code: string) {
       grant_type: "authorization_code",
       code,
       redirect_uri: mercadoPagoRedirectUri(),
+      code_verifier: codeVerifier,
     }),
     cache: "no-store",
   });
