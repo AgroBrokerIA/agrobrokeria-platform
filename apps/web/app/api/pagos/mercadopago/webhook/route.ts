@@ -7,7 +7,7 @@ export const runtime = "nodejs";
 
 function validSignature(header: string|null, requestId: string|null, dataId: string|null) {
   const secret = process.env.MP_WEBHOOK_SECRET;
-  if (!secret || !header) return false;
+  if (!secret || !header || !requestId || !dataId) return false;
   const parts = Object.fromEntries(header.split(",").map((part) => {
     const [k,...v] = part.split("=");
     return [k.trim(), v.join("=").trim()];
@@ -33,6 +33,12 @@ export async function POST(request: NextRequest) {
 
   let body: any = {};
   try { body = await request.json(); } catch {}
+
+  // Do not persist simulated/test notifications in production business records.
+  // Mercado Pago production payments must explicitly arrive with live_mode=true.
+  if (body?.live_mode !== true) {
+    return NextResponse.json({ received: true, ignored: "NON_PRODUCTION_EVENT" });
+  }
 
   const eventId = body?.id ? String(body.id) : null;
   const { data: event, error: eventError } = await admin.from("eventos_pago_externo").insert({
