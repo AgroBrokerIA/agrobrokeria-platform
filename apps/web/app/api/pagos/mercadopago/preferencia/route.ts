@@ -25,14 +25,15 @@ export async function POST(request: NextRequest) {
     const amount = Number(body.importe);
     if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "INVALID_AMOUNT" }, { status: 400 });
 
-    // Fail closed: AgroBrokerIA's platform commission is defined in USD/tonne,
-    // while Checkout Pro settles this operation in ARS. Never trust a fee supplied
-    // by the client or invent an FX rate. Enable split fees only after a server-side
-    // conversion policy and trusted exchange-rate source are configured.
-    return NextResponse.json({
-      error: "MARKETPLACE_FEE_POLICY_NOT_CONFIGURED",
-      detail: "Los cobros por Mercado Pago quedan bloqueados hasta definir la conversión documentada de la comisión de plataforma de USD/tn a ARS.",
-    }, { status: 409 });
+    // Fail closed unless the server-side fee conversion policy has been implemented.
+    // This flag alone does not calculate a fee; do not enable it until a trusted FX
+    // source and the USD/tonne-to-ARS business rule are implemented and reviewed.
+    if (process.env.MP_MARKETPLACE_FEE_POLICY_CONFIGURED !== "true") {
+      return NextResponse.json({
+        error: "MARKETPLACE_FEE_POLICY_NOT_CONFIGURED",
+        detail: "Los cobros por Mercado Pago quedan bloqueados hasta definir la conversión documentada de la comisión de plataforma de USD/tn a ARS.",
+      }, { status: 409 });
+    }
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
