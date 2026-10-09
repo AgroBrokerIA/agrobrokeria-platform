@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
 
     let mepRate: number;
     let mepRateTimestamp: string;
-    let mepSource = "DolarAPI";
+    const mepSource = "DolarAPI";
     try {
       const [primaryResponse, secondaryResponse] = await Promise.all([
         fetch("https://dolarapi.com/v1/dolares/bolsa", { cache: "no-store", signal: AbortSignal.timeout(7000) }),
