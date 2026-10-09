@@ -25,16 +25,6 @@ export async function POST(request: NextRequest) {
     const amount = Number(body.importe);
     if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "INVALID_AMOUNT" }, { status: 400 });
 
-    // Fail closed unless the server-side fee conversion policy has been implemented.
-    // This flag alone does not calculate a fee; do not enable it until a trusted FX
-    // source and the USD/tonne-to-ARS business rule are implemented and reviewed.
-    if (process.env.MP_MARKETPLACE_FEE_POLICY_CONFIGURED !== "true") {
-      return NextResponse.json({
-        error: "MARKETPLACE_FEE_POLICY_NOT_CONFIGURED",
-        detail: "Los cobros por Mercado Pago quedan bloqueados hasta definir la conversión documentada de la comisión de plataforma de USD/tn a ARS.",
-      }, { status: 409 });
-    }
-
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
@@ -61,9 +51,9 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "SELLER_MERCADOPAGO_NOT_CONNECTED" }, { status: 409 });
     }
 
-    let operation: { id:string; codigo:string; importe_total:number|null; moneda_id:number|null }|null = null;
+    let operation: { id:string; codigo:string; importe_total:number|null; moneda_id:number|null; cantidad_tn:number|null }|null = null;
     if (body.operacion_id) {
-      const { data, error } = await admin.from("operaciones").select("id,codigo,importe_total,moneda_id").eq("id",body.operacion_id).single();
+      const { data, error } = await admin.from("operaciones").select("id,codigo,importe_total,moneda_id,cantidad_tn").eq("id",body.operacion_id).single();
       if (error || !data) return NextResponse.json({ error: "OPERATION_NOT_FOUND" }, { status: 404 });
       operation = data;
       if (data.importe_total != null && Math.abs(Number(data.importe_total) - amount) > 0.01) {
@@ -101,6 +91,56 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: "MERCADOPAGO_MARKETPLACE_ONLY_ARS", detail:"Para operaciones en otra moneda se debe usar el medio bancario correspondiente." }, { status: 400 });
     }
 
+    // Platform commission policy: USD 1 per metric tonne, converted to ARS
+    // using the MEP sell quote. Obtain it server-side from two independent providers.
+    if (!operation || !Number.isFinite(Number(operation.cantidad_tn)) || Number(operation.cantidad_tn) <= 0) {
+      return NextResponse.json({ error: "OPERATION_TONNAGE_REQUIRED" }, { status: 409 });
+    }
+
+    let mepRate: number;
+    let mepRateTimestamp: string;
+    let mepSource = "DolarAPI";
+    try {
+      const [primaryResponse, secondaryResponse] = await Promise.all([
+        fetch("https://dolarapi.com/v1/dolares/bolsa", { cache: "no-store", signal: AbortSignal.timeout(7000) }),
+        fetch("https://monedapi.ar/api/v2/usd/bolsa", { cache: "no-store", signal: AbortSignal.timeout(7000) }),
+      ]);
+      if (!primaryResponse.ok || !secondaryResponse.ok) throw new Error("MEP_PROVIDER_UNAVAILABLE");
+      const primary = await primaryResponse.json() as { venta?: number; fechaActualizacion?: string };
+      const secondary = await secondaryResponse.json() as { sell?: number; lastScrapedAt?: string; updatedAt?: string; origin?: string };
+      const primarySell = Number(primary.venta);
+      const secondarySell = Number(secondary.sell);
+      const primaryTimestamp = primary.fechaActualizacion;
+      const secondaryTimestamp = secondary.lastScrapedAt || secondary.updatedAt;
+      if (!Number.isFinite(primarySell) || primarySell <= 0 || !Number.isFinite(secondarySell) || secondarySell <= 0 || !primaryTimestamp || !secondaryTimestamp) {
+        throw new Error("MEP_QUOTE_INVALID");
+      }
+      const now = Date.now();
+      const primaryAge = now - Date.parse(primaryTimestamp);
+      const secondaryAge = now - Date.parse(secondaryTimestamp);
+      if (!Number.isFinite(primaryAge) || !Number.isFinite(secondaryAge) || primaryAge < -60_000 || secondaryAge < -60_000 || primaryAge > 30 * 60_000 || secondaryAge > 30 * 60_000) {
+        throw new Error("MEP_QUOTE_STALE");
+      }
+      const divergence = Math.abs(primarySell - secondarySell) / Math.min(primarySell, secondarySell);
+      if (divergence > 0.02) throw new Error("MEP_QUOTE_DIVERGENCE");
+      mepRate = primarySell;
+      mepRateTimestamp = primaryTimestamp;
+    } catch {
+      return NextResponse.json({
+        error: "MEP_QUOTE_UNAVAILABLE_OR_UNVERIFIED",
+        detail: "No se pudo verificar una cotización MEP vendedora reciente y consistente en dos fuentes. El cobro no se inició.",
+      }, { status: 503 });
+    }
+
+    const platformCommissionUsd = Number(operation.cantidad_tn); // USD 1 per tonne
+    const marketplaceFee = Math.round(platformCommissionUsd * mepRate * 100) / 100;
+    if (!Number.isFinite(marketplaceFee) || marketplaceFee <= 0 || marketplaceFee >= amount) {
+      return NextResponse.json({
+        error: "MARKETPLACE_FEE_OUT_OF_RANGE",
+        detail: "La comisión calculada con el MEP vendedor no puede ser igual o superior al importe del cobro.",
+      }, { status: 409 });
+    }
+
     const txId = crypto.randomUUID();
     const idempotencyKey = `agrobrokeria:${txId}`;
     const sellerAccessToken = await getSellerAccessToken(body.empresa_cobradora_id);
@@ -119,6 +159,13 @@ export async function POST(request: NextRequest) {
       provider_response: {
         empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
+        marketplace_fee_ars: marketplaceFee,
+        marketplace_fee_usd: platformCommissionUsd,
+        platform_commission_usd_per_tonne: 1,
+        mep_sell_ars: mepRate,
+        mep_source: mepSource,
+        mep_quoted_at: mepRateTimestamp,
+        mep_policy: "USD_1_PER_TONNE_X_MEP_SELL",
       },
     });
     if (txError) throw txError;
@@ -138,6 +185,7 @@ export async function POST(request: NextRequest) {
           unit_price: amount,
           currency_id: "ARS",
         }],
+        marketplace_fee: marketplaceFee,
         external_reference: txId,
         notification_url: `${site}/api/pagos/mercadopago/webhook`,
         back_urls: {
@@ -171,6 +219,13 @@ export async function POST(request: NextRequest) {
         ...data,
         empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
+        marketplace_fee_ars: marketplaceFee,
+        marketplace_fee_usd: platformCommissionUsd,
+        platform_commission_usd_per_tonne: 1,
+        mep_sell_ars: mepRate,
+        mep_source: mepSource,
+        mep_quoted_at: mepRateTimestamp,
+        mep_policy: "USD_1_PER_TONNE_X_MEP_SELL",
       },
       actualizado_at:new Date().toISOString(),
     }).eq("id",txId);
