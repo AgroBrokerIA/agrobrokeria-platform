@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { exchangeAuthorizationCode } from "@/lib/mercadopago/server";
-import { encryptSecret, verifyState } from "@/lib/mercadopago/crypto";
+import { decryptSecret, encryptSecret, verifyState } from "@/lib/mercadopago/crypto";
 import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
@@ -21,12 +21,37 @@ export async function GET(request: NextRequest) {
     const decoded = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")) as {
       companyId:string; profileId:string; exp:number;
     };
-    if (!decoded.companyId || !decoded.profileId || !decoded.exp || decoded.exp < Date.now()) {
+    if (!decoded.companyId || !decoded.profileId || !decoded.nonce || !decoded.exp || decoded.exp < Date.now()) {
       return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=expired_state`);
     }
 
-    const tokens = await exchangeAuthorizationCode(code);
     const admin = getSupabaseAdmin();
+    const { data: oauthState, error: stateLookupError } = await admin
+      .from("mercadopago_oauth_states")
+      .select("nonce, company_id, profile_id, code_verifier_enc, expires_at, consumed_at")
+      .eq("nonce", decoded.nonce)
+      .eq("company_id", decoded.companyId)
+      .eq("profile_id", decoded.profileId)
+      .maybeSingle();
+    if (stateLookupError) throw stateLookupError;
+    if (!oauthState || oauthState.consumed_at || new Date(oauthState.expires_at).getTime() < Date.now()) {
+      return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=expired_or_used_state`);
+    }
+
+    const { data: consumedState, error: consumeError } = await admin
+      .from("mercadopago_oauth_states")
+      .update({ consumed_at: new Date().toISOString() })
+      .eq("nonce", decoded.nonce)
+      .is("consumed_at", null)
+      .select("nonce")
+      .maybeSingle();
+    if (consumeError) throw consumeError;
+    if (!consumedState) {
+      return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=used_state`);
+    }
+
+    const codeVerifier = decryptSecret(oauthState.code_verifier_enc);
+    const tokens = await exchangeAuthorizationCode(code, codeVerifier);
 
     const { data: map } = await admin
       .from("company_empresa_map")
