@@ -137,7 +137,12 @@ export async function POST(request: NextRequest) {
       checkout_url: data.init_point || data.sandbox_init_point || null,
       estado:"INICIADO",
       provider_status:"created",
-      provider_response:data,
+      provider_response:{
+        ...data,
+        empresa_pagadora_id: body.empresa_pagadora_id || profile.active_company_id,
+        empresa_cobradora_id: body.empresa_cobradora_id,
+        marketplace_fee: fee,
+      },
       actualizado_at:new Date().toISOString(),
     }).eq("id",txId);
 
