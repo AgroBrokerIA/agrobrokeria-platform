@@ -128,7 +128,14 @@ export async function POST(request: NextRequest) {
         // Keep internal reconciliation metadata across webhook retries.
         empresa_pagadora_id: tx.provider_response?.empresa_pagadora_id || null,
         empresa_cobradora_id: tx.provider_response?.empresa_cobradora_id || null,
-        marketplace_fee: tx.provider_response?.marketplace_fee || 0,
+        marketplace_fee: tx.provider_response?.marketplace_fee || tx.provider_response?.marketplace_fee_ars || 0,
+        marketplace_fee_ars: tx.provider_response?.marketplace_fee_ars || null,
+        marketplace_fee_usd: tx.provider_response?.marketplace_fee_usd || null,
+        platform_commission_usd_per_tonne: tx.provider_response?.platform_commission_usd_per_tonne || null,
+        mep_sell_ars: tx.provider_response?.mep_sell_ars || null,
+        mep_source: tx.provider_response?.mep_source || null,
+        mep_quoted_at: tx.provider_response?.mep_quoted_at || null,
+        mep_policy: tx.provider_response?.mep_policy || null,
       },
       actualizado_at:new Date().toISOString(),
     }).eq("id",tx.id);
