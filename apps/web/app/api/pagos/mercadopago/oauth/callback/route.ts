@@ -6,7 +6,9 @@ import { getSupabaseAdmin } from "@/lib/supabase/admin";
 export const runtime = "nodejs";
 
 export async function GET(request: NextRequest) {
-  const appUrl = process.env.NEXT_PUBLIC_SITE_URL || "https://agrobrokeria.online";
+  // Keep the user inside the same deployment that received the OAuth callback.
+  // In particular, a Deploy Preview must not redirect to the production domain.
+  const appUrl = request.nextUrl.origin;
   try {
     const code = request.nextUrl.searchParams.get("code");
     const state = request.nextUrl.searchParams.get("state");
@@ -97,7 +99,8 @@ export async function GET(request: NextRequest) {
     }
 
     return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=connected`);
-  } catch (error) {
-    return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=${encodeURIComponent(error instanceof Error ? error.message : "oauth_callback_error")}`);
+  } catch {
+    // Avoid reflecting provider/server error details into a browser redirect.
+    return NextResponse.redirect(`${appUrl}/configuracion/pagos?mp=error&reason=oauth_callback_error`);
   }
 }
