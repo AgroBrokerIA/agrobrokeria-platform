@@ -41,7 +41,11 @@ export async function POST(request: NextRequest) {
     const { data: buyerMembership } = await supabase.from("company_users").select("id")
       .eq("company_id", profile.active_company_id).eq("profile_id", user.id).eq("activo", true).maybeSingle();
     if (!buyerMembership) return NextResponse.json({ error: "FORBIDDEN" }, { status: 403 });
+    if (body.empresa_pagadora_id && body.empresa_pagadora_id !== profile.active_company_id) {
+      return NextResponse.json({ error: "BUYER_COMPANY_MISMATCH" }, { status: 403 });
+    }
 
+    const buyerCompanyId = profile.active_company_id;
     const admin = getSupabaseAdmin();
     const { data: sellerConnection } = await admin.from("mercadopago_conexiones")
       .select("company_id,empresa_id,estado,live_mode").eq("company_id", body.empresa_cobradora_id).maybeSingle();
@@ -56,6 +60,26 @@ export async function POST(request: NextRequest) {
       operation = data;
       if (data.importe_total != null && Math.abs(Number(data.importe_total) - amount) > 0.01) {
         return NextResponse.json({ error: "AMOUNT_DOES_NOT_MATCH_OPERATION" }, { status: 400 });
+      }
+    }
+
+    if (operation) {
+      if (!sellerConnection.empresa_id) {
+        return NextResponse.json({ error: "SELLER_COMPANY_MAPPING_MISSING" }, { status: 409 });
+      }
+      const { data: buyerMap, error: buyerMapError } = await admin.from("company_empresa_map")
+        .select("empresa_id").eq("company_id", buyerCompanyId).maybeSingle();
+      if (buyerMapError) throw buyerMapError;
+      if (!buyerMap?.empresa_id) {
+        return NextResponse.json({ error: "BUYER_COMPANY_MAPPING_MISSING" }, { status: 409 });
+      }
+      const { data: participants, error: participantsError } = await admin.from("operacion_participantes")
+        .select("empresa_id").eq("operacion_id", operation.id)
+        .in("empresa_id", [buyerMap.empresa_id, sellerConnection.empresa_id]);
+      if (participantsError) throw participantsError;
+      const participantIds = new Set((participants || []).map((participant: { empresa_id: string }) => participant.empresa_id));
+      if (!participantIds.has(buyerMap.empresa_id) || !participantIds.has(sellerConnection.empresa_id)) {
+        return NextResponse.json({ error: "OPERATION_PARTICIPANT_REQUIRED" }, { status: 403 });
       }
     }
 
@@ -85,7 +109,7 @@ export async function POST(request: NextRequest) {
       moneda_id: currencyId || null,
       estado: "PENDIENTE",
       provider_response: {
-        empresa_pagadora_id: body.empresa_pagadora_id || profile.active_company_id,
+        empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
         marketplace_fee: fee,
       },
@@ -139,7 +163,7 @@ export async function POST(request: NextRequest) {
       provider_status:"created",
       provider_response:{
         ...data,
-        empresa_pagadora_id: body.empresa_pagadora_id || profile.active_company_id,
+        empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
         marketplace_fee: fee,
       },
