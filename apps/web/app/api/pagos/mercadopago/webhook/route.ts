@@ -107,7 +107,7 @@ export async function POST(request: NextRequest) {
     }).eq("id",event?.id);
 
     const status = String(payment.status || "unknown").toUpperCase();
-    const providerState = status === "APPROVED" ? "APROBADO" : status === "PENDING" || status === "IN_PROCESS" ? "PENDIENTE" : status === "REFUNDED" ? "DEVUELTO" : "RECHAZADO";
+    const providerState = status === "APPROVED" ? "APROBADO" : status === "PENDING" || status === "IN_PROCESS" ? "PENDIENTE" : status === "REFUNDED" ? "DEVUELTO" : status === "CHARGED_BACK" ? "CONTRACARGO" : status === "CANCELLED" ? "CANCELADO" : status === "REJECTED" ? "RECHAZADO" : "PENDIENTE";
     await admin.from("transacciones_pago_externo").update({
       external_payment_id:String(payment.id),
       estado:providerState,
@@ -123,13 +123,15 @@ export async function POST(request: NextRequest) {
     }).eq("id",tx.id);
 
     if (status === "APPROVED" && tx.operacion_id && !tx.pago_id) {
+      if (!connection.empresa_id) throw new Error("SELLER_COMPANY_MAPPING_MISSING");
       const meta = tx.provider_response || {};
       const buyerCompanyId = meta.empresa_pagadora_id as string|undefined;
-      let payerEmpresaId:string|null = null;
-      if (buyerCompanyId) {
-        const { data: map } = await admin.from("company_empresa_map").select("empresa_id").eq("company_id",buyerCompanyId).maybeSingle();
-        payerEmpresaId = map?.empresa_id || null;
-      }
+      if (!buyerCompanyId) throw new Error("BUYER_COMPANY_MAPPING_MISSING");
+      const { data: map, error: buyerMapError } = await admin.from("company_empresa_map")
+        .select("empresa_id").eq("company_id",buyerCompanyId).maybeSingle();
+      if (buyerMapError) throw buyerMapError;
+      const payerEmpresaId = map?.empresa_id;
+      if (!payerEmpresaId) throw new Error("BUYER_COMPANY_MAPPING_MISSING");
       const { data: existingPayment } = await admin.from("pagos").select("id").eq("operacion_id",tx.operacion_id).eq("comprobante",String(payment.id)).maybeSingle();
       let paymentId = existingPayment?.id as string|undefined;
       if (!paymentId) {
