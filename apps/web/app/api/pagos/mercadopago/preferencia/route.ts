@@ -16,7 +16,6 @@ export async function POST(request: NextRequest) {
       empresa_pagadora_id?: string;
       empresa_cobradora_id: string;
       importe?: number;
-      marketplace_fee?: number;
       titulo?: string;
       payer_email?: string;
     };
@@ -24,9 +23,16 @@ export async function POST(request: NextRequest) {
     if (!body.empresa_cobradora_id) return NextResponse.json({ error: "SELLER_REQUIRED" }, { status: 400 });
     if (!body.operacion_id) return NextResponse.json({ error: "OPERATION_REQUIRED" }, { status: 400 });
     const amount = Number(body.importe);
-    const fee = Number(body.marketplace_fee || 0);
     if (!Number.isFinite(amount) || amount <= 0) return NextResponse.json({ error: "INVALID_AMOUNT" }, { status: 400 });
-    if (!Number.isFinite(fee) || fee < 0 || fee >= amount) return NextResponse.json({ error: "INVALID_MARKETPLACE_FEE" }, { status: 400 });
+
+    // Fail closed: AgroBrokerIA's platform commission is defined in USD/tonne,
+    // while Checkout Pro settles this operation in ARS. Never trust a fee supplied
+    // by the client or invent an FX rate. Enable split fees only after a server-side
+    // conversion policy and trusted exchange-rate source are configured.
+    return NextResponse.json({
+      error: "MARKETPLACE_FEE_POLICY_NOT_CONFIGURED",
+      detail: "Los cobros por Mercado Pago quedan bloqueados hasta definir la conversión documentada de la comisión de plataforma de USD/tn a ARS.",
+    }, { status: 409 });
 
     const supabase = createClient(
       process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -112,7 +118,6 @@ export async function POST(request: NextRequest) {
       provider_response: {
         empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
-        marketplace_fee: fee,
       },
     });
     if (txError) throw txError;
@@ -132,7 +137,6 @@ export async function POST(request: NextRequest) {
           unit_price: amount,
           currency_id: "ARS",
         }],
-        marketplace_fee: fee,
         external_reference: txId,
         notification_url: `${site}/api/pagos/mercadopago/webhook`,
         back_urls: {
@@ -166,7 +170,6 @@ export async function POST(request: NextRequest) {
         ...data,
         empresa_pagadora_id: buyerCompanyId,
         empresa_cobradora_id: body.empresa_cobradora_id,
-        marketplace_fee: fee,
       },
       actualizado_at:new Date().toISOString(),
     }).eq("id",txId);
