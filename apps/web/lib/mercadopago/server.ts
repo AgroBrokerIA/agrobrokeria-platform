@@ -12,7 +12,9 @@ export function mercadoPagoConfig() {
 }
 
 export function mercadoPagoRedirectUri() {
-  return process.env.MP_REDIRECT_URI || "https://agrobrokeria.online/api/pagos/mercadopago/oauth/callback";
+  const redirectUri = process.env.MP_REDIRECT_URI;
+  if (!redirectUri) throw new Error("Falta configurar MP_REDIRECT_URI.");
+  return redirectUri;
 }
 
 export function mercadoPagoAuthorizationUrl(state: string, codeChallenge: string) {
