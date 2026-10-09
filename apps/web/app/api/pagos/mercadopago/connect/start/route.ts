@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import crypto from "node:crypto";
 import { mercadoPagoAuthorizationUrl } from "@/lib/mercadopago/server";
-import { signState } from "@/lib/mercadopago/crypto";
+import { encryptSecret, signState } from "@/lib/mercadopago/crypto";
+import { getSupabaseAdmin } from "@/lib/supabase/admin";
 
 export const runtime = "nodejs";
 
@@ -17,8 +18,21 @@ export async function POST(request: NextRequest) {
     if(!profile?.active_company_id) return NextResponse.json({error:"ACTIVE_COMPANY_REQUIRED"},{status:400});
     const {data:membership}=await supabase.from("company_users").select("id").eq("company_id",profile.active_company_id).eq("profile_id",user.id).eq("activo",true).maybeSingle();
     if(!membership) return NextResponse.json({error:"FORBIDDEN"},{status:403});
-    const payload=Buffer.from(JSON.stringify({companyId:profile.active_company_id,profileId:user.id,nonce:crypto.randomBytes(16).toString("hex"),exp:Date.now()+10*60*1000})).toString("base64url");
+    const nonce = crypto.randomBytes(16).toString("hex");
+    const codeVerifier = crypto.randomBytes(32).toString("base64url");
+    const codeChallenge = crypto.createHash("sha256").update(codeVerifier).digest("base64url");
+    const expiresAt = new Date(Date.now() + 10 * 60 * 1000).toISOString();
+    const admin = getSupabaseAdmin();
+    const { error: stateError } = await admin.from("mercadopago_oauth_states").insert({
+      nonce,
+      company_id: profile.active_company_id,
+      profile_id: user.id,
+      code_verifier_enc: encryptSecret(codeVerifier),
+      expires_at: expiresAt,
+    });
+    if (stateError) throw stateError;
+    const payload=Buffer.from(JSON.stringify({companyId:profile.active_company_id,profileId:user.id,nonce,exp:Date.now()+10*60*1000})).toString("base64url");
     const state=`${payload}.${signState(payload)}`;
-    return NextResponse.json({authorization_url:mercadoPagoAuthorizationUrl(state)});
+    return NextResponse.json({authorization_url:mercadoPagoAuthorizationUrl(state, codeChallenge)});
   }catch(error){return NextResponse.json({error:error instanceof Error?error.message:"MP_CONNECT_ERROR"},{status:500});}
 }
