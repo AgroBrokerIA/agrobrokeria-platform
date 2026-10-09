@@ -60,7 +60,7 @@ export async function POST(request: NextRequest) {
     if (!mpUserId) return NextResponse.json({ received:true });
 
     const { data: connection } = await admin.from("mercadopago_conexiones")
-      .select("company_id,empresa_id").eq("mp_user_id",mpUserId).maybeSingle();
+      .select("company_id,empresa_id,mp_user_id").eq("mp_user_id",mpUserId).maybeSingle();
     if (!connection) return NextResponse.json({ received:true });
 
     const accessToken = await getSellerAccessToken(connection.company_id);
