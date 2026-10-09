@@ -41,16 +41,27 @@ export async function POST(request: NextRequest) {
   }
 
   const eventId = body?.id ? String(body.id) : null;
-  const { data: event, error: eventError } = await admin.from("eventos_pago_externo").insert({
+  const { data: insertedEvent, error: eventError } = await admin.from("eventos_pago_externo").insert({
     proveedor:"MERCADOPAGO",
     evento_id:eventId,
     tipo_evento:type,
     payload:body,
     firma_valida:true,
-  }).select("id").maybeSingle();
+  }).select("id,procesado").maybeSingle();
 
-  if (eventError && !String(eventError.message).toLowerCase().includes("duplicate")) {
-    return NextResponse.json({ error:"EVENT_STORE_FAILED" }, { status:500 });
+  let event = insertedEvent;
+  if (eventError) {
+    const isDuplicate = String(eventError.message).toLowerCase().includes("duplicate");
+    if (!isDuplicate || !eventId) {
+      return NextResponse.json({ error:"EVENT_STORE_FAILED" }, { status:500 });
+    }
+    const { data: existingEvent, error: lookupError } = await admin.from("eventos_pago_externo")
+      .select("id,procesado").eq("proveedor","MERCADOPAGO").eq("evento_id",eventId).maybeSingle();
+    if (lookupError || !existingEvent) {
+      return NextResponse.json({ error:"EVENT_STORE_FAILED" }, { status:500 });
+    }
+    event = existingEvent;
+    if (event.procesado) return NextResponse.json({ received:true, duplicate:true });
   }
 
   if (type !== "payment" || !dataId) return NextResponse.json({ received:true });
