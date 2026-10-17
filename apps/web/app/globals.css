@@ -803,3 +803,161 @@ body{background:var(--ab-bg)}
 
 /* Commission payment reconciliation */
 .commission-payment-note{margin:4px 0 10px;padding:10px 12px;border:1px solid #dfe9e4;border-radius:8px;background:#f5faf7;color:#4a6260;font-size:11px;line-height:1.45}
+
+
+/* AgroBrokerIA mobile layout correction — overrides legacy desktop shell rules */
+@media (max-width: 650px) {
+  html, body { width: 100%; max-width: 100%; overflow-x: hidden; }
+  .app-header {
+    height: 60px !important;
+    min-height: 60px !important;
+    width: 100% !important;
+    padding: 0 10px !important;
+    gap: 8px !important;
+    overflow: hidden;
+  }
+  .app-header-brand {
+    width: 42px !important;
+    min-width: 42px !important;
+    max-width: 42px !important;
+    height: 46px !important;
+    flex: 0 0 42px !important;
+    padding: 0 !important;
+    justify-content: center !important;
+    gap: 0 !important;
+    background: transparent !important;
+    color: var(--ab-navy, #102f31) !important;
+  }
+  .app-header-brand strong, .app-header-brand small { display: none !important; }
+  .app-header-brand .header-leaf { width: 34px !important; height: 34px !important; font-size: 20px !important; }
+  .header-search {
+    flex: 1 1 0 !important;
+    width: auto !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    height: 38px !important;
+    padding: 0 9px !important;
+    gap: 6px !important;
+  }
+  .header-search input { min-width: 0 !important; width: 100% !important; font-size: 11px !important; }
+  .header-search input::placeholder { text-overflow: ellipsis; }
+  .header-country, .header-language, .header-notify, .header-message { display: none !important; }
+  .app-header-actions { flex: 0 0 auto !important; width: auto !important; min-width: 0 !important; gap: 0 !important; }
+  .user-menu, .user-menu-button { padding: 0 !important; margin: 0 !important; border: 0 !important; gap: 0 !important; }
+  .user-avatar { width: 30px !important; height: 30px !important; }
+  .user-meta, .user-chevron, .logout-button { display: none !important; }
+
+  /* The sidebar must not remain fixed over the page on phones. */
+  .app-sidebar {
+    position: static !important;
+    display: block !important;
+    inset: auto !important;
+    width: 0 !important;
+    min-width: 0 !important;
+    max-width: 0 !important;
+    height: 0 !important;
+    min-height: 0 !important;
+    max-height: 0 !important;
+    flex: 0 0 0 !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    overflow: visible !important;
+    border: 0 !important;
+    box-shadow: none !important;
+    background: transparent !important;
+    z-index: 0 !important;
+  }
+  .app-sidebar > *:not(.mobile-bottom-nav) { display: none !important; }
+  .app-body { display: block !important; width: 100% !important; min-width: 0 !important; min-height: calc(100vh - 60px) !important; }
+  .app-body .page-shell, .page-shell {
+    display: block !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin: 0 !important;
+    padding: 0 !important;
+  }
+  .page-shell > main {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    margin-left: auto !important;
+    margin-right: auto !important;
+  }
+  .page-shell > main > *, .page-shell main section, .page-shell main article { min-width: 0; max-width: 100%; }
+  .page-shell .dashboard-reference, .page-shell .marketplace-page, .page-shell .module-page,
+  .page-shell .verification-page, .page-shell .companies-reference, .page-shell .market-reference,
+  .page-shell .operations-page, .page-shell .documents-page, .page-shell .reports-reference,
+  .page-shell .logistics-reference, .page-shell .commission-reference, .page-shell .withdraw-reference {
+    box-sizing: border-box !important;
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+  }
+  .mobile-bottom-nav {
+    left: 8px !important;
+    right: 8px !important;
+    bottom: max(8px, env(safe-area-inset-bottom)) !important;
+    width: auto !important;
+    max-width: calc(100vw - 16px) !important;
+    z-index: 1000 !important;
+  }
+  .page-shell > main { padding-bottom: calc(96px + env(safe-area-inset-bottom)) !important; }
+  .dashboard-reference-hero, .dashboard-reference-hero-copy, .dashboard-global-card,
+  .dashboard-price-row, .dashboard-actions-row { min-width: 0 !important; max-width: 100% !important; }
+  .dashboard-reference-hero { overflow: hidden !important; }
+  .dashboard-reference-hero-copy h1 { overflow-wrap: anywhere; }
+  .dashboard-price-row, .dashboard-table-wrap, .marketplace-table-wrap,
+  .verification-table-wrap, .company-table-wrap { max-width: 100%; }
+  .page-shell .table-wrap, .page-shell .table-responsive { max-width: 100%; overflow-x: auto; }
+
+  /* Login and registration: stack the brand and form instead of placing them side by side. */
+  .auth-page {
+    display: grid !important;
+    grid-template-columns: minmax(0, 1fr) !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    overflow-x: hidden !important;
+  }
+  .auth-art { display: none !important; }
+  .auth-panel {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;
+    justify-content: center !important;
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 100% !important;
+    padding: 18px 14px calc(22px + env(safe-area-inset-bottom)) !important;
+    gap: 0 !important;
+  }
+  .auth-mobile-brand {
+    display: block !important;
+    width: 100% !important;
+    max-width: 430px !important;
+    flex: 0 0 auto !important;
+    margin: 0 auto 14px !important;
+  }
+  .auth-card {
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: 430px !important;
+    margin: 0 auto !important;
+    padding: 24px 18px !important;
+  }
+  .auth-card form, .auth-card label { min-width: 0 !important; }
+  .auth-card input, .auth-card select, .auth-card button { max-width: 100% !important; }
+  .auth-row { flex-wrap: wrap !important; gap: 10px !important; }
+  .auth-two-col { grid-template-columns: minmax(0, 1fr) !important; }
+  .auth-switch, .auth-legal { overflow-wrap: anywhere; }
+}
+@media (max-width: 380px) {
+  .app-header { padding-left: 7px !important; padding-right: 7px !important; gap: 5px !important; }
+  .app-header-brand { width: 34px !important; min-width: 34px !important; flex-basis: 34px !important; }
+  .app-header-brand .header-leaf { width: 30px !important; height: 30px !important; }
+  .header-search { padding: 0 7px !important; }
+  .header-search input { font-size: 10px !important; }
+  .auth-panel { padding-left: 10px !important; padding-right: 10px !important; }
+  .auth-card { padding: 20px 14px !important; }
+}
