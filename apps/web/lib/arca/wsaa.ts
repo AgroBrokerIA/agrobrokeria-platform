@@ -18,7 +18,7 @@ function escaparXml(valor: string): string {
     .replace(/'/g, "&apos;");
 }
 
-function generarTRA(): string {
+function generarTRA(servicio: string): string {
   const ahora = new Date();
   const expiracion = new Date(ahora.getTime() + 10 * 60 * 1000);
   const uniqueId = generarUniqueId();
@@ -41,7 +41,7 @@ function generarTRA(): string {
     <generationTime>${fechaARCA(ahora)}</generationTime>
     <expirationTime>${fechaARCA(expiracion)}</expirationTime>
   </header>
-  <service>wscpe</service>
+  <service>\${escaparXml(servicio)}</service>
 </loginTicketRequest>`;
 }
 
@@ -105,9 +105,9 @@ function extraerCredenciales(xml: string) {
   };
 }
 
-export async function solicitarTicketWSCPE() {
+export async function solicitarTicketServicio(servicio: string) {
   const material = getArcaCertificateMaterial();
-  const tra = generarTRA();
+  const tra = generarTRA(servicio);
   const cmsDer = generarCMS(tra, material.certificate, material.privateKey);
   const cmsBase64 = Buffer.from(cmsDer, "binary").toString("base64");
     const soap = `<?xml version="1.0" encoding="UTF-8"?>
@@ -142,10 +142,14 @@ export async function solicitarTicketWSCPE() {
     return {
       ok: true,
       ambiente: arcaConfig.environment,
-      servicio: "wscpe",
+      servicio,
       token: credentials.token,
       sign: credentials.sign,
       expirationTime: credentials.expirationTime,
     };
 
+}
+
+export async function solicitarTicketWSCPE() {
+  return solicitarTicketServicio("wscpe");
 }
