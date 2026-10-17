@@ -8,18 +8,11 @@ import styles from "./landing.module.css";
 type Quote = { name:string; price:string; detail:string; icon:string };
 type Stats = { quotes:number; publications:number; commodities:number; updated:string; source:string };
 
-const fallback:Quote[] = [
-  {name:"Soja",price:"ARS 552.500 / TN",detail:"01/10/2026 · BCR Rosario",icon:"🫛"},
-  {name:"Maíz",price:"ARS 287.900 / TN",detail:"01/10/2026 · BCR Rosario",icon:"🌽"},
-  {name:"Trigo",price:"ARS 333.000 / TN",detail:"01/10/2026 · BCR Rosario",icon:"🌾"},
-  {name:"Sorgo",price:"ARS 295.523 / TN",detail:"01/10/2026 · BCR Rosario",icon:"🌾"},
-];
-
 const fmt=(v:number)=>v.toLocaleString("es-AR");
 
 export default function Home(){
- const [quotes,setQuotes]=useState<Quote[]>(fallback);
- const [stats,setStats]=useState<Stats>({quotes:4,publications:0,commodities:4,updated:"01/10/2026",source:"BCR Rosario"});
+ const [quotes,setQuotes]=useState<Quote[]>([]);
+ const [stats,setStats]=useState<Stats>({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"});
  const [publicCounts,setPublicCounts]=useState({offers:0,demands:0,companies:0});
 
  useEffect(()=>{
@@ -31,7 +24,7 @@ export default function Home(){
        .order("actualizado_at",{ascending:false})
        .limit(12);
      if(!mounted)return;
-     if(marketError) return;
+     if(marketError) { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"}); return; }
      const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾",Girasol:"🌻"};
      const preferred=["Soja","Maíz","Trigo","Sorgo"];
      const rows=(market||[]).filter((x:any)=>x.commodity&&x.precio_promedio!=null);
@@ -44,8 +37,8 @@ export default function Home(){
          icon:icons[String(x.commodity)]||"🌾"
        })));
        const latest=rows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
-       setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest).toLocaleDateString("es-AR"):"—",source:"BCR Rosario"});
-     }
+       setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"Sin datos actuales",source:"BCR Rosario"});
+     } else { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"}); }
      const {data:landingSummary,error:landingError}=await supabase
        .from("landing_public_counters")
        .select("verified_companies,active_offers,active_demands")
@@ -96,8 +89,8 @@ export default function Home(){
     <div className={styles.heroActions}><Link href="/register" className={styles.primary}>Crear cuenta gratis&nbsp; →</Link><Link href="#mercado" className={styles.secondary}>Conocer más&nbsp; ▶</Link></div>
    </div>
    <aside className={styles.quote}>
-    <div className={styles.quoteHead}><strong>Cotizaciones del día</strong><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1" target="_blank" rel="noreferrer">BCR - Rosario&nbsp; →</a></div>
-    <div className={styles.quoteRows}>{quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={q.detail.startsWith("▼")?styles.down:styles.up}>{q.detail}</span></div>)}</div>
+    <div className={styles.quoteHead}><strong>Últimas cotizaciones disponibles</strong><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1" target="_blank" rel="noreferrer">BCR - Rosario&nbsp; →</a></div>
+    <div className={styles.quoteRows}>{quotes.length ? quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={styles.up}>{q.detail}</span></div>) : <div className={styles.quoteRow}><strong>Sin cotizaciones verificadas disponibles</strong><span>La pizarra se mostrará cuando se confirme una actualización de la fuente de mercado.</span></div>}</div>
     <Link href="#precios" className={styles.quoteButton}>▥ &nbsp; Ver precios y pizarra &nbsp; →</Link>
    </aside>
    <div className={styles.marketStrip}>{statItems.map(([icon,title,label])=><div className={styles.stat} key={label}><i className={styles.statIcon}>{icon}</i><div><strong>{title}</strong><small>{label}</small></div></div>)}</div>
