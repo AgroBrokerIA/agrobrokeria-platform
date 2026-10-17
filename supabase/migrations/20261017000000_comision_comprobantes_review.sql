@@ -215,7 +215,7 @@ begin
 
   select * into v_pago from public.comision_pagos where id = p_pago_id for update;
   if not found then raise exception 'Comprobante inexistente'; end if;
-  if v_pago.estado not in ('COMPROBANTE_SUBIDO','EN_REVISION','PAGO_PARCIAL') then
+  if v_pago.estado not in ('COMPROBANTE_SUBIDO','EN_REVISION') then
     raise exception 'El comprobante ya no admite revisión desde este estado';
   end if;
 
@@ -279,5 +279,27 @@ $$;
 
 revoke all on function public.revisar_pago_comision(uuid,text,numeric,text) from public;
 grant execute on function public.revisar_pago_comision(uuid,text,numeric,text) to authenticated;
+
+
+create or replace function public.confirmar_subida_comprobante(p_pago_id uuid)
+returns jsonb language plpgsql security definer set search_path = public, storage
+as $
+declare v_pago public.comision_pagos%rowtype;
+begin
+  if auth.uid() is null then raise exception 'Iniciá sesión para confirmar la carga'; end if;
+  select * into v_pago from public.comision_pagos
+  where id=p_pago_id and pagador_profile_id=auth.uid() for update;
+  if not found then raise exception 'Comprobante no encontrado o sin permisos'; end if;
+  if v_pago.estado <> 'COMPROBANTE_SUBIDO' then raise exception 'El comprobante no está en estado de carga'; end if;
+  if not exists (
+    select 1 from storage.objects o
+    where o.bucket_id='comprobantes-comisiones' and o.name=v_pago.archivo_path
+  ) then raise exception 'No se encontró el archivo privado cargado'; end if;
+  update public.comision_pagos set estado='EN_REVISION' where id=p_pago_id;
+  return jsonb_build_object('ok',true,'estado','EN_REVISION');
+end;
+$;
+revoke all on function public.confirmar_subida_comprobante(uuid) from public;
+grant execute on function public.confirmar_subida_comprobante(uuid) to authenticated;
 
 commit;
