@@ -13,11 +13,11 @@ let refreshEnCurso: Promise<ArcaCredentials> | null = null;
 
 function getAdminSupabase() {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const secretKey = process.env.SUPABASE_SECRET_KEY;
+  const secretKey = process.env.SUPABASE_SECRET_KEY ?? process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !secretKey) {
     throw new Error(
-      "Falta SUPABASE_SECRET_KEY para persistir el Ticket de Acceso ARCA en Supabase."
+      "Falta SUPABASE_SECRET_KEY o SUPABASE_SERVICE_ROLE_KEY para persistir el Ticket de Acceso ARCA en Supabase."
     );
   }
 
