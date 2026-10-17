@@ -961,3 +961,24 @@ body{background:var(--ab-bg)}
   .auth-panel { padding-left: 10px !important; padding-right: 10px !important; }
   .auth-card { padding: 20px 14px !important; }
 }
+
+
+/* Final mobile spacing polish: keep the bottom navigation clear of the hosting badge and center auth branding. */
+@media(max-width:650px){
+  .mobile-bottom-nav{
+    bottom:max(68px,calc(env(safe-area-inset-bottom) + 56px)) !important;
+    z-index:10000 !important;
+  }
+  .page-shell > main{padding-bottom:calc(164px + env(safe-area-inset-bottom)) !important}
+  .auth-page .auth-art{display:none !important}
+  .auth-page .auth-panel{grid-column:1 / -1 !important;grid-area:1 / 1 !important}
+  .auth-page .auth-mobile-brand{
+    position:static !important;
+    inset:auto !important;
+    transform:none !important;
+    align-self:center !important;
+    text-align:center !important;
+    overflow-wrap:anywhere !important;
+  }
+  .auth-page .auth-card{box-sizing:border-box !important}
+}
