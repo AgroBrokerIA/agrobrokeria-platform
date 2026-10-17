@@ -40,7 +40,7 @@ export default function Home(){
        })));
        const latest=freshRows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
        setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:freshRows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"Sin datos actuales",source:"BCR Rosario"});
-     } else { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"}); }
+     } else { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"Sin datos recientes"}); }
      const {data:landingSummary,error:landingError}=await supabase
        .from("landing_public_counters")
        .select("verified_companies,active_offers,active_demands")
