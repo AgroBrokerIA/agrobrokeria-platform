@@ -51,7 +51,7 @@ export default function MercadoPage(){
  const codeFor=(q:Quote)=>productMeta(q)?.codigo||commodities[q.commodity_id||""]||q.commodity_id||"OTRO";
  const nameFor=(q:Quote)=>productMeta(q)?.nombre||names.get(codeFor(q))||codeFor(q);
  const categoryFor=(q:Quote)=>String(productMeta(q)?.categoria||"").toLowerCase();
- const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q)}return m},[quotes,products,commodities]);
+ const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q);const code=productMeta(q)?.codigo||commodities[q.commodity_id||""];if(code&&!m.has("code:"+code))m.set("code:"+code,q)}return m},[quotes,products,commodities]);
  const catalogProducts=useMemo(()=>Object.values(products),[products]);
  const catalogForTab=useMemo(()=>{
    if(marketTab==="Aceites")return catalogProducts.filter(p=>String(p.nombre||"").toLowerCase().includes("aceite")||String(p.categoria||"").toLowerCase().includes("aceite"));
@@ -73,7 +73,7 @@ export default function MercadoPage(){
  }).slice(0,30);
  const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
  const tabQuoteRows=tabQuotes.map(q=>({code:codeFor(q),name:nameFor(q),q}));
- const catalogRows=catalogForTab.map(p=>({code:p.codigo,name:p.nombre,q:latestByProduct.get(String(p.id))})).filter(row=>row.q?.price!=null);
+ const catalogRows=catalogForTab.map(p=>({code:p.codigo,name:p.nombre,q:latestByProduct.get(String(p.id))||latestByProduct.get("code:"+p.codigo)}));
  const displayRows=["Granos","Aceites","Harinas","Subproductos"].includes(marketTab)?catalogRows:tabQuoteRows;
  const soja=quotes.filter(q=>q.price!=null&&(commodities[q.commodity_id||""]||"").toUpperCase()==="SOJA").slice(0,rangeSize[range]||30).reverse();
  const international=quotes.filter(q=>q.price!=null&&(q.market||"").toUpperCase()===internationalMarket).slice(0,6);
