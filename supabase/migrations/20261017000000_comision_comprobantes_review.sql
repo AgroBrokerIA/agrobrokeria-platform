@@ -87,11 +87,9 @@ for insert to authenticated with check (
   )
 );
 
+-- No direct UPDATE policy: state transitions and balance changes must go through the
+-- SECURITY DEFINER RPC so clients cannot mark a payment as received outside the audited flow.
 drop policy if exists "active reviewers update proof" on public.comision_pagos;
-create policy "active reviewers update proof" on public.comision_pagos
-for update to authenticated
-using (exists (select 1 from public.comision_comprobante_revisores r where r.profile_id = auth.uid() and r.activo))
-with check (exists (select 1 from public.comision_comprobante_revisores r where r.profile_id = auth.uid() and r.activo));
 
 drop policy if exists "payers and reviewers read proof audit" on public.comision_pagos_auditoria;
 create policy "payers and reviewers read proof audit" on public.comision_pagos_auditoria
