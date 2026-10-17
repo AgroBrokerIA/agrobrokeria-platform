@@ -348,11 +348,7 @@ export default function NuevaPublicacionForm() {
 
     if (!form.producto_id) return setError("Seleccioná un producto.");
     if (!form.cantidad_tn || Number(form.cantidad_tn) <= 0) return setError("Ingresá una cantidad válida en toneladas.");
-    if (!form.precio_tn || Number(form.precio_tn) <= 0) return setError("Ingresá un precio válido por tonelada.");
-    if (!form.provincia.trim()) return setError("Ingresá la provincia.");
-    if (!form.localidad.trim()) return setError("Ingresá la localidad.");
-    if (puertosSeleccionados.length === 0) return setError("Seleccioná al menos un puerto de recepción o entrega.");
-    if (lugaresSeleccionados.length === 0) return setError("Seleccioná al menos un tipo de lugar de recepción.");
+    if (form.precio_tn.trim() && Number(form.precio_tn) <= 0) return setError("El precio debe ser mayor que cero o quedar vacío.");
 
     try {
       setGuardando(true);
@@ -361,12 +357,12 @@ export default function NuevaPublicacionForm() {
         tipo: form.tipo,
         producto_id: form.producto_id,
         cantidad_tn: Number(form.cantidad_tn),
-        precio_tn: Number(form.precio_tn),
-        moneda_id: form.moneda_id,
-        incoterm_id: form.incoterm_id,
-        provincia: form.provincia.trim(),
-        localidad: form.localidad.trim(),
-        puerto: form.puerto.trim() || puertosSeleccionados[0],
+        precio_tn: form.precio_tn.trim() ? Number(form.precio_tn) : null,
+        moneda_id: form.moneda_id || null,
+        incoterm_id: form.incoterm_id || null,
+        provincia: form.provincia.trim() || null,
+        localidad: form.localidad.trim() || null,
+        puerto: form.puerto.trim() || puertosSeleccionados[0] || null,
         puertos: puertosSeleccionados,
         lugares_recepcion: lugaresSeleccionados,
         calidad: form.calidad.trim(),
@@ -443,10 +439,10 @@ export default function NuevaPublicacionForm() {
         <label>Tipo<select value={form.tipo} onChange={(e) => actualizarCampo("tipo", e.target.value as "VENTA" | "COMPRA")}><option value="VENTA">Venta</option><option value="COMPRA">Compra</option></select></label>
         <label>Producto<select value={form.producto_id} onChange={(e) => actualizarCampo("producto_id", Number(e.target.value))}>{productos.map((producto) => <option key={producto.id} value={producto.id}>{producto.nombre}</option>)}</select></label>
         <label>Cantidad (TN)<input type="number" min="0.01" step="0.01" value={form.cantidad_tn} onChange={(e) => actualizarCampo("cantidad_tn", e.target.value)} /></label>
-        <label>Precio por TN<input type="number" min="0.01" step="0.01" value={form.precio_tn} onChange={(e) => actualizarCampo("precio_tn", e.target.value)} /></label>
+        <label>Precio por TN (opcional)<input type="number" min="0.01" step="0.01" placeholder="Podés definirlo durante la negociación" value={form.precio_tn} onChange={(e) => actualizarCampo("precio_tn", e.target.value)} /></label>
         <label>Moneda<select value={form.moneda_id} onChange={(e) => actualizarCampo("moneda_id", Number(e.target.value))}>{monedas.map((moneda) => <option key={moneda.id} value={moneda.id}>{moneda.codigo} - {moneda.nombre}</option>)}</select></label>
-        <label>Incoterm<select value={form.incoterm_id} onChange={(e) => actualizarCampo("incoterm_id", Number(e.target.value))}>{incoterms.map((incoterm) => <option key={incoterm.id} value={incoterm.id}>{incoterm.codigo} - {incoterm.descripcion}</option>)}</select></label>
-        <label>Provincia
+        <label>Incoterm (opcional)<select value={form.incoterm_id} onChange={(e) => actualizarCampo("incoterm_id", Number(e.target.value))}><option value={0}>Sin definir por ahora</option>{incoterms.map((incoterm) => <option key={incoterm.id} value={incoterm.id}>{incoterm.codigo} - {incoterm.descripcion}</option>)}</select></label>
+        <label>Provincia (opcional)
           <select value={form.provincia} onChange={(e) => {
             actualizarCampo("provincia", e.target.value);
             actualizarCampo("localidad", "");
@@ -457,7 +453,7 @@ export default function NuevaPublicacionForm() {
             ))}
           </select>
         </label>
-        <label>Localidad
+        <label>Localidad (opcional)
           <select value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} disabled={!form.provincia || cargandoLocalidades}>
             <option value="">{cargandoLocalidades ? "Cargando localidades..." : "Seleccionar localidad..."}</option>
             {localidades.map((localidad) => (
@@ -473,7 +469,7 @@ export default function NuevaPublicacionForm() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 20 }}>Puertos de recepción / entrega</h2>
-            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Podés elegir uno, varios o todos los puertos que correspondan a esta publicación.</p>
+            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Podés elegir uno, varios o todos los puertos. Si todavía no definiste la logística, podés dejarlo vacío.</p>
           </div>
           <strong style={{ color: "#047857" }}>{puertosSeleccionados.length} seleccionados</strong>
         </div>
@@ -512,7 +508,7 @@ export default function NuevaPublicacionForm() {
         <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
           <div>
             <h2 style={{ margin: 0, fontSize: 20 }}>Lugares donde recibir / entregar</h2>
-            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Marcá todas las modalidades de recepción que acepta la operación.</p>
+            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Marcá las modalidades conocidas. Este dato también puede definirse más adelante.</p>
           </div>
           <strong style={{ color: "#047857" }}>{lugaresSeleccionados.length} opciones</strong>
         </div>
