@@ -44,7 +44,53 @@ export default function VerificacionesPage(){
  const filtered=useMemo(()=>companies.filter(c=>{const q=query.toLowerCase();const match=!q||[companyName(c),c.cuit,c.pais,c.tipo_empresa,c.provincia,c.ciudad].filter(Boolean).join(" ").toLowerCase().includes(q);const matchCountry=!country||c.pais===country;const matchSector=!sector||c.tipo_empresa===sector;const st=verificationState(c,vByCompany.get(c.id));return match&&matchCountry&&matchSector&&(status==="Todos"||st===status)}),[companies,query,country,status,vByCompany]);
  const counts=useMemo(()=>({verified:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Verificada").length,process:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="En proceso").length,obs:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Con observaciones").length,rejected:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Rechazado").length}),[companies,vByCompany]);
  const selectedVerification=selected?vByCompany.get(selected.id):undefined;
- const score=selected?.verificada?100:(selected&&verificationState(selected,selectedVerification)==="En proceso"?50:0); const createVerification=async()=>{if(!newCompany){setActionMsg("Seleccioná una empresa.");return}const{data:{user}}=await supabase.auth.getUser();const{error}=await supabase.from("empresas_verificaciones").insert({empresa_id:newCompany,estado:"PENDIENTE",tipo_consulta:newType,ejecutado_por:user?.id||null,consultado_at:new Date().toISOString()});if(error){setActionMsg(error.message);return}setShowNew(false);setActionMsg("Verificación creada y quedó en proceso.");const{data:v}=await supabase.from("empresas_verificaciones").select("empresa_id,estado,tipo_consulta,fecha_verificacion,consultado_at").order("consultado_at",{ascending:false}).limit(1000);setVerifications((v||[]) as Verification[])}; const downloadVerification=()=>{if(!selected)return;const v=selectedVerification;const body=["AgroBrokerIA - Registro de verificación","Empresa: "+companyName(selected),"CUIT: "+(selected.cuit||"—"),"Estado: "+verificationState(selected,v),"Tipo de consulta: "+(v?.tipo_consulta||"—"),"Fecha: "+(v?.fecha_verificacion?new Date(v.fecha_verificacion).toLocaleString("es-AR"):"—")].join("\n");const blob=new Blob([body],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="verificacion-"+companyName(selected).replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".txt";a.click();URL.revokeObjectURL(a.href)};
+ const score=selected?.verificada?100:(selected&&verificationState(selected,selectedVerification)==="En proceso"?50:0); const createVerification=async()=>{
+  if(!newCompany){setActionMsg("Seleccioná una empresa.");return}
+  const{data:{user}}=await supabase.auth.getUser();
+  const isArca=newType==="Datos fiscales";
+  const{data:created,error}=await supabase.from("empresas_verificaciones").insert({
+    empresa_id:newCompany,
+    estado:"PENDIENTE",
+    organismo:isArca?"ARCA":null,
+    tipo_consulta:isArca?"ARCA_CUIT":newType,
+    ejecutado_por:user?.id||null,
+    observaciones:isArca?"Solicitud voluntaria de consulta del padrón público de ARCA.":"Requiere validación de la fuente correspondiente; no se marcará como verificada automáticamente.",
+    consultado_at:new Date().toISOString()
+  }).select("id").single();
+  if(error){setActionMsg(error.message);return}
+  let message=isArca?"Solicitud de consulta ARCA registrada.":"Solicitud registrada; este tipo requiere revisión de su registro oficial.";
+  if(isArca&&created?.id){
+    try{
+      const{data:{session}}=await supabase.auth.getSession();
+      const base=process.env.NEXT_PUBLIC_SUPABASE_URL;
+      const anon=process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+      if(!session?.access_token||!base||!anon)throw new Error("No se pudo validar la sesión para consultar ARCA.");
+      const response=await fetch(base+"/functions/v1/verificaciones-sync",{
+        method:"POST",
+        headers:{Authorization:"Bearer "+session.access_token,apikey:anon,"Content-Type":"application/json"},
+        body:JSON.stringify({verification_id:created.id})
+      });
+      const payload=await response.json().catch(()=>({}));
+      const result=payload?.resultados?.[0];
+      if(response.ok&&payload?.ok){
+        if(result?.estado==="ARCA_VERIFICADA")message="ARCA informó que el CUIT está activo. Esto no verifica por sí solo la habilitación de corredor ni la empresa en su conjunto.";
+        else if(result?.estado==="ARCA_OBSERVADA")message="La consulta de ARCA devolvió observaciones. Revisá el resultado antes de operar.";
+        else if(result?.estado==="CUIT_INVALIDO")message="El CUIT no tiene el formato válido de 11 dígitos. Corregilo para reintentar.";
+        else message=result?.detalle||"La solicitud quedó pendiente; la fuente oficial no permitió confirmar el resultado.";
+      }else{
+        message=response.status===403
+          ?"Solicitud registrada, pero la consulta automática requiere que la empresa seleccionada sea la empresa de tu cuenta o que tengas permisos de administración."
+          :"Solicitud registrada; la consulta automática quedó pendiente de autorización o de disponibilidad de la fuente oficial.";
+      }
+    }catch{
+      message="Solicitud registrada; no se pudo completar la consulta automática. El estado permanece pendiente y no se considera verificada.";
+    }
+  }
+  setShowNew(false);
+  setActionMsg(message);
+  const{data:v}=await supabase.from("empresas_verificaciones").select("empresa_id,estado,tipo_consulta,fecha_verificacion,consultado_at").order("consultado_at",{ascending:false}).limit(1000);
+  setVerifications((v||[]) as Verification[]);
+}const downloadVerification=()=>{if(!selected)return;const v=selectedVerification;const body=["AgroBrokerIA - Registro de verificación","Empresa: "+companyName(selected),"CUIT: "+(selected.cuit||"—"),"Estado: "+verificationState(selected,v),"Tipo de consulta: "+(v?.tipo_consulta||"—"),"Fecha: "+(v?.fecha_verificacion?new Date(v.fecha_verificacion).toLocaleString("es-AR"):"—")].join("\n");const blob=new Blob([body],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="verificacion-"+companyName(selected).replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".txt";a.click();URL.revokeObjectURL(a.href)};
  const countries=useMemo(()=>Array.from(new Set(companies.map(c=>c.pais).filter(Boolean) as string[])).sort(),[companies]); const sectors=useMemo(()=>Array.from(new Set(companies.map(c=>c.tipo_empresa).filter(Boolean) as string[])).sort(),[companies]); const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize)); const safePage=Math.min(page,pageCount); const pageRows=filtered.slice((safePage-1)*pageSize,safePage*pageSize); useEffect(()=>{setPage(1)},[query,country,sector,status,pageSize]);
  return <main className="verification-third-page">
   <header className="vt-hero"><div><h1>Verificación de terceros</h1><p>Valida la identidad, solvencia y reputación de empresas y contactos externos para operar de forma segura.</p></div><button className="vt-primary" onClick={()=>{setNewCompany(selected?.id||companies[0]?.id||"");setShowNew(true)}}><span>＋</span> Nueva verificación</button></header>
