@@ -28,16 +28,18 @@ export default function Home(){
      const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾",Girasol:"🌻"};
      const preferred=["Soja","Maíz","Trigo","Sorgo"];
      const rows=(market||[]).filter((x:any)=>x.commodity&&x.precio_promedio!=null);
-     const ordered=[...preferred.map(name=>rows.find(x=>String(x.commodity).toLowerCase()===name.toLowerCase())).filter(Boolean),...rows.filter(x=>!preferred.some(name=>String(x.commodity).toLowerCase()===name.toLowerCase()))];
-     if(rows.length){
+     const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-5);
+     const freshRows=rows.filter((x:any)=>x.fecha_mercado&&new Date(String(x.fecha_mercado)+"T12:00:00").getTime()>=cutoff.getTime());
+     const ordered=[...preferred.map(name=>freshRows.find(x=>String(x.commodity).toLowerCase()===name.toLowerCase())).filter(Boolean),...freshRows.filter(x=>!preferred.some(name=>String(x.commodity).toLowerCase()===name.toLowerCase()))];
+     if(freshRows.length){
        setQuotes(ordered.slice(0,4).map((x:any)=>({
          name:String(x.commodity),
          price:(x.moneda||"ARS")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
          detail:x.fecha_mercado?new Date(String(x.fecha_mercado)+"T12:00:00").toLocaleDateString("es-AR")+" · BCR Rosario":"Fecha de mercado no disponible · BCR Rosario",
          icon:icons[String(x.commodity)]||"🌾"
        })));
-       const latest=rows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
-       setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:rows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"Sin datos actuales",source:"BCR Rosario"});
+       const latest=freshRows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
+       setStats({quotes:ordered.slice(0,4).length,publications:0,commodities:freshRows.length,updated:latest?new Date(latest+"T12:00:00").toLocaleDateString("es-AR"):"Sin datos actuales",source:"BCR Rosario"});
      } else { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"}); }
      const {data:landingSummary,error:landingError}=await supabase
        .from("landing_public_counters")
