@@ -40,8 +40,8 @@ export async function consultarPersonaPadron(cuitInput:string):Promise<PadronRes
   if(!arcaConfig.cuit)throw new Error("ARCA_CUIT_NO_CONFIGURADO");
   const ticket=await getTicket();
   const endpoint=arcaConfig.environment==="PRODUCCION"
-    ?"https://aws.arca.gov.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.arca.gov.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/">
   <soapenv:Header/>
@@ -54,7 +54,7 @@ export async function consultarPersonaPadron(cuitInput:string):Promise<PadronRes
     </a5:getPersona_v2>
   </soapenv:Body>
 </soapenv:Envelope>`;
-  const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/xml; charset=utf-8",Accept:"text/xml",SOAPAction:""},body:soap,signal:AbortSignal.timeout(25000)});
+  const response=await fetch(endpoint,{method:"POST",headers:{"Content-Type":"text/xml; charset=utf-8",Accept:"text/xml",SOAPAction:"http://a5.soap.ws.server.puc.sr/getPersona_v2"},body:soap,signal:AbortSignal.timeout(25000)});
   const body=await response.text();
   if(!response.ok)throw new Error(`ARCA_PADRON_HTTP_${response.status}`);
   const fault=tag(body,"faultstring")||tag(body,"fault");
