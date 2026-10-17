@@ -74,7 +74,7 @@ export default function ComprobantesComisionesPage() {
       const path = paymentId + "/" + userId + "/" + safeName;
       const { error: insertError } = await supabase.from("comision_pagos").insert({
         id: paymentId, operacion_comision_id: commission.id, operacion_id: commission.operacion_id,
-        pagador_profile_id: userId, pagador_empresa_id: commission.empresa_id, importe_declarado: value, moneda_id: commission.moneda_id,
+        pagador_profile_id: userId, pagador_empresa_id: null, importe_declarado: value, moneda_id: commission.moneda_id,
         fecha_transferencia: transferDate || null, referencia_transferencia: reference.trim() || null,
         archivo_path: path, archivo_nombre: safeName, archivo_mime: file.type, archivo_bytes: file.size,
         estado: "COMPROBANTE_SUBIDO", importe_confirmado: 0
@@ -163,7 +163,7 @@ export default function ComprobantesComisionesPage() {
     {selected && <section className="rounded-xl border p-4 space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Revisión del comprobante</h2><p className="text-sm text-slate-500">Estado: {selected.estado} · Declarado: {fmt(Number(selected.importe_declarado),currencies[selected.moneda_id] || "ARS")} · Confirmado: {fmt(Number(selected.importe_confirmado),currencies[selected.moneda_id] || "ARS")}</p></div><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>{setSelected(null);setPreviewUrl("");setAudit([])}}>Cerrar</button></div>
       {previewUrl ? selected.archivo_mime==="application/pdf" ? <iframe title="Vista privada del comprobante" src={previewUrl} className="h-[650px] w-full rounded-lg border" sandbox="allow-same-origin" /> : <img src={previewUrl} alt="Comprobante de transferencia" className="max-h-[650px] max-w-full rounded-lg border object-contain" /> : <p className="text-sm text-slate-500">Preparando vista privada…</p>}
-      {isReviewer && ["COMPROBANTE_SUBIDO","EN_REVISION","PAGO_PARCIAL"].includes(selected.estado) && <div className="space-y-3 rounded-lg bg-slate-50 p-3">
+      {isReviewer && ["COMPROBANTE_SUBIDO","EN_REVISION"].includes(selected.estado) && <div className="space-y-3 rounded-lg bg-slate-50 p-3">
         <label className="grid gap-1 text-sm font-medium">Motivo de rechazo (obligatorio para rechazar)<textarea value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} className="rounded-lg border p-2" /></label>
         <div className="flex flex-wrap gap-2"><button disabled={busy} onClick={()=>void review(selected,"EN_REVISION")} className="rounded-lg border px-3 py-2 text-sm">Marcar en revisión</button><button disabled={busy} onClick={()=>void review(selected,"PAGO_PARCIAL")} className="rounded-lg border px-3 py-2 text-sm">Registrar pago parcial</button><button disabled={busy} onClick={()=>void review(selected,"RECHAZADO")} className="rounded-lg border border-red-300 px-3 py-2 text-sm text-red-700">Rechazar comprobante</button><button disabled={busy} onClick={()=>void review(selected,"PAGADO")} className="rounded-lg bg-emerald-700 px-3 py-2 text-sm font-semibold text-white">Confirmar dinero recibido</button></div>
       </div>}
