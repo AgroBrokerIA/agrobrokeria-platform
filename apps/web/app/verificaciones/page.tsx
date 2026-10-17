@@ -97,6 +97,8 @@ export default function VerificacionesPage(){
   setActionMsg(message);
   const{data:v}=await supabase.from("empresas_verificaciones").select("empresa_id,estado,tipo_consulta,fecha_verificacion,consultado_at").order("consultado_at",{ascending:false}).limit(1000);
   setVerifications((v||[]) as Verification[]);
+  const{data:req}=await supabase.from("empresas_verificacion_requisitos").select("empresa_id,estado,observaciones,verificado_at,verificacion_requisitos_catalogo(codigo,nombre,fuente,obligatorio)").limit(1000);
+  setRequirements((req||[]) as unknown as Requirement[]);
 };
  const downloadVerification=()=>{if(!selected)return;const v=selectedVerification;const body=["AgroBrokerIA - Registro de verificación","Empresa: "+companyName(selected),"CUIT: "+(selected.cuit||"—"),"Estado: "+verificationState(selected,v),"Tipo de consulta: "+(v?.tipo_consulta||"—"),"Fecha: "+(v?.fecha_verificacion?new Date(v.fecha_verificacion).toLocaleString("es-AR"):"—")].join("\n");const blob=new Blob([body],{type:"text/plain;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="verificacion-"+companyName(selected).replace(/[^a-z0-9]+/gi,"-").toLowerCase()+".txt";a.click();URL.revokeObjectURL(a.href)};
  const countries=useMemo(()=>Array.from(new Set(companies.map(c=>c.pais).filter(Boolean) as string[])).sort(),[companies]); const sectors=useMemo(()=>Array.from(new Set(companies.map(c=>c.tipo_empresa).filter(Boolean) as string[])).sort(),[companies]); const pageCount=Math.max(1,Math.ceil(filtered.length/pageSize)); const safePage=Math.min(page,pageCount); const pageRows=filtered.slice((safePage-1)*pageSize,safePage*pageSize); useEffect(()=>{setPage(1)},[query,country,sector,status,pageSize]);
