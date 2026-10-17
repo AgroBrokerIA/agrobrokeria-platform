@@ -91,3 +91,57 @@
 .registerBanner{max-width:1120px;margin:25px auto 0;background:linear-gradient(90deg,#e7faf1,#f5fbf8);border:1px solid #c9ecdb;border-radius:12px;padding:17px 20px;display:flex;align-items:center;justify-content:space-between;gap:20px}.registerBanner strong,.registerBanner span{display:block}.registerBanner strong{font-size:13px;color:#0b3e2b}.registerBanner span{font-size:10px;color:#63736a;margin-top:3px}.registerBanner a{flex:none;background:#078e57;color:#fff;border-radius:7px;padding:11px 17px;text-decoration:none;font-size:10px;font-weight:800}
 @media(max-width:1000px){.publicSection{padding-left:5%;padding-right:5%}.publicGrid{grid-template-columns:1fr}.priceBoard{grid-template-columns:repeat(2,1fr)}.aiGrid{grid-template-columns:repeat(2,1fr)}.resourcesGrid{grid-template-columns:repeat(2,1fr)}}
 @media(max-width:650px){.publicSection{padding:45px 16px}.sectionIntro h2,.sectionTitle h2{font-size:24px}.quoteMini{grid-template-columns:1fr}.companyIntro{grid-template-columns:1fr}.priceBoard,.aiGrid,.resourcesGrid{grid-template-columns:1fr}.registerBanner{flex-direction:column;align-items:flex-start}.registerBanner a{width:100%;text-align:center}}
+
+
+/* Responsive landing page: prevent the desktop quote panel and nav from overflowing on phones. */
+@media(max-width:650px){
+  .nav{height:62px;padding:0 14px;gap:8px;overflow:hidden}
+  .brand{min-width:0;flex:1;gap:7px}
+  .logo{width:32px;height:32px;flex:none}
+  .brandName{font-size:16px;letter-spacing:-.5px;white-space:nowrap}
+  .tagline{display:none}
+  .navLinks{display:none}
+  .navRight{min-width:0;flex:0 0 auto;gap:6px}
+  .language,.login{display:none}
+  .register{height:35px;padding:0 11px;font-size:11px;white-space:nowrap;box-shadow:none}
+  .hero{min-height:0;padding:30px 16px 18px;display:block;background-position:center}
+  .heroCopy{max-width:none;margin:0;padding:0;z-index:1}
+  .heroTitle{font-size:34px;line-height:1.08;letter-spacing:-1.2px;margin-bottom:12px;overflow-wrap:anywhere}
+  .heroCopy p{font-size:14px;line-height:1.45;margin-bottom:16px}
+  .checks{grid-template-columns:minmax(0,1fr);gap:8px 12px}
+  .checks li{font-size:12px}
+  .heroActions{display:grid;grid-template-columns:minmax(0,1fr);gap:8px;margin-top:18px}
+  .primary,.secondary{width:100%;height:42px;box-sizing:border-box}
+  .quote{position:relative;top:auto;right:auto;left:auto;width:100%;max-width:100%;box-sizing:border-box;margin:22px 0 0;padding:12px;border-radius:12px}
+  .quoteHead strong{font-size:13px}
+  .quoteHead a{font-size:10px;white-space:nowrap}
+  .quoteRow{grid-template-columns:30px minmax(0,1fr) auto;gap:7px;padding:9px 0;min-width:0}
+  .qIcon{width:28px;height:28px;font-size:15px}
+  .quoteRow strong{font-size:12px;min-width:0}
+  .quotePrice{font-size:11px;white-space:nowrap}
+  .quoteRow .up,.quoteRow .down{grid-column:2/-1;font-size:10px;white-space:normal;overflow-wrap:anywhere}
+  .quoteButton{height:40px;font-size:11px}
+  .marketStrip{position:relative;left:auto;right:auto;bottom:auto;height:auto;margin:16px 0 0;padding:12px;box-sizing:border-box;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 8px;border-radius:10px}
+  .stat{min-width:0;padding:0;border:0;gap:8px}
+  .statIcon{width:30px;height:30px;flex:none}
+  .stat strong{font-size:13px;overflow-wrap:anywhere}
+  .stat small{font-size:9px}
+  .cardsSection{padding:32px 16px 24px}
+  .cardsGrid{grid-template-columns:minmax(0,1fr);gap:12px}
+  .cardImage{height:125px}
+  .cardBody{padding:15px}
+  .card h3{font-size:15px}
+  .card p{font-size:12px;min-height:0}
+  .frontier,.world,.badges,.insight{max-width:100%;min-width:0;box-sizing:border-box}
+}
+@media(max-width:380px){
+  .nav{padding:0 9px;gap:5px}
+  .brandName{font-size:14px}
+  .logo{width:29px;height:29px}
+  .register{padding:0 8px;font-size:10px}
+  .heroTitle{font-size:30px}
+  .quote{padding:10px}
+  .quoteRow{grid-template-columns:27px minmax(0,1fr) auto;gap:5px}
+  .quotePrice{font-size:10px}
+  .stat{gap:6px}
+}
