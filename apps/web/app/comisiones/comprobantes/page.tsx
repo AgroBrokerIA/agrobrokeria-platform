@@ -5,8 +5,8 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 
 type Pago = {
-  id: string; comision_id: string; operacion_id: string; pagador_profile_id: string;
-  importe_declarado: number; moneda: "ARS" | "USD"; fecha_transferencia: string | null;
+  id: string; operacion_comision_id: string; operacion_id: string; pagador_profile_id: string;
+  importe_declarado: number; moneda_id: number; fecha_transferencia: string | null;
   referencia_transferencia: string | null; archivo_path: string; archivo_nombre: string;
   archivo_mime: string; estado: string; importe_confirmado: number; motivo_rechazo: string | null;
   creado_en: string; revisor_profile_id: string | null;
@@ -46,12 +46,14 @@ export default function ComprobantesComisionesPage() {
     setIsReviewer(Boolean(reviewer.data?.profile_id));
     const [paymentsResult, commissionsResult] = await Promise.all([
       supabase.from("comision_pagos").select("*").order("creado_en", { ascending: false }).limit(100),
-      supabase.from("comisiones").select("id,operacion_id,concepto,saldo_pendiente,moneda_id,profile_id,estado")
-        .eq("profile_id", user.id).gt("saldo_pendiente", 0).limit(100)
+      supabase.from("operacion_comisiones").select("id,operacion_id,concepto,saldo_pendiente,moneda_id,profile_id,estado,empresa_id")
+        .gt("saldo_pendiente", 0).limit(200)
     ]);
     if (paymentsResult.error) setError("No se pudieron cargar los pagos. Verificá que la migración esté instalada en Preview.");
     else setPayments((paymentsResult.data || []) as Pago[]);
     if (!commissionsResult.error) setCommissions((commissionsResult.data || []) as Comision[]);
+    const currencyResult = await supabase.from("monedas").select("id,codigo");
+    if (!currencyResult.error) setCurrencies(Object.fromEntries((currencyResult.data || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
     setLoading(false);
   }, []);
 
@@ -82,6 +84,8 @@ export default function ComprobantesComisionesPage() {
       if (storageError) {
         throw new Error("No se pudo guardar el archivo privado. El registro quedó sin acreditar y requiere limpieza administrativa; no vuelvas a enviarlo hasta que se revise.");
       }
+      const { error: finalizeError } = await supabase.rpc("confirmar_subida_comprobante", { p_pago_id: paymentId });
+      if (finalizeError) throw finalizeError;
       setFile(null); setAmount(""); setReference(""); setTransferDate("");
       setNotice("Comprobante enviado. La comisión sigue pendiente hasta que administración confirme el ingreso bancario.");
       await load();
@@ -115,10 +119,7 @@ export default function ComprobantesComisionesPage() {
     }
     setBusy(true);
     try {
-      const update: Record<string, unknown> = {estado:action, revisor_profile_id:userId, revisado_en:new Date().toISOString(), motivo_rechazo:action==="RECHAZADO"?reasonText:null};
-      if (action === "PAGADO") update.importe_confirmado = confirmed;
-      if (action === "PAGO_PARCIAL") update.importe_confirmado = confirmed;
-      const { error: updateError } = await supabase.from("comision_pagos").update(update).eq("id", payment.id);
+      const { error: updateError } = await supabase.rpc("revisar_pago_comision", { p_pago_id: payment.id, p_accion: action, p_importe_confirmado: action === "PAGADO" || action === "PAGO_PARCIAL" ? confirmed : null, p_motivo: action === "RECHAZADO" ? reasonText : null });
       if (updateError) throw updateError;
       setNotice(action === "PAGADO" ? "Pago marcado como recibido. Revisá el saldo contable antes de utilizarlo." : "Revisión guardada.");
       setReason(""); await load();
@@ -146,7 +147,6 @@ export default function ComprobantesComisionesPage() {
       <form onSubmit={uploadProof} className="mt-4 grid gap-4 md:grid-cols-2">
         <label className="grid gap-1 text-sm font-medium">Comisión pendiente<select className="rounded-lg border p-2" value={selectedCommission} onChange={e=>setSelectedCommission(e.target.value)} required><option value="">Seleccionar comisión</option>{commissions.map(c=><option key={c.id} value={c.id}>{c.concepto} · {c.operacion_id.slice(0,8)} · saldo {fmt(Number(c.saldo_pendiente),currencies[c.moneda_id] || "ARS")}</option>)}</select></label>
         <label className="grid gap-1 text-sm font-medium">Importe transferido<input className="rounded-lg border p-2" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} required /></label>
-        <label className="grid gap-1 text-sm font-medium">Moneda<select className="rounded-lg border p-2" value={currency} onChange={e=>setCurrency(e.target.value as "ARS"|"USD")}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
         <label className="grid gap-1 text-sm font-medium">Fecha de transferencia<input className="rounded-lg border p-2" type="date" value={transferDate} onChange={e=>setTransferDate(e.target.value)} /></label>
         <label className="grid gap-1 text-sm font-medium md:col-span-2">Referencia o número de operación (opcional)<input className="rounded-lg border p-2" maxLength={120} value={reference} onChange={e=>setReference(e.target.value)} /></label>
         <label className="grid gap-1 text-sm font-medium md:col-span-2">Comprobante (PDF, JPG, PNG o WEBP; máximo 10 MB)<input className="rounded-lg border p-2" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,application/pdf,image/jpeg,image/png,image/webp" onChange={e=>setFile(e.target.files?.[0]||null)} required /><span className="text-xs text-slate-500">No subas claves, contraseñas ni datos que no sean necesarios para identificar la transferencia.</span></label>
