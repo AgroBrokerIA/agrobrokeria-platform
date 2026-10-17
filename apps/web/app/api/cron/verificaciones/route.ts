@@ -10,13 +10,14 @@ export async function GET(req: Request) {
   }
 
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  if (!base) {
-    return NextResponse.json({ error: "SUPABASE_URL_NOT_CONFIGURED" }, { status: 500 });
-  }
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!base) return NextResponse.json({ error: "SUPABASE_URL_NOT_CONFIGURED" }, { status: 500 });
+  if (!serviceKey || !anon) return NextResponse.json({ error: "SUPABASE_SERVER_KEYS_NOT_CONFIGURED" }, { status: 500 });
 
   const response = await fetch(`${base}/functions/v1/verificaciones-sync`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${secret}`, "x-cron-secret": secret, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
+    headers: { Authorization: `Bearer ${serviceKey}`, "x-cron-secret": secret, apikey: anon, "Content-Type": "application/json" },
     cache: "no-store",
   });
   const body = await response.text();
