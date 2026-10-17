@@ -42,7 +42,7 @@ export default function ComprobantesComisionesPage() {
     const { data: { user }, error: authError } = await supabase.auth.getUser();
     if (authError || !user) { setError("Iniciá sesión para gestionar comprobantes."); setLoading(false); return; }
     setUserId(user.id);
-    const reviewer = await supabase.from("comision_comprobante_revisores").select("profile_id").eq("profile_id", user.id).maybeSingle();
+    const reviewer = await supabase.from("comision_comprobante_revisores").select("profile_id").eq("profile_id", user.id).eq("activo", true).maybeSingle();
     setIsReviewer(Boolean(reviewer.data?.profile_id));
     const [paymentsResult, commissionsResult] = await Promise.all([
       supabase.from("comision_pagos").select("*").order("creado_en", { ascending: false }).limit(100),
@@ -80,8 +80,7 @@ export default function ComprobantesComisionesPage() {
       if (insertError) throw insertError;
       const { error: storageError } = await supabase.storage.from("comprobantes-comisiones").upload(path, file, {contentType:file.type, upsert:false});
       if (storageError) {
-        await supabase.from("comision_pagos").delete().eq("id", paymentId);
-        throw storageError;
+        throw new Error("No se pudo guardar el archivo privado. El registro quedó sin acreditar y requiere limpieza administrativa; no vuelvas a enviarlo hasta que se revise.");
       }
       setFile(null); setAmount(""); setReference(""); setTransferDate("");
       setNotice("Comprobante enviado. La comisión sigue pendiente hasta que administración confirme el ingreso bancario.");
