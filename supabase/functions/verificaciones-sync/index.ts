@@ -76,6 +76,25 @@ async function queryOfficialPadron(cuit:string) {
   const monotributoDetectado=!!monotributoBlock&&!errorMonotributo&&/(categoria|actividad|impuesto)/i.test(monotributoBlock);
   return {configured:true as const,found:true as const,estadoClave,tipoClave:tag(general,"tipoClave"),tipoPersona:tag(general,"tipoPersona"),impuestos,actividades,monotributoDetectado,monotributoInformado:!!monotributoBlock||!!errorMonotributo,monotributoError:errorMonotributo||null};
 }
+async function syncIdentityRequirement(sb:any,company:any,isActive:boolean,now:string) {
+  const role=String(company.tipo_empresa||"").toUpperCase();
+  const {data:catalog,error:catalogError}=await sb.from("verificacion_requisitos_catalogo")
+    .select("id").eq("tipo_empresa",role).eq("codigo","IDENTIDAD_FISCAL").maybeSingle();
+  if(catalogError) throw catalogError;
+  if(!catalog) return;
+  const {error}=await sb.from("empresas_verificacion_requisitos").upsert({
+    empresa_id:company.id,
+    requisito_id:catalog.id,
+    estado:isActive?"VERIFICADO":"RECHAZADO",
+    observaciones:isActive
+      ?"Padrón oficial ARCA: CUIT activo. Este control no valida matrícula profesional."
+      :"ARCA no confirmó un CUIT activo; revisar el resultado y la documentación.",
+    verificado_at:isActive?now:null,
+    actualizado_at:now
+  },{onConflict:"empresa_id,requisito_id"});
+  if(error) throw error;
+}
+
 async function processArcaVerification(sb:any,verification:any) {
   const now=new Date().toISOString();
   const {data:company,error:companyError}=await sb.from("empresas").select("id,cuit,tipo_empresa").eq("id",verification.empresa_id).maybeSingle();
@@ -104,6 +123,7 @@ async function processArcaVerification(sb:any,verification:any) {
     :`ARCA informa estado de clave "${padron.estadoClave}". La empresa no se marca como verificada integralmente.`;
   const {error:updateError}=await sb.from("empresas_verificaciones").update({organismo:"ARCA",tipo_consulta:"ARCA_CUIT",estado:status,fecha_verificacion:now,observaciones:obs,fuente_oficial:"ARCA ws_sr_constancia_inscripcion",identificador_consulta:cuit,resultado:result,consultado_at:now,vencimiento_at:expiry}).eq("id",verification.id);
   if(updateError)throw updateError;
+  await syncIdentityRequirement(sb,company,active,now);
   const {error:scheduleError}=await sb.from("verificaciones_programadas").upsert({empresa_id:company.id,organismo:"ARCA",proxima_consulta_at:expiry,frecuencia_dias:active?30:7,activa:true},{onConflict:"empresa_id,organismo"});
   if(scheduleError)throw scheduleError;
   return {id:verification.id,estado:status,detalle:obs,monotributo_detectado:padron.found?padron.monotributoDetectado:false,monotributo_informado:padron.found?padron.monotributoInformado:false};
