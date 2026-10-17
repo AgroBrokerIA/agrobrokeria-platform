@@ -16,7 +16,7 @@ export async function GET(req: Request) {
 
   const response = await fetch(`${base}/functions/v1/verificaciones-sync`, {
     method: "POST",
-    headers: { Authorization: `Bearer ${secret}` },
+    headers: { Authorization: `Bearer ${secret}`, "x-cron-secret": secret, apikey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "" },
     cache: "no-store",
   });
   const body = await response.text();
