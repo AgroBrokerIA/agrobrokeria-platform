@@ -12,7 +12,7 @@ const fmt=(v:number)=>v.toLocaleString("es-AR");
 
 export default function Home(){
  const [quotes,setQuotes]=useState<Quote[]>([]);
- const [stats,setStats]=useState<Stats>({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"});
+ const [stats,setStats]=useState<Stats>({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"Sin datos recientes"});
  const [publicCounts,setPublicCounts]=useState({offers:0,demands:0,companies:0});
 
  useEffect(()=>{
@@ -24,7 +24,7 @@ export default function Home(){
        .order("actualizado_at",{ascending:false})
        .limit(12);
      if(!mounted)return;
-     if(marketError) { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"BCR Rosario"}); return; }
+     if(marketError) { setQuotes([]); setStats({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"Fuente no disponible"}); return; }
      const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾",Girasol:"🌻"};
      const preferred=["Soja","Maíz","Trigo","Sorgo"];
      const rows=(market||[]).filter((x:any)=>x.commodity&&x.precio_promedio!=null);
