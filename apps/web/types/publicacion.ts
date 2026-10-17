@@ -9,17 +9,17 @@ export interface Publicacion {
 
   cantidad_tn: number;
 
-  precio_tn: number;
+  precio_tn: number | null;
 
-  moneda_id: number;
+  moneda_id: number | null;
 
-  incoterm_id: number;
+  incoterm_id: number | null;
 
-  provincia: string;
+  provincia: string | null;
 
-  localidad: string;
+  localidad: string | null;
 
-  puerto: string;
+  puerto: string | null;
 
   /** Puertos alternativos donde puede realizarse la recepción/entrega. */
   puertos?: string[];
