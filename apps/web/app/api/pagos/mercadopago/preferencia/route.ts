@@ -144,7 +144,7 @@ export async function POST(request: NextRequest) {
     const txId = crypto.randomUUID();
     const idempotencyKey = `agrobrokeria:${txId}`;
     const sellerAccessToken = await getSellerAccessToken(body.empresa_cobradora_id);
-    const site = process.env.NEXT_PUBLIC_SITE_URL || "https://agrobrokeria.online";
+    const site = process.env.NEXT_PUBLIC_SITE_URL || request.nextUrl.origin;
 
     const { error: txError } = await admin.from("transacciones_pago_externo").insert({
       id: txId,
