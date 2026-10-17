@@ -5,7 +5,7 @@ import {useRouter} from "next/navigation";
 import {supabase} from "@/lib/supabase/client";
 type Profile={name:string;email:string;phone:string;city:string;country:string;avatar:string;role:string;company:string;verified:boolean;birthDate:string;website:string};
 export default function PerfilPage(){
- const [p,setP]=useState<Profile>({name:"Usuario AgroBrokerIA",email:"",phone:"",city:"",country:"",avatar:"",role:"",company:"",verified:false});
+ const [p,setP]=useState<Profile>({name:"Usuario AgroBrokerIA",email:"",phone:"",city:"",country:"",avatar:"",role:"",company:"",verified:false,birthDate:"",website:""});
  const [loading,setLoading]=useState(true),[editing,setEditing]=useState(false),[saving,setSaving]=useState(false),[saveError,setSaveError]=useState("");
  const router=useRouter();
  const [edit,setEdit]=useState({name:"",phone:"",city:"",country:"",company:"",cuit:"",role:"",birthDate:"",website:"",language:"es",theme:"Claro",emailAlerts:true,pushAlerts:true,dailySummary:true,products:"",operations:"",interestCountries:""});
