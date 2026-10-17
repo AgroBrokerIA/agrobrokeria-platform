@@ -41,7 +41,7 @@ function generarTRA(servicio: string): string {
     <generationTime>${fechaARCA(ahora)}</generationTime>
     <expirationTime>${fechaARCA(expiracion)}</expirationTime>
   </header>
-  <service>\${escaparXml(servicio)}</service>
+  <service>${escaparXml(servicio)}</service>
 </loginTicketRequest>`;
 }
 
