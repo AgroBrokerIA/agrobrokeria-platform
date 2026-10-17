@@ -126,8 +126,9 @@ Deno.serve(async(req:Request)=>{
     const url=Deno.env.get("SUPABASE_URL"),serviceKey=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY"),anonKey=Deno.env.get("SUPABASE_ANON_KEY");
     if(!url||!serviceKey||!anonKey)return json({error:"SUPABASE_ENV_NOT_CONFIGURED"},503);
     const sb=createClient(url,serviceKey),secret=Deno.env.get("CRON_SECRET"),authorization=req.headers.get("authorization")||"";
-    const supplied=req.headers.get("x-cron-secret")||authorization.replace(/^Bearer\s+/i,"");
-    const isCron=(!!secret&&supplied===secret)||supplied===serviceKey;
+    const bearerToken=authorization.replace(/^Bearer\\s+/i,"");
+    const supplied=req.headers.get("x-cron-secret")||bearerToken;
+    const isCron=(!!secret&&(supplied===secret||bearerToken===secret))||bearerToken===serviceKey;
     const body=await req.json().catch(()=>({}));
     let ownCompanyIds:string[]=[],isAdmin=false,actorToken=serviceKey;
     if(!isCron){
