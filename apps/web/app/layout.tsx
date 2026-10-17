@@ -1,14 +1,32 @@
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import AppChrome from "../components/layout/AppChrome";
 import LanguageBootstrap from "../components/i18n/LanguageBootstrap";
+import PWARegister from "../components/pwa/PWARegister";
 
-export const metadata = {
-  title: "AgroBroker IA",
+export const metadata: Metadata = {
+  title: "AgroBrokerIA",
+  applicationName: "AgroBrokerIA",
   description: "Plataforma inteligente de comercialización de commodities agrícolas.",
+  manifest: "/manifest.webmanifest",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "default",
+    title: "AgroBrokerIA",
+  },
+  icons: {
+    icon: "/icons/agrobrokeria.svg",
+    apple: "/icons/agrobrokeria.svg",
+  },
 };
 
-// Deployment marker: keep this file in the main production path so Git integrations
-// that deploy from main can detect the latest validated source revision.
+export const viewport: Viewport = {
+  themeColor: "#173f2b",
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: {
@@ -16,8 +34,10 @@ export default function RootLayout({
 }) {
   return (
     <html lang="es">
-      <body><LanguageBootstrap />
+      <body>
+        <LanguageBootstrap />
         <AppChrome>{children}</AppChrome>
+        <PWARegister />
       </body>
     </html>
   );
