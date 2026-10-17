@@ -11,8 +11,8 @@ type Pago = {
   archivo_mime: string; estado: string; importe_confirmado: number; motivo_rechazo: string | null;
   creado_en: string; revisor_profile_id: string | null;
 };
-type Comision = { id: string; operacion_id: string; concepto: string; saldo_pendiente: number; moneda_id: number; profile_id: string | null; estado: string };
-const fmt = (n: number, currency: string) => new Intl.NumberFormat("es-AR", {style:"currency",currency,maximumFractionDigits:2}).format(Number(n || 0));
+type Comision = { id: string; operacion_id: string; concepto: string; saldo_pendiente: number; moneda_id: number; profile_id: string | null; estado: string; empresa_id: string | null };
+const fmt = (n: number, currency: string) => new Intl.NumberFormat("es-AR", {style:"currency",currency: currency === "USD" ? "USD" : "ARS",maximumFractionDigits:2}).format(Number(n || 0));
 const date = (v: string | null) => v ? new Date(v).toLocaleString("es-AR") : "—";
 const allowed = ["application/pdf","image/jpeg","image/png","image/webp"];
 const maxBytes = 10 * 1024 * 1024;
@@ -25,7 +25,7 @@ export default function ComprobantesComisionesPage() {
   const [selectedCommission, setSelectedCommission] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [amount, setAmount] = useState("");
-  const [currency, setCurrency] = useState<"ARS"|"USD">("USD");
+  const [currencies, setCurrencies] = useState<Record<number,string>>({});
   const [transferDate, setTransferDate] = useState("");
   const [reference, setReference] = useState("");
   const [reason, setReason] = useState("");
@@ -71,8 +71,8 @@ export default function ComprobantesComisionesPage() {
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100) || "comprobante";
       const path = paymentId + "/" + userId + "/" + safeName;
       const { error: insertError } = await supabase.from("comision_pagos").insert({
-        id: paymentId, comision_id: commission.id, operacion_id: commission.operacion_id,
-        pagador_profile_id: userId, importe_declarado: value, moneda: currency,
+        id: paymentId, operacion_comision_id: commission.id, operacion_id: commission.operacion_id,
+        pagador_profile_id: userId, pagador_empresa_id: commission.empresa_id, importe_declarado: value, moneda_id: commission.moneda_id,
         fecha_transferencia: transferDate || null, referencia_transferencia: reference.trim() || null,
         archivo_path: path, archivo_nombre: safeName, archivo_mime: file.type, archivo_bytes: file.size,
         estado: "COMPROBANTE_SUBIDO", importe_confirmado: 0
@@ -144,7 +144,7 @@ export default function ComprobantesComisionesPage() {
       <h2 className="text-lg font-semibold">Subir comprobante de transferencia</h2>
       <p className="mt-1 text-sm text-slate-600">El comprobante no confirma el pago. Administración verificará el ingreso real y actualizará el estado.</p>
       <form onSubmit={uploadProof} className="mt-4 grid gap-4 md:grid-cols-2">
-        <label className="grid gap-1 text-sm font-medium">Comisión pendiente<select className="rounded-lg border p-2" value={selectedCommission} onChange={e=>setSelectedCommission(e.target.value)} required><option value="">Seleccionar comisión</option>{commissions.map(c=><option key={c.id} value={c.id}>{c.concepto} · {c.operacion_id.slice(0,8)} · saldo {Number(c.saldo_pendiente).toLocaleString("es-AR")}</option>)}</select></label>
+        <label className="grid gap-1 text-sm font-medium">Comisión pendiente<select className="rounded-lg border p-2" value={selectedCommission} onChange={e=>setSelectedCommission(e.target.value)} required><option value="">Seleccionar comisión</option>{commissions.map(c=><option key={c.id} value={c.id}>{c.concepto} · {c.operacion_id.slice(0,8)} · saldo {fmt(Number(c.saldo_pendiente),currencies[c.moneda_id] || "ARS")}</option>)}</select></label>
         <label className="grid gap-1 text-sm font-medium">Importe transferido<input className="rounded-lg border p-2" type="number" min="0.01" step="0.01" value={amount} onChange={e=>setAmount(e.target.value)} required /></label>
         <label className="grid gap-1 text-sm font-medium">Moneda<select className="rounded-lg border p-2" value={currency} onChange={e=>setCurrency(e.target.value as "ARS"|"USD")}><option value="USD">USD</option><option value="ARS">ARS</option></select></label>
         <label className="grid gap-1 text-sm font-medium">Fecha de transferencia<input className="rounded-lg border p-2" type="date" value={transferDate} onChange={e=>setTransferDate(e.target.value)} /></label>
@@ -156,12 +156,12 @@ export default function ComprobantesComisionesPage() {
     <section className="rounded-xl border">
       <div className="border-b p-4"><h2 className="text-lg font-semibold">{isReviewer?"Comprobantes para revisar":"Mis comprobantes"}</h2><p className="text-sm text-slate-500">La acreditación bancaria se confirma manualmente.</p></div>
       {loading ? <p className="p-4 text-sm">Cargando…</p> : payments.length===0 ? <p className="p-4 text-sm text-slate-500">Todavía no hay comprobantes visibles.</p> : <div className="divide-y">{payments.map(p=><article key={p.id} className="grid gap-3 p-4 md:grid-cols-[1fr_auto] md:items-center">
-        <div><div className="flex flex-wrap items-center gap-2"><strong>{p.archivo_nombre}</strong><span className="rounded-full border px-2 py-1 text-xs">{p.estado}</span></div><p className="mt-1 text-sm text-slate-600">{fmt(Number(p.importe_declarado),p.moneda)} · transferencia {date(p.fecha_transferencia)} · cargado {date(p.creado_en)}</p><p className="text-xs text-slate-500">Operación {p.operacion_id.slice(0,8)} · Referencia: {p.referencia_transferencia||"—"}</p>{p.motivo_rechazo&&<p className="mt-1 text-sm text-red-700">Motivo: {p.motivo_rechazo}</p>}</div>
+        <div><div className="flex flex-wrap items-center gap-2"><strong>{p.archivo_nombre}</strong><span className="rounded-full border px-2 py-1 text-xs">{p.estado}</span></div><p className="mt-1 text-sm text-slate-600">{fmt(Number(p.importe_declarado),currencies[p.moneda_id] || "ARS")} · transferencia {date(p.fecha_transferencia)} · cargado {date(p.creado_en)}</p><p className="text-xs text-slate-500">Operación {p.operacion_id.slice(0,8)} · Referencia: {p.referencia_transferencia||"—"}</p>{p.motivo_rechazo&&<p className="mt-1 text-sm text-red-700">Motivo: {p.motivo_rechazo}</p>}</div>
         <button onClick={()=>void openProof(p)} className="rounded-lg border px-3 py-2 text-sm font-medium">Ver y revisar</button>
       </article>)}</div>}
     </section>
     {selected && <section className="rounded-xl border p-4 space-y-4">
-      <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Revisión del comprobante</h2><p className="text-sm text-slate-500">Estado: {selected.estado} · Declarado: {fmt(Number(selected.importe_declarado),selected.moneda)} · Confirmado: {fmt(Number(selected.importe_confirmado),selected.moneda)}</p></div><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>{setSelected(null);setPreviewUrl("");setAudit([])}}>Cerrar</button></div>
+      <div className="flex flex-wrap items-center justify-between gap-2"><div><h2 className="text-lg font-semibold">Revisión del comprobante</h2><p className="text-sm text-slate-500">Estado: {selected.estado} · Declarado: {fmt(Number(selected.importe_declarado),currencies[selected.moneda_id] || "ARS")} · Confirmado: {fmt(Number(selected.importe_confirmado),currencies[selected.moneda_id] || "ARS")}</p></div><button className="rounded-lg border px-3 py-2 text-sm" onClick={()=>{setSelected(null);setPreviewUrl("");setAudit([])}}>Cerrar</button></div>
       {previewUrl ? selected.archivo_mime==="application/pdf" ? <iframe title="Vista privada del comprobante" src={previewUrl} className="h-[650px] w-full rounded-lg border" sandbox="allow-same-origin" /> : <img src={previewUrl} alt="Comprobante de transferencia" className="max-h-[650px] max-w-full rounded-lg border object-contain" /> : <p className="text-sm text-slate-500">Preparando vista privada…</p>}
       {isReviewer && ["COMPROBANTE_SUBIDO","EN_REVISION","PAGO_PARCIAL"].includes(selected.estado) && <div className="space-y-3 rounded-lg bg-slate-50 p-3">
         <label className="grid gap-1 text-sm font-medium">Motivo de rechazo (obligatorio para rechazar)<textarea value={reason} onChange={e=>setReason(e.target.value)} maxLength={500} className="rounded-lg border p-2" /></label>
