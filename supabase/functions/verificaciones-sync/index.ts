@@ -68,8 +68,8 @@ async function queryOfficialPadron(cuit:string,verificationId:string,actorToken:
   }
   const ticket=await obtainTicket(cert,key);
   const endpoint=environment()==="PRODUCCION"
-    ?"https://aws.arca.gov.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.arca.gov.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="${SOAP_NS}"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${escapeXml(ticket.token)}</token><sign>${escapeXml(ticket.sign)}</sign><cuitRepresentada>${escapeXml(Deno.env.get("ARCA_CUIT")||"")}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`;
   const response=await fetch(endpoint,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8",accept:"text/xml"},body:soap,signal:AbortSignal.timeout(25000)});
