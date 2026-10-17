@@ -3,38 +3,38 @@ import { getCountries, getStatesOfCountry, getCitiesOfState } from "@countrystat
 import { supabase } from "@/lib/supabase/server";
 
 const ARGENTINA_PROVINCES = [
-  ["C", "Ciudad Autónoma de Buenos Aires"],
-  ["B", "Buenos Aires"],
-  ["K", "Catamarca"],
-  ["H", "Chaco"],
-  ["U", "Chubut"],
-  ["X", "Córdoba"],
-  ["W", "Corrientes"],
-  ["E", "Entre Ríos"],
-  ["P", "Formosa"],
-  ["Y", "Jujuy"],
-  ["L", "La Pampa"],
-  ["F", "La Rioja"],
-  ["M", "Mendoza"],
-  ["N", "Misiones"],
-  ["Q", "Neuquén"],
-  ["R", "Río Negro"],
-  ["A", "Salta"],
-  ["J", "San Juan"],
-  ["D", "San Luis"],
-  ["Z", "Santa Cruz"],
-  ["S", "Santa Fe"],
-  ["G", "Santiago del Estero"],
-  ["V", "Tierra del Fuego"],
-  ["T", "Tucumán"],
+  ["C", "Ciudad Autónoma de Buenos Aires", "02"],
+  ["B", "Buenos Aires", "06"],
+  ["K", "Catamarca", "10"],
+  ["H", "Chaco", "22"],
+  ["U", "Chubut", "26"],
+  ["X", "Córdoba", "14"],
+  ["W", "Corrientes", "18"],
+  ["E", "Entre Ríos", "30"],
+  ["P", "Formosa", "34"],
+  ["Y", "Jujuy", "38"],
+  ["L", "La Pampa", "42"],
+  ["F", "La Rioja", "46"],
+  ["M", "Mendoza", "50"],
+  ["N", "Misiones", "54"],
+  ["Q", "Neuquén", "58"],
+  ["R", "Río Negro", "62"],
+  ["A", "Salta", "66"],
+  ["J", "San Juan", "70"],
+  ["D", "San Luis", "74"],
+  ["Z", "Santa Cruz", "78"],
+  ["S", "Santa Fe", "82"],
+  ["G", "Santiago del Estero", "86"],
+  ["V", "Tierra del Fuego", "94"],
+  ["T", "Tucumán", "90"],
 ] as const;
 
-async function localidadesOficialesArgentina(provincia: string) {
-  const endpoint = new URL("https://apis.datos.gob.ar/georef/api/localidades");
-  endpoint.searchParams.set("provincia", provincia);
+async function cargarLocalidadesOficiales(provinciaId: string) {
+  const endpoint = new URL("https://apis.datos.gob.ar/georef/api/v2.0/localidades");
+  endpoint.searchParams.set("provincia", provinciaId);
   endpoint.searchParams.set("max", "5000");
   endpoint.searchParams.set("orden", "nombre");
-  endpoint.searchParams.set("campos", "id,nombre,nombre_completo,centroide");
+  endpoint.searchParams.set("campos", "id,nombre,centroide");
 
   const response = await fetch(endpoint.toString(), {
     next: { revalidate: 86400 },
@@ -45,17 +45,16 @@ async function localidadesOficialesArgentina(provincia: string) {
     localidades?: Array<{
       id: string | number;
       nombre: string;
-      nombre_completo?: string;
       centroide?: { lat?: number; lon?: number };
     }>;
+    total?: number;
   };
-
   return (payload.localidades ?? [])
     .filter((x) => x.id != null && x.nombre)
     .map((x) => ({
       id: String(x.id),
       name: x.nombre,
-      fullName: x.nombre_completo ?? x.nombre,
+      fullName: x.nombre,
       postalCode: null,
       latitude: x.centroide?.lat ?? null,
       longitude: x.centroide?.lon ?? null,
@@ -79,20 +78,21 @@ export async function GET(request: Request) {
       }
 
       const selected = ARGENTINA_PROVINCES.find(([code]) => code.toUpperCase() === state);
-      if (!selected) return NextResponse.json({ country, state, cities: [] });
+      if (!selected) return NextResponse.json({ country, state, cities: [], error: "Provincia no reconocida." });
 
-      const provinceName = selected[1];
+      const [, provinceName, officialProvinceId] = selected;
 
-      // First use the official national GeoRef API. This fills localities even
-      // when the application's own provincial/locality tables are incomplete.
+      // Source of truth: national GeoRef API v2, filtered by official province ID.
       try {
-        const cities = await localidadesOficialesArgentina(provinceName);
-        if (cities.length) return NextResponse.json({ country, state, cities, source: "argentina-georef" });
+        const cities = await cargarLocalidadesOficiales(officialProvinceId);
+        if (cities.length) {
+          return NextResponse.json({ country, state, cities, source: "argentina-georef-v2" });
+        }
       } catch (error) {
-        console.error("No se pudo consultar GeoRef Argentina:", error);
+        console.error("GeoRef v2 falló; se intenta catálogo local:", error);
       }
 
-      // Resilient fallback to the local catalog if the official service is unavailable.
+      // Fallback to existing local data if GeoRef is temporarily unavailable.
       const { data: province, error: provinceError } = await supabase
         .from("provincias")
         .select("id,nombre")
@@ -102,7 +102,6 @@ export async function GET(request: Request) {
         .ilike("nombre", provinceName)
         .maybeSingle();
       if (provinceError) throw provinceError;
-
       if (province?.id) {
         const { data: cities, error } = await supabase
           .from("localidades")
