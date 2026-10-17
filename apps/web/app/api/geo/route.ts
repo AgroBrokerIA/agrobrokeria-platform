@@ -29,6 +29,39 @@ const ARGENTINA_PROVINCES = [
   ["T", "Tucumán"],
 ] as const;
 
+async function localidadesOficialesArgentina(provincia: string) {
+  const endpoint = new URL("https://apis.datos.gob.ar/georef/api/localidades");
+  endpoint.searchParams.set("provincia", provincia);
+  endpoint.searchParams.set("max", "5000");
+  endpoint.searchParams.set("orden", "nombre");
+  endpoint.searchParams.set("campos", "id,nombre,nombre_completo,centroide");
+
+  const response = await fetch(endpoint.toString(), {
+    next: { revalidate: 86400 },
+    headers: { Accept: "application/json" },
+  });
+  if (!response.ok) throw new Error("El catálogo oficial de localidades no respondió.");
+  const payload = await response.json() as {
+    localidades?: Array<{
+      id: string | number;
+      nombre: string;
+      nombre_completo?: string;
+      centroide?: { lat?: number; lon?: number };
+    }>;
+  };
+
+  return (payload.localidades ?? [])
+    .filter((x) => x.id != null && x.nombre)
+    .map((x) => ({
+      id: String(x.id),
+      name: x.nombre,
+      fullName: x.nombre_completo ?? x.nombre,
+      postalCode: null,
+      latitude: x.centroide?.lat ?? null,
+      longitude: x.centroide?.lon ?? null,
+    }));
+}
+
 export async function GET(request: Request) {
   const url = new URL(request.url);
   const country = url.searchParams.get("country")?.toUpperCase();
@@ -37,8 +70,6 @@ export async function GET(request: Request) {
   try {
     if (!country) return NextResponse.json({ countries: await getCountries() });
 
-    // Argentina's provinces are stable application data; don't depend on
-    // a third-party package's subdivision codes to populate this essential selector.
     if (country === "AR") {
       if (!state) {
         return NextResponse.json({
@@ -51,6 +82,17 @@ export async function GET(request: Request) {
       if (!selected) return NextResponse.json({ country, state, cities: [] });
 
       const provinceName = selected[1];
+
+      // First use the official national GeoRef API. This fills localities even
+      // when the application's own provincial/locality tables are incomplete.
+      try {
+        const cities = await localidadesOficialesArgentina(provinceName);
+        if (cities.length) return NextResponse.json({ country, state, cities, source: "argentina-georef" });
+      } catch (error) {
+        console.error("No se pudo consultar GeoRef Argentina:", error);
+      }
+
+      // Resilient fallback to the local catalog if the official service is unavailable.
       const { data: province, error: provinceError } = await supabase
         .from("provincias")
         .select("id,nombre")
@@ -60,6 +102,7 @@ export async function GET(request: Request) {
         .ilike("nombre", provinceName)
         .maybeSingle();
       if (provinceError) throw provinceError;
+
       if (province?.id) {
         const { data: cities, error } = await supabase
           .from("localidades")
@@ -68,30 +111,22 @@ export async function GET(request: Request) {
           .eq("activo", true)
           .order("nombre", { ascending: true });
         if (error) throw error;
-        if (cities?.length) {
-          return NextResponse.json({
-            country,
-            state,
-            cities: cities.map((x: any) => ({
-              id: String(x.id),
-              name: x.nombre,
-              postalCode: x.codigo_postal ?? null,
-              latitude: x.latitud ?? null,
-              longitude: x.longitud ?? null,
-            })),
-          });
-        }
+        return NextResponse.json({
+          country,
+          state,
+          cities: (cities ?? []).map((x: any) => ({
+            id: String(x.id),
+            name: x.nombre,
+            fullName: x.nombre,
+            postalCode: x.codigo_postal ?? null,
+            latitude: x.latitud ?? null,
+            longitude: x.longitud ?? null,
+          })),
+          source: "local-catalog",
+        });
       }
 
-      // Keep the city selector usable if the local catalog is incomplete.
-      const externalStates = await getStatesOfCountry(country);
-      const external = externalStates.find((x: any) =>
-        String(x.name).localeCompare(provinceName, "es", { sensitivity: "base" }) === 0
-      );
-      if (external?.iso2) {
-        return NextResponse.json({ country, state, cities: await getCitiesOfState(country, external.iso2) });
-      }
-      return NextResponse.json({ country, state, cities: [] });
+      return NextResponse.json({ country, state, cities: [], source: "empty" });
     }
 
     const states = await getStatesOfCountry(country);
