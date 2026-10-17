@@ -16,6 +16,14 @@ export default function Sidebar(){
   <nav className="sidebar-nav">{menu.map(([nombre,ruta,icono],index)=>{const href=ruta;const clean=ruta.split("?")[0];const label=t[keyMap[nombre]]||nombre;const activo=nombre==="Demandas"?pathname===clean&&isDemandRoute:nombre==="Ofertas"?pathname===clean&&!isDemandRoute:pathname===clean||(clean!=="/dashboard"&&pathname.startsWith(clean+"/"));const contador=nombre==="Mensajes"?mensajes:0;return <Link key={nombre+"-"+index} href={href} className={`sidebar-link ${activo?"active":""}`}><span className="sidebar-icon">{icono}</span><span className="sidebar-label">{label}</span>{nombre==="Oportunidades IA"&&<span className="sidebar-new">NUEVO</span>}{contador>0&&<span className="sidebar-badge">{contador>99?"99+":contador}</span>}</Link>})}</nav>
   <div className="sidebar-status"><span className="status-dot"/><div><strong>{t.platform||fallback.platform}</strong><small>{t["status.operativo"]||fallback["status.operativo"]}</small></div><span className="sidebar-status-count">{notificaciones>0?notificaciones:"✓"}</span></div>
   <Link href="/ayuda" className="sidebar-help"><span>?</span><div><strong>Centro de ayuda</strong><small>Preguntas frecuentes</small></div><b>›</b></Link>
-  <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">{[["Inicio","/dashboard","⌂"],["Mercado","/mercado","▥"],["Ofertas","/marketplace","▤"],["Operaciones","/operaciones","⇄"],["Empresas","/empresas","▦"]].map(([nombre,ruta,icono])=>{const active=pathname===ruta||pathname.startsWith(ruta+"/");return <Link key={ruta} href={ruta} className={active?"active":""}><span>{icono}</span><small>{t[keyMap[nombre]]||nombre}</small></Link>})}</nav>
+  <nav className="mobile-bottom-nav" aria-label="Navegación principal móvil">
+   <div className="mobile-bottom-nav-track">
+    {menu.filter(([nombre])=>nombre!=="Términos & Condiciones").map(([nombre,ruta,icono],index)=>{
+      const clean=ruta.split("?")[0];
+      const active=nombre==="Demandas"?pathname===clean&&isDemandRoute:nombre==="Ofertas"?pathname===clean&&!isDemandRoute:pathname===clean||(clean!=="/dashboard"&&pathname.startsWith(clean+"/"));
+      return <Link key={nombre+"-"+index} href={ruta} className={active?"active":""} aria-current={active?"page":undefined}><span>{icono}</span><small>{t[keyMap[nombre]]||nombre}</small></Link>;
+    })}
+   </div>
+  </nav>
  </aside>;
 }
