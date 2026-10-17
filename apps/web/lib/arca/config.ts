@@ -1,8 +1,8 @@
 import path from "node:path";
 
 const ARCA_DIR = path.join(process.cwd(), ".secrets", "arca");
-const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").toUpperCase();
-const isProduction = environment === "PRODUCCION";
+const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").trim().toUpperCase();
+const isProduction = ["PRODUCCION", "PRODUCTION", "PROD"].includes(environment);
 
 export const arcaConfig = {
   cuit: process.env.ARCA_CUIT ?? "",
