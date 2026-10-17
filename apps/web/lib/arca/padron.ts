@@ -63,8 +63,8 @@ export async function consultarPersonaPadron(cuitInput:string):Promise<PadronRes
   const errorConstancia=tag(body,"errorConstancia");
   if(!general||errorConstancia)return {configured:true,found:false,error:errorConstancia?"ARCA no devolvió una constancia válida":"SIN_DATOS_GENERALES"};
   const estadoClave=tag(general,"estadoClave").toUpperCase()||"NO_INFORMADO";
-  const impuestos=[...body.matchAll(/<descripcionImpuesto>([\\s\\S]*?)<\\/descripcionImpuesto>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
-  const actividades=[...body.matchAll(/<descripcionActividad>([\\s\\S]*?)<\\/descripcionActividad>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
+  const impuestos=[...body.matchAll(/<descripcionImpuesto>([\s\S]*?)<\/descripcionImpuesto>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
+  const actividades=[...body.matchAll(/<descripcionActividad>([\s\S]*?)<\/descripcionActividad>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
   const monotributoBlock=tag(body,"datosMonotributo");
   const monotributoError=tag(body,"errorMonotributo")||null;
   const monotributoDetectado=!!monotributoBlock&&!monotributoError&&/(categoria|actividad|impuesto)/i.test(monotributoBlock);
