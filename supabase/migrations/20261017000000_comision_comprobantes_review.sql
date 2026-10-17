@@ -281,7 +281,7 @@ grant execute on function public.revisar_pago_comision(uuid,text,numeric,text) t
 
 create or replace function public.confirmar_subida_comprobante(p_pago_id uuid)
 returns jsonb language plpgsql security definer set search_path = public, storage
-as $
+as $$
 declare v_pago public.comision_pagos%rowtype;
 begin
   if auth.uid() is null then raise exception 'Iniciá sesión para confirmar la carga'; end if;
@@ -296,7 +296,7 @@ begin
   update public.comision_pagos set estado='EN_REVISION' where id=p_pago_id;
   return jsonb_build_object('ok',true,'estado','EN_REVISION');
 end;
-$;
+$$;
 revoke all on function public.confirmar_subida_comprobante(uuid) from public;
 grant execute on function public.confirmar_subida_comprobante(uuid) to authenticated;
 
