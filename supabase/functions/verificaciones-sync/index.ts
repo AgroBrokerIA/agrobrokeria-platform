@@ -132,7 +132,7 @@ Deno.serve(async(req:Request)=>{
     const body=await req.json().catch(()=>({}));
     let ownCompanyIds:string[]=[],isAdmin=false,actorToken=serviceKey;
     if(!isCron){
-      const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return json({error:"AUTH_REQUIRED"},401);
+      const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return json({error:"AUTH_REQUIRED"},401);actorToken=token;
       const userClient=createClient(url,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
       const {data:{user},error:userError}=await userClient.auth.getUser(token);if(userError||!user)return json({error:"INVALID_SESSION"},401);
       const {data:profile}=await sb.from("profiles").select("active_company_id,tipo_usuario").eq("id",user.id).maybeSingle();
