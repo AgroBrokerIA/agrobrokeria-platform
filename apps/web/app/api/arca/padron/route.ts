@@ -17,7 +17,7 @@ export async function POST(request:NextRequest){
     if(!url||!anon||!serviceKey)return responseError("SUPABASE_SERVER_KEYS_NOT_CONFIGURED",503);
 
     const authorization=request.headers.get("authorization")||"";
-    const token=authorization.match(/^Bearer\\s+(.+)$/i)?.[1]||"";
+    const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1]||"";
     if(!token)return responseError("AUTH_REQUIRED",401);
     const isServiceCall=token===serviceKey;
     const admin=createClient(url,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
@@ -53,8 +53,8 @@ export async function POST(request:NextRequest){
     const {data:company,error:companyError}=await admin.from("empresas").select("id,cuit,tipo_empresa").eq("id",verification.empresa_id).maybeSingle();
     if(companyError)return responseError("COMPANY_LOOKUP_FAILED",500);
     if(!company)return responseError("COMPANY_NOT_FOUND",404);
-    const cuit=String(company.cuit||"").replace(/\\D/g,"");
-    if(!/^\\d{11}$/.test(cuit))return responseError("CUIT_INVALIDO",422);
+    const cuit=String(company.cuit||"").replace(/\D/g,"");
+    if(!/^\d{11}$/.test(cuit))return responseError("CUIT_INVALIDO",422);
 
     const result=await consultarPersonaPadron(cuit);
     return NextResponse.json({ok:true,result},{headers:{"Cache-Control":"no-store"}});
