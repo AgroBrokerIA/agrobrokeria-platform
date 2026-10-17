@@ -51,51 +51,42 @@ async function obtainTicket(cert:string,key:string) {
   if(!token||!sign)throw new Error("WSAA_TOKEN_SIGN_NO_DISPONIBLE");
   return {token,sign,expiry};
 }
-async function queryOfficialPadron(cuit:string) {
+async function queryOfficialPadron(cuit:string,verificationId:string,actorToken:string) {
   const cert=getPem("ARCA_CERTIFICATE_BASE64")||getPem("ARCA_CERTIFICATE_PEM");
   const key=getPem("ARCA_PRIVATE_KEY_BASE64")||getPem("ARCA_PRIVATE_KEY_PEM");
-  if(!cert||!key||!Deno.env.get("ARCA_CUIT"))return {configured:false as const,reason:"CREDENCIALES_ARCA_NO_CONFIGURADAS"};
+  if(!cert||!key||!Deno.env.get("ARCA_CUIT")) {
+    const proxyUrl=Deno.env.get("ARCA_PADRON_PROXY_URL")||"https://agrobrokeria-platform-agrobroker.vercel.app/api/arca/padron";
+    const response=await fetch(proxyUrl,{
+      method:"POST",
+      headers:{Authorization:`Bearer ${actorToken}`,"Content-Type":"application/json"},
+      body:JSON.stringify({verification_id:verificationId}),
+      signal:AbortSignal.timeout(30000)
+    });
+    const payload:any=await response.json().catch(()=>({}));
+    if(!response.ok||!payload?.ok||!payload?.result)throw new Error(payload?.error||`ARCA_PADRON_PROXY_HTTP_${response.status}`);
+    return payload.result;
+  }
   const ticket=await obtainTicket(cert,key);
   const endpoint=environment()==="PRODUCCION"
-    ?"https://aws.arca.gob.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.arca.gob.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.arca.gov.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.arca.gov.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="${SOAP_NS}"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${escapeXml(ticket.token)}</token><sign>${escapeXml(ticket.sign)}</sign><cuitRepresentada>${escapeXml(Deno.env.get("ARCA_CUIT")||"")}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`;
   const response=await fetch(endpoint,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8",accept:"text/xml"},body:soap,signal:AbortSignal.timeout(25000)});
   const body=await response.text();
   if(!response.ok)throw new Error("PADRON_ARCA_HTTP_"+response.status);
   if(!body.includes("Envelope"))throw new Error("RESPUESTA_PADRON_ARCA_INVALIDA");
-  const general=tag(body,"datosGenerales");
-  const errorConstancia=tag(body,"errorConstancia");
-  if(!general||errorConstancia)return {configured:true as const,found:false as const,error:errorConstancia||"SIN_DATOS_GENERALES"};
+  const general=tag(body,"datosGenerales"),errorConstancia=tag(body,"errorConstancia");
+  if(!general||errorConstancia)return {configured:true,found:false,error:errorConstancia||"SIN_DATOS_GENERALES"};
   const estadoClave=tag(general,"estadoClave").toUpperCase()||"NO_INFORMADO";
   const impuestos=[...body.matchAll(/<descripcionImpuesto>([\s\S]*?)<\/descripcionImpuesto>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
   const actividades=[...body.matchAll(/<descripcionActividad>([\s\S]*?)<\/descripcionActividad>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
-  const monotributoBlock=tag(body,"datosMonotributo");
-  const errorMonotributo=tag(body,"errorMonotributo");
-  const monotributoDetectado=!!monotributoBlock&&!errorMonotributo&&/(categoria|actividad|impuesto)/i.test(monotributoBlock);
-  return {configured:true as const,found:true as const,estadoClave,tipoClave:tag(general,"tipoClave"),tipoPersona:tag(general,"tipoPersona"),impuestos,actividades,monotributoDetectado,monotributoInformado:!!monotributoBlock||!!errorMonotributo,monotributoError:errorMonotributo||null};
-}
-async function syncIdentityRequirement(sb:any,company:any,isActive:boolean,now:string) {
-  const role=String(company.tipo_empresa||"").toUpperCase();
-  const {data:catalog,error:catalogError}=await sb.from("verificacion_requisitos_catalogo")
-    .select("id").eq("tipo_empresa",role).eq("codigo","IDENTIDAD_FISCAL").maybeSingle();
-  if(catalogError) throw catalogError;
-  if(!catalog) return;
-  const {error}=await sb.from("empresas_verificacion_requisitos").upsert({
-    empresa_id:company.id,
-    requisito_id:catalog.id,
-    estado:isActive?"VERIFICADO":"RECHAZADO",
-    observaciones:isActive
-      ?"Padrón oficial ARCA: CUIT activo. Este control no valida matrícula profesional."
-      :"ARCA no confirmó un CUIT activo; revisar el resultado y la documentación.",
-    verificado_at:isActive?now:null,
-    actualizado_at:now
-  },{onConflict:"empresa_id,requisito_id"});
-  if(error) throw error;
+  const monotributoBlock=tag(body,"datosMonotributo"),monotributoError=tag(body,"errorMonotributo")||null;
+  const monotributoDetectado=!!monotributoBlock&&!monotributoError&&/(categoria|actividad|impuesto)/i.test(monotributoBlock);
+  return {configured:true,found:true,estadoClave,tipoClave:tag(general,"tipoClave"),tipoPersona:tag(general,"tipoPersona"),impuestos,actividades,monotributoDetectado,monotributoInformado:!!monotributoBlock||!!monotributoError,monotributoError};
 }
 
-async function processArcaVerification(sb:any,verification:any) {
+async function processArcaVerification(sb:any,verification:any,actorToken:string) {
   const now=new Date().toISOString();
   const {data:company,error:companyError}=await sb.from("empresas").select("id,cuit,tipo_empresa").eq("id",verification.empresa_id).maybeSingle();
   if(companyError)throw companyError;if(!company)throw new Error("EMPRESA_NO_ENCONTRADA");
@@ -105,7 +96,7 @@ async function processArcaVerification(sb:any,verification:any) {
     if(error)throw error;return {id:verification.id,estado:"CUIT_INVALIDO",detalle:"El CUIT debe tener 11 dígitos."};
   }
   let padron:any;
-  try{padron=await queryOfficialPadron(cuit);}catch(error){
+  try{padron=await queryOfficialPadron(cuit,verification.id,actorToken);}catch(error){
     const detail=error instanceof Error?error.message:"ERROR_PADRON_ARCA";
     await sb.from("empresas_verificaciones").update({organismo:"ARCA",tipo_consulta:"ARCA_CUIT",estado:"PENDIENTE",observaciones:"No se pudo completar la consulta autenticada al padrón oficial de ARCA. No se asignó un resultado positivo; revisar credenciales, autorización del servicio y conectividad.",fuente_oficial:"ARCA ws_sr_constancia_inscripcion",identificador_consulta:cuit,consultado_at:now,resultado:{cuit_consultado:cuit,consulta_ejecutada:false,error_tecnico:detail}}).eq("id",verification.id);
     return {id:verification.id,estado:"PENDIENTE",detalle:detail==="CREDENCIALES_ARCA_NO_CONFIGURADAS"?"Faltan credenciales oficiales de ARCA en el entorno de servidor.":"ARCA no pudo confirmar la consulta; queda pendiente de reintento."};
@@ -138,7 +129,7 @@ Deno.serve(async(req:Request)=>{
     const supplied=req.headers.get("x-cron-secret")||authorization.replace(/^Bearer\s+/i,"");
     const isCron=(!!secret&&supplied===secret)||supplied===serviceKey;
     const body=await req.json().catch(()=>({}));
-    let ownCompanyIds:string[]=[],isAdmin=false;
+    let ownCompanyIds:string[]=[],isAdmin=false,actorToken=serviceKey;
     if(!isCron){
       const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return json({error:"AUTH_REQUIRED"},401);
       const userClient=createClient(url,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
@@ -170,7 +161,7 @@ Deno.serve(async(req:Request)=>{
       requests=[verification];
     }
     const results=[];
-    for(const verification of requests){try{results.push(await processArcaVerification(sb,verification));}catch(error){results.push({id:verification.id,estado:"PENDIENTE",detalle:error instanceof Error?error.message:"ERROR_DE_CONSULTA"});}}
+    for(const verification of requests){try{results.push(await processArcaVerification(sb,verification,actorToken));}catch(error){results.push({id:verification.id,estado:"PENDIENTE",detalle:error instanceof Error?error.message:"ERROR_DE_CONSULTA"});}}
     return json({ok:true,procesadas:results.length,resultados:results});
   }catch(error){return json({error:error instanceof Error?error.message:"SYNC_ERROR"},500);}
 });
