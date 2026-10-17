@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
+import "./mobile-fixes.css";
 import AppChrome from "../components/layout/AppChrome";
 import LanguageBootstrap from "../components/i18n/LanguageBootstrap";
 import PWARegister from "../components/pwa/PWARegister";
