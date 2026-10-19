@@ -1188,7 +1188,7 @@ export default function OperacionesPage() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    for (const linea of contrato.contenido.split("\\n")) {
+    for (const linea of contrato.contenido.split(/\r?\n/)) {
       const texto = linea.trim();
 
       if (!texto) {
