@@ -5,7 +5,7 @@ import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 
 type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;distancia_km:number|null;detalles?:Record<string,unknown>|null;publicacion?:Publication};
-type Publication={id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
+type Publication={id:string;empresa_id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
 
 const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const roleColor=(type?:string|null)=>({ACOPIO:"#15803D",COOPERATIVA:"#15803D",BROKER:"#2563EB",CORREDOR:"#2563EB",INTERMEDIARIO:"#EA580C",PRODUCTOR:"#CA8A04",COMPRADOR:"#CA8A04",EXPORTADOR:"#7C3AED",INDUSTRIA:"#7C3AED",MOLINO:"#7C3AED",LABORATORIO:"#475569",LOGISTICA:"#475569"} as Record<string,string>)[String(type||"").toUpperCase()]||"#475569";
@@ -18,11 +18,33 @@ export default function OportunidadesPage(){
   const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
   const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
-  const{data:os,error:oe}=await supabase.from("oportunidades").select("*").eq("empresa_id",p.active_company_id).order("indice_compatibilidad",{ascending:false}).order("creada_en",{ascending:false}); if(oe)throw oe;
-  const base=(os||[]) as Opportunity[], ids=base.map(x=>x.publicacion_id); let pubs:Publication[]=[];
-  if(ids.length){const{data:ps,error:pe}=await supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,moneda_id,provincia,localidad,puerto,incoterms(codigo),productos(nombre),paises(nombre,codigo_iso),empresas(razon_social,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas)").in("id",ids);if(pe)throw pe;pubs=(ps||[]) as unknown as Publication[]}
-  const map=new Map(pubs.map(x=>[x.id,x]));setItems(base.map(x=>({...x,publicacion:map.get(x.publicacion_id)})));
- }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar las oportunidades.")}finally{setLoading(false)}})()},[]);
+  const{data:ps,error:pe}=await supabase.from("publicaciones").select("id,empresa_id,tipo,cantidad_tn,precio_tn,moneda_id,provincia,localidad,puerto,estado,incoterms(codigo),productos(nombre),paises(nombre,codigo_iso),empresas(razon_social,tipo_empresa,verificada,reputacion_score,operaciones_realizadas,toneladas_operadas)").in("estado",["PUBLICADA","ACTIVA"]).order("creada_en",{ascending:false});
+  if(pe)throw pe;
+  const pubs=(ps||[]) as unknown as Publication[];
+  const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toLowerCase();
+  const isBuy=(v:string)=>["COMPRA","DEMANDA","BUY"].includes(norm(v).toUpperCase());
+  const score=(buy:Publication,sell:Publication)=>{
+   if(buy.id===sell.id||buy.empresa_id===sell.empresa_id)return 0;
+   if(isBuy(buy.tipo)===isBuy(sell.tipo))return 0;
+   if(norm(buy.productos?.nombre)!==norm(sell.productos?.nombre))return 0;
+   if(buy.moneda_id&&sell.moneda_id&&buy.moneda_id!==sell.moneda_id)return 0;
+   if(buy.precio_tn!=null&&sell.precio_tn!=null&&Number(buy.precio_tn)<Number(sell.precio_tn))return 0;
+   const sameCity=!!buy.localidad&&norm(buy.localidad)===norm(sell.localidad);
+   const sameProvince=!!buy.provincia&&norm(buy.provincia)===norm(sell.provincia);
+   const price=buy.precio_tn==null||sell.precio_tn==null?12:Math.max(0,25-Math.abs(Number(buy.precio_tn)-Number(sell.precio_tn))/Math.max(1,Number(sell.precio_tn))*100);
+   const quantity=Math.min(Number(buy.cantidad_tn||0),Number(sell.cantidad_tn||0))>0?20:0;
+   return Math.min(100,45+(sameCity?20:sameProvince?12:0)+price+quantity);
+  };
+  const matches:Opportunity[]=[];
+  for(let i=0;i<pubs.length;i++)for(let j=i+1;j<pubs.length;j++){
+   const a=pubs[i],b=pubs[j]; const buy=isBuy(a.tipo)?a:b, sell=isBuy(a.tipo)?b:a;
+   const s=score(buy,sell); if(s<60)continue;
+   if(a.empresa_id!==p.active_company_id&&b.empresa_id!==p.active_company_id)continue;
+   const own=a.empresa_id===p.active_company_id?a:b, other=own.id===a.id?b:a;
+   matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,empresa_id:p.active_company_id,indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:new Date().toISOString(),distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.razon_social,venta_empresa:sell.empresas?.razon_social,producto:buy.productos?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
+  }
+  setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));
+ }catch(e){setError(e instanceof Error?e.message:"No se pudieron calcular las oportunidades.")}finally{setLoading(false)}})()},[]);
 
  const products=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.productos?.nombre).filter(Boolean) as string[])),[items]);
  const countries=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.paises?.nombre).filter(Boolean) as string[])),[items]);
