@@ -1439,8 +1439,7 @@ export default function OperacionesPage() {
         representante,
       ]
         .filter(Boolean)
-        .join("
-");
+        .join(String.fromCharCode(10));
     };
 
     return `CONTRATO DE ABASTECIMIENTO DE GRANOS
