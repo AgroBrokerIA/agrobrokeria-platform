@@ -1188,7 +1188,8 @@ export default function OperacionesPage() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    for (const linea of contrato.contenido.split("\n")) {
+    for (const linea of contrato.contenido.split("
+")) {
       const texto = linea.trim();
 
       if (!texto) {
@@ -1439,7 +1440,8 @@ export default function OperacionesPage() {
         representante,
       ]
         .filter(Boolean)
-        .join("\n");
+        .join("
+");
     };
 
     return `CONTRATO DE ABASTECIMIENTO DE GRANOS
@@ -2564,7 +2566,7 @@ Firma: ______________________________
     <main className="operations-reference">
       <header className="operations-head">
         <div><h1>Operaciones</h1><p>Gestiona todas tus operaciones de granos y commodities, desde la negociación hasta la liquidación</p></div>
-        <button className="operations-new" onClick={()=>window.location.href="/ofertas"}>＋ Nueva operación</button>
+        <button className="operations-new" onClick={()=>window.location.href="/operaciones/nueva"}>＋ Nueva operación</button>
       </header>
 
       {error && <div className="operations-alert error">{error}</div>}
