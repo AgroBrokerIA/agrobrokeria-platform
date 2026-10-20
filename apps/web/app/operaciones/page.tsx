@@ -214,6 +214,7 @@ const ETAPAS = [
 
 export default function OperacionesPage() {
   const [operaciones, setOperaciones] = useState<Operacion[]>([]);
+  const [detalleOperacion, setDetalleOperacion] = useState<Operacion | null>(null);
   const [operacionMeta, setOperacionMeta] = useState<Record<string, OperacionMeta>>({});
   const [monedas, setMonedas] = useState<Record<number, string>>({});
   const [workflows, setWorkflows] = useState<Workflow[]>([]);
@@ -2607,7 +2608,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions">{action?<button onClick={action} className="op-more">⋮</button>:<button className="op-more" onClick={()=>setMensaje(`Operación ${operacion.codigo}: ${workflow?.etapa_actual||"sin etapa"}.`)}>⋮</button>}</span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={()=>setDetalleOperacion(operacion)} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2626,6 +2627,35 @@ Firma: ______________________________
           <button className="operations-apply" onClick={()=>document.getElementById("operations-table")?.scrollIntoView({behavior:"smooth"})}>⚱ Aplicar filtros</button>
         </aside>
       </section>
+
+      {detalleOperacion && (() => {
+        const workflowDetalle = obtenerWorkflow(detalleOperacion.id);
+        const ordenDetalle = workflowDetalle?.orden || 0;
+        const metaDetalle = operacionMeta[detalleOperacion.id] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
+        const continuar = async () => {
+          setDetalleOperacion(null);
+          if (ordenDetalle === 1) return iniciarAcuerdoComercial(detalleOperacion.id);
+          if (ordenDetalle === 2) return abrirAcuerdo(detalleOperacion);
+          if (ordenDetalle === 3) return abrirVisado(detalleOperacion);
+          if (ordenDetalle === 4) return abrirContrato(detalleOperacion);
+          if (ordenDetalle === 7) return iniciarLogistica(detalleOperacion.id);
+          setMensaje("Operación " + detalleOperacion.codigo + ": etapa actual " + (workflowDetalle?.etapa_actual || "sin etapa") + ". No hay una acción de avance habilitada para esta etapa.");
+        };
+        return <div role="dialog" aria-modal="true" aria-label={"Detalle " + detalleOperacion.codigo} className="operation-detail-backdrop" onClick={() => setDetalleOperacion(null)}>
+          <section className="operation-detail-dialog" onClick={(event) => event.stopPropagation()}>
+            <button type="button" className="operation-detail-close" onClick={() => setDetalleOperacion(null)} aria-label="Cerrar">×</button>
+            <h2>Operación {detalleOperacion.codigo}</h2>
+            <p><strong>Producto:</strong> {metaDetalle.producto}</p>
+            <p><strong>Volumen:</strong> {formatoNumero(detalleOperacion.cantidad_tn)} TN</p>
+            <p><strong>Precio:</strong> {formatoNumero(detalleOperacion.precio_tn)} por TN</p>
+            <p><strong>Origen:</strong> {metaDetalle.origen}</p>
+            <p><strong>Destino:</strong> {metaDetalle.destino}</p>
+            <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
+            <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
+            <div className="operation-detail-actions"><button type="button" onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" onClick={continuar}>Abrir acción de la etapa</button></div>
+          </section>
+        </div>;
+      })()}
 
       <section className="operations-bottom">
         <Bottom title="Resumen por estado"><div className="op-legend"><p>🔵 En negociación <b>{enNegociacion}</b></p><p>🟡 En contrato <b>{enContrato}</b></p><p>🟣 En logística <b>{enLogistica}</b></p><p>🟠 En liquidación <b>{enLiquidacion}</b></p><p>🟢 Finalizadas <b>{operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===10 || /CERR|FINAL/i.test(o.estado)).length}</b></p><p>🔴 Canceladas <b>{operaciones.filter(o=>/CANCEL/i.test(o.estado)).length}</b></p></div></Bottom>
