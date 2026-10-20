@@ -2633,13 +2633,21 @@ Firma: ______________________________
         const ordenDetalle = workflowDetalle?.orden || 0;
         const metaDetalle = operacionMeta[detalleOperacion.id] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
         const continuar = async () => {
-          setDetalleOperacion(null);
-          if (ordenDetalle === 1) return iniciarAcuerdoComercial(detalleOperacion.id);
-          if (ordenDetalle === 2) return abrirAcuerdo(detalleOperacion);
-          if (ordenDetalle === 3) return abrirVisado(detalleOperacion);
-          if (ordenDetalle === 4) return abrirContrato(detalleOperacion);
-          if (ordenDetalle === 7) return iniciarLogistica(detalleOperacion.id);
-          setMensaje("Operación " + detalleOperacion.codigo + ": etapa actual " + (workflowDetalle?.etapa_actual || "sin etapa") + ". No hay una acción de avance habilitada para esta etapa.");
+          let resultado = false;
+          if (ordenDetalle === 1) {
+            resultado = await iniciarAcuerdoComercial(detalleOperacion.id);
+          } else if (ordenDetalle === 2) {
+            await abrirAcuerdo(detalleOperacion); resultado = true;
+          } else if (ordenDetalle === 3) {
+            abrirVisado(detalleOperacion); resultado = true;
+          } else if (ordenDetalle === 4) {
+            abrirContrato(detalleOperacion); resultado = true;
+          } else if (ordenDetalle === 7) {
+            resultado = await iniciarLogistica(detalleOperacion.id);
+          } else {
+            setError("La operación " + detalleOperacion.codigo + " está en la etapa " + (workflowDetalle?.etapa_actual || "sin workflow") + " y no tiene una acción de avance configurada.");
+          }
+          if (resultado) setDetalleOperacion(null);
         };
         return <div role="dialog" aria-modal="true" aria-label={"Detalle " + detalleOperacion.codigo} className="operation-detail-backdrop" style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(15,23,42,.55)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={() => setDetalleOperacion(null)}>
           <section className="operation-detail-dialog" style={{position:"relative",width:"min(100%,560px)",maxHeight:"85vh",overflowY:"auto",background:"#fff",color:"#123",borderRadius:16,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={(event) => event.stopPropagation()}>
@@ -2652,6 +2660,7 @@ Firma: ______________________________
             <p><strong>Destino:</strong> {metaDetalle.destino}</p>
             <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
             <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
+            {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>Abrir acción de la etapa</button></div>
           </section>
         </div>;
