@@ -2644,8 +2644,16 @@ Firma: ______________________________
             abrirContrato(detalleOperacion); resultado = true;
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
+          } else if (ordenDetalle === 0 || !workflowDetalle) {
+            // Las operaciones antiguas o recién aceptadas pueden no tener aún
+            // un workflow enlazado. El siguiente paso comercial es negociar.
+            window.location.href = "/mensajes?operacion=" + encodeURIComponent(detalleOperacion.id);
+            return;
+          } else if (ordenDetalle >= 8) {
+            window.location.href = "/mensajes?operacion=" + encodeURIComponent(detalleOperacion.id);
+            return;
           } else {
-            setError("La operación " + detalleOperacion.codigo + " está en la etapa " + (workflowDetalle?.etapa_actual || "sin workflow") + " y no tiene una acción de avance configurada.");
+            setError("No hay una acción disponible para esta etapa. Podés continuar la negociación desde Mensajes.");
           }
           if (resultado) setDetalleOperacion(null);
         };
