@@ -31,11 +31,13 @@ export default function MensajesPage(){
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");
    const {data:perfil,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();if(pe)throw pe;
    if(!perfil?.active_company_id)throw new Error("Seleccioná una empresa activa antes de iniciar una conversación.");
-   const {data:map,error:me}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",perfil.active_company_id).maybeSingle();if(me)throw me;
-   const empresaComercial=map?.empresa_id||perfil.active_company_id;
-   const {data:partes,error:pa}=await supabase.from("operacion_participantes").select("operacion_id,rol").eq("empresa_id",empresaComercial);if(pa)throw pa;
+   const {data:members,error:memberError}=await supabase.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true);if(memberError)throw memberError;
+   const companyIds=[...new Set([perfil.active_company_id,...(members||[]).map(x=>x.company_id)].filter(Boolean))];
+   const {data:maps,error:mapError}=await supabase.from("company_empresa_map").select("company_id,empresa_id").in("company_id",companyIds);if(mapError)throw mapError;
+   const empresaIds=[...new Set([perfil.active_company_id,...(maps||[]).map(x=>x.empresa_id)].filter(Boolean))];
+   const {data:partes,error:pa}=await supabase.from("operacion_participantes").select("operacion_id,empresa_id,rol").in("empresa_id",empresaIds);if(pa)throw pa;
    const ids=[...new Set((partes||[]).map(x=>x.operacion_id).filter(Boolean))];
-   if(!ids.length){setOperacionesDisponibles([]);return;}
+   if(!ids.length){setOperacionesDisponibles([]);setErrorSelector("No encontramos operaciones asociadas a las empresas vinculadas a tu cuenta. Revisá la empresa activa y los participantes de la operación.");return;}
    const {data:ops,error:oe}=await supabase.from("operaciones").select("id,codigo,estado").in("id",ids);
    if(oe)throw oe;
    const rolPorOperacion=new Map((partes||[]).map(x=>[x.operacion_id,x.rol]));
