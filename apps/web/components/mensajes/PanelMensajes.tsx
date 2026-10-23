@@ -90,7 +90,15 @@ export default function PanelMensajes({
       const miEmpresaId = perfil?.active_company_id || null;
       const idiomaPreferido = perfil?.idioma || localStorage.getItem("agrobrokeria.language") || "es";
       setIdiomaUsuario(idiomaPreferido);
-      setEmpresaId(miEmpresaId);
+
+      // Las operaciones usan el ID comercial de empresas; perfiles y membresías
+      // usan el ID del directorio companies. Resolver la relación antes de
+      // buscar destinatarios evita conversaciones vacías por IDs distintos.
+      const { data: miMapa } = miEmpresaId
+        ? await supabase.from("company_empresa_map").select("empresa_id").eq("company_id", miEmpresaId).maybeSingle()
+        : { data: null };
+      const miEmpresaComercialId = miMapa?.empresa_id || miEmpresaId;
+      setEmpresaId(miEmpresaComercialId);
 
       const { data: participantes, error: errorParticipantes } =
         await supabase
@@ -107,42 +115,50 @@ export default function PanelMensajes({
       }
 
       const empresasParticipantes = (participantes || []) as Participante[];
-
       const empresasDestino = empresasParticipantes.filter(
         (participante) =>
           participante.empresa_id &&
-          participante.empresa_id !== miEmpresaId
+          participante.empresa_id !== miEmpresaComercialId
       );
-
-      const idsEmpresa = [
+      const idsEmpresaComercial = [
         ...new Set(empresasDestino.map((p) => p.empresa_id)),
       ];
 
       let usuariosEmpresa: CompanyUser[] = [];
-
-      if (idsEmpresa.length > 0) {
-        const { data: usuarios, error: errorUsuarios } = await supabase
-          .from("company_users")
-          .select("profile_id, company_id")
-          .in("company_id", idsEmpresa);
-
-        if (errorUsuarios) {
-          setError(
-            `No se pudieron cargar los usuarios participantes: ${errorUsuarios.message}`
-          );
+      if (idsEmpresaComercial.length > 0) {
+        const { data: mapas, error: errorMapas } = await supabase
+          .from("company_empresa_map")
+          .select("company_id, empresa_id")
+          .in("empresa_id", idsEmpresaComercial);
+        if (errorMapas) {
+          setError(`No se pudieron resolver las empresas participantes: ${errorMapas.message}`);
           setCargando(false);
           return;
         }
-
-        usuariosEmpresa = (usuarios || []) as CompanyUser[];
+        const idsDirectorio = [...new Set((mapas || []).map((m) => m.company_id))];
+        if (idsDirectorio.length > 0) {
+          const { data: usuarios, error: errorUsuarios } = await supabase
+            .from("company_users")
+            .select("profile_id, company_id")
+            .in("company_id", idsDirectorio)
+            .eq("activo", true);
+          if (errorUsuarios) {
+            setError(`No se pudieron cargar los usuarios participantes: ${errorUsuarios.message}`);
+            setCargando(false);
+            return;
+          }
+          usuariosEmpresa = (usuarios || []) as CompanyUser[];
+        }
       }
 
       const destinos = empresasDestino.flatMap((participante) => {
+        const mapas = [] as { company_id: string; empresa_id: string }[];
+        // La asociación ya fue consultada; las membresías se cotejan por el
+        // ID del directorio, pero el mensaje conserva el ID comercial.
         return usuariosEmpresa
-          .filter(
-            (usuario) =>
-              usuario.company_id === participante.empresa_id &&
-              usuario.profile_id !== user.id
+          .filter((usuario) =>
+            usuario.profile_id !== user.id &&
+            (usuario as CompanyUser & { empresa_id?: string }).empresa_id === participante.empresa_id
           )
           .map((usuario) => ({
             profileId: usuario.profile_id,
