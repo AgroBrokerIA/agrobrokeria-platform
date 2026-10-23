@@ -25,7 +25,7 @@ export default function Videollamadas(){
   if(operationError)setError(operationError.message);else setOperations((operationData||[]) as Operation[]);
   const m=user?.user_metadata||{};setUserName(m.nombre||m.full_name||user?.email?.split("@")[0]||"Tú");
  }
- useEffect(()=>{void load();const google=new URLSearchParams(window.location.search).get("google");if(google==="connected")setNotice("Google quedó conectado correctamente.");else if(google&&google!=="connected")setError("No se pudo completar la autorización de Google ("+google+").")},[]);
+ useEffect(()=>{void load();const params=new URLSearchParams(window.location.search);const google=params.get("google");const op=params.get("operacion");if(op)setOperationId(op);if(google==="connected")setNotice("Google quedó conectado correctamente.");else if(google&&google!=="connected")setError("No se pudo completar la autorización de Google ("+google+").");const now=new Date();now.setMinutes(0,0,0);now.setHours(now.getHours()+1);const local=new Date(now.getTime()-now.getTimezoneOffset()*60000).toISOString().slice(0,16);setStartAt(local)},[]);
  useEffect(()=>{if(!running){setElapsed(0);return}const started=selected?.inicio_at?new Date(selected.inicio_at).getTime():Date.now();const tick=()=>setElapsed(Math.max(0,Math.floor((Date.now()-started)/1000)));tick();const id=window.setInterval(tick,1000);return()=>window.clearInterval(id)},[running,selected]);
  async function conectarGoogle(){
   setBusy(true);setError("");
@@ -33,6 +33,7 @@ export default function Videollamadas(){
  }
  async function crear(){
   if(!startAt)return setError("Indicá fecha y hora de inicio.");
+  if(new Date(startAt).getTime()<=Date.now())return setError("La fecha y hora debe ser futura. Elegí al menos unos minutos después de la hora actual.");
   setBusy(true);setError("");
   try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");
    const {data,error:rpcError}=await supabase.rpc("crear_videollamada_comercial",{p_operacion_id:operationId||null,p_negociacion_id:null,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"});
