@@ -125,6 +125,7 @@ export default function PanelMensajes({
       ];
 
       let usuariosEmpresa: CompanyUser[] = [];
+      let mapasEmpresa: { company_id: string; empresa_id: string }[] = [];
       if (idsEmpresaComercial.length > 0) {
         const { data: mapas, error: errorMapas } = await supabase
           .from("company_empresa_map")
@@ -135,7 +136,8 @@ export default function PanelMensajes({
           setCargando(false);
           return;
         }
-        const idsDirectorio = [...new Set((mapas || []).map((m) => m.company_id))];
+        mapasEmpresa = (mapas || []) as { company_id: string; empresa_id: string }[];
+        const idsDirectorio = [...new Set(mapasEmpresa.map((m) => m.company_id))];
         if (idsDirectorio.length > 0) {
           const { data: usuarios, error: errorUsuarios } = await supabase
             .from("company_users")
@@ -152,13 +154,13 @@ export default function PanelMensajes({
       }
 
       const destinos = empresasDestino.flatMap((participante) => {
-        const mapas = [] as { company_id: string; empresa_id: string }[];
-        // La asociación ya fue consultada; las membresías se cotejan por el
-        // ID del directorio, pero el mensaje conserva el ID comercial.
+        const idsDirectorio = mapasEmpresa
+          .filter((mapa) => mapa.empresa_id === participante.empresa_id)
+          .map((mapa) => mapa.company_id);
         return usuariosEmpresa
           .filter((usuario) =>
-            usuario.profile_id !== user.id &&
-            (usuario as CompanyUser & { empresa_id?: string }).empresa_id === participante.empresa_id
+            idsDirectorio.includes(usuario.company_id) &&
+            usuario.profile_id !== user.id
           )
           .map((usuario) => ({
             profileId: usuario.profile_id,
