@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
       if(!participant && v.creador_profile_id!==user.id) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
     }
 
-    const {data:stored}=await admin.from("google_oauth_tokens").select("refresh_token").eq("provider","google").eq("user_id",user.id).is("revoked_at",null).maybeSingle();
+    const {data:stored}=await admin.from("google_oauth_tokens").select("refresh_token").eq("provider","google").eq("connected_by",user.id).eq("connected_company_id",companyId).is("revoked_at",null).maybeSingle();
     const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET,refreshToken=stored?.refresh_token||process.env.GOOGLE_REFRESH_TOKEN;
     if(!clientId||!clientSecret||!refreshToken) return NextResponse.json({error:"GOOGLE_CREDENTIALS_PENDING",detail:"Faltan credenciales OAuth de producción."},{status:409});
 
