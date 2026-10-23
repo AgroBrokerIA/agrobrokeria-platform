@@ -982,3 +982,23 @@ body{background:var(--ab-bg)}
   }
   .auth-page .auth-card{box-sizing:border-box !important}
 }
+
+
+/* Selector de operación para iniciar conversaciones comerciales */
+.operation-picker-backdrop{position:fixed;inset:0;z-index:1000;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(5,25,30,.58);backdrop-filter:blur(3px)}
+.operation-picker{width:min(640px,100%);max-height:min(80vh,760px);overflow:auto;background:#fff;border:1px solid #dbe4e8;border-radius:16px;box-shadow:0 24px 80px rgba(0,0,0,.25);padding:24px;color:#102b33}
+.operation-picker>header{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;margin-bottom:18px}
+.operation-picker>header h2{font-size:22px;line-height:1.3;margin:0 0 6px;font-weight:700}
+.operation-picker>header p{margin:0;color:#60757c;font-size:14px}
+.operation-picker>header>button{border:1px solid #d6e0e4;border-radius:8px;background:#fff;padding:8px 11px;cursor:pointer}
+.operation-picker>input{width:100%;padding:12px 14px;border:1px solid #cbd8dd;border-radius:9px;font:inherit;margin-bottom:14px;outline-color:#07945d}
+.operation-picker-list{display:flex;flex-direction:column;gap:8px}
+.operation-picker-list>button{display:flex;align-items:center;justify-content:space-between;gap:16px;text-align:left;border:1px solid #dbe5e8;border-radius:10px;padding:13px 15px;background:#fff;color:#14343b;cursor:pointer}
+.operation-picker-list>button:hover{border-color:#07945d;background:#f3fbf7}
+.operation-picker-list>button span{display:flex;flex-direction:column;gap:4px}
+.operation-picker-list>button small{color:#657b81;font-size:12px}
+.operation-picker-list>button b{font-size:13px;color:#078450;white-space:nowrap}
+.operation-picker-empty{padding:22px 12px;text-align:center;color:#526970;background:#f5f8f9;border-radius:10px;line-height:1.5}
+.operation-picker>footer{display:flex;justify-content:flex-end;margin-top:16px}
+.operation-picker>footer button{border:1px solid #d2dde1;border-radius:8px;background:white;padding:10px 16px;cursor:pointer}
+@media(max-width:600px){.operation-picker{padding:17px}.operation-picker-list>button{align-items:flex-start;flex-direction:column}.operation-picker-list>button b{white-space:normal}}
