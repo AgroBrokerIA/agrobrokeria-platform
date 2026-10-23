@@ -7,6 +7,7 @@ import PanelMensajes from "@/components/mensajes/PanelMensajes";
 
 type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number};
 type EmpresaInfo={nombre:string;rol:string;pais:string;verificada:boolean;confiable:boolean;productos:string[];direccion:string;telefono:string;email:string};
+type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:string|null};
 
 export default function MensajesPage(){
  const [conversaciones,setConversaciones]=useState<Conversacion[]>([]);
@@ -16,9 +17,35 @@ export default function MensajesPage(){
  const [error,setError]=useState("");
  const [tab,setTab]=useState("Información");
  const [busqueda,setBusqueda]=useState("");
+ const [mostrarSelectorOperacion,setMostrarSelectorOperacion]=useState(false);
+ const [cargandoOperaciones,setCargandoOperaciones]=useState(false);
+ const [operacionesDisponibles,setOperacionesDisponibles]=useState<OperacionDisponible[]>([]);
+ const [busquedaOperacion,setBusquedaOperacion]=useState("");
+ const [errorSelector,setErrorSelector]=useState("");
  const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo);setError("Código de operación copiado.");return}setError("Acción disponible desde la conversación seleccionada.");};
 
  useEffect(()=>{void cargarConversaciones()},[]);
+ async function abrirSelectorOperacion(){
+  setMostrarSelectorOperacion(true);setCargandoOperaciones(true);setErrorSelector("");setOperacionesDisponibles([]);
+  try{
+   const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");
+   const {data:perfil,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();if(pe)throw pe;
+   if(!perfil?.active_company_id)throw new Error("Seleccioná una empresa activa antes de iniciar una conversación.");
+   const {data:map,error:me}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",perfil.active_company_id).maybeSingle();if(me)throw me;
+   const empresaComercial=map?.empresa_id||perfil.active_company_id;
+   const {data:partes,error:pa}=await supabase.from("operacion_participantes").select("operacion_id,rol").eq("empresa_id",empresaComercial);if(pa)throw pa;
+   const ids=[...new Set((partes||[]).map(x=>x.operacion_id).filter(Boolean))];
+   if(!ids.length){setOperacionesDisponibles([]);return;}
+   const {data:ops,error:oe}=await supabase.from("operaciones").select("id,codigo,estado").in("id",ids);
+   if(oe)throw oe;
+   const rolPorOperacion=new Map((partes||[]).map(x=>[x.operacion_id,x.rol]));
+   setOperacionesDisponibles((ops||[]).map(x=>({id:x.id,codigo:x.codigo||x.id,estado:x.estado||null,rol:rolPorOperacion.get(x.id)||null})));
+  }catch(e){setErrorSelector(e instanceof Error?e.message:"No se pudieron cargar las operaciones.");}finally{setCargandoOperaciones(false)}
+ }
+ function iniciarDesdeOperacion(op:OperacionDisponible){
+  const nueva:Conversacion={operacion_id:op.id,codigo:op.codigo,ultimo_mensaje:"Iniciar conversación",ultimo_mensaje_at:new Date().toISOString(),no_leidos:0};
+  setConversaciones(actuales=>actuales.some(x=>x.operacion_id===op.id)?actuales:[nueva,...actuales]);setSeleccionada(nueva);setMostrarSelectorOperacion(false);setTab("Información");
+ }
  async function cargarConversaciones(){
   setCargando(true);setError("");
   const {data:{user}}=await supabase.auth.getUser();
@@ -51,7 +78,7 @@ export default function MensajesPage(){
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
  const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo,flag:empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:""})).filter(c=>!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase())),[conversaciones,empresa,seleccionada,busqueda]);
  return <main className="messages-reference">
-  <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>window.location.href="/operaciones"}>＋ Iniciar desde una operación</button></header>
+  <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>void abrirSelectorOperacion()}>＋ Iniciar desde una operación</button></header>
   {error&&<div className="messages-error">{error}</div>}
   {cargando?<div className="messages-loading">Cargando conversaciones...</div>:<div className="messages-workspace">
    <aside className="messages-list-panel">
@@ -69,5 +96,6 @@ export default function MensajesPage(){
     {tab==="Operaciones"&&<div className="info-placeholder">Operaciones vinculadas a la conversación.</div>}
    </aside>
   </div>}
+  {mostrarSelectorOperacion&&<div role="dialog" aria-modal="true" aria-labelledby="selector-operacion-title" className="operation-picker-backdrop" onClick={()=>setMostrarSelectorOperacion(false)}><section className="operation-picker" onClick={e=>e.stopPropagation()}><header><div><h2 id="selector-operacion-title">Iniciar conversación desde una operación</h2><p>Elegí una operación en la que participa tu empresa activa.</p></div><button type="button" aria-label="Cerrar" onClick={()=>setMostrarSelectorOperacion(false)}>✕</button></header><input value={busquedaOperacion} onChange={e=>setBusquedaOperacion(e.target.value)} placeholder="Buscar por código de operación…" aria-label="Buscar operación"/>{errorSelector&&<div className="messages-error">{errorSelector}</div>}{cargandoOperaciones?<p className="operation-picker-empty">Cargando operaciones…</p>:operacionesDisponibles.filter(op=>!busquedaOperacion||op.codigo.toLowerCase().includes(busquedaOperacion.toLowerCase())||(op.estado||"").toLowerCase().includes(busquedaOperacion.toLowerCase())).length===0?<p className="operation-picker-empty">No hay operaciones disponibles para la empresa activa. Verificá que figure como participante de una operación.</p>:<div className="operation-picker-list">{operacionesDisponibles.filter(op=>!busquedaOperacion||op.codigo.toLowerCase().includes(busquedaOperacion.toLowerCase())||(op.estado||"").toLowerCase().includes(busquedaOperacion.toLowerCase())).map(op=><button type="button" key={op.id} onClick={()=>iniciarDesdeOperacion(op)}><span><strong>{op.codigo}</strong><small>{op.rol?("Tu rol: "+op.rol):"Operación vinculada"}{op.estado?(" · "+op.estado):""}</small></span><b>Abrir conversación →</b></button>)}</div>}<footer><button type="button" onClick={()=>setMostrarSelectorOperacion(false)}>Cancelar</button></footer></section></div>}
  </main>
 }
