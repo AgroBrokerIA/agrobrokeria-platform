@@ -1002,3 +1002,7 @@ body{background:var(--ab-bg)}
 .operation-picker>footer{display:flex;justify-content:flex-end;margin-top:16px}
 .operation-picker>footer button{border:1px solid #d2dde1;border-radius:8px;background:white;padding:10px 16px;cursor:pointer}
 @media(max-width:600px){.operation-picker{padding:17px}.operation-picker-list>button{align-items:flex-start;flex-direction:column}.operation-picker-list>button b{white-space:normal}}
+
+/* Condición comercial: acceso directo al detalle, incluso cuando aún no fue informada */
+.cond-action{border:0;text-decoration:none;cursor:pointer;min-width:76px;text-align:center;white-space:nowrap;line-height:1.2}
+.cond-action:hover,.cond-action:focus-visible{filter:brightness(.94);outline:2px solid #176bb6;outline-offset:2px}
