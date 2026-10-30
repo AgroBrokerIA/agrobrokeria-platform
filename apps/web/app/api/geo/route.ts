@@ -3,30 +3,30 @@ import { getCountries, getStatesOfCountry, getCitiesOfState } from "@countrystat
 import { supabase } from "@/lib/supabase/server";
 
 const ARGENTINA_PROVINCES = [
-  ["C", "Ciudad Autónoma de Buenos Aires", "02"],
-  ["B", "Buenos Aires", "06"],
-  ["K", "Catamarca", "10"],
-  ["H", "Chaco", "22"],
-  ["U", "Chubut", "26"],
-  ["X", "Córdoba", "14"],
-  ["W", "Corrientes", "18"],
-  ["E", "Entre Ríos", "30"],
-  ["P", "Formosa", "34"],
-  ["Y", "Jujuy", "38"],
-  ["L", "La Pampa", "42"],
-  ["F", "La Rioja", "46"],
-  ["M", "Mendoza", "50"],
-  ["N", "Misiones", "54"],
-  ["Q", "Neuquén", "58"],
-  ["R", "Río Negro", "62"],
-  ["A", "Salta", "66"],
-  ["J", "San Juan", "70"],
-  ["D", "San Luis", "74"],
-  ["Z", "Santa Cruz", "78"],
-  ["S", "Santa Fe", "82"],
-  ["G", "Santiago del Estero", "86"],
-  ["V", "Tierra del Fuego", "94"],
-  ["T", "Tucumán", "90"],
+  ["C", "Ciudad Autónoma de Buenos Aires", "02", "CABA"],
+  ["B", "Buenos Aires", "06", "BA"],
+  ["K", "Catamarca", "10", "CT"],
+  ["H", "Chaco", "22", "CC"],
+  ["U", "Chubut", "26", "CH"],
+  ["X", "Córdoba", "14", "CB"],
+  ["W", "Corrientes", "18", "CR"],
+  ["E", "Entre Ríos", "30", "ER"],
+  ["P", "Formosa", "34", "FO"],
+  ["Y", "Jujuy", "38", "JY"],
+  ["L", "La Pampa", "42", "LP"],
+  ["F", "La Rioja", "46", "LR"],
+  ["M", "Mendoza", "50", "MZ"],
+  ["N", "Misiones", "54", "MN"],
+  ["Q", "Neuquén", "58", "NQ"],
+  ["R", "Río Negro", "62", "RN"],
+  ["A", "Salta", "66", "SA"],
+  ["J", "San Juan", "70", "SJ"],
+  ["D", "San Luis", "74", "SL"],
+  ["Z", "Santa Cruz", "78", "SC"],
+  ["S", "Santa Fe", "82", "SF"],
+  ["G", "Santiago del Estero", "86", "SE"],
+  ["V", "Tierra del Fuego", "94", "TF"],
+  ["T", "Tucumán", "90", "TU"],
 ] as const;
 
 async function cargarLocalidadesOficiales(provinciaId: string) {
@@ -67,17 +67,17 @@ export async function GET(request: Request) {
   const state = url.searchParams.get("state")?.toUpperCase();
 
   try {
-    if (!country) return NextResponse.json({ countries: await getCountries() });
+    if (!country) { const countries = await getCountries(); return NextResponse.json({ countries: countries.map((x: any) => ({ iso2: x.iso2 ?? x.isoCode ?? x.code, name: x.name })).filter((x: any) => x.iso2 && x.name) }); }
 
     if (country === "AR") {
       if (!state) {
         return NextResponse.json({
           country,
-          states: ARGENTINA_PROVINCES.map(([iso2, name]) => ({ iso2, name })),
+          states: ARGENTINA_PROVINCES.map(([, name, , databaseCode]) => ({ iso2: databaseCode, name })),
         });
       }
 
-      const selected = ARGENTINA_PROVINCES.find(([code]) => code.toUpperCase() === state);
+      const selected = ARGENTINA_PROVINCES.find(([legacyCode, , , databaseCode]) => legacyCode.toUpperCase() === state || databaseCode.toUpperCase() === state);
       if (!selected) return NextResponse.json({ country, state, cities: [], error: "Provincia no reconocida." });
 
       const [, provinceName, officialProvinceId] = selected;
@@ -128,9 +128,12 @@ export async function GET(request: Request) {
       return NextResponse.json({ country, state, cities: [], source: "empty" });
     }
 
-    const states = await getStatesOfCountry(country);
+    const rawStates = await getStatesOfCountry(country);
+    const states = rawStates.map((x: any) => ({ iso2: x.isoCode ?? x.iso2 ?? x.code, name: x.name })).filter((x: any) => x.iso2 && x.name);
     if (!state) return NextResponse.json({ country, states });
-    return NextResponse.json({ country, state, cities: await getCitiesOfState(country, state) });
+    const rawCities = await getCitiesOfState(country, state);
+    const cities = rawCities.map((x: any) => ({ id: x.id ?? x.name, name: x.name })).filter((x: any) => x.name);
+    return NextResponse.json({ country, state, cities });
   } catch (error) {
     return NextResponse.json(
       { error: error instanceof Error ? error.message : "No se pudo cargar el catálogo geográfico." },
