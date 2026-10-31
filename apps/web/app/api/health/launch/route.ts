@@ -6,11 +6,14 @@ import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-function authClient() {
+function authClient(accessToken: string) {
   return createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-    { auth: { autoRefreshToken: false, persistSession: false } }
+    {
+      global: { headers: { Authorization: `Bearer ${accessToken}` } },
+      auth: { autoRefreshToken: false, persistSession: false }
+    }
   );
 }
 
@@ -21,7 +24,7 @@ export async function GET(request: NextRequest) {
     const token = authorization?.startsWith("Bearer ") ? authorization.slice(7).trim() : "";
     if (!token) return NextResponse.json({ ok: false, error: "No autorizado." }, { status: 401 });
 
-    const supabase = authClient();
+    const supabase = authClient(token);
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ ok: false, error: "Sesión no válida." }, { status: 401 });
 
