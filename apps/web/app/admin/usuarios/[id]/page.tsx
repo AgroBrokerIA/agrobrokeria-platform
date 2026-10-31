@@ -1,6 +1,6 @@
 "use client";
 import Link from "next/link";
-import {useCallback,useEffect,useMemo,useState} from "react";
+import {useCallback,useEffect,useMemo,useState,type CSSProperties} from "react";
 import {useParams,useRouter} from "next/navigation";
 import {supabase} from "@/lib/supabase/client";
 
@@ -59,7 +59,7 @@ export default function AdminUserDetailPage(){
  if(!profile)return <main style={{padding:30}}><p>{error||"Usuario no encontrado."}</p><Link href="/admin/usuarios">Volver a usuarios</Link></main>;
  const val=(v:any)=>v===true?"Sí":v===false?"No":v==null||v===""?"—":String(v);
  return <main style={{padding:"24px clamp(14px,3vw,34px) 60px",background:"#f4f7fa",minHeight:"100vh",color:"#172b42"}}>
-  <header style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap",marginBottom:20}}><div><Link href="/admin/usuarios" style={{color:"#0b8f5b",fontWeight:700,textDecoration:"none"}}>← Volver a usuarios</Link><h1 style={{fontSize:30,margin:"10px 0 4px"}}>{profile.nombre||onboarding?.first_name+" "+onboarding?.last_name||"Usuario"}</h1><p style={{margin:0,color:"#64748b"}}>{profile.email||onboarding?.email||"Sin correo"} · {profile.tipo_usuario||onboarding?.role||"Sin rol"}</p></div><span style={{padding:"9px 13px",borderRadius:30,background:badge(status),fontWeight:800,color:"#24435d"}}>{statusLabels[status]||status}</span></header>
+  <header style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,flexWrap:"wrap",marginBottom:20}}><div><Link href="/admin/usuarios" style={{color:"#0b8f5b",fontWeight:700,textDecoration:"none"}}>← Volver a usuarios</Link><h1 style={{fontSize:30,margin:"10px 0 4px"}}>{profile.nombre||[onboarding?.first_name,onboarding?.last_name].filter(Boolean).join(" ")||"Usuario"}</h1><p style={{margin:0,color:"#64748b"}}>{profile.email||onboarding?.email||"Sin correo"} · {profile.tipo_usuario||onboarding?.role||"Sin rol"}</p></div><span style={{padding:"9px 13px",borderRadius:30,background:badge(status),fontWeight:800,color:"#24435d"}}>{statusLabels[status]||status}</span></header>
   {error&&<div role="alert" style={{padding:12,background:"#fee2e2",color:"#991b1b",borderRadius:10,marginBottom:12}}>{error}</div>}{notice&&<div role="status" style={{padding:12,background:"#dcfce7",color:"#166534",borderRadius:10,marginBottom:12}}>{notice}</div>}
   <section style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(min(100%,440px),1fr))",gap:16}}>
    <article style={card}><h2 style={h2}>Datos de cuenta y contacto</h2>{[["ID",profile.id],["Nombre",profile.nombre],["Correo",profile.email],["Teléfono",profile.telefono],["Empresa",profile.empresa],["CUIT",profile.cuit],["Actividad",profile.tipo_usuario],["Provincia",profile.provincia],["Fecha de alta",profile.created_at?new Date(profile.created_at).toLocaleString("es-AR"):"—"]].map(([k,v])=><Info key={k} label={k} value={val(v)}/>)}</article>
@@ -71,9 +71,9 @@ export default function AdminUserDetailPage(){
   </section>
  </main>;
 }
-const card:React.CSSProperties={background:"#fff",border:"1px solid #e1e8ef",borderRadius:14,padding:18,minWidth:0};
-const h2:React.CSSProperties={fontSize:18,margin:"0 0 14px"};
-const lbl:React.CSSProperties={display:"block",fontSize:13,fontWeight:700};
-const input:React.CSSProperties={display:"block",width:"100%",marginTop:7,padding:11,border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",color:"#172b42"};
+const card:CSSProperties={background:"#fff",border:"1px solid #e1e8ef",borderRadius:14,padding:18,minWidth:0};
+const h2:CSSProperties={fontSize:18,margin:"0 0 14px"};
+const lbl:CSSProperties={display:"block",fontSize:13,fontWeight:700};
+const input:CSSProperties={display:"block",width:"100%",marginTop:7,padding:11,border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",color:"#172b42"};
 function Info({label,value}:{label:string;value:any}){return <div style={{display:"grid",gridTemplateColumns:"minmax(115px, .65fr) minmax(0,1fr)",gap:10,padding:"7px 0",borderTop:"1px solid #f1f4f7",fontSize:13}}><span style={{color:"#64748b"}}>{label}</span><strong style={{overflowWrap:"anywhere",fontWeight:600}}>{value||"—"}</strong></div>}
 function DocumentCard({doc,onUpdate}:{doc:Doc;onUpdate:(d:Doc,s:string,n:string)=>void}){const [status,setStatus]=useState(doc.review_status),[notes,setNotes]=useState(doc.review_notes||"");return <div style={{border:"1px solid #dfe7ee",padding:13,borderRadius:11,minWidth:0}}><strong>{doc.document_type.replaceAll("_"," ")}</strong><p style={{fontSize:12,color:"#64748b",overflowWrap:"anywhere"}}>{doc.file_name} · {Math.max(1,Math.round(doc.file_size/1024))} KB</p>{doc.url?<a href={doc.url} target="_blank" rel="noreferrer" style={{color:"#087f56",fontWeight:700}}>Ver documento privado ↗</a>:<p style={{fontSize:12,color:"#b45309"}}>No se pudo generar vista previa del archivo.</p>}<label style={{display:"block",marginTop:12,fontSize:12,fontWeight:700}}>Revisión<select value={status} onChange={e=>setStatus(e.target.value)} style={input}><option value="PENDIENTE">Pendiente</option><option value="APROBADO">Aprobado</option><option value="OBSERVADO">Observado</option></select></label><textarea value={notes} onChange={e=>setNotes(e.target.value)} rows={2} placeholder="Observaciones" style={{...input,resize:"vertical"}}/><button onClick={()=>onUpdate(doc,status,notes)} style={{marginTop:8,padding:"8px 12px",border:0,borderRadius:8,background:"#e8f4ef",color:"#087f56",fontWeight:800,cursor:"pointer"}}>Guardar documento</button></div>}
