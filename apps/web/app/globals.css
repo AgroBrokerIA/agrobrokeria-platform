@@ -1082,3 +1082,24 @@ body{background:var(--ab-bg)}
 .chat-body>div>div:last-child{padding:9px!important;gap:8px!important}
 .chat-body>div>div:last-child textarea{height:44px!important;min-height:44px!important;padding:11px 12px!important;font-size:13px!important;line-height:20px!important}
 .chat-body>div>div:last-child button{height:44px!important;min-height:44px!important;padding:0 18px!important}
+
+
+/* Oportunidades IA: permitir recorrer la tabla completa sin cortar el porcentaje ni la acción */
+.ai-layout{min-width:0}
+.ai-main{min-width:0;max-width:100%}
+.ai-table-card{min-width:0;max-width:100%;overflow:hidden}
+.ai-table-scroll{width:100%;max-width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;scrollbar-width:thin}
+.ai-table-scroll .ai-table-head,.ai-table-scroll .ai-row{width:1080px;min-width:1080px;box-sizing:border-box}
+.ai-table-scroll .ai-row{min-height:76px;padding-top:8px;padding-bottom:8px}
+.ai-table-scroll .ai-product{min-width:0;overflow-wrap:anywhere}
+.ai-table-scroll .ai-detail{display:block;min-width:88px;white-space:normal;line-height:1.35}
+.ai-table-scroll .score-track{width:76px}
+.ai-table-title{min-width:0;gap:12px}
+.ai-table-title>div{min-width:0}
+.ai-table-title h2,.ai-table-title p{overflow-wrap:anywhere}
+@media(max-width:700px){
+ .ai-table-title{height:auto;align-items:flex-start;flex-direction:column;padding:13px;}
+ .ai-table-title label{font-size:11px}
+ .ai-table-title select{font-size:11px;height:36px}
+ .ai-table-scroll .ai-table-head,.ai-table-scroll .ai-row{width:1080px;min-width:1080px}
+}
