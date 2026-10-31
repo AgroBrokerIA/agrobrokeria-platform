@@ -14,7 +14,9 @@ const icon=(n?:string|null)=>{const x=(n||"").toLowerCase();return x.includes("s
 export default function OportunidadesPage(){
  const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades"),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[priceMin,setPriceMin]=useState(""),[priceMax,setPriceMax]=useState(""),[sort,setSort]=useState("opportunity");
 
- useEffect(()=>{(async()=>{try{
+ useEffect(()=>{
+  let active=true;
+  const load=async()=>{setLoading(true);setError("");try{
   const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
   const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
@@ -42,11 +44,17 @@ export default function OportunidadesPage(){
    if(aBuy===bBuy)continue;
    const buy=aBuy?a:b, sell=aBuy?b:a;
    const s=score(buy,sell); if(s<60)continue;
-   const other=b;
+   const other=sell;
    matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,empresa_id:p.active_company_id,indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:new Date().toISOString(),distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.razon_social,venta_empresa:sell.empresas?.razon_social,producto:buy.productos?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
   }
-  setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));
- }catch(e){setError(e instanceof Error?e.message:"No se pudieron calcular las oportunidades.")}finally{setLoading(false)}})()},[]);
+  if(active)setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));
+ }catch(e){if(active)setError(e instanceof Error?e.message:"No se pudieron calcular las oportunidades.")}finally{if(active)setLoading(false)}};
+ void load();
+ const channel=supabase.channel("oportunidades-publicaciones")
+  .on("postgres_changes",{event:"*",schema:"public",table:"publicaciones"},()=>{void load()})
+  .subscribe();
+ return()=>{active=false;void supabase.removeChannel(channel)};
+ },[]);
 
  const products=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.productos?.nombre).filter(Boolean) as string[])),[items]);
  const countries=useMemo(()=>Array.from(new Set(items.map(x=>x.publicacion?.paises?.nombre).filter(Boolean) as string[])),[items]);
