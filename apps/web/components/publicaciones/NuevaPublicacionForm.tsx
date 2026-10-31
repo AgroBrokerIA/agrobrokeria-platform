@@ -52,7 +52,6 @@ type LugarRecepcion = {
 
 type GeoProvincia = { iso2: string; name: string; type?: string; };
 type GeoPais = { id: number; codigo_iso: string; nombre: string; emoji?: string | null };
-type GeoLocalidad = { id: string; name: string; postalCode?: string | null; latitude?: number | null; longitude?: number | null; };
 
 async function obtenerEmpresaDelUsuario() {
   const {
@@ -139,8 +138,6 @@ export default function NuevaPublicacionForm() {
   const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
   const [provincias, setProvincias] = useState<GeoProvincia[]>([]);
   const [paises, setPaises] = useState<GeoPais[]>([]);
-  const [localidades, setLocalidades] = useState<GeoLocalidad[]>([]);
-  const [cargandoLocalidades, setCargandoLocalidades] = useState(false);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
@@ -194,29 +191,7 @@ export default function NuevaPublicacionForm() {
     return () => { activo = false; };
   }, [form.pais_id, paises]);
 
-  useEffect(() => {
-    const pais = paises.find((item) => item.id === Number(form.pais_id));
-    const provincia = provincias.find((item) => item.name === form.provincia);
-    if (!provincia) {
-      setLocalidades([]);
-      return;
-    }
-    let activo = true;
-    setCargandoLocalidades(true);
-    fetch("/api/geo?country=" + encodeURIComponent(pais?.codigo_iso || "AR") + "&state=" + encodeURIComponent(provincia.iso2))
-      .then((response) => response.json())
-      .then((data) => {
-        if (activo) setLocalidades(Array.isArray(data.cities) ? data.cities : []);
-      })
-      .catch((e) => {
-        console.error("No se pudieron cargar las localidades:", e);
-        if (activo) setLocalidades([]);
-      })
-      .finally(() => {
-        if (activo) setCargandoLocalidades(false);
-      });
-    return () => { activo = false; };
-  }, [form.provincia, form.pais_id, paises, provincias]);
+
 
   async function cargarDatos() {
     try {
