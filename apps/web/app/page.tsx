@@ -7,6 +7,7 @@ import styles from "./landing.module.css";
 
 type Quote = { name:string; price:string; detail:string; icon:string };
 type Stats = { quotes:number; publications:number; commodities:number; updated:string; source:string };
+type FinancialQuote = {symbol:string;name:string;category:"Divisas"|"Índices"|"Acciones";market:string;price:number;currency:string;changePercent:number|null;updatedAt:string|null;source:string};
 
 const fmt=(v:number)=>v.toLocaleString("es-AR");
 
@@ -14,9 +15,13 @@ export default function Home(){
  const [quotes,setQuotes]=useState<Quote[]>([]);
  const [stats,setStats]=useState<Stats>({quotes:0,publications:0,commodities:0,updated:"Sin datos actuales",source:"Sin datos recientes"});
  const [publicCounts,setPublicCounts]=useState({offers:0,demands:0,companies:0});
+ const [financialQuotes,setFinancialQuotes]=useState<FinancialQuote[]>([]);
+ const [financialUpdated,setFinancialUpdated]=useState("");
+ const [financialLoading,setFinancialLoading]=useState(true);
 
  useEffect(()=>{
    let mounted=true;
+   fetch("/api/public/financial-quotes",{cache:"no-store"}).then(r=>r.ok?r.json():Promise.reject(new Error("No se pudo consultar el proveedor financiero"))).then(data=>{if(mounted){setFinancialQuotes(Array.isArray(data.quotes)?data.quotes:[]);setFinancialUpdated(String(data.updatedAt||""));}}).catch(()=>{if(mounted)setFinancialQuotes([]);}).finally(()=>{if(mounted)setFinancialLoading(false);});
    (async()=>{
      const { data: market, error: marketError } = await supabase
        .from("market_public_summary")
@@ -92,7 +97,7 @@ export default function Home(){
    </div>
    <aside className={styles.quote}>
     <div className={styles.quoteHead}><strong>Últimas cotizaciones disponibles</strong><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1" target="_blank" rel="noreferrer">BCR - Rosario&nbsp; →</a></div>
-    <div className={styles.quoteRows}>{quotes.length ? quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={styles.up}>{q.detail}</span></div>) : <div className={styles.quoteRow}><strong>Sin cotizaciones verificadas disponibles</strong><span>La pizarra se mostrará cuando se confirme una actualización de la fuente de mercado.</span></div>}</div>
+    <div className={styles.quoteRows}>{quotes.length ? quotes.map(q=><div className={styles.quoteRow} key={q.name}><span className={styles.qIcon}>{q.icon}</span><strong>{q.name}</strong><span className={styles.quotePrice}>{q.price}</span><span className={styles.up}>{q.detail}</span></div>) : <div className={styles.quoteEmpty}><strong>Cotizaciones temporalmente no disponibles</strong><p>Estamos esperando la próxima actualización confirmada de BCR/CAC.</p></div>}</div>
     <Link href="#precios" className={styles.quoteButton}>▥ &nbsp; Ver precios y pizarra &nbsp; →</Link>
    </aside>
    <div className={styles.marketStrip}>{statItems.map(([icon,title,label])=><div className={styles.stat} key={label}><i className={styles.statIcon}>{icon}</i><div><strong>{title}</strong><small>{label}</small></div></div>)}</div>
@@ -127,8 +132,8 @@ export default function Home(){
   <section id="finanzas" className={styles.publicSection}>
    <div className={styles.sectionTitle}><span>MERCADOS FINANCIEROS</span><h2>Cotizaciones financieras</h2><p>Referencias de divisas, índices y activos financieros para seguir el contexto económico. Los valores se actualizan desde el proveedor externo y pueden tener demora.</p></div>
    <div className={styles.financePanel}>
-    <div className={styles.financeHeading}><div><strong>Mercados en vivo</strong><small>Datos provistos por TradingView · Puede existir demora según el mercado</small></div><a href="https://www.tradingview.com/markets/" target="_blank" rel="noreferrer">Ver todos los mercados →</a></div>
-    <iframe title="Cotizaciones financieras y mercados" src="https://s.tradingview.com/embed-widget/market-overview/?locale=es#%7B%22colorTheme%22%3A%22light%22%2C%22dateRange%22%3A%2212M%22%2C%22showChart%22%3Atrue%2C%22showFloatingTooltip%22%3Atrue%2C%22showVolume%22%3Afalse%2C%22showMarketStatus%22%3Atrue%2C%22width%22%3A%221000%22%2C%22height%22%3A%22520%22%2C%22isTransparent%22%3Afalse%2C%22tabs%22%3A%5B%7B%22title%22%3A%22Índices%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BCBA%3AMERV%22%7D%2C%7B%22s%22%3A%22SP%3ASPX%22%7D%2C%7B%22s%22%3A%22NASDAQ%3ANDX%22%7D%5D%7D%2C%7B%22title%22%3A%22Divisas%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22FX%3AEURUSD%22%7D%2C%7B%22s%22%3A%22FX%3AUSDJPY%22%7D%2C%7B%22s%22%3A%22FX_IDC%3AUSDARS%22%7D%5D%7D%2C%7B%22title%22%3A%22Acciones%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BCBA%3AYPFD%22%7D%2C%7B%22s%22%3A%22BCBA%3AGGAL%22%7D%2C%7B%22s%22%3A%22NASDAQ%3AAAPL%22%7D%5D%7D%5D%2C%22locale%22%3A%22es%22%7D" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+    <div className={styles.financeHeading}><div><strong>Mercados financieros</strong><small>{financialUpdated?`Última consulta: ${new Date(financialUpdated).toLocaleString("es-AR")}`:"Cotizaciones consultadas al abrir la página"}</small></div><a href="https://finance.yahoo.com/" target="_blank" rel="noreferrer">Fuente: Yahoo Finance →</a></div>
+    {financialLoading?<div className={styles.financeStatus}>Consultando cotizaciones financieras…</div>:financialQuotes.length===0?<div className={styles.financeStatus}>El proveedor no devolvió cotizaciones. Intentá nuevamente más tarde o consultá la fuente oficial.</div>:<div className={styles.financeTables}>{(["Divisas","Índices","Acciones"] as const).map(category=><section className={styles.financeGroup} key={category}><h3>{category}</h3><div className={styles.financeTableWrap}><table><thead><tr><th>Instrumento</th><th>Mercado</th><th>Último</th><th>Variación</th><th>Moneda</th><th>Actualización</th></tr></thead><tbody>{financialQuotes.filter(q=>q.category===category).map(q=><tr key={q.symbol}><td><strong>{q.name}</strong><small>{q.symbol}</small></td><td>{q.market}</td><td className={styles.financeNumber}>{q.price.toLocaleString("es-AR",{maximumFractionDigits:4})}</td><td className={q.changePercent===null?"":q.changePercent>=0?styles.financeUp:styles.financeDown}>{q.changePercent===null?"—":`${q.changePercent>=0?"+":""}${q.changePercent.toLocaleString("es-AR",{maximumFractionDigits:2})}%`}</td><td>{q.currency||"—"}</td><td>{q.updatedAt?new Date(q.updatedAt).toLocaleString("es-AR"):"—"}</td></tr>)}</tbody></table></div></section>)}</div>}
    </div>
    <p className={styles.financeDisclaimer}>Las cotizaciones financieras son informativas y no constituyen una oferta de compra o venta. Verificá la hora, moneda y mercado de cada instrumento.</p>
   </section>
