@@ -17,7 +17,7 @@ export default function SeguridadPage(){
   <nav className="security-tabs">{[["Resumen","/seguridad"],["Autenticación","/seguridad"],["Políticas","/seguridad"],...(esAdmin?[["Usuarios y roles","/admin"],["Permisos","/admin"],["Auditoría","/historial"],["Integraciones","/configuracion"]]:[])].map(([x,h],i)=><Link className={i===0?"active":""} href={h} key={x}>{x}</Link>)}</nav>
   {loading?<div className="security-loading">Cargando controles de seguridad…</div>:<><section className="security-top-grid"><Panel title="Nivel de seguridad"><SecurityLevel/></Panel><Panel title="Métodos de autenticación"><AuthMethods onConfig={goConfig}/></Panel><Panel title="Últimas alertas de seguridad"><Alerts onAll={()=>router.push("/notificaciones")}/></Panel></section>
   {esAdmin&&<section className="security-middle-grid"><Panel title="Usuarios recientes"><Users users={users} onView={id=>router.push(`/perfil?usuario=${encodeURIComponent(id)}`)}/></Panel><Panel title="Roles y permisos"><Roles onEdit={role=>router.push(`/admin?rol=${encodeURIComponent(role)}`)}/></Panel></section>}
-  {esAdmin&&<section className="security-bottom-grid" style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) minmax(0,1.5fr) minmax(0,1fr)",gap:16,alignItems:"stretch"}}><Panel title="Políticas de seguridad"><Policies/></Panel><Panel title="Actividad de auditoría"><Audit users={users}/></Panel><Panel title="Dispositivos activos"><Devices/></Panel></section>}</>}
+  {esAdmin&&<section className="security-bottom-grid"><Panel title="Políticas de seguridad"><Policies/></Panel><Panel title="Actividad de auditoría"><Audit users={users}/></Panel><Panel title="Dispositivos activos"><Devices/></Panel></section>}</>}
   <div className="security-actions"><Link href="/configuracion">Configuración →</Link>{esAdmin&&<Link href="/admin">Administración →</Link>}</div>
  </main>
 }
@@ -44,7 +44,16 @@ function AuthMethods({onConfig}:{onConfig:()=>void}){
 }
 function Alerts({onAll}:{onAll:()=>void}){return <div className="security-alerts"><p>No hay una fuente de alertas detalladas consultada desde esta pantalla.</p><button onClick={onAll}>Ver notificaciones</button></div>}
 function Users({users,onView}:{users:User[];onView:(id:string)=>void}){return <div className="security-table"><div className="security-row head"><span>USUARIO</span><span>EMPRESA</span><span>ROL</span><span>ÚLTIMO ACCESO</span><span>ESTADO</span><span>ACCIONES</span></div>{users.map((u,i)=><div className="security-row" key={u.id}><span><b>{(u.nombre||"?").slice(0,2).toUpperCase()}</b>{u.nombre||"Usuario"}</span><span>{u.empresa||"—"}</span><span><em>{u.tipo_usuario||["Productor","Acopio","Comprador","Intermediario","Transportista"][i]||"Usuario"}</em></span><span>{new Date(u.created_at).toLocaleDateString("es-AR")} · Fecha de registro</span><span className="active">Activo</span><button onClick={()=>onView(u.id)}>Ver</button></div>)}</div>}
-function Roles({onEdit}:{onEdit:(role:string)=>void}){return <div className="roles"><p>No se consultó una matriz de roles y permisos en esta pantalla.</p><button onClick={()=>onEdit("")}>Abrir administración</button></div>}
-function Policies(){return <div className="policies" style={{minWidth:0,overflowWrap:"break-word"}}><p style={{whiteSpace:"normal",wordBreak:"normal"}}>La autenticación de dos factores puede activarse con una aplicación TOTP. Las políticas de contraseña y sesión se administran desde Supabase Auth.</p><Link href="/configuracion">Abrir configuración</Link></div>}
+function Roles({onEdit}:{onEdit:(role:string)=>void}){return <div className="roles">
+ <p className="roles-note">La matriz detallada de permisos se gestiona desde Administración.</p>
+ <button onClick={()=>onEdit("")}>Abrir administración →</button>
+ </div>}
+function Policies(){return <div className="policies">
+ <p className="policy-intro">Controles disponibles para proteger el acceso y las sesiones de la plataforma.</p>
+ <div className="policy-item"><b>✓</b><span><strong>Autenticación en dos pasos</strong><small>Se puede activar desde el autenticador TOTP.</small></span></div>
+ <div className="policy-item"><b>✓</b><span><strong>Gestión de contraseñas</strong><small>Administrada mediante Supabase Auth.</small></span></div>
+ <div className="policy-item"><b>✓</b><span><strong>Sesiones y acceso</strong><small>Control de acceso según la sesión autenticada.</small></span></div>
+ <Link href="/configuracion">Abrir configuración de seguridad →</Link>
+ </div>}
 function Audit({users}:{users:User[]}){return <div className="audit"><p><span>Auditoría</span><span>{users.length?"Hay perfiles recientes, pero no se consultó el detalle de eventos en esta pantalla.":"Sin perfiles recientes."}</span><span>Fuente: registro de auditoría</span><span>Sin detalle sintético</span></p></div>}
 function Devices(){return <div className="devices"><p><b>▣</b><span><strong>Dispositivos activos</strong><small>No se consultó una fuente de sesiones/dispositivos desde esta pantalla.</small></span><em>Sin datos</em></p></div>}
