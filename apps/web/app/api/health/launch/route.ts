@@ -25,6 +25,11 @@ export async function GET(request: NextRequest) {
     const { data: { user }, error: authError } = await supabase.auth.getUser(token);
     if (authError || !user) return NextResponse.json({ ok: false, error: "Sesión no válida." }, { status: 401 });
 
+    const { data: isPlatformAdmin, error: adminCheckError } = await supabase.rpc("es_administrador_plataforma");
+    if (adminCheckError || isPlatformAdmin !== true) {
+      return NextResponse.json({ ok: false, error: "Solo la administradora de la plataforma puede ejecutar este control." }, { status: 403 });
+    }
+
     // Resolve the commercial profile with the same authenticated account.
     // Some existing accounts have a profile row keyed differently from auth.users.id.
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
