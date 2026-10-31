@@ -64,6 +64,7 @@ export default function LoginPage() {
         if (!factor) { setError("Tu cuenta requiere un segundo factor, pero no encontramos un autenticador verificado."); return; }
         const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
         if (challengeError) throw challengeError;
+        if (!challenge?.id) throw new Error("No se pudo iniciar el desafío del segundo factor.");
         setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id});
         return;
       }
