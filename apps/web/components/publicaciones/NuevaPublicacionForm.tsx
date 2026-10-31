@@ -318,14 +318,6 @@ export default function NuevaPublicacionForm() {
     });
   }
 
-  function alternarLugar(codigo: string) {
-    setLugaresSeleccionados((actuales) =>
-      actuales.includes(codigo)
-        ? actuales.filter((item) => item !== codigo)
-        : [...actuales, codigo]
-    );
-  }
-
   async function guardar(e: React.FormEvent<HTMLFormElement>) {
     e.preventDefault();
     setMensaje("");
@@ -416,13 +408,13 @@ export default function NuevaPublicacionForm() {
   if (cargando) return <div style={{ padding: 20 }}>Cargando formulario...</div>;
 
   return (
-    <form onSubmit={guardar} style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <form onSubmit={guardar} className="publication-form">
       <h1>Nueva publicación</h1>
 
       {mensaje && <div style={{ padding: 12, borderRadius: 8, background: "#dcfce7", color: "#166534" }}>{mensaje}</div>}
       {error && <div style={{ padding: 12, borderRadius: 8, background: "#fee2e2", color: "#991b1b" }}>{error}</div>}
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
+      <div className="publication-basic-grid">
         <label>Tipo<select value={form.tipo} onChange={(e) => actualizarCampo("tipo", e.target.value as "VENTA" | "COMPRA")}><option value="VENTA">Venta</option><option value="COMPRA">Compra</option></select></label>
         <label>Producto<select value={form.producto_id} onChange={(e) => actualizarCampo("producto_id", Number(e.target.value))}>{productos.map((producto) => <option key={producto.id} value={producto.id}>{producto.nombre}</option>)}</select></label>
         <label>Cantidad (TN)<input type="number" min="0.01" step="0.01" value={form.cantidad_tn} onChange={(e) => actualizarCampo("cantidad_tn", e.target.value)} /></label>
