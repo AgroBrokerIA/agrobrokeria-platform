@@ -31,7 +31,7 @@ export default function OportunidadesPage(){
    if(buy.precio_tn!=null&&sell.precio_tn!=null&&Number(buy.precio_tn)<Number(sell.precio_tn))return 0;
    const sameCity=!!buy.localidad&&norm(buy.localidad)===norm(sell.localidad);
    const sameProvince=!!buy.provincia&&norm(buy.provincia)===norm(sell.provincia);
-   const price=buy.precio_tn==null||sell.precio_tn==null?12:Math.max(0,25-Math.abs(Number(buy.precio_tn)-Number(sell.precio_tn))/Math.max(1,Number(sell.precio_tn))*100);
+   const price=buy.precio_tn==null||sell.precio_tn==null?12:Math.max(0,25-Math.min(25,Math.abs(Number(buy.precio_tn)-Number(sell.precio_tn))/Math.max(1,Number(sell.precio_tn))*100));
    const quantity=Math.min(Number(buy.cantidad_tn||0),Number(sell.cantidad_tn||0))>0?20:0;
    return Math.min(100,45+(sameCity?20:sameProvince?12:0)+price+quantity);
   };
