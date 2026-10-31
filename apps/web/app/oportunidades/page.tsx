@@ -18,7 +18,7 @@ export default function OportunidadesPage(){
   let active=true;
   const load=async()=>{setLoading(true);setError("");try{
   const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
-  const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
+  const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}\n  const{data:companyMap,error:mapError}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",p.active_company_id).maybeSingle();if(mapError)throw mapError;if(!companyMap?.empresa_id)throw new Error("La empresa activa no tiene vínculo comercial configurado.");
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
   const{data:ps,error:pe}=await supabase.rpc("listar_publicaciones_activas_oportunidades");
   if(pe)throw pe;
@@ -39,7 +39,7 @@ export default function OportunidadesPage(){
   };
   const matches:Opportunity[]=[];
   for(let i=0;i<pubs.length;i++)for(let j=i+1;j<pubs.length;j++){
-   const a=pubs[i],b=pubs[j];
+   const a=pubs[i],b=pubs[j];\n   if(a.empresa_id!==companyMap.empresa_id&&b.empresa_id!==companyMap.empresa_id)continue;
    const aBuy=isBuy(a.tipo),bBuy=isBuy(b.tipo);
    if(aBuy===bBuy)continue;
    const buy=aBuy?a:b, sell=aBuy?b:a;
@@ -47,7 +47,7 @@ export default function OportunidadesPage(){
    const other=sell;
    matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,empresa_id:p.active_company_id,indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:new Date().toISOString(),distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.razon_social,venta_empresa:sell.empresas?.razon_social,producto:buy.productos?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
   }
-  if(active)setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));
+  if(active){setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));await Promise.all(matches.map(x=>supabase.rpc("registrar_alerta_oportunidad",{p_publicacion_compra_id:String(x.detalles?.compra_id||""),p_publicacion_venta_id:String(x.detalles?.venta_id||"")} ).then(({error})=>{if(error)console.warn("No se pudo registrar alerta de oportunidad",error.message)})));}
  }catch(e){if(active)setError(e instanceof Error?e.message:"No se pudieron calcular las oportunidades.")}finally{if(active)setLoading(false)}};
  void load();
  const channel=supabase.channel("oportunidades-publicaciones")
