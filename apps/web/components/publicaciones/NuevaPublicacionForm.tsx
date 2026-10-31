@@ -539,7 +539,7 @@ export default function NuevaPublicacionForm() {
             "TOLERANCIAS, MERMAS, RECHAZOS O PENALIDADES:",
             "VIGENCIA DE LA OFERTA Y PLAZO PARA ACEPTAR:",
             "OTRAS CONDICIONES COMERCIALES, LOGÍSTICAS O LEGALES:"
-          ].join("\\n"))}>Insertar guía de detalle</button>
+          ].join("\n"))}>Insertar guía de detalle</button>
         </div>
         <textarea className="publication-observations-input" value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={9}
           placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:
