@@ -467,6 +467,16 @@ export default function NuevaPublicacionForm() {
               );
             }) : <p className="publication-empty">{busquedaPuerto.trim().length < 2 ? "No hay puertos cargados para este país. Escribí al menos dos letras para buscar en el catálogo mundial." : "No encontramos puertos con ese nombre. Probá con otra escritura o con el nombre en inglés."}</p>}
         </div>
+        {puertosSeleccionados.length > 0 && <div className="publication-chips publication-port-chips">
+          {puertosSeleccionados.map((codigo) => {
+            const puerto = puertos.find((item) => item.codigo === codigo);
+            const nombre = puerto ? puerto.nombre + " · " + puerto.pais : codigo;
+            return <span key={codigo}>{nombre}<button type="button" aria-label={"Quitar " + nombre} onClick={() => {
+              setPuertosSeleccionados((actuales) => actuales.filter((item) => item !== codigo));
+              if (form.puerto === codigo) actualizarCampo("puerto", puertosSeleccionados.find((item) => item !== codigo) ?? "");
+            }}>×</button></span>;
+          })}
+        </div>}
         <div className="publication-selected-row">
           <label htmlFor="puerto-principal">Puerto principal</label>
           <select id="puerto-principal" value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
