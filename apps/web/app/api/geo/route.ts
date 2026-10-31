@@ -34,14 +34,30 @@ export async function GET(request: Request) {
     if (!stateCode) {
       const { data, error } = await supabase
         .from("provincias")
-        .select("codigo,nombre")
+        .select("codigo,nombre,tipo")
         .eq("pais_id", country.id)
         .eq("activo", true)
         .order("nombre", { ascending: true });
       if (error) throw error;
+      if ((data ?? []).length) {
+        return NextResponse.json({
+          country: countryCode,
+          states: data.map((x: any) => ({ iso2: x.codigo, name: x.nombre, type: x.tipo ?? "División administrativa" })),
+        });
+      }
+      // ISO 3166-2 fallback for countries not yet materialized in Supabase.
+      const response = await fetch("https://staticdata.dev/v1/country-subdivisions.min.json", {
+        next: { revalidate: 86400 },
+        headers: { Accept: "application/json" },
+      });
+      if (!response.ok) throw new Error("No se pudo consultar el catálogo ISO 3166-2.");
+      const subdivisions = await response.json() as Array<{ code: string; name: string; country: string; type: string }>;
       return NextResponse.json({
         country: countryCode,
-        states: (data ?? []).map((x: any) => ({ iso2: x.codigo, name: x.nombre })),
+        states: subdivisions
+          .filter((x) => x.country === countryCode)
+          .map((x) => ({ iso2: x.code, name: x.name, type: x.type })),
+        source: "ISO 3166-2",
       });
     }
 
