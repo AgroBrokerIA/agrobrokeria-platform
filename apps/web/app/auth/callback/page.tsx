@@ -69,11 +69,11 @@ export default function AuthCallbackPage() {
           supabase
             .from("aceptaciones_legales")
             .select("documento_legal_id,version")
-            .eq("profile_id", user.id),
+            .eq("profile_id", userId),
         ]);
 
       if (legalError || acceptedError) {
-        if (active) setError("No se pudo verificar la documentación legal.");
+        setError("No se pudo verificar la documentación legal.");
         return;
       }
 
