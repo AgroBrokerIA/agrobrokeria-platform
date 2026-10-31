@@ -67,28 +67,14 @@ export default function MensajesPage(){
  useEffect(()=>{if(seleccionada)void cargarEmpresa(seleccionada.operacion_id)},[seleccionada?.operacion_id]);
  async function cargarEmpresa(operacionId:string){
   setEmpresa(null);
-  const [{data:{user}},{data:parts,error:partsError}]=await Promise.all([
-   supabase.auth.getUser(),
-   supabase.from("operacion_participantes").select("empresa_id,rol").eq("operacion_id",operacionId)
-  ]);
-  if(partsError||!parts?.length)return;
-  const {data:profile}=user?await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle():{data:null};
-  const commercialIds=parts.map(p=>p.empresa_id);
-  const {data:maps}=await supabase.from("company_empresa_map").select("empresa_id,company_id,verified").in("empresa_id",commercialIds);
-  const activeDirectoryId=profile?.active_company_id||null;
-  const mapByCommercial=new Map((maps||[]).map(m=>[m.empresa_id,m]));
-  const other=parts.find(p=>mapByCommercial.get(p.empresa_id)?.company_id!==activeDirectoryId)||parts[0];
-  const mapping=mapByCommercial.get(other.empresa_id);
-  if(!mapping?.company_id)return;
-  const {data:company}=await supabase.from("companies").select("id,razon_social,nombre_comercial,email,telefono,pais,provincia,ciudad,direccion,estado").eq("id",mapping.company_id).maybeSingle();
-  if(!company)return;
-  const x=company as Record<string,any>;
+  const {data,error}=await supabase.rpc("obtener_empresa_participante_mensajes",{p_operacion_id:operacionId});
+  if(error){console.error("No se pudo cargar la empresa participante",error);setError("No se pudo cargar la información de la empresa participante.");return;}
+  const x=Array.isArray(data)?data[0]:data;
+  if(!x)return;
   setEmpresa({
-   nombre:x.nombre_comercial||x.razon_social||"Empresa participante",
-   rol:other.rol==="VENDEDOR"?"Vendedor":other.rol==="COMPRADOR"?"Comprador":other.rol==="INTERMEDIARIO"?"Intermediario":other.rol||"Participante",
-   pais:x.pais||"País no informado",
-   verificada:Boolean(mapping.verified),
-   confiable:false,productos:[],
+   nombre:x.nombre||"Empresa participante",
+   rol:x.rol==="VENDEDOR"?"Vendedor":x.rol==="COMPRADOR"?"Comprador":x.rol==="INTERMEDIARIO"?"Intermediario":x.rol||"Participante",
+   pais:x.pais||"País no informado",verificada:Boolean(x.verificada),confiable:false,productos:[],
    direccion:[x.direccion,x.ciudad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",
    telefono:x.telefono||"No informado",email:x.email||"No informado"
   });
