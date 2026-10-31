@@ -561,7 +561,7 @@ export default function NuevaPublicacionForm() {
             "• Quién asume flete, carga, descarga y gastos portuarios.",
             "• Documentación, calidad, tolerancias y requisitos adicionales.",
             "• Cualquier condición comercial o logística que deba conocer la contraparte."
-          ].join("\\n")} />
+          ].join("\n")} />
         <small>Cuanto más completas sean las observaciones, menos dudas habrá durante la negociación y la formalización del contrato.</small>
       </section>
 
