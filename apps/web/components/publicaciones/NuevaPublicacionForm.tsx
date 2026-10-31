@@ -32,6 +32,7 @@ type Formulario = {
   humedad: string;
   proteina: string;
   observaciones: string;
+  pais_id: number;
 };
 
 type Puerto = {
@@ -49,7 +50,8 @@ type LugarRecepcion = {
   descripcion: string | null;
 };
 
-type GeoProvincia = { iso2: string; name: string; };
+type GeoProvincia = { iso2: string; name: string; type?: string; };
+type GeoPais = { id: number; codigo_iso: string; nombre: string; emoji?: string | null };
 type GeoLocalidad = { id: string; name: string; postalCode?: string | null; latitude?: number | null; longitude?: number | null; };
 
 async function obtenerEmpresaDelUsuario() {
@@ -136,6 +138,7 @@ export default function NuevaPublicacionForm() {
   const [puertos, setPuertos] = useState<Puerto[]>([]);
   const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
   const [provincias, setProvincias] = useState<GeoProvincia[]>([]);
+  const [paises, setPaises] = useState<GeoPais[]>([]);
   const [localidades, setLocalidades] = useState<GeoLocalidad[]>([]);
   const [cargandoLocalidades, setCargandoLocalidades] = useState(false);
 
@@ -153,6 +156,7 @@ export default function NuevaPublicacionForm() {
     humedad: "",
     proteina: "",
     observaciones: "",
+    pais_id: 1,
   });
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
@@ -167,21 +171,31 @@ export default function NuevaPublicacionForm() {
 
   useEffect(() => {
     void cargarDatos();
-    void cargarProvincias();
+    void cargarPaises();
   }, []);
 
-  async function cargarProvincias() {
-    try {
-      const response = await fetch("/api/geo?country=AR");
-      const data = await response.json();
-      setProvincias(Array.isArray(data.states) ? data.states : []);
-    } catch (e) {
-      console.error("No se pudieron cargar las provincias:", e);
-      setProvincias([]);
-    }
+  async function cargarPaises() {
+    const { data, error } = await supabase.from("paises").select("id,codigo_iso,nombre,emoji").eq("activo", true).order("nombre");
+    if (error) { setError("No se pudo cargar el catálogo mundial: " + error.message); return; }
+    const rows = (data ?? []) as GeoPais[];
+    setPaises(rows);
+    const argentina = rows.find((x) => x.codigo_iso === "AR");
+    if (argentina) setForm((prev) => ({ ...prev, pais_id: argentina.id }));
   }
 
   useEffect(() => {
+    const pais = paises.find((item) => item.id === Number(form.pais_id));
+    if (!pais) { setProvincias([]); return; }
+    let activo = true;
+    fetch("/api/geo?country=" + encodeURIComponent(pais.codigo_iso))
+      .then((response) => response.json())
+      .then((data) => { if (activo) setProvincias(Array.isArray(data.states) ? data.states : []); })
+      .catch((e) => { console.error("No se pudieron cargar las divisiones administrativas:", e); if (activo) setProvincias([]); });
+    return () => { activo = false; };
+  }, [form.pais_id, paises]);
+
+  useEffect(() => {
+    const pais = paises.find((item) => item.id === Number(form.pais_id));
     const provincia = provincias.find((item) => item.name === form.provincia);
     if (!provincia) {
       setLocalidades([]);
@@ -189,7 +203,7 @@ export default function NuevaPublicacionForm() {
     }
     let activo = true;
     setCargandoLocalidades(true);
-    fetch("/api/geo?country=AR&state=" + encodeURIComponent(provincia.iso2))
+    fetch("/api/geo?country=" + encodeURIComponent(pais?.codigo_iso || "AR") + "&state=" + encodeURIComponent(provincia.iso2))
       .then((response) => response.json())
       .then((data) => {
         if (activo) setLocalidades(Array.isArray(data.cities) ? data.cities : []);
@@ -202,7 +216,7 @@ export default function NuevaPublicacionForm() {
         if (activo) setCargandoLocalidades(false);
       });
     return () => { activo = false; };
-  }, [form.provincia, provincias]);
+  }, [form.provincia, form.pais_id, paises, provincias]);
 
   async function cargarDatos() {
     try {
@@ -400,6 +414,7 @@ export default function NuevaPublicacionForm() {
         humedad: form.humedad ? Number(form.humedad) : null,
         proteina: form.proteina ? Number(form.proteina) : null,
         observaciones: form.observaciones.trim(),
+        pais_id: form.pais_id || null,
       };
 
       if (modoEdicion && publicacionId) {
@@ -473,7 +488,13 @@ export default function NuevaPublicacionForm() {
         <label>Precio por TN (opcional)<input type="number" min="0.01" step="0.01" placeholder="Podés definirlo durante la negociación" value={form.precio_tn} onChange={(e) => actualizarCampo("precio_tn", e.target.value)} /></label>
         <label>Moneda<select value={form.moneda_id} onChange={(e) => actualizarCampo("moneda_id", Number(e.target.value))}>{monedas.map((moneda) => <option key={moneda.id} value={moneda.id}>{moneda.codigo} - {moneda.nombre}</option>)}</select></label>
         <label>Incoterm (opcional)<select value={form.incoterm_id} onChange={(e) => actualizarCampo("incoterm_id", Number(e.target.value))}><option value={0}>Sin definir por ahora</option>{incoterms.map((incoterm) => <option key={incoterm.id} value={incoterm.id}>{incoterm.codigo} - {incoterm.descripcion}</option>)}</select></label>
-        <label>Provincia (opcional)
+        <label>País de origen / ubicación
+          <select value={form.pais_id} onChange={(e) => { actualizarCampo("pais_id", Number(e.target.value)); actualizarCampo("provincia", ""); actualizarCampo("localidad", ""); }}>
+            <option value={0}>Seleccionar país...</option>
+            {paises.map((pais) => <option key={pais.id} value={pais.id}>{pais.emoji ? pais.emoji + " " : ""}{pais.nombre}</option>)}
+          </select>
+        </label>
+        <label>Provincia / Estado / Región (opcional)
           <select value={form.provincia} onChange={(e) => {
             actualizarCampo("provincia", e.target.value);
             actualizarCampo("localidad", "");
