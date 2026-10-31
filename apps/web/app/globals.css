@@ -1124,3 +1124,8 @@ body{background:var(--ab-bg)}
 .ai-contact-box>button:disabled{opacity:.55;cursor:not-allowed}
 .ai-contact-box .ai-contact-status{margin:10px 0 0;padding:9px 11px;border-radius:7px;background:#fff;color:#315c49}
 @media(max-width:600px){.ai-opportunity-backdrop{padding:8px}.ai-opportunity-modal{padding:16px;max-height:92vh}.ai-opportunity-modal>header h2{font-size:19px}.ai-opportunity-facts{grid-template-columns:1fr 1fr;gap:7px}.ai-opportunity-facts>div{padding:9px}.ai-opportunity-facts strong{font-size:11px}.ai-contact-box>button{width:100%}}
+
+/* Alertas en vivo del encabezado */
+.header-live-alert{position:fixed;z-index:16000;top:82px;right:22px;width:min(380px,calc(100vw - 28px));display:grid;gap:5px;padding:15px 42px 14px 16px;border:1px solid #b9dfca;border-left:4px solid #078d54;border-radius:11px;background:#fff;box-shadow:0 12px 36px rgba(12,45,35,.2);text-align:left;color:#183b35;cursor:pointer}
+.header-live-alert strong{font-size:13px}.header-live-alert span{font-size:11px;line-height:1.45;color:#5d716d}.header-live-alert i{font-size:10px;font-style:normal;font-weight:800;color:#078d54}.header-live-alert>b{position:absolute;right:12px;top:9px;font-size:19px;color:#71817d}
+@media(max-width:650px){.header-live-alert{top:68px;right:10px}}
