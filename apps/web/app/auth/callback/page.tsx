@@ -47,7 +47,7 @@ export default function AuthCallbackPage() {
         if (!factor) { if (active) setError("La cuenta requiere un segundo factor verificado."); return; }
         const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
         if (challengeError) { if (active) setError(challengeError.message); return; }
-        if (active) { setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:user.id}); setMfaPending(true); }
+        if (active) { setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:user.id}); setMfaPending(false); }
         return;
       }
 
