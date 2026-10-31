@@ -2545,8 +2545,8 @@ Firma: ______________________________
     return (!filtroEstado || estadoVista === filtroEstado) &&
       (!filtroTipo || operacion.tipo_operacion === filtroTipo) &&
       (!filtroProducto || texto.includes(filtroProducto.toLowerCase())) &&
-      (!filtroOrigen || texto.includes(filtroOrigen.toLowerCase())) &&
-      (!filtroDestino || texto.includes(filtroDestino.toLowerCase())) &&
+      (!filtroOrigen || meta.origen.toLowerCase().includes(filtroOrigen.toLowerCase())) &&
+      (!filtroDestino || meta.destino.toLowerCase().includes(filtroDestino.toLowerCase())) &&
       (!filtroMinVol || operacion.cantidad_tn >= Number(filtroMinVol)) &&
       (!filtroMaxVol || operacion.cantidad_tn <= Number(filtroMaxVol)) &&
       (!filtroMinPrecio || operacion.precio_tn >= Number(filtroMinPrecio)) &&
@@ -2622,8 +2622,8 @@ Firma: ______________________________
           <Filter label="País de origen"><input value={filtroOrigen} onChange={e=>setFiltroOrigen(e.target.value)} placeholder="Buscar origen" /></Filter>
           <Filter label="País de destino"><input value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)} placeholder="Buscar destino" /></Filter>
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
-          <Filter label="Rango de volumen (TN)"><div className="op-two"><input placeholder="Mínimo" value={filtroMinVol} onChange={e=>setFiltroMinVol(e.target.value)}/><input placeholder="Máximo" value={filtroMaxVol} onChange={e=>setFiltroMaxVol(e.target.value)}/></div></Filter>
-          <Filter label="Rango de precio / TN"><div className="op-two"><input placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
+          <Filter label="Rango de volumen (TN)"><div className="op-two"><input type="number" min="0" step="0.01" placeholder="Mínimo" value={filtroMinVol} onChange={e=>setFiltroMinVol(e.target.value)}/><input type="number" min="0" step="0.01" placeholder="Máximo" value={filtroMaxVol} onChange={e=>setFiltroMaxVol(e.target.value)}/></div></Filter>
+          <Filter label="Rango de precio / TN"><div className="op-two"><input type="number" min="0" step="0.01" placeholder="Mínimo" value={filtroMinPrecio} onChange={e=>setFiltroMinPrecio(e.target.value)}/><input type="number" min="0" step="0.01" placeholder="Máximo" value={filtroMaxPrecio} onChange={e=>setFiltroMaxPrecio(e.target.value)}/></div></Filter>
           <button className="operations-apply" onClick={()=>document.getElementById("operations-table")?.scrollIntoView({behavior:"smooth"})}>⚱ Aplicar filtros</button>
         </aside>
       </section>
