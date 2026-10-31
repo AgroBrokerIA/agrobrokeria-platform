@@ -16,7 +16,7 @@ function MarketplaceContent(){
  const[rows,setRows]=useState<Pub[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[pais,setPais]=useState(""),[provincia,setProvincia]=useState(""),[ciudad,setCiudad]=useState(""),[condicion,setCondicion]=useState(""),[precioMin,setPrecioMin]=useState(""),[precioMax,setPrecioMax]=useState(""),[paises,setPaises]=useState<any[]>([]),[provincias,setProvincias]=useState<any[]>([]),[ciudades,setCiudades]=useState<any[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<any[]>([]);
  async function load(){setLoading(true);setError("");try{
   const [publicaciones, catalogoProductos] = await Promise.all([
-   supabase.from("publicaciones").select("id,empresa_id,producto_id,tipo,cantidad_tn,precio_tn,estado,provincia,localidad,puerto,puertos,creada_en,calidad").eq("estado","PUBLICADA").order("creada_en",{ascending:false}),
+   supabase.from("publicaciones").select("id,empresa_id,producto_id,tipo,cantidad_tn,precio_tn,estado,provincia,localidad,puerto,puertos,creada_en,calidad,paises(nombre,codigo_iso),provincias(nombre,codigo)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}),
    supabase.from("productos").select("id,nombre").eq("activo",true).order("nombre")
   ]);
   if(publicaciones.error) throw publicaciones.error;
