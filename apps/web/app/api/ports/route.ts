@@ -110,7 +110,7 @@ export async function GET(request: Request) {
 
     const unique = new Map<string, (typeof globalMatches)[number] | (typeof localMatches)[number]>();
     for (const port of [...localMatches, ...globalMatches]) {
-      const key = port.codigo.toUpperCase();
+      const key = [normalize(port.pais), normalize(port.nombre), normalize(port.localidad ?? "")].join("|");
       if (!unique.has(key)) unique.set(key, port);
     }
     const ports = [...unique.values()]
