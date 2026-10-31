@@ -31,17 +31,13 @@ export default function MensajesPage(){
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");
    const {data:perfil,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();if(pe)throw pe;
    if(!perfil?.active_company_id)throw new Error("Seleccioná una empresa activa antes de iniciar una conversación.");
-   const {data:members,error:memberError}=await supabase.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true);if(memberError)throw memberError;
-   const companyIds=[...new Set([perfil.active_company_id,...(members||[]).map(x=>x.company_id)].filter(Boolean))];
-   const {data:maps,error:mapError}=await supabase.from("company_empresa_map").select("company_id,empresa_id").in("company_id",companyIds);if(mapError)throw mapError;
-   const empresaIds=[...new Set([perfil.active_company_id,...(maps||[]).map(x=>x.empresa_id)].filter(Boolean))];
-   const {data:partes,error:pa}=await supabase.from("operacion_participantes").select("operacion_id,empresa_id,rol").in("empresa_id",empresaIds);if(pa)throw pa;
-   const ids=[...new Set((partes||[]).map(x=>x.operacion_id).filter(Boolean))];
-   if(!ids.length){setOperacionesDisponibles([]);setErrorSelector("No encontramos operaciones asociadas a las empresas vinculadas a tu cuenta. Revisá la empresa activa y los participantes de la operación.");return;}
-   const {data:ops,error:oe}=await supabase.from("operaciones").select("id,codigo,estado").in("id",ids);
+   // La RPC resuelve el ID de empresa comercial desde la empresa activa
+   // y valida la membresía en servidor, evitando lecturas parciales por RLS.
+   const {data:ops,error:oe}=await supabase.rpc("listar_operaciones_mensajes_disponibles");
    if(oe)throw oe;
-   const rolPorOperacion=new Map((partes||[]).map(x=>[x.operacion_id,x.rol]));
-   setOperacionesDisponibles((ops||[]).map(x=>({id:x.id,codigo:x.codigo||x.id,estado:x.estado||null,rol:rolPorOperacion.get(x.id)||null})));
+   const disponibles=(ops||[]) as OperacionDisponible[];
+   setOperacionesDisponibles(disponibles);
+   if(!disponibles.length)setErrorSelector("Tu empresa activa no participa todavía en ninguna operación registrada.");
   }catch(e){setErrorSelector(e instanceof Error?e.message:"No se pudieron cargar las operaciones.");}finally{setCargandoOperaciones(false)}
  }
  function iniciarDesdeOperacion(op:OperacionDisponible){
