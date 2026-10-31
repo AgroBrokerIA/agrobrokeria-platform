@@ -33,14 +33,14 @@ export default function Home(){
      const icons:Record<string,string>={Soja:"🫛","Maíz":"🌽",Trigo:"🌾",Sorgo:"🌾",Girasol:"🌻"};
      const preferred=["Soja","Maíz","Trigo","Sorgo"];
      const rows=(market||[]).filter((x:any)=>x.commodity&&x.precio_promedio!=null);
-     const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-5);
+     const cutoff=new Date();cutoff.setHours(0,0,0,0);cutoff.setDate(cutoff.getDate()-30);
      const freshRows=rows.filter((x:any)=>x.fecha_mercado&&new Date(String(x.fecha_mercado)+"T12:00:00").getTime()>=cutoff.getTime());
      const ordered=[...preferred.map(name=>freshRows.find(x=>String(x.commodity).toLowerCase()===name.toLowerCase())).filter(Boolean),...freshRows.filter(x=>!preferred.some(name=>String(x.commodity).toLowerCase()===name.toLowerCase()))];
      if(freshRows.length){
        setQuotes(ordered.slice(0,4).map((x:any)=>({
          name:String(x.commodity),
          price:(x.moneda||"ARS")+" "+Number(x.precio_promedio).toLocaleString("es-AR",{minimumFractionDigits:0,maximumFractionDigits:2})+" / TN",
-         detail:x.fecha_mercado?new Date(String(x.fecha_mercado)+"T12:00:00").toLocaleDateString("es-AR")+" · BCR Rosario":"Fecha de mercado no disponible · BCR Rosario",
+         detail:x.fecha_mercado?new Date(String(x.fecha_mercado)+"T12:00:00").toLocaleDateString("es-AR")+(new Date(String(x.fecha_mercado)+"T12:00:00").getTime()<Date.now()-5*86400000?" · último dato almacenado":" · BCR Rosario"):"Fecha de mercado no disponible · BCR Rosario",
          icon:icons[String(x.commodity)]||"🌾"
        })));
        const latest=freshRows.map((x:any)=>x.fecha_mercado).filter(Boolean).sort().at(-1);
@@ -108,7 +108,7 @@ export default function Home(){
   <section id="mercado" className={styles.publicSection}>
    <div className={styles.sectionTitle}><span>VISTA PÚBLICA</span><h2>Mercado</h2><p>Consultá el movimiento del mercado sin registrarte. La información operativa se habilita únicamente para usuarios registrados.</p></div>
    <div className={styles.publicGrid}>
-    <article className={styles.publicPanel}><div className={styles.panelTop}><h3>Cotizaciones del día</h3><span>Fuente: BCR Rosario</span></div><div className={styles.quoteMini}>{quotes.map(q=><div key={q.name}><b>{q.name}</b><strong>{q.price}</strong><small>{q.detail}</small></div>)}</div><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0" target="_blank" rel="noreferrer" className={styles.textLink}>Consultar fuente oficial BCR →</a></article>
+    <article className={styles.publicPanel}><div className={styles.panelTop}><h3>Últimas cotizaciones registradas</h3><span>Fuente: BCR Rosario</span></div><div className={styles.quoteMini}>{quotes.map(q=><div key={q.name}><b>{q.name}</b><strong>{q.price}</strong><small>{q.detail}</small></div>)}</div><a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0" target="_blank" rel="noreferrer" className={styles.textLink}>Consultar fuente oficial BCR →</a></article>
     <article className={styles.publicPanel}><div className={styles.panelTop}><h3>Qué se puede hacer al registrarse</h3><span>Operación protegida</span></div><ul className={styles.featureList}><li>Publicar ofertas y demandas</li><li>Comparar referencias y condiciones</li><li>Negociar y recibir contraofertas</li><li>Generar acuerdos y contratos</li><li>Coordinar documentación y logística</li></ul><Link href="/register" className={styles.panelCta}>Registrarme para operar →</Link></article>
    </div>
   </section>
