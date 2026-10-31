@@ -251,18 +251,12 @@ export default function PanelMensajes({
     traduccionesAutomaticasRef.current.add(mensaje.id);
     try {
       const { data: { session } } = await supabase.auth.getSession();
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      if (!session?.access_token || !base) return;
-
-      const response = await fetch(base + "/functions/v1/translate-message", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: "Bearer " + session.access_token,
-        },
-        body: JSON.stringify({ mensaje_id: mensaje.id, idioma_destino: target }),
+      if (!session?.access_token) return;
+      const { data: result, error: invokeError } = await supabase.functions.invoke("translate-message", {
+        body: { mensaje_id: mensaje.id, idioma_destino: target },
+        headers: { Authorization: "Bearer " + session.access_token },
       });
-      const result = await response.json();
+      if (invokeError) throw invokeError;
       if (result?.texto_traducido) {
         setTraducciones((actuales) => ({
           ...actuales,
@@ -331,16 +325,17 @@ export default function PanelMensajes({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session?.access_token) throw new Error("AUTH_REQUIRED");
-      const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-      if (!base) throw new Error("SUPABASE_URL_MISSING");
-      const response = await fetch(base + "/functions/v1/translate-message", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", Authorization: "Bearer " + session.access_token },
-        body: JSON.stringify({ mensaje_id: mensaje.id, idioma_destino: target }),
+      const { data: result, error: invokeError } = await supabase.functions.invoke("translate-message", {
+        body: { mensaje_id: mensaje.id, idioma_destino: target },
+        headers: { Authorization: "Bearer " + session.access_token },
       });
-      const result = await response.json();
-      if (!response.ok && result?.estado !== "NO_DISPONIBLE") {
-        throw new Error(result?.error || result?.error_codigo || "No se pudo traducir el mensaje.");
+      if (invokeError) {
+        const context = (invokeError as any).context;
+        let detail = invokeError.message;
+        if (context && typeof context.json === "function") {
+          try { const payload = await context.json(); detail = payload?.error || payload?.message || detail; } catch {}
+        }
+        throw new Error(detail || "No se pudo conectar con el servicio de traducción.");
       }
       if (result?.texto_traducido) {
         setTraducciones((actuales) => ({ ...actuales, [mensaje.id]: result.texto_traducido }));
