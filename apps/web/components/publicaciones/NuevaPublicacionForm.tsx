@@ -51,7 +51,7 @@ type LugarRecepcion = {
 };
 
 type GeoProvincia = { iso2: string; name: string; type?: string; };
-type GeoPais = { id: number; codigo_iso: string; nombre: string; emoji?: string | null };
+type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null; emoji?: string | null };
 
 async function obtenerEmpresaDelUsuario() {
   const {
@@ -138,6 +138,11 @@ export default function NuevaPublicacionForm() {
   const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
   const [provincias, setProvincias] = useState<GeoProvincia[]>([]);
   const [paises, setPaises] = useState<GeoPais[]>([]);
+  const paisesPorRegion = useMemo(() => paises.reduce<Record<string, GeoPais[]>>((grupos, pais) => {
+    const region = pais.region || "Otros territorios";
+    (grupos[region] ||= []).push(pais);
+    return grupos;
+  }, {}), [paises]);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
@@ -172,7 +177,7 @@ export default function NuevaPublicacionForm() {
   }, []);
 
   async function cargarPaises() {
-    const { data, error } = await supabase.from("paises").select("id,codigo_iso,nombre,emoji").eq("activo", true).order("nombre");
+    const { data, error } = await supabase.from("paises").select("id,codigo_iso,nombre,region,emoji").eq("activo", true).order("nombre");
     if (error) { setError("No se pudo cargar el catálogo mundial: " + error.message); return; }
     const rows = (data ?? []) as GeoPais[];
     setPaises(rows);
@@ -468,7 +473,7 @@ export default function NuevaPublicacionForm() {
         <label>País de origen / ubicación
           <select value={form.pais_id} onChange={(e) => { actualizarCampo("pais_id", Number(e.target.value)); actualizarCampo("provincia", ""); actualizarCampo("localidad", ""); }}>
             <option value={0}>Seleccionar país...</option>
-            {paises.map((pais) => <option key={pais.id} value={pais.id}>{pais.emoji ? pais.emoji + " " : ""}{pais.nombre}</option>)}
+            {Object.entries(paisesPorRegion).sort(([a], [b]) => a.localeCompare(b)).map(([region, items]) => <optgroup key={region} label={region}>{items.map((pais) => <option key={pais.id} value={pais.id}>{pais.emoji ? pais.emoji + " " : ""}{pais.nombre}</option>)}</optgroup>)}
           </select>
         </label>
         <label>Provincia / Estado / Región (opcional)
