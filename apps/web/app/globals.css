@@ -1139,3 +1139,13 @@ body{background:var(--ab-bg)}
 .chat-body>div>div:nth-child(3)>div>div>div button{color:#64748b!important}
 .sidebar-badge{background:#e5f5eb!important;color:#087a43!important;border:1px solid #c6e8d2}
 .header-icon i{background:#078d54!important;color:#fff!important;border-color:#fff!important}
+
+/* Mensajes: encabezado de contacto legible, sin recortes */
+.messages-chat .chat-head{height:auto;min-height:88px;flex:0 0 auto;align-items:center;gap:12px;padding:12px 14px;overflow:visible}
+.messages-chat .chat-company{flex:1 1 auto;min-width:0;max-width:100%}
+.messages-chat .chat-company h2{display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden;white-space:normal;overflow-wrap:anywhere;line-height:1.22;font-size:15px;margin:0 0 3px;max-height:2.44em}
+.messages-chat .chat-company p{white-space:normal;overflow-wrap:anywhere;line-height:1.35;margin:3px 0}
+.messages-chat .chat-company>span{display:block;line-height:1.3;margin-top:3px}
+.messages-chat .chat-actions{flex:0 0 auto;gap:5px}
+.messages-chat .chat-actions button{flex:0 0 38px;width:38px;height:38px}
+@media(max-width:600px){.messages-chat .chat-head{gap:8px;padding:10px}.messages-chat .chat-company h2{font-size:13px}.messages-chat .chat-actions button{flex-basis:32px;width:32px;height:32px}}
