@@ -14,7 +14,7 @@ export default function Header() {
   const [notificaciones, setNotificaciones] = useState(0);
   const [empresaVerificada, setEmpresaVerificada] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);\n  const [avisoEnVivo, setAvisoEnVivo] = useState<{titulo:string;mensaje:string;href:string}|null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   async function cargar() {
@@ -55,7 +55,20 @@ export default function Header() {
     const onProfile = () => { if (activo) void cargar(); };
     window.addEventListener("agrobrokeria:profile-changed", onProfile);
     const { data: { subscription } } = supabase.auth.onAuthStateChange(() => { if (activo) void cargar(); });
-    return () => { activo = false; subscription.unsubscribe(); window.removeEventListener("agrobrokeria:language-changed", onLanguage); window.removeEventListener("agrobrokeria:profile-changed", onProfile); };
+    let realtime: ReturnType<typeof supabase.channel> | null = null;
+    void supabase.auth.getUser().then(({data:{user}}) => {
+      if (!activo || !user) return;
+      realtime = supabase.channel(`header-alerts-${user.id}`).on("postgres_changes",{event:"INSERT",schema:"public",table:"notificaciones",filter:`profile_id=eq.${user.id}`},payload=>{
+        const n=payload.new as {titulo?:string|null;mensaje?:string|null;tipo?:string|null};
+        setNotificaciones(v=>v+1);
+        const isMessage=String(n.tipo||"").toUpperCase().includes("MENSAJ");
+        if(isMessage)setMensajes(v=>v+1);
+        const next={titulo:n.titulo||(isMessage?"Nuevo mensaje":"Nueva oportunidad"),mensaje:n.mensaje||"Tenés una novedad en AgroBrokerIA.",href:isMessage?"/mensajes":"/notificaciones"};
+        setAvisoEnVivo(next);
+        if(typeof window!=="undefined" && "Notification" in window && Notification.permission==="granted") new Notification(next.titulo,{body:next.mensaje,tag:`agrobrokeria-${n.tipo||"alerta"}`});
+      }).subscribe();
+    });
+    return () => { activo = false; subscription.unsubscribe(); if(realtime)void supabase.removeChannel(realtime); window.removeEventListener("agrobrokeria:language-changed", onLanguage); window.removeEventListener("agrobrokeria:profile-changed", onProfile); };
   }, []);
 
   async function cerrarSesion() { await supabase.auth.signOut(); setMenuAbierto(false); router.replace("/login"); }
@@ -66,7 +79,7 @@ export default function Header() {
     router.push(q ? `/marketplace?search=${encodeURIComponent(q)}` : "/marketplace");
   }
 
-  return <header className="app-header">
+  return <><header className="app-header">
     <Link href="/dashboard" className="app-header-brand" aria-label="AgroBrokerIA">
       <span className="header-leaf">◒</span><span><strong>AgroBroker<span>IA</span></strong><small>Conectando el mundo agro</small></span>
     </Link>
@@ -90,5 +103,5 @@ export default function Header() {
         </div>}
       </div> : <Link href="/login" className="header-login">Iniciar sesión</Link>}
     </div>
-  </header>;
+  </header>{avisoEnVivo&&<button type="button" className="header-live-alert" onClick={()=>{const href=avisoEnVivo.href;setAvisoEnVivo(null);router.push(href)}}><strong>{avisoEnVivo.titulo}</strong><span>{avisoEnVivo.mensaje}</span><i>Ver ahora →</i><b onClick={e=>{e.stopPropagation();setAvisoEnVivo(null)}}>×</b></button>}</>;
 }
