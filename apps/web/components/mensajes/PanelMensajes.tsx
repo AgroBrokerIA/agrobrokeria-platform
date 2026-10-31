@@ -91,89 +91,26 @@ export default function PanelMensajes({
       const idiomaPreferido = perfil?.idioma || localStorage.getItem("agrobrokeria.language") || "es";
       setIdiomaUsuario(idiomaPreferido);
 
-      // Las operaciones usan el ID comercial de empresas; perfiles y membresías
-      // usan el ID del directorio companies. Resolver la relación antes de
-      // buscar destinatarios evita conversaciones vacías por IDs distintos.
-      const { data: miMapa } = miEmpresaId
-        ? await supabase.from("company_empresa_map").select("empresa_id").eq("company_id", miEmpresaId).maybeSingle()
-        : { data: null };
-      const miEmpresaComercialId = miMapa?.empresa_id || miEmpresaId;
-      setEmpresaId(miEmpresaComercialId);
-
-      const { data: participantes, error: errorParticipantes } =
-        await supabase
-          .from("operacion_participantes")
-          .select("empresa_id, rol")
-          .eq("operacion_id", operacionId);
-
-      if (errorParticipantes) {
-        setError(
-          `No se pudieron cargar los participantes: ${errorParticipantes.message}`
-        );
+      // La lista de destinatarios se resuelve en servidor porque RLS no
+      // permite consultar membresías de empresas ajenas directamente.
+      const { data: destinatariosRpc, error: errorDestinatarios } = await supabase.rpc(
+        "listar_destinatarios_mensajes_operacion",
+        { p_operacion_id: operacionId }
+      );
+      if (errorDestinatarios) {
+        setError(`No se pudieron cargar los participantes: ${errorDestinatarios.message}`);
         setCargando(false);
         return;
       }
 
-      const empresasParticipantes = (participantes || []) as Participante[];
-      const empresasDestino = empresasParticipantes.filter(
-        (participante) =>
-          participante.empresa_id &&
-          participante.empresa_id !== miEmpresaComercialId
-      );
-      const idsEmpresaComercial = [
-        ...new Set(empresasDestino.map((p) => p.empresa_id)),
-      ];
-
-      let usuariosEmpresa: CompanyUser[] = [];
-      let mapasEmpresa: { company_id: string; empresa_id: string }[] = [];
-      if (idsEmpresaComercial.length > 0) {
-        const { data: mapas, error: errorMapas } = await supabase
-          .from("company_empresa_map")
-          .select("company_id, empresa_id")
-          .in("empresa_id", idsEmpresaComercial);
-        if (errorMapas) {
-          setError(`No se pudieron resolver las empresas participantes: ${errorMapas.message}`);
-          setCargando(false);
-          return;
-        }
-        mapasEmpresa = (mapas || []) as { company_id: string; empresa_id: string }[];
-        const idsDirectorio = [...new Set(mapasEmpresa.map((m) => m.company_id))];
-        if (idsDirectorio.length > 0) {
-          const { data: usuarios, error: errorUsuarios } = await supabase
-            .from("company_users")
-            .select("profile_id, company_id")
-            .in("company_id", idsDirectorio)
-            .eq("activo", true);
-          if (errorUsuarios) {
-            setError(`No se pudieron cargar los usuarios participantes: ${errorUsuarios.message}`);
-            setCargando(false);
-            return;
-          }
-          usuariosEmpresa = (usuarios || []) as CompanyUser[];
-        }
-      }
-
-      const destinos = empresasDestino.flatMap((participante) => {
-        const idsDirectorio = mapasEmpresa
-          .filter((mapa) => mapa.empresa_id === participante.empresa_id)
-          .map((mapa) => mapa.company_id);
-        return usuariosEmpresa
-          .filter((usuario) =>
-            idsDirectorio.includes(usuario.company_id) &&
-            usuario.profile_id !== user.id
-          )
-          .map((usuario) => ({
-            profileId: usuario.profile_id,
-            empresaId: participante.empresa_id,
-            rol: participante.rol,
-          }));
-      });
-
+      const destinos = (destinatariosRpc || []).map((item: { profile_id: string; empresa_id: string; rol: string }) => ({
+        profileId: item.profile_id,
+        empresaId: item.empresa_id,
+        rol: item.rol,
+      }));
+      setEmpresaId(perfil?.active_company_id || null);
       setDestinatarios(destinos);
-
-      if (destinos.length > 0) {
-        setDestinatarioSeleccionado(destinos[0].profileId);
-      }
+      if (destinos.length > 0) setDestinatarioSeleccionado(destinos[0].profileId);
 
       const mensajesIniciales = await cargarMensajes(user.id);
       void traducirEntrantesAutomaticamente(user.id, idiomaPreferido, mensajesIniciales);
@@ -436,11 +373,15 @@ export default function PanelMensajes({
   return (
     <div
       style={{
-        marginTop: 20,
+        marginTop: 0,
         border: "1px solid #d9dee7",
-        borderRadius: 14,
+        borderRadius: 0,
         overflow: "hidden",
         background: "#fff",
+        height: "100%",
+        minHeight: 0,
+        display: "flex",
+        flexDirection: "column",
       }}
     >
       <div
@@ -527,7 +468,9 @@ export default function PanelMensajes({
       <div
         ref={mensajesRef}
         style={{
-          height: 320,
+          flex: 1,
+          minHeight: 0,
+          height: "auto",
           overflowY: "auto",
           padding: 16,
           background: "#f8fafc",
@@ -637,8 +580,10 @@ export default function PanelMensajes({
       <div
         style={{
           display: "flex",
+          alignItems: "flex-end",
           gap: 8,
           padding: 12,
+          flexShrink: 0,
           borderTop: "1px solid #e5e7eb",
           background: "#fff",
         }}
@@ -675,8 +620,9 @@ export default function PanelMensajes({
             destinatarios.length === 0
           }
           style={{
-            alignSelf: "stretch",
-            minWidth: 90,
+            alignSelf: "flex-end",
+            height: 44,
+            minWidth: 84,
             border: "none",
             borderRadius: 10,
             background:
