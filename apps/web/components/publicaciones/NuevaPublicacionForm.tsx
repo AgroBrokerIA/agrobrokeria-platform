@@ -163,7 +163,7 @@ export default function NuevaPublicacionForm() {
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
   const [lugaresSeleccionados, setLugaresSeleccionados] = useState<string[]>([]);
-  const [busquedaPuerto, setBusquedaPuerto] = useState("");
+  const [busquedaPuerto, setBusquedaPuerto] = useState("");\n  const [cargandoPuertos, setCargandoPuertos] = useState(false);\n  const [lugarTemporal, setLugarTemporal] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -177,7 +177,7 @@ export default function NuevaPublicacionForm() {
   }, []);
 
   async function cargarPaises() {
-    const { data, error } = await supabase.from("paises").select("id,codigo_iso,nombre,region,emoji").eq("activo", true).order("nombre");
+    const { data, error } = await supabase.from("paises").select("id,codigo_iso,nombre,region").eq("activo", true).order("nombre");
     if (error) { setError("No se pudo cargar el catálogo mundial: " + error.message); return; }
     const rows = (data ?? []) as GeoPais[];
     setPaises(rows);
@@ -187,14 +187,25 @@ export default function NuevaPublicacionForm() {
 
   useEffect(() => {
     const pais = paises.find((item) => item.id === Number(form.pais_id));
-    if (!pais) { setProvincias([]); return; }
+    if (!pais) { setPuertos([]); return; }
     let activo = true;
-    fetch("/api/geo?country=" + encodeURIComponent(pais.codigo_iso))
-      .then((response) => response.json())
-      .then((data) => { if (activo) setProvincias(Array.isArray(data.states) ? data.states : []); })
-      .catch((e) => { console.error("No se pudieron cargar las divisiones administrativas:", e); if (activo) setProvincias([]); });
-    return () => { activo = false; };
-  }, [form.pais_id, paises]);
+    const controller = new AbortController();
+    setCargandoPuertos(true);
+    const params = new URLSearchParams({ country: pais.codigo_iso });
+    if (busquedaPuerto.trim().length >= 2) params.set("q", busquedaPuerto.trim());
+    const timer = setTimeout(() => {
+      fetch("/api/ports?" + params.toString(), { signal: controller.signal })
+        .then(async (response) => {
+          const data = await response.json();
+          if (!response.ok) throw new Error(data.error || "No se pudo consultar el catálogo de puertos.");
+          return data;
+        })
+        .then((data) => { if (activo) setPuertos(Array.isArray(data.ports) ? data.ports : []); })
+        .catch((e) => { if (e.name !== "AbortError") { console.error("No se pudieron cargar los puertos:", e); if (activo) setPuertos([]); } })
+        .finally(() => { if (activo) setCargandoPuertos(false); });
+    }, busquedaPuerto.trim().length >= 2 ? 300 : 0);
+    return () => { activo = false; clearTimeout(timer); controller.abort(); };
+  }, [form.pais_id, paises, busquedaPuerto]);
 
 
 
@@ -216,17 +227,10 @@ export default function NuevaPublicacionForm() {
         setPublicacionId(id);
       }
 
-      const [p, m, i, puertosResult, lugaresResult] = await Promise.all([
+      const [p, m, i, lugaresResult] = await Promise.all([
         obtenerProductos(),
         obtenerMonedas(),
         obtenerIncoterms(),
-        supabase
-          .from("catalogo_puertos")
-          .select("codigo,nombre,pais,provincia,localidad,tipo")
-          .eq("activo", true)
-          .order("pais")
-          .order("provincia")
-          .order("nombre"),
         supabase
           .from("catalogo_lugares_recepcion")
           .select("codigo,nombre,descripcion")
@@ -266,27 +270,9 @@ export default function NuevaPublicacionForm() {
         return;
       }
 
-      const valoresPuertoGuardados = Array.isArray(publicacion.puertos)
+      const puertosGuardados = Array.isArray(publicacion.puertos)
         ? publicacion.puertos.filter(Boolean)
-        : publicacion.puerto
-          ? [publicacion.puerto]
-          : [];
-      // Las publicaciones antiguas podían persistir el nombre del puerto.
-      // Normalizamos aquí a códigos estables para que sigan apareciendo
-      // seleccionadas después de la migración al catálogo multi-select.
-      const puertosGuardados = valoresPuertoGuardados
-        .map((valor: string) => {
-          const porCodigo = (puertosResult.data as Puerto[] | null)?.find(
-            (puerto) => puerto.codigo === valor
-          );
-          if (porCodigo) return porCodigo.codigo;
-
-          const porNombre = (puertosResult.data as Puerto[] | null)?.find(
-            (puerto) => puerto.nombre === valor
-          );
-          return porNombre?.codigo ?? null;
-        })
-        .filter((codigo): codigo is string => Boolean(codigo));
+        : publicacion.puerto ? [publicacion.puerto] : [];
 
       const lugaresGuardados = Array.isArray(publicacion.lugares_recepcion)
         ? publicacion.lugares_recepcion.filter(Boolean)
@@ -327,8 +313,7 @@ export default function NuevaPublicacionForm() {
       const nuevos = actuales.includes(codigo)
         ? actuales.filter((item) => item !== codigo)
         : [...actuales, codigo];
-      const primerPuerto = nuevos[0] ?? "";
-      setForm((anterior) => ({ ...anterior, puerto: primerPuerto }));
+      setForm((anterior) => ({ ...anterior, puerto: nuevos[0] ?? "" }));
       return nuevos;
     });
   }
@@ -339,32 +324,6 @@ export default function NuevaPublicacionForm() {
         ? actuales.filter((item) => item !== codigo)
         : [...actuales, codigo]
     );
-  }
-
-  const puertosFiltrados = useMemo(() => {
-    const q = busquedaPuerto.trim().toLowerCase();
-    if (!q) return puertos;
-    return puertos.filter((p) =>
-      [p.nombre, p.pais, p.provincia, p.localidad, p.tipo]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase()
-        .includes(q)
-    );
-  }, [puertos, busquedaPuerto]);
-
-  function seleccionarTodosLosPuertos() {
-    const codigos = puertosFiltrados.map((p) => p.codigo);
-    setPuertosSeleccionados((actuales) => {
-      const nuevos = Array.from(new Set([...actuales, ...codigos]));
-      setForm((anterior) => ({ ...anterior, puerto: nuevos[0] ?? "" }));
-      return nuevos;
-    });
-  }
-
-  function limpiarPuertos() {
-    setPuertosSeleccionados([]);
-    setForm((anterior) => ({ ...anterior, puerto: "" }));
   }
 
   async function guardar(e: React.FormEvent<HTMLFormElement>) {
@@ -473,93 +432,120 @@ export default function NuevaPublicacionForm() {
         <label>País de origen / ubicación
           <select value={form.pais_id} onChange={(e) => { actualizarCampo("pais_id", Number(e.target.value)); actualizarCampo("provincia", ""); actualizarCampo("localidad", ""); }}>
             <option value={0}>Seleccionar país...</option>
-            {Object.entries(paisesPorRegion).sort(([a], [b]) => a.localeCompare(b)).map(([region, items]) => <optgroup key={region} label={region}>{items.map((pais) => <option key={pais.id} value={pais.id}>{pais.emoji ? pais.emoji + " " : ""}{pais.nombre}</option>)}</optgroup>)}
+            {Object.entries(paisesPorRegion).sort(([a], [b]) => a.localeCompare(b)).map(([region, items]) => <optgroup key={region} label={region}>{items.map((pais) => <option key={pais.id} value={pais.id}>{pais.nombre}</option>)}</optgroup>)}
           </select>
         </label>
         <label>Provincia / Estado / Región (opcional)
-          <select value={form.provincia} onChange={(e) => {
-            actualizarCampo("provincia", e.target.value);
-            actualizarCampo("localidad", "");
-          }}>
-            <option value="">Seleccionar provincia...</option>
-            {provincias.map((provincia) => (
-              <option key={provincia.iso2} value={provincia.name}>{provincia.name}</option>
-            ))}
-          </select>
+          <input value={form.provincia} onChange={(e) => actualizarCampo("provincia", e.target.value)} placeholder="Escribir provincia, estado o región..." />
         </label>
         <label>Ciudad / localidad (opcional)
           <input value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} placeholder="Ingresar ciudad o localidad..." />
         </label>
       </div>
 
-      <section style={{ border: "1px solid #dbe5e0", borderRadius: 14, padding: 18, background: "#f8fffb" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+      <section className="publication-logistics">
+        <div className="publication-section-heading">
           <div>
-            <h2 style={{ margin: 0, fontSize: 20 }}>Puertos de recepción / entrega</h2>
-            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Podés elegir uno, varios o todos los puertos. Si todavía no definiste la logística, podés dejarlo vacío.</p>
+            <span className="publication-kicker">LOGÍSTICA INTERNACIONAL</span>
+            <h2>Puertos de recepción / entrega</h2>
+            <p>Buscá por nombre de puerto, ciudad, país o código UN/LOCODE. Podés seleccionar más de uno.</p>
           </div>
-          <strong style={{ color: "#047857" }}>{puertosSeleccionados.length} seleccionados</strong>
+          <span className="publication-count">{puertosSeleccionados.length} seleccionados</span>
         </div>
-
-        <div style={{ display: "flex", gap: 8, marginTop: 14, flexWrap: "wrap" }}>
-          <input value={busquedaPuerto} onChange={(e) => setBusquedaPuerto(e.target.value)} placeholder="Buscar puerto, provincia o localidad..." style={{ flex: "1 1 280px" }} />
-          <button type="button" onClick={seleccionarTodosLosPuertos} style={{ padding: "9px 12px" }}>☑ Seleccionar visibles</button>
-          <button type="button" onClick={limpiarPuertos} style={{ padding: "9px 12px" }}>Limpiar</button>
+        <div className="publication-search-wrap">
+          <span aria-hidden="true">⌕</span>
+          <input value={busquedaPuerto} onChange={(e) => setBusquedaPuerto(e.target.value)} placeholder="Ej.: Rotterdam, Santos, Shanghái, Buenos Aires..." aria-label="Buscar puerto en todo el mundo" />
+          {busquedaPuerto && <button type="button" onClick={() => setBusquedaPuerto("")}>Limpiar búsqueda</button>}
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(250px,1fr))", gap: 8, marginTop: 14, maxHeight: 360, overflowY: "auto", paddingRight: 4 }}>
-          {puertosFiltrados.map((puerto) => {
-            const checked = puertosSeleccionados.includes(puerto.codigo);
-            return (
-              <label key={puerto.codigo} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 11, borderRadius: 10, border: checked ? "1px solid #10b981" : "1px solid #e2e8f0", background: checked ? "#ecfdf5" : "#fff", cursor: "pointer" }}>
-                <input type="checkbox" checked={checked} onChange={() => alternarPuerto(puerto.codigo)} style={{ marginTop: 3 }} />
-                <span>
-                  <strong style={{ display: "block" }}>{puerto.nombre}</strong>
-                  <small style={{ color: "#64748b" }}>{[puerto.localidad, puerto.provincia, puerto.pais].filter(Boolean).join(" · ")}</small>
-                </span>
-              </label>
-            );
-          })}
+        <div className="publication-port-results">
+          {cargandoPuertos ? <p className="publication-empty">Buscando puertos...</p> :
+            puertos.length ? puertos.map((puerto) => {
+              const checked = puertosSeleccionados.includes(puerto.codigo);
+              return (
+                <button type="button" key={puerto.codigo} onClick={() => alternarPuerto(puerto.codigo)} className={"publication-port-option" + (checked ? " selected" : "")} aria-pressed={checked}>
+                  <span className="publication-check">{checked ? "✓" : "+"}</span>
+                  <span className="publication-port-copy">
+                    <strong>{puerto.nombre}</strong>
+                    <small>{[puerto.localidad, puerto.provincia, puerto.pais].filter(Boolean).join(" · ")}</small>
+                    <small className="publication-port-code">{puerto.codigo} · {puerto.source ?? "Catálogo"}</small>
+                  </span>
+                </button>
+              );
+            }) : <p className="publication-empty">{busquedaPuerto.trim().length < 2 ? "No hay puertos cargados para este país. Escribí al menos dos letras para buscar en el catálogo mundial." : "No encontramos puertos con ese nombre. Probá con otra escritura o con el nombre en inglés."}</p>}
         </div>
-
-        <label style={{ display: "block", marginTop: 14 }}>
-          Puerto principal
-          <select value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
-            <option value="">Seleccionar puerto principal...</option>
-            {puertos.filter((p) => puertosSeleccionados.includes(p.codigo)).map((p) => <option key={p.codigo} value={p.codigo}>{p.nombre}</option>)}
+        <div className="publication-selected-row">
+          <label htmlFor="puerto-principal">Puerto principal</label>
+          <select id="puerto-principal" value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
+            <option value="">Seleccionar entre los puertos elegidos...</option>
+            {puertosSeleccionados.map((codigo) => {
+              const puerto = puertos.find((item) => item.codigo === codigo);
+              return <option key={codigo} value={codigo}>{puerto ? puerto.nombre + " · " + puerto.pais : codigo}</option>;
+            })}
           </select>
-        </label>
+          <button type="button" onClick={() => { setPuertosSeleccionados([]); actualizarCampo("puerto", ""); }}>Quitar todos</button>
+        </div>
       </section>
 
-      <section style={{ border: "1px solid #dbe5e0", borderRadius: 14, padding: 18, background: "#fff" }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12, flexWrap: "wrap", alignItems: "center" }}>
+      <section className="publication-logistics publication-delivery">
+        <div className="publication-section-heading">
           <div>
-            <h2 style={{ margin: 0, fontSize: 20 }}>Lugares donde recibir / entregar</h2>
-            <p style={{ margin: "5px 0 0", color: "#64748b" }}>Marcá las modalidades conocidas. Este dato también puede definirse más adelante.</p>
+            <span className="publication-kicker">PUNTO DE OPERACIÓN</span>
+            <h2>Lugar de recepción / entrega</h2>
+            <p>Elegí las modalidades que correspondan. Podés agregar más de una.</p>
           </div>
-          <strong style={{ color: "#047857" }}>{lugaresSeleccionados.length} opciones</strong>
+          <span className="publication-count">{lugaresSeleccionados.length} opciones</span>
         </div>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(240px,1fr))", gap: 10, marginTop: 14 }}>
-          {lugares.map((lugar) => {
-            const checked = lugaresSeleccionados.includes(lugar.codigo);
-            return (
-              <label key={lugar.codigo} style={{ display: "flex", gap: 10, alignItems: "flex-start", padding: 12, borderRadius: 10, border: checked ? "1px solid #10b981" : "1px solid #e2e8f0", background: checked ? "#ecfdf5" : "#fff", cursor: "pointer" }}>
-                <input type="checkbox" checked={checked} onChange={() => alternarLugar(lugar.codigo)} style={{ marginTop: 3 }} />
-                <span><strong style={{ display: "block" }}>{lugar.nombre}</strong><small style={{ color: "#64748b" }}>{lugar.descripcion}</small></span>
-              </label>
-            );
+        <div className="publication-delivery-picker">
+          <select value={lugarTemporal} onChange={(e) => {
+            const codigo = e.target.value;
+            if (codigo && !lugaresSeleccionados.includes(codigo)) setLugaresSeleccionados((actuales) => [...actuales, codigo]);
+            setLugarTemporal("");
+          }}>
+            <option value="">＋ Agregar lugar de recepción / entrega...</option>
+            {lugares.filter((lugar) => !lugaresSeleccionados.includes(lugar.codigo)).map((lugar) => (
+              <option key={lugar.codigo} value={lugar.codigo}>{lugar.nombre}</option>
+            ))}
+          </select>
+        </div>
+        {lugaresSeleccionados.length > 0 && <div className="publication-chips">
+          {lugaresSeleccionados.map((codigo) => {
+            const lugar = lugares.find((item) => item.codigo === codigo);
+            return <span key={codigo}>{lugar?.nombre ?? codigo}<button type="button" aria-label={"Quitar " + (lugar?.nombre ?? codigo)} onClick={() => setLugaresSeleccionados((actuales) => actuales.filter((item) => item !== codigo))}>×</button></span>;
           })}
-        </div>
+        </div>}
       </section>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 14 }}>
-        <label>Calidad<input value={form.calidad} onChange={(e) => actualizarCampo("calidad", e.target.value)} /></label>
-        <label>Humedad (%)<input type="number" step="0.01" value={form.humedad} onChange={(e) => actualizarCampo("humedad", e.target.value)} /></label>
-        <label>Proteína (%)<input type="number" step="0.01" value={form.proteina} onChange={(e) => actualizarCampo("proteina", e.target.value)} /></label>
-      </div>
+      <section className="publication-quality">
+        <label>Calidad<input value={form.calidad} onChange={(e) => actualizarCampo("calidad", e.target.value)} placeholder="Especificación comercial" /></label>
+        <label>Humedad (%)<input type="number" step="0.01" value={form.humedad} onChange={(e) => actualizarCampo("humedad", e.target.value)} placeholder="0,00" /></label>
+        <label>Proteína (%)<input type="number" step="0.01" value={form.proteina} onChange={(e) => actualizarCampo("proteina", e.target.value)} placeholder="0,00" /></label>
+      </section>
 
-      <label>Observaciones<textarea value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={4} /></label>
+      <section className="publication-observations">
+        <div className="publication-section-heading">
+          <div>
+            <span className="publication-kicker">DETALLE DE LA OPERACIÓN</span>
+            <h2>Observaciones y condiciones comerciales</h2>
+            <p>Completá todos los datos que falten para que el comprador o vendedor conozca exactamente las condiciones.</p>
+          </div>
+          <button type="button" className="publication-template-button" onClick={() => actualizarCampo("observaciones", [
+            "PUERTO / LUGAR DE ENTREGA:",
+            "DIRECCIÓN O TERMINAL EXACTA:",
+            "MODALIDAD DE ENTREGA:",
+            "CANTIDAD DE ENTREGAS / FRECUENCIA:",
+            "FECHAS O VENTANA DE ENTREGA:",
+            "MODALIDAD Y PLAZO DE PAGO:",
+            "FLETE Y RESPONSABLE DEL TRANSPORTE:",
+            "DOCUMENTACIÓN REQUERIDA:",
+            "CONDICIONES DE CALIDAD Y DESCARGA:",
+            "TOLERANCIAS, MERMAS O PENALIDADES:",
+            "OTRAS CONDICIONES ACORDADAS:",
+          ].join("\n"))}>Insertar guía de detalle</button>
+        </div>
+        <textarea className="publication-observations-input" value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={9}
+          placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:\n\n• Puerto y terminal exacta de entrega.\n• Modalidad y plazo de pago (transferencia, días desde descarga, etc.).\n• Si la entrega será en una sola vez o en varias cargas; indicar cantidades y fechas.\n• Quién asume flete, carga, descarga y gastos portuarios.\n• Documentación, calidad, tolerancias y requisitos adicionales.\n• Cualquier condición comercial o logística que deba conocer la contraparte."} />
+        <small>Cuanto más completas sean las observaciones, menos dudas habrá durante la negociación y la formalización del contrato.</small>
+      </section>
 
       <button type="submit" disabled={guardando} style={{ padding: 14, borderRadius: 8, border: "none", cursor: guardando ? "wait" : "pointer", background: "#16a34a", color: "white", fontSize: 16 }}>
         {guardando ? "Guardando..." : modoEdicion ? "Guardar cambios" : "Publicar"}
