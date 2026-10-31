@@ -165,6 +165,8 @@ export default function NuevaPublicacionForm() {
   useEffect(() => { puertosSeleccionadosRef.current = puertosSeleccionados; }, [puertosSeleccionados]);
   const [lugaresSeleccionados, setLugaresSeleccionados] = useState<string[]>([]);
   const [busquedaPuerto, setBusquedaPuerto] = useState("");
+  const [nuevoPuertoNombre, setNuevoPuertoNombre] = useState("");
+  const [nuevoPuertoCiudad, setNuevoPuertoCiudad] = useState("");
   const [cargandoPuertos, setCargandoPuertos] = useState(false);
   const [lugarTemporal, setLugarTemporal] = useState("");
   const [cargando, setCargando] = useState(true);
@@ -281,6 +283,11 @@ export default function NuevaPublicacionForm() {
         : [];
 
       setPuertosSeleccionados(puertosGuardados);
+      const puertosManualesGuardados = puertosGuardados.filter((codigo: string) => codigo.startsWith("MANUAL:")).map((codigo: string) => {
+        const [, nombre = "", ciudad = "", pais = ""] = codigo.split(":");
+        return { codigo, nombre: decodeURIComponent(nombre), localidad: decodeURIComponent(ciudad), pais: decodeURIComponent(pais), provincia: null, tipo: "Puerto ingresado manualmente", source: "Ingreso manual" } as Puerto;
+      });
+      if (puertosManualesGuardados.length) setPuertos((actuales) => [...actuales.filter((item) => !puertosManualesGuardados.some((manual) => manual.codigo === item.codigo)), ...puertosManualesGuardados]);
       setLugaresSeleccionados(lugaresGuardados);
       setForm({
         tipo: publicacion.tipo === "COMPRA" ? "COMPRA" : "VENTA",
@@ -318,6 +325,37 @@ export default function NuevaPublicacionForm() {
       setForm((anterior) => ({ ...anterior, puerto: nuevos[0] ?? "" }));
       return nuevos;
     });
+  }
+
+  function agregarPuertoManual() {
+    const nombre = nuevoPuertoNombre.trim();
+    if (!nombre) {
+      setError("Escribí el nombre del puerto para agregarlo.");
+      return;
+    }
+    const pais = paises.find((item) => item.id === Number(form.pais_id))?.nombre ?? "País no especificado";
+    const ciudad = nuevoPuertoCiudad.trim();
+    const codigo = "MANUAL:" + encodeURIComponent(nombre) + ":" + encodeURIComponent(ciudad) + ":" + encodeURIComponent(pais);
+    const nuevo: Puerto = { codigo, nombre, pais, provincia: null, localidad: ciudad || null, tipo: "Puerto ingresado manualmente", source: "Ingreso manual" };
+    setPuertos((actuales) => actuales.some((item) => item.codigo === codigo) ? actuales : [...actuales, nuevo]);
+    setPuertosSeleccionados((actuales) => actuales.includes(codigo) ? actuales : [...actuales, codigo]);
+    setForm((actual) => ({ ...actual, puerto: actual.puerto || codigo }));
+    setNuevoPuertoNombre("");
+    setNuevoPuertoCiudad("");
+    setBusquedaPuerto("");
+    setError("");
+  }
+
+  function obtenerPuertoSeleccionado(codigo: string): Puerto | undefined {
+    const existente = puertos.find((item) => item.codigo === codigo);
+    if (existente) return existente;
+    if (!codigo.startsWith("MANUAL:")) return undefined;
+    const [, nombre = "", ciudad = "", pais = ""] = codigo.split(":");
+    try {
+      return { codigo, nombre: decodeURIComponent(nombre), localidad: decodeURIComponent(ciudad) || null, pais: decodeURIComponent(pais), provincia: null, tipo: "Puerto ingresado manualmente", source: "Ingreso manual" };
+    } catch {
+      return { codigo, nombre: codigo, localidad: null, pais: "", provincia: null, tipo: "Puerto ingresado manualmente", source: "Ingreso manual" };
+    }
   }
 
   async function guardar(e: React.FormEvent<HTMLFormElement>) {
@@ -451,6 +489,22 @@ export default function NuevaPublicacionForm() {
           <input value={busquedaPuerto} onChange={(e) => setBusquedaPuerto(e.target.value)} placeholder="Ej.: Rotterdam, Santos, Shanghái, Buenos Aires..." aria-label="Buscar puerto en todo el mundo" />
           {busquedaPuerto && <button type="button" onClick={() => setBusquedaPuerto("")}>Limpiar búsqueda</button>}
         </div>
+        <div className="publication-manual-port">
+          <div className="publication-manual-port-heading">
+            <strong>Agregar puerto manualmente</strong>
+            <span>Si no aparece en el buscador, escribí sus datos y agregalo.</span>
+          </div>
+          <div className="publication-manual-port-fields">
+            <label>Nombre del puerto
+              <input value={nuevoPuertoNombre} onChange={(e) => setNuevoPuertoNombre(e.target.value)} placeholder="Ej.: Puerto de Guayaquil" />
+            </label>
+            <label>Ciudad / localidad (opcional)
+              <input value={nuevoPuertoCiudad} onChange={(e) => setNuevoPuertoCiudad(e.target.value)} placeholder="Ej.: Guayaquil" />
+            </label>
+            <button type="button" onClick={agregarPuertoManual} disabled={!nuevoPuertoNombre.trim()}>＋ Agregar puerto</button>
+          </div>
+          <small>País asociado: {paises.find((item) => item.id === Number(form.pais_id))?.nombre ?? "Seleccioná un país arriba"}.</small>
+        </div>
         <div className="publication-port-results">
           {cargandoPuertos ? <p className="publication-empty">Buscando puertos...</p> :
             puertos.length ? puertos.map((puerto) => {
@@ -469,8 +523,8 @@ export default function NuevaPublicacionForm() {
         </div>
         {puertosSeleccionados.length > 0 && <div className="publication-chips publication-port-chips">
           {puertosSeleccionados.map((codigo) => {
-            const puerto = puertos.find((item) => item.codigo === codigo);
-            const nombre = puerto ? puerto.nombre + " · " + puerto.pais : codigo;
+            const puerto = obtenerPuertoSeleccionado(codigo);
+            const nombre = puerto ? puerto.nombre + (puerto.pais ? " · " + puerto.pais : "") : codigo;
             return <span key={codigo}>{nombre}<button type="button" aria-label={"Quitar " + nombre} onClick={() => {
               setPuertosSeleccionados((actuales) => actuales.filter((item) => item !== codigo));
               if (form.puerto === codigo) actualizarCampo("puerto", puertosSeleccionados.find((item) => item !== codigo) ?? "");
@@ -482,8 +536,8 @@ export default function NuevaPublicacionForm() {
           <select id="puerto-principal" value={form.puerto} onChange={(e) => actualizarCampo("puerto", e.target.value)}>
             <option value="">Seleccionar entre los puertos elegidos...</option>
             {puertosSeleccionados.map((codigo) => {
-              const puerto = puertos.find((item) => item.codigo === codigo);
-              return <option key={codigo} value={codigo}>{puerto ? puerto.nombre + " · " + puerto.pais : codigo}</option>;
+              const puerto = obtenerPuertoSeleccionado(codigo);
+              return <option key={codigo} value={codigo}>{puerto ? puerto.nombre + (puerto.pais ? " · " + puerto.pais : "") : codigo}</option>;
             })}
           </select>
           <button type="button" onClick={() => { setPuertosSeleccionados([]); actualizarCampo("puerto", ""); }}>Quitar todos</button>
