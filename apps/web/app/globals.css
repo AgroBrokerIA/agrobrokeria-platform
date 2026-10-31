@@ -1212,3 +1212,15 @@ body{background:var(--ab-bg)}
 .publication-form>button[type=submit]{width:100%;min-height:54px}
 @media(max-width:900px){.publication-form{max-width:100%}.publication-basic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.publication-basic-grid,.publication-quality{grid-template-columns:1fr}.publication-observations{padding:16px}.publication-observations-input{min-height:280px!important}.publication-section-heading{gap:10px}.publication-selected-row{grid-template-columns:1fr}}
+
+/* Ingreso manual de puertos en publicaciones */
+.publication-manual-port{display:grid;gap:12px;margin:14px 0 18px;padding:16px 18px;border:1px dashed #b7d9c8;border-radius:14px;background:#f7fcf9}
+.publication-manual-port-heading{display:grid;gap:4px}
+.publication-manual-port-heading strong{font-size:14px;color:#075b43}
+.publication-manual-port-heading span,.publication-manual-port>small{font-size:12px;color:#64748b}
+.publication-manual-port-fields{display:grid;grid-template-columns:minmax(0,1.4fr) minmax(0,1fr) auto;gap:12px;align-items:end}
+.publication-manual-port-fields label{display:grid;gap:6px;font-size:12px;font-weight:600;color:#334155}
+.publication-manual-port-fields input{width:100%;min-height:44px;padding:10px 12px;border:1px solid #cbd5e1;border-radius:9px;background:white;font-size:14px}
+.publication-manual-port-fields button{min-height:44px;padding:0 16px;border:0;border-radius:9px;background:#087f5b;color:white;font-weight:700;white-space:nowrap;cursor:pointer}
+.publication-manual-port-fields button:disabled{opacity:.45;cursor:not-allowed}
+@media(max-width:720px){.publication-manual-port-fields{grid-template-columns:1fr}.publication-manual-port-fields button{width:100%}}
