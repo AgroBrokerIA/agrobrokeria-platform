@@ -5,7 +5,7 @@ import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
 
-type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number};
+type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number;recibidos:number};
 type EmpresaInfo={nombre:string;rol:string;pais:string;verificada:boolean;confiable:boolean;productos:string[];direccion:string;telefono:string;email:string};
 type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:string|null};
 
@@ -43,7 +43,7 @@ export default function MensajesPage(){
   }catch(e){setErrorSelector(e instanceof Error?e.message:"No se pudieron cargar las operaciones.");}finally{setCargandoOperaciones(false)}
  }
  function iniciarDesdeOperacion(op:OperacionDisponible){
-  const nueva:Conversacion={operacion_id:op.id,codigo:op.codigo,ultimo_mensaje:"Iniciar conversación",ultimo_mensaje_at:new Date().toISOString(),no_leidos:0};
+  const nueva:Conversacion={operacion_id:op.id,codigo:op.codigo,ultimo_mensaje:"Iniciar conversación",ultimo_mensaje_at:new Date().toISOString(),no_leidos:0,recibidos:0};
   setConversaciones(actuales=>actuales.some(x=>x.operacion_id===op.id)?actuales:[nueva,...actuales]);setSeleccionada(nueva);setMostrarSelectorOperacion(false);setTab("Información");
  }
  async function cargarConversaciones(){
@@ -88,7 +88,7 @@ export default function MensajesPage(){
   {cargando?<div className="messages-loading">Cargando conversaciones...</div>:<div className="messages-workspace">
    <aside className="messages-list-panel">
     <label className="messages-search">⌕ <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar conversaciones..." aria-label="Buscar conversaciones"/></label>
-    <div className="messages-list-tabs"><b>Todas <i>{conversaciones.reduce((n,c)=>n+c.no_leidos,0)||""}</i></b><span>No leídas <i>{conversaciones.reduce((n,c)=>n+c.no_leidos,0)||""}</i></span><span>Archivadas</span></div>
+    <div className="messages-list-tabs"><b>Todas <i className="messages-count">{conversaciones.reduce((n,c)=>n+c.recibidos,0)}</i></b><span>No leídas <i className="messages-count">{conversaciones.reduce((n,c)=>n+c.no_leidos,0)}</i></span><span>Archivadas</span></div>
     <div className="messages-conversations">{rows.map((c,i)=><button key={c.operacion_id} className={seleccionada?.operacion_id===c.operacion_id?"selected":""} onClick={()=>setSeleccionada(c)}><div className="company-avatar">{initials(c.nombre)}</div><div className="conversation-copy"><div><strong>{c.nombre}</strong><small>{c.flag}</small></div><p>{c.ultimo_mensaje}</p></div><div className="conversation-meta"><time>{fecha(c.ultimo_mensaje_at)}</time>{c.no_leidos>0&&<em>{c.no_leidos}</em>}</div></button>)}</div>
    </aside>
    <section className="messages-chat">
