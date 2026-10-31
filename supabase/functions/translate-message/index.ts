@@ -1,7 +1,15 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "jsr:@supabase/supabase-js@2";
-const json=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{"content-type":"application/json","cache-control":"no-store"}});
+const corsHeaders = {
+ "Access-Control-Allow-Origin": "*",
+ "Access-Control-Allow-Methods": "POST, OPTIONS",
+ "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+ "Access-Control-Max-Age": "86400",
+};
+const json=(x:unknown,s=200)=>new Response(JSON.stringify(x),{status:s,headers:{"content-type":"application/json","cache-control":"no-store",...corsHeaders}});
 Deno.serve(async(req)=>{
+ if(req.method==="OPTIONS") return new Response("ok",{status:204,headers:corsHeaders});
+ if(req.method!=="POST") return json({error:"METHOD_NOT_ALLOWED"},405);
  try{
   const auth=req.headers.get("authorization")||"";const token=auth.replace(/^Bearer /i,"");if(!token)return json({error:"AUTH_REQUIRED"},401);
   const url=Deno.env.get("SUPABASE_URL")!,anon=Deno.env.get("SUPABASE_ANON_KEY")!,service=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
