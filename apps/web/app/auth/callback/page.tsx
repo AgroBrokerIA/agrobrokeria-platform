@@ -10,6 +10,9 @@ type LegalAcceptance = { documento_legal_id: string; version: string };
 export default function AuthCallbackPage() {
   const router = useRouter();
   const [error, setError] = useState("");
+  const [mfaChallenge, setMfaChallenge] = useState<{factorId:string;challengeId:string;userId:string}|null>(null);
+  const [mfaCode, setMfaCode] = useState("");
+  const [mfaPending, setMfaPending] = useState(false);
 
   useEffect(() => {
     let active = true;
@@ -35,6 +38,28 @@ export default function AuthCallbackPage() {
         return;
       }
 
+      const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError) { if (active) setError("No se pudo comprobar el segundo factor."); return; }
+      if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
+        const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (factorsError) { if (active) setError(factorsError.message); return; }
+        const factor = (factors?.totp || []).find((item:any)=>item.status==="verified");
+        if (!factor) { if (active) setError("La cuenta requiere un segundo factor verificado."); return; }
+        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+        if (challengeError) { if (active) setError(challengeError.message); return; }
+        if (active) { setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:user.id}); setMfaPending(true); }
+        return;
+      }
+
+      await finalizarAcceso(user.id);
+    })();
+
+    return () => {
+      active = false;
+    };
+  }, [router]);
+
+  async function finalizarAcceso(userId:string) {
       const [{ data: legal, error: legalError }, { data: accepted, error: acceptedError }] =
         await Promise.all([
           supabase
@@ -64,12 +89,18 @@ export default function AuthCallbackPage() {
 
       router.replace(allCurrentLegalAccepted ? "/dashboard" : "/legal/aceptar");
       router.refresh();
-    })();
+  }
 
-    return () => {
-      active = false;
-    };
-  }, [router]);
+  async function verificarSegundoFactor() {
+    if (!mfaChallenge || mfaCode.trim().length !== 6) return;
+    setMfaPending(true); setError("");
+    try {
+      const { error } = await supabase.auth.mfa.verify({factorId:mfaChallenge.factorId,challengeId:mfaChallenge.challengeId,code:mfaCode.trim()});
+      if (error) throw error;
+      await finalizarAcceso(mfaChallenge.userId);
+    } catch(e) { setError(e instanceof Error ? e.message : "No se pudo verificar el segundo factor."); }
+    finally { setMfaPending(false); }
+  }
 
   return (
     <main className="auth-page">
@@ -77,7 +108,11 @@ export default function AuthCallbackPage() {
         <div className="auth-card">
           <div className="auth-logo">↗</div>
           <h1>Verificando acceso</h1>
-          <p>{error || "Completando el inicio de sesión..."}</p>
+          <p>{error || (mfaChallenge ? "Ingresá el código de tu aplicación autenticadora." : "Completando el inicio de sesión...")}</p>
+          {mfaChallenge && <form onSubmit={(e)=>{e.preventDefault();void verificarSegundoFactor();}}>
+            <input aria-label="Código de autenticación" inputMode="numeric" maxLength={6} placeholder="000000" value={mfaCode} onChange={(e)=>setMfaCode(e.target.value.replace(/\D/g,"").slice(0,6))}/>
+            <button className="auth-submit" type="submit" disabled={mfaPending||mfaCode.length!==6}>{mfaPending?"Verificando…":"Verificar código"}</button>
+          </form>}
           {error && (
             <a className="auth-submit" href="/login">
               Volver a iniciar sesión
