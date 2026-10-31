@@ -20,7 +20,7 @@ export default function MercadoPage(){
  async function load(){
   setLoading(true);setError("");
   const [qr,cr,pr,prod]=await Promise.all([
-   supabase.from("market_quotes").select("id,source,market_date,obtained_at,price,currency,unit,price_type,position,market,port,freshness,commodity_id,product_id,variation,previous_value").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300),
+   supabase.from("market_quotes").select("id,source,market_date,obtained_at,price,currency,unit,price_type,position,market,port,freshness,commodity_id,product_id,variation,previous_value,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300),
    supabase.from("commodities").select("id,codigo"),
    supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,provincia,localidad,puerto,creada_en,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(12),
    supabase.from("productos").select("id,codigo,nombre,categoria").eq("activo",true).order("nombre")
@@ -43,7 +43,7 @@ export default function MercadoPage(){
    const response=await fetch(base+"/functions/v1/market-data-sync",{method:"POST",headers:{Authorization:"Bearer "+session.access_token,apikey:anon,"Content-Type":"application/json"},body:"{}"});
    const j=await response.json().catch(()=>({}));
    if(!response.ok||!j?.ok)throw new Error(j?.error||"No se pudo actualizar BCR/CAC.");
-   setSyncMsg("Precios BCR/CAC actualizados. El histórico fue conservado.");await load();
+   setSyncMsg("Cotizaciones BCR/CAC y Chicago (CBOT) actualizadas. El histórico fue conservado.");await load();
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
  const latest=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){const code=commodities[q.commodity_id||""]||q.commodity_id||"OTRO";if(!m.has(code))m.set(code,q)}return m},[quotes,commodities]);
@@ -53,7 +53,7 @@ export default function MercadoPage(){
  const codeFor=(q:Quote)=>productMeta(q)?.codigo||commodities[q.commodity_id||""]||q.commodity_id||"OTRO";
  const nameFor=(q:Quote)=>productMeta(q)?.nombre||names.get(codeFor(q))||codeFor(q);
  const categoryFor=(q:Quote)=>String(productMeta(q)?.categoria||"").toLowerCase();
- const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){if(q.price==null)continue;const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q);const code=productMeta(q)?.codigo||commodities[q.commodity_id||""];if(code&&!m.has("code:"+code))m.set("code:"+code,q)}return m},[quotes,products,commodities]);
+ const latestByProduct=useMemo(()=>{const m=new Map<string,Quote>();for(const q of quotes){if(q.price==null||String(q.market||"").toUpperCase()==="CHICAGO")continue;const key=String(q.product_id||q.commodity_id||q.id);if(!m.has(key))m.set(key,q);const code=productMeta(q)?.codigo||commodities[q.commodity_id||""];if(code&&!m.has("code:"+code))m.set("code:"+code,q)}return m},[quotes,products,commodities]);
  const catalogProducts=useMemo(()=>Object.values(products),[products]);
  const catalogForTab=useMemo(()=>{
    if(marketTab==="Aceites")return catalogProducts.filter(p=>String(p.nombre||"").toLowerCase().includes("aceite")||String(p.categoria||"").toLowerCase().includes("aceite"));
