@@ -42,6 +42,7 @@ type Puerto = {
   provincia: string | null;
   localidad: string | null;
   tipo: string;
+  source?: string;
 };
 
 type LugarRecepcion = {
@@ -50,8 +51,7 @@ type LugarRecepcion = {
   descripcion: string | null;
 };
 
-type GeoProvincia = { iso2: string; name: string; type?: string; };
-type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null; emoji?: string | null };
+type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null };
 
 async function obtenerEmpresaDelUsuario() {
   const {
@@ -136,7 +136,6 @@ export default function NuevaPublicacionForm() {
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
   const [puertos, setPuertos] = useState<Puerto[]>([]);
   const [lugares, setLugares] = useState<LugarRecepcion[]>([]);
-  const [provincias, setProvincias] = useState<GeoProvincia[]>([]);
   const [paises, setPaises] = useState<GeoPais[]>([]);
   const paisesPorRegion = useMemo(() => paises.reduce<Record<string, GeoPais[]>>((grupos, pais) => {
     const region = pais.region || "Otros territorios";
