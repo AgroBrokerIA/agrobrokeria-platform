@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 
 import {
@@ -161,6 +161,8 @@ export default function NuevaPublicacionForm() {
   });
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
+  const puertosSeleccionadosRef = useRef<string[]>([]);
+  useEffect(() => { puertosSeleccionadosRef.current = puertosSeleccionados; }, [puertosSeleccionados]);
   const [lugaresSeleccionados, setLugaresSeleccionados] = useState<string[]>([]);
   const [busquedaPuerto, setBusquedaPuerto] = useState("");
   const [cargandoPuertos, setCargandoPuertos] = useState(false);
@@ -201,12 +203,12 @@ export default function NuevaPublicacionForm() {
           if (!response.ok) throw new Error(data.error || "No se pudo consultar el catálogo de puertos.");
           return data;
         })
-        .then((data) => { if (activo) setPuertos((actuales) => { const seleccionados = actuales.filter((puerto) => puertosSeleccionados.includes(puerto.codigo)); return [...seleccionados, ...(Array.isArray(data.ports) ? data.ports.filter((puerto: Puerto) => !seleccionados.some((item) => item.codigo === puerto.codigo)) : [])]; }); })
+        .then((data) => { if (activo) setPuertos((actuales) => { const seleccionados = actuales.filter((puerto) => puertosSeleccionadosRef.current.includes(puerto.codigo)); return [...seleccionados, ...(Array.isArray(data.ports) ? data.ports.filter((puerto: Puerto) => !seleccionados.some((item) => item.codigo === puerto.codigo)) : [])]; }); })
         .catch((e) => { if (e.name !== "AbortError") { console.error("No se pudieron cargar los puertos:", e); if (activo) setPuertos([]); } })
         .finally(() => { if (activo) setCargandoPuertos(false); });
     }, busquedaPuerto.trim().length >= 2 ? 300 : 0);
     return () => { activo = false; clearTimeout(timer); controller.abort(); };
-  }, [form.pais_id, paises, busquedaPuerto, puertosSeleccionados]);
+  }, [form.pais_id, paises, busquedaPuerto]);
 
 
 
@@ -247,7 +249,6 @@ export default function NuevaPublicacionForm() {
       setProductos(productosData);
       setMonedas(monedasData);
       setIncoterms(incotermsData);
-      setPuertos((puertosResult.data as Puerto[]) ?? []);
       setLugares((lugaresResult.data as LugarRecepcion[]) ?? []);
 
       if (!id) {
@@ -523,18 +524,22 @@ export default function NuevaPublicacionForm() {
           </div>
           <button type="button" className="publication-template-button" onClick={() => actualizarCampo("observaciones", [
             "PUERTO / LUGAR DE ENTREGA:",
-            "DIRECCIÓN O TERMINAL EXACTA:",
-            "MODALIDAD DE ENTREGA:",
-            "CANTIDAD DE ENTREGAS / FRECUENCIA:",
-            "FECHAS O VENTANA DE ENTREGA:",
-            "MODALIDAD Y PLAZO DE PAGO:",
-            "FLETE Y RESPONSABLE DEL TRANSPORTE:",
-            "DOCUMENTACIÓN REQUERIDA:",
-            "CONDICIONES DE CALIDAD Y DESCARGA:",
-            "TOLERANCIAS, MERMAS O PENALIDADES:",
-            "OTRAS CONDICIONES ACORDADAS:",
-          ].join("
-"))}>Insertar guía de detalle</button>
+            "PAÍS, CIUDAD, TERMINAL Y DIRECCIÓN EXACTA:",
+            "MODALIDAD DE ENTREGA (FOB, CIF, FCA, EN PLANTA, ETC.):",
+            "CANTIDAD TOTAL Y TOLERANCIA:",
+            "CRONOGRAMA: CANTIDAD POR ENTREGA, NÚMERO DE CAMIONES/BARCOS Y FRECUENCIA:",
+            "FECHAS O VENTANA DE CARGA / DESCARGA:",
+            "MODALIDAD DE PAGO (TRANSFERENCIA, CARTA DE CRÉDITO U OTRA):",
+            "PLAZO DE PAGO Y CONDICIÓN QUE LO ACTIVA (FACTURA, CARGA, DESCARGA, DOCUMENTOS):",
+            "MONEDA Y REFERENCIA DE PRECIO / AJUSTES:",
+            "FLETE, SEGURO, CARGA, DESCARGA Y QUIÉN ASUME CADA COSTO:",
+            "GASTOS PORTUARIOS, ALMACENAJE, DEMORAS Y RESPONSABLE:",
+            "DOCUMENTACIÓN REQUERIDA (CONTRATO, FACTURA, CERTIFICADOS, ETC.):",
+            "CALIDAD, HUMEDAD, PROTEÍNA, MUESTREO Y ANÁLISIS:",
+            "TOLERANCIAS, MERMAS, RECHAZOS O PENALIDADES:",
+            "VIGENCIA DE LA OFERTA Y PLAZO PARA ACEPTAR:",
+            "OTRAS CONDICIONES COMERCIALES, LOGÍSTICAS O LEGALES:"
+          ].join("\\n"))}>Insertar guía de detalle</button>
         </div>
         <textarea className="publication-observations-input" value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={9}
           placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:
