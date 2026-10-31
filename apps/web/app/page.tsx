@@ -74,7 +74,7 @@ export default function Home(){
   <nav className={styles.nav}>
    <Link href="/" className={styles.brand}><i className={styles.logo}/><span><b className={styles.brandName}>AgroBroker<em>IA</em></b><small className={styles.tagline}>Conectando el mundo agro</small></span></Link>
    <div className={styles.navLinks}>
-    <Link href="#inicio">Inicio</Link><Link href="#mercado">Mercado</Link><Link href="#ofertas">Ofertas</Link><Link href="#demandas">Demandas</Link><Link href="#empresas">Empresas</Link><Link href="#precios">Precios</Link><Link href="#ia-matching">IA Matching</Link><Link href="#recursos">Recursos⌄</Link>
+    <Link href="#inicio">Inicio</Link><Link href="#mercado">Mercado</Link><Link href="#ofertas">Ofertas</Link><Link href="#precios">Granos</Link><Link href="#finanzas">Finanzas</Link><Link href="#noticias">Noticias</Link><Link href="#recursos">Recursos</Link><Link href="#contacto">Contacto</Link>
    </div>
    <div className={styles.navRight}><Link href="/configuracion?tab=idioma" className={styles.language}>◎ ES⌄</Link><Link href="/login" className={styles.login}>Iniciar sesión</Link><Link href="/register" className={styles.register}>Crear cuenta</Link></div>
   </nav>
@@ -122,7 +122,24 @@ export default function Home(){
   <section id="precios" className={styles.publicSection}>
    <div className={styles.sectionTitle}><span>PRECIOS</span><h2>Cotizaciones reales, no precios inventados</h2><p>Las referencias de granos se conectan con fuentes de mercado. La última referencia pública disponible de Rosario se identifica con fecha y fuente.</p></div>
    <div className={styles.priceBoard}>{quotes.map(q=><div key={q.name}><span>{q.icon}</span><b>{q.name}</b><strong>{q.price}</strong><small>{q.detail}</small></div>)}</div>
-   <div className={styles.sourceNote}>Fuente oficial: Bolsa de Comercio de Rosario / Cámara Arbitral de Cereales. La cotización local publicada para 01/10/2026 informa Soja $552.500, Maíz $287.900, Trigo $333.000 y Sorgo $295.523 por tonelada. <a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0" target="_blank" rel="noreferrer">Ver BCR →</a></div>
+   <div className={styles.sourceNote}>Los precios se muestran únicamente cuando existe una cotización sincronizada y verificable. La fecha y la fuente acompañan cada referencia. <a href="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0" target="_blank" rel="noreferrer">Consultar BCR →</a></div>
+  </section>
+  <section id="finanzas" className={styles.publicSection}>
+   <div className={styles.sectionTitle}><span>MERCADOS FINANCIEROS</span><h2>Cotizaciones financieras</h2><p>Referencias de divisas, índices y activos financieros para seguir el contexto económico. Los valores se actualizan desde el proveedor externo y pueden tener demora.</p></div>
+   <div className={styles.financePanel}>
+    <div className={styles.financeHeading}><div><strong>Mercados en vivo</strong><small>Datos provistos por TradingView · Puede existir demora según el mercado</small></div><a href="https://www.tradingview.com/markets/" target="_blank" rel="noreferrer">Ver todos los mercados →</a></div>
+    <iframe title="Cotizaciones financieras y mercados" src="https://s.tradingview.com/embed-widget/market-overview/?locale=es#%7B%22colorTheme%22%3A%22light%22%2C%22dateRange%22%3A%2212M%22%2C%22showChart%22%3Atrue%2C%22showFloatingTooltip%22%3Atrue%2C%22showVolume%22%3Afalse%2C%22showMarketStatus%22%3Atrue%2C%22width%22%3A%221000%22%2C%22height%22%3A%22520%22%2C%22isTransparent%22%3Afalse%2C%22tabs%22%3A%5B%7B%22title%22%3A%22Índices%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BCBA%3AMERV%22%7D%2C%7B%22s%22%3A%22SP%3ASPX%22%7D%2C%7B%22s%22%3A%22NASDAQ%3ANDX%22%7D%5D%7D%2C%7B%22title%22%3A%22Divisas%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22FX%3AEURUSD%22%7D%2C%7B%22s%22%3A%22FX%3AUSDJPY%22%7D%2C%7B%22s%22%3A%22FX_IDC%3AUSDARS%22%7D%5D%7D%2C%7B%22title%22%3A%22Acciones%22%2C%22symbols%22%3A%5B%7B%22s%22%3A%22BCBA%3AYPFD%22%7D%2C%7B%22s%22%3A%22BCBA%3AGGAL%22%7D%2C%7B%22s%22%3A%22NASDAQ%3AAAPL%22%7D%5D%7D%5D%2C%22locale%22%3A%22es%22%7D" loading="lazy" referrerPolicy="no-referrer-when-downgrade" />
+   </div>
+   <p className={styles.financeDisclaimer}>Las cotizaciones financieras son informativas y no constituyen una oferta de compra o venta. Verificá la hora, moneda y mercado de cada instrumento.</p>
+  </section>
+  <section id="noticias" className={`${styles.publicSection} ${styles.alt}`}>
+   <div className={styles.sectionTitle}><span>ACTUALIDAD</span><h2>Noticias del sector agro y los mercados</h2><p>Accedé a fuentes periodísticas y sectoriales para seguir la actualidad nacional e internacional.</p></div>
+   <div className={styles.newsGrid}>
+    <a href="https://www.bcr.com.ar/es/mercados/investigacion-y-desarrollo/informativo-semanal" target="_blank" rel="noreferrer" className={styles.newsCard}><span className={styles.newsTag}>ARGENTINA · MERCADOS</span><strong>Bolsa de Comercio de Rosario</strong><p>Informes, análisis y novedades del mercado granario argentino.</p><span className={styles.newsArrow}>Consultar noticias →</span></a>
+    <a href="https://www.agrofy.com.ar/" target="_blank" rel="noreferrer" className={styles.newsCard}><span className={styles.newsTag}>ARGENTINA · AGRO</span><strong>Agrofy News</strong><p>Actualidad agropecuaria, producción, negocios y tecnología.</p><span className={styles.newsArrow}>Leer actualidad →</span></a>
+    <a href="https://www.reuters.com/markets/commodities/" target="_blank" rel="noreferrer" className={styles.newsCard}><span className={styles.newsTag}>INTERNACIONAL · COMMODITIES</span><strong>Reuters Commodities</strong><p>Noticias globales sobre materias primas y mercados internacionales.</p><span className={styles.newsArrow}>Ver noticias globales →</span></a>
+    <a href="https://www.usda.gov/news" target="_blank" rel="noreferrer" className={styles.newsCard}><span className={styles.newsTag}>INTERNACIONAL · AGRICULTURA</span><strong>USDA News</strong><p>Comunicados y novedades oficiales del Departamento de Agricultura de EE. UU.</p><span className={styles.newsArrow}>Consultar fuente oficial →</span></a>
+   </div>
   </section>
   <section id="ia-matching" className={`${styles.publicSection} ${styles.alt}`}>
    <div className={styles.sectionTitle}><span>IA MATCHING</span><h2>La IA encuentra coincidencias que de otra forma llevarían horas</h2><p>El motor relaciona producto, cantidad, calidad, ubicación, precio, modalidad, fechas y preferencias para detectar oportunidades compatibles.</p></div>
@@ -147,6 +164,14 @@ export default function Home(){
     ["Seguridad","RLS, controles de acceso, auditoría y protección de información sensible."]
    ].map(([t,d])=><article key={t}><h3>{t}</h3><p>{d}</p></article>)}</div>
    <div className={styles.registerBanner}><div><strong>La información pública te muestra cómo funciona.</strong><span>El registro abre la parte operativa: publicar, negociar, verificar, contratar y cerrar negocios.</span></div><Link href="/register">Crear cuenta gratis →</Link></div>
+  </section>
+  <section id="contacto" className={styles.publicSection}>
+   <div className={styles.sectionTitle}><span>CONTACTO</span><h2>Conectemos tu negocio con el mundo agro</h2><p>Consultas comerciales, soporte de la plataforma y alianzas estratégicas.</p></div>
+   <div className={styles.contactGrid}>
+    <article className={styles.contactCard}><span>✉</span><div><strong>Correo de contacto</strong><a href="mailto:soporte@agrobrokeria.online">soporte@agrobrokeria.online</a><small>Escribinos para recibir asistencia o información.</small></div></article>
+    <article className={styles.contactCard}><span>🌎</span><div><strong>Alcance internacional</strong><p>Productores, acopios, compradores, traders y operadores logísticos.</p><small>Una plataforma para conectar oportunidades agrocomerciales.</small></div></article>
+    <article className={styles.contactCta}><div><strong>¿Listo para operar?</strong><p>Creá tu cuenta para publicar, negociar y gestionar operaciones.</p></div><Link href="/register">Crear cuenta gratis →</Link></article>
+   </div>
   </section>
   <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><div style={{display:"flex",gap:"16px",alignItems:"center",flexWrap:"wrap"}}><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><a href="mailto:soporte@agrobrokeria.online">Contacto</a><Link href="/register">Crear cuenta →</Link></div></footer>
  </main>
