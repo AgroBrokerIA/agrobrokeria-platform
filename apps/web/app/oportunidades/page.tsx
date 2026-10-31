@@ -12,13 +12,15 @@ const roleColor=(type?:string|null)=>({ACOPIO:"#15803D",COOPERATIVA:"#15803D",BR
 const icon=(n?:string|null)=>{const x=(n||"").toLowerCase();return x.includes("soja")?"🫘":x.includes("maíz")||x.includes("maiz")?"🌽":x.includes("trigo")?"🌾":x.includes("girasol")?"🌻":x.includes("aceite")?"🫒":x.includes("harina")?"🌾":"🫘"};
 
 export default function OportunidadesPage(){
- const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades"),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[priceMin,setPriceMin]=useState(""),[priceMax,setPriceMax]=useState(""),[sort,setSort]=useState("opportunity");\n const[detalle,setDetalle]=useState<Opportunity|null>(null),[mensajeContacto,setMensajeContacto]=useState("Hola, vi esta oportunidad en AgroBrokerIA y me interesa avanzar. ¿Podemos conversar las condiciones?"),[enviandoContacto,setEnviandoContacto]=useState(false),[contactoAviso,setContactoAviso]=useState("");
+ const[items,setItems]=useState<Opportunity[]>([]),[monedas,setMonedas]=useState<Record<number,string>>({}),[loading,setLoading]=useState(true),[error,setError]=useState(""),[producto,setProducto]=useState(""),[tipo,setTipo]=useState(""),[origen,setOrigen]=useState(""),[destino,setDestino]=useState(""),[scoreMin,setScoreMin]=useState(""),[tab,setTab]=useState("Todas las oportunidades"),[volMin,setVolMin]=useState(""),[volMax,setVolMax]=useState(""),[priceMin,setPriceMin]=useState(""),[priceMax,setPriceMax]=useState(""),[sort,setSort]=useState("opportunity");
+ const[detalle,setDetalle]=useState<Opportunity|null>(null),[mensajeContacto,setMensajeContacto]=useState("Hola, vi esta oportunidad en AgroBrokerIA y me interesa avanzar. ¿Podemos conversar las condiciones?"),[enviandoContacto,setEnviandoContacto]=useState(false),[contactoAviso,setContactoAviso]=useState("");
 
  useEffect(()=>{
   let active=true;
   const load=async()=>{setLoading(true);setError("");try{
   const{data:u}=await supabase.auth.getUser(); if(!u.user){setError("Tenés que iniciar sesión.");return}
-  const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}\n  const{data:companyMap,error:mapError}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",p.active_company_id).maybeSingle();if(mapError)throw mapError;if(!companyMap?.empresa_id)throw new Error("La empresa activa no tiene vínculo comercial configurado.");
+  const{data:p}=await supabase.from("profiles").select("active_company_id").eq("id",u.user.id).single(); if(!p?.active_company_id){setError("No se encontró la empresa activa.");return}
+  const{data:companyMap,error:mapError}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",p.active_company_id).maybeSingle();if(mapError)throw mapError;if(!companyMap?.empresa_id)throw new Error("La empresa activa no tiene vínculo comercial configurado.");
   const{data:ms}=await supabase.from("monedas").select("id,codigo"); setMonedas(Object.fromEntries((ms||[]).map((m:any)=>[m.id,m.codigo])));
   const{data:ps,error:pe}=await supabase.rpc("listar_publicaciones_activas_oportunidades");
   if(pe)throw pe;
@@ -39,7 +41,8 @@ export default function OportunidadesPage(){
   };
   const matches:Opportunity[]=[];
   for(let i=0;i<pubs.length;i++)for(let j=i+1;j<pubs.length;j++){
-   const a=pubs[i],b=pubs[j];\n   if(a.empresa_id!==companyMap.empresa_id&&b.empresa_id!==companyMap.empresa_id)continue;
+   const a=pubs[i],b=pubs[j];
+   if(a.empresa_id!==companyMap.empresa_id&&b.empresa_id!==companyMap.empresa_id)continue;
    const aBuy=isBuy(a.tipo),bBuy=isBuy(b.tipo);
    if(aBuy===bBuy)continue;
    const buy=aBuy?a:b, sell=aBuy?b:a;
