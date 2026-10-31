@@ -21,14 +21,14 @@ export default function OportunidadesPage(){
   const{data:ps,error:pe}=await supabase.rpc("listar_publicaciones_activas_oportunidades");
   if(pe)throw pe;
   const pubs=(ps||[]) as unknown as Publication[];
-  const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").trim().toLowerCase();
-  const isBuy=(v:string)=>["COMPRA","DEMANDA","BUY"].includes(norm(v).toUpperCase());
+  const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/\\s*\\([^)]*\\)/g,"").replace(/\\s+/g," ").trim().toLowerCase();
+  const isBuy=(v:string)=>["COMPRA","DEMANDA","BUY","PURCHASE","NECESIDAD"].includes(norm(v).toUpperCase());
+  const isSell=(v:string)=>["VENTA","OFERTA","SELL","SELLING"].includes(norm(v).toUpperCase());
   const score=(buy:Publication,sell:Publication)=>{
    if(buy.id===sell.id||buy.empresa_id===sell.empresa_id)return 0;
-   if(isBuy(buy.tipo)===isBuy(sell.tipo))return 0;
-   if(norm(buy.productos?.nombre)!==norm(sell.productos?.nombre))return 0;
-   if(buy.moneda_id&&sell.moneda_id&&buy.moneda_id!==sell.moneda_id)return 0;
-   if(buy.precio_tn!=null&&sell.precio_tn!=null&&Number(buy.precio_tn)<Number(sell.precio_tn))return 0;
+   if(!isBuy(buy.tipo)||!isSell(sell.tipo))return 0;
+   if(!norm(buy.productos?.nombre)||norm(buy.productos?.nombre)!==norm(sell.productos?.nombre))return 0;
+   if(buy.moneda_id!=null&&sell.moneda_id!=null&&Number(buy.moneda_id)!==Number(sell.moneda_id))return 0;
    const sameCity=!!buy.localidad&&norm(buy.localidad)===norm(sell.localidad);
    const sameProvince=!!buy.provincia&&norm(buy.provincia)===norm(sell.provincia);
    const price=buy.precio_tn==null||sell.precio_tn==null?12:Math.max(0,25-Math.min(25,Math.abs(Number(buy.precio_tn)-Number(sell.precio_tn))/Math.max(1,Number(sell.precio_tn))*100));
@@ -37,7 +37,10 @@ export default function OportunidadesPage(){
   };
   const matches:Opportunity[]=[];
   for(let i=0;i<pubs.length;i++)for(let j=i+1;j<pubs.length;j++){
-   const a=pubs[i],b=pubs[j]; const buy=isBuy(a.tipo)?a:b, sell=isBuy(a.tipo)?b:a;
+   const a=pubs[i],b=pubs[j];
+   const aBuy=isBuy(a.tipo),bBuy=isBuy(b.tipo);
+   if(aBuy===bBuy)continue;
+   const buy=aBuy?a:b, sell=aBuy?b:a;
    const s=score(buy,sell); if(s<60)continue;
    const other=b;
    matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,empresa_id:p.active_company_id,indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:new Date().toISOString(),distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.razon_social,venta_empresa:sell.empresas?.razon_social,producto:buy.productos?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
