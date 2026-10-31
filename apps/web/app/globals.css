@@ -1103,3 +1103,24 @@ body{background:var(--ab-bg)}
  .ai-table-title select{font-size:11px;height:36px}
  .ai-table-scroll .ai-table-head,.ai-table-scroll .ai-row{width:1080px;min-width:1080px}
 }
+
+/* Oportunidades: modal de detalle y contacto comercial */
+.ai-detail{font:inherit;cursor:pointer;border:0;min-width:92px}
+.ai-opportunity-backdrop{position:fixed;inset:0;z-index:15000;display:grid;place-items:center;padding:18px;background:rgba(8,25,32,.62);backdrop-filter:blur(3px)}
+.ai-opportunity-modal{width:min(760px,100%);max-height:min(88vh,850px);overflow:auto;background:#fff;border-radius:16px;padding:24px;box-shadow:0 24px 80px rgba(0,0,0,.28);color:#17323b}
+.ai-opportunity-modal>header{display:flex;justify-content:space-between;align-items:flex-start;gap:14px;padding-bottom:16px;border-bottom:1px solid #e7edf0}
+.ai-opportunity-modal>header small{font-size:10px;font-weight:800;letter-spacing:.05em;color:#078d54}
+.ai-opportunity-modal>header h2{margin:6px 0 0;font-size:23px}
+.ai-opportunity-modal>header>button{border:1px solid #dce5e8;border-radius:8px;background:#fff;padding:8px 11px;cursor:pointer}
+.ai-opportunity-facts{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin:18px 0}
+.ai-opportunity-facts>div{padding:12px;border:1px solid #e4ebee;border-radius:9px;background:#f9fbfc;min-width:0}
+.ai-opportunity-facts small{display:block;color:#6a7e84;font-size:10px;margin-bottom:5px}
+.ai-opportunity-facts strong{display:block;font-size:13px;overflow-wrap:anywhere}
+.ai-contact-box{padding:16px;border:1px solid #cfe8d9;border-radius:12px;background:#f5fbf7}
+.ai-contact-box h3{font-size:16px;margin:0 0 6px}
+.ai-contact-box p{font-size:12px;line-height:1.5;color:#59706d;margin:0 0 10px}
+.ai-contact-box textarea{box-sizing:border-box;width:100%;resize:vertical;padding:11px 12px;border:1px solid #d4e1dc;border-radius:8px;font:inherit;font-size:13px;background:#fff;color:#17323b}
+.ai-contact-box>button{display:block;margin:12px 0 0 auto;padding:11px 16px;border:0;border-radius:8px;background:#078d54;color:#fff;font-size:12px;font-weight:800;cursor:pointer}
+.ai-contact-box>button:disabled{opacity:.55;cursor:not-allowed}
+.ai-contact-box .ai-contact-status{margin:10px 0 0;padding:9px 11px;border-radius:7px;background:#fff;color:#315c49}
+@media(max-width:600px){.ai-opportunity-backdrop{padding:8px}.ai-opportunity-modal{padding:16px;max-height:92vh}.ai-opportunity-modal>header h2{font-size:19px}.ai-opportunity-facts{grid-template-columns:1fr 1fr;gap:7px}.ai-opportunity-facts>div{padding:9px}.ai-opportunity-facts strong{font-size:11px}.ai-contact-box>button{width:100%}}
