@@ -30,92 +30,12 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ ok: false, error: "Solo la administradora de la plataforma puede ejecutar este control." }, { status: 403 });
     }
 
-    // Resolve the commercial profile with the same authenticated account.
-    // Some existing accounts have a profile row keyed differently from auth.users.id.
+    // The platform administrator is independent from their commercial company role.
+    // Use the service role for read-only system-wide preflight checks when configured.
     const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
     const admin = serviceKey
       ? createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, serviceKey)
       : null;
-
-    let profile: { active_company_id: string | null } | null = null;
-
-    if (admin) {
-      const byId = await admin
-        .from("profiles")
-        .select("active_company_id")
-        .eq("id", user.id)
-        .maybeSingle();
-
-      if (!byId.error && byId.data) profile = byId.data;
-
-      if (!profile && user.email) {
-        const byEmail = await admin
-          .from("profiles")
-          .select("active_company_id")
-          .eq("email", user.email)
-          .maybeSingle();
-        if (!byEmail.error && byEmail.data) profile = byEmail.data;
-      }
-    } else {
-      const byId = await supabase
-        .from("profiles")
-        .select("active_company_id")
-        .eq("id", user.id)
-        .maybeSingle();
-      if (!byId.error && byId.data) profile = byId.data;
-    }
-
-    let activeCompanyId = profile?.active_company_id ?? null;
-    const resolvedProfileIds = [user.id];
-    if (admin && user.email) {
-      const { data: emailProfile } = await admin
-        .from("profiles")
-        .select("id")
-        .eq("email", user.email)
-        .maybeSingle();
-      if (emailProfile?.id) resolvedProfileIds.push(emailProfile.id);
-    }
-
-    // Final fallback: use an active administrator membership belonging to this account.
-    // The membership profile can be resolved by auth id or by the profile email.
-    if (!activeCompanyId) {
-      const { data: memberships } = await (admin ?? supabase)
-        .from("company_users")
-        .select("company_id,profile_id,rol,activo")
-        .in("profile_id", resolvedProfileIds)
-        .eq("activo", true);
-
-      const adminMembership = (memberships ?? []).find(
-        (item) => String(item.rol).toLowerCase() === "administrador"
-      );
-
-      activeCompanyId = adminMembership?.company_id ?? null;
-    }
-
-    if (!activeCompanyId) {
-      return NextResponse.json({
-        ok: false,
-        error: "No hay empresa activa con permisos de administrador para esta cuenta."
-      }, { status: 403 });
-    }
-
-    const { data: membershipsForCompany } = await (admin ?? supabase)
-      .from("company_users")
-      .select("rol,activo,profile_id")
-      .eq("company_id", activeCompanyId)
-      .in("profile_id", resolvedProfileIds)
-      .eq("activo", true);
-
-    const membership = (membershipsForCompany ?? []).find(
-      (item) => String(item.rol).toLowerCase() === "administrador"
-    );
-
-    if (!membership || String(membership.rol).toLowerCase() !== "administrador") {
-      return NextResponse.json({
-        ok: false,
-        error: "Solo un administrador puede ejecutar el preflight de lanzamiento."
-      }, { status: 403 });
-    }
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
     const checkDb = admin ?? supabase;
