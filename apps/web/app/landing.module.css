@@ -145,3 +145,73 @@
   .quotePrice{font-size:10px}
   .stat{gap:6px}
 }
+
+
+/* Public homepage refinement: clearer hierarchy and non-overlapping hero. */
+@media(min-width:801px){
+ .nav{padding:0 3.2%;gap:18px}
+ .navLinks{gap:clamp(10px,1.25vw,18px);flex:1;justify-content:center;min-width:0}
+ .navLinks a{font-size:11px;white-space:nowrap}
+ .navRight{min-width:245px;gap:8px}
+ .hero{min-height:560px;padding:54px 7% 104px;display:block}
+ .heroCopy{width:min(53%,610px);max-width:610px;margin:0;position:relative;top:0}
+ .heroTitle{font-size:clamp(39px,3.5vw,49px);line-height:1.04;letter-spacing:-2px}
+ .heroCopy p{max-width:560px}
+ .quote{top:50%;right:6%;transform:translateY(-50%);width:min(39%,455px);padding:18px}
+ .quoteRows{min-height:120px}
+ .marketStrip{left:3.2%;right:3.2%;bottom:-34px}
+ .cardsSection{padding-top:82px}
+}
+@media(min-width:801px) and (max-width:1120px){
+ .navLinks{gap:9px}
+ .navLinks a{font-size:10px}
+ .navRight{min-width:210px}
+ .login,.register{padding:0 10px}
+ .hero{padding-left:5%;padding-right:5%}
+ .heroCopy{width:50%}
+ .quote{right:5%;width:42%}
+ .heroTitle{font-size:39px}
+}
+.financePanel{max-width:1120px;margin:0 auto;background:#fff;border:1px solid #dfe8e2;border-radius:14px;overflow:hidden;box-shadow:0 8px 26px #10251a0b}
+.financeHeading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid #e7eeea}
+.financeHeading strong,.financeHeading small{display:block}
+.financeHeading strong{font-size:14px;color:#0b1653}
+.financeHeading small{font-size:10px;color:#718078;margin-top:4px}
+.financeHeading a{font-size:10px;color:#078d59;text-decoration:none;font-weight:800;white-space:nowrap}
+.financePanel iframe{display:block;width:100%;height:520px;border:0;background:#fff}
+.financeDisclaimer{max-width:1120px;margin:10px auto 0;color:#728078;font-size:9px;line-height:1.5}
+.newsGrid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:13px}
+.newsCard{min-height:190px;padding:20px;display:flex;flex-direction:column;align-items:flex-start;background:#fff;border:1px solid #e0e9e3;border-radius:12px;box-shadow:0 5px 18px #163b2810;text-decoration:none;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease}
+.newsCard:hover{transform:translateY(-3px);border-color:#a9d8bd;box-shadow:0 10px 24px #163b2818}
+.newsTag{font-size:8px;letter-spacing:1px;font-weight:850;color:#078d59;background:#e9f8f0;border-radius:999px;padding:6px 8px;margin-bottom:17px}
+.newsCard strong{font-size:16px;line-height:1.25;color:#0b1653}
+.newsCard p{font-size:11px;line-height:1.55;color:#64736a;margin:9px 0 18px}
+.newsArrow{font-size:10px;font-weight:850;color:#078d59;margin-top:auto}
+.contactGrid{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1fr 1fr;gap:13px}
+.contactCard{display:flex;gap:14px;align-items:flex-start;background:#fff;border:1px solid #e0e9e3;border-radius:12px;padding:20px}
+.contactCard>span{width:40px;height:40px;flex:none;display:grid;place-items:center;background:#e6f8ef;color:#078d59;border-radius:10px;font-size:20px}
+.contactCard strong,.contactCard a,.contactCard p,.contactCard small{display:block}
+.contactCard strong{font-size:13px;color:#0b1653;margin:1px 0 6px}
+.contactCard a{font-size:12px;color:#078d59;font-weight:800;text-decoration:none}
+.contactCard p{font-size:11px;color:#53635a;margin:0 0 6px;line-height:1.5}
+.contactCard small{font-size:9px;color:#78857d;margin-top:5px;line-height:1.5}
+.contactCta{grid-column:1/-1;display:flex;align-items:center;justify-content:space-between;gap:18px;padding:21px 23px;background:linear-gradient(100deg,#e5f8ee,#f5fbf8);border:1px solid #c9ead7;border-radius:12px}
+.contactCta strong{font-size:16px;color:#0b3f2c}
+.contactCta p{font-size:11px;color:#617168;margin:5px 0 0}
+.contactCta a{flex:none;padding:12px 18px;background:#078e57;color:#fff;text-decoration:none;border-radius:8px;font-size:11px;font-weight:850}
+.footer{gap:20px;flex-wrap:wrap}
+@media(max-width:1000px){.newsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}.financePanel iframe{height:470px}}
+@media(max-width:800px){
+ .hero{min-height:0;padding:38px 24px 22px}
+ .heroCopy{width:100%;max-width:100%}
+ .quote{transform:none}
+ .financePanel iframe{height:430px}
+ .newsGrid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:650px){
+ .financeHeading{align-items:flex-start;flex-direction:column;padding:14px}
+ .financePanel iframe{height:420px}
+ .newsGrid,.contactGrid{grid-template-columns:1fr}
+ .contactCta{grid-column:auto;align-items:flex-start;flex-direction:column}
+ .contactCta a{width:100%;text-align:center}
+}
