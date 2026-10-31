@@ -1194,3 +1194,21 @@ body{background:var(--ab-bg)}
 .publication-form>button[type=submit]{padding:15px 20px!important;border-radius:11px!important;font-weight:800!important;box-shadow:0 8px 18px #16a34a25}
 @media(max-width:850px){.publication-basic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.publication-port-results{grid-template-columns:1fr}}
 @media(max-width:600px){.publication-form{padding:15px;border-radius:14px;gap:15px}.publication-basic-grid,.publication-quality{grid-template-columns:1fr;padding:14px}.publication-logistics,.publication-observations{padding:15px}.publication-selected-row{grid-template-columns:1fr}.publication-selected-row button{justify-self:start}.publication-section-heading h2{font-size:18px}.publication-template-button{width:100%}}
+
+
+/* Ajustes finales del formulario de publicación internacional */
+.publication-form{width:100%;max-width:1480px;margin:0 auto 48px;gap:22px}
+.publication-basic-grid{grid-template-columns:repeat(3,minmax(0,1fr));align-items:start}
+.publication-port-results{grid-template-columns:minmax(0,1fr);max-height:300px;gap:7px;padding:3px 5px 3px 0}
+.publication-port-option{width:100%;align-items:center;padding:11px 14px}
+.publication-port-copy strong{font-size:14px}
+.publication-port-copy small{font-size:12px}
+.publication-delivery-picker{max-width:100%}
+.publication-delivery-picker select{width:100%;max-width:100%;min-height:48px}
+.publication-observations{width:100%;padding:24px}
+.publication-observations .publication-section-heading>div{max-width:100%}
+.publication-observations-input{width:100%;min-height:340px!important;padding:18px!important;resize:vertical;font-size:14px!important;line-height:1.7!important}
+.publication-quality{padding:0}
+.publication-form>button[type=submit]{width:100%;min-height:54px}
+@media(max-width:900px){.publication-form{max-width:100%}.publication-basic-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.publication-basic-grid,.publication-quality{grid-template-columns:1fr}.publication-observations{padding:16px}.publication-observations-input{min-height:280px!important}.publication-section-heading{gap:10px}.publication-selected-row{grid-template-columns:1fr}}
