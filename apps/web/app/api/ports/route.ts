@@ -45,6 +45,7 @@ export async function GET(request: Request) {
     return NextResponse.json({ ports: [], source: "UN/LOCODE", message: "Escribí al menos dos letras para buscar." });
   }
 
+  let fallbackPorts: Array<PortRecord & { source: string }> = [];
   try {
     const { data: countries, error: countriesError } = await supabase
       .from("paises").select("codigo_iso,nombre").eq("activo", true);
@@ -65,6 +66,7 @@ export async function GET(request: Request) {
       const matchesQuery = !needle || normalize([port.nombre, port.pais, port.provincia ?? "", port.localidad ?? "", port.codigo].join(" ")).includes(needle);
       return sameCountry && matchesQuery;
     }).map((port) => ({ ...port, source: "Catálogo AgroBrokerIA" }));
+    fallbackPorts = localMatches;
 
     const response = await fetch("https://raw.githubusercontent.com/datasets/un-locode/main/data/code-list.csv", {
       headers: { Accept: "text/csv" },
@@ -123,6 +125,13 @@ export async function GET(request: Request) {
     });
   } catch (error) {
     console.error("Ports API:", error);
+    if (fallbackPorts.length) {
+      return NextResponse.json({
+        ports: fallbackPorts.slice(0, 80),
+        source: "Catálogo AgroBrokerIA (respaldo)",
+        warning: "El catálogo internacional no respondió; se muestran los puertos locales disponibles.",
+      });
+    }
     return NextResponse.json({
       error: error instanceof Error ? error.message : "No se pudo cargar el catálogo de puertos.",
     }, { status: 503 });
