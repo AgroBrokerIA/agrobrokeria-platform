@@ -67,12 +67,31 @@ export default function MensajesPage(){
  useEffect(()=>{if(seleccionada)void cargarEmpresa(seleccionada.operacion_id)},[seleccionada?.operacion_id]);
  async function cargarEmpresa(operacionId:string){
   setEmpresa(null);
-  const {data:parts}=await supabase.from("operacion_participantes").select("empresa_id,rol").eq("operacion_id",operacionId);
-  const first=parts?.[0];if(!first?.empresa_id)return;
-  const {data:c}=await supabase.from("companies").select("*").eq("id",first.empresa_id).maybeSingle();
-  if(!c)return;
-  const x=c as Record<string,any>;
-  setEmpresa({nombre:x.nombre||x.razon_social||x.legal_name||x.name||"Empresa participante",rol:first.rol==="VENDEDOR"?"Productor":first.rol==="COMPRADOR"?"Comprador":first.rol==="INTERMEDIARIO"?"Intermediario":first.rol||"Participante",pais:x.pais||"País no informado",verificada:Boolean(x.verificada??x.verified??false),confiable:Boolean(x.confiable??false),productos:[],direccion:[x.localidad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",telefono:x.telefono||"No informado",email:x.email||"No informado"});
+  const [{data:{user}},{data:parts,error:partsError}]=await Promise.all([
+   supabase.auth.getUser(),
+   supabase.from("operacion_participantes").select("empresa_id,rol").eq("operacion_id",operacionId)
+  ]);
+  if(partsError||!parts?.length)return;
+  const {data:profile}=user?await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle():{data:null};
+  const commercialIds=parts.map(p=>p.empresa_id);
+  const {data:maps}=await supabase.from("company_empresa_map").select("empresa_id,company_id,verified").in("empresa_id",commercialIds);
+  const activeDirectoryId=profile?.active_company_id||null;
+  const mapByCommercial=new Map((maps||[]).map(m=>[m.empresa_id,m]));
+  const other=parts.find(p=>mapByCommercial.get(p.empresa_id)?.company_id!==activeDirectoryId)||parts[0];
+  const mapping=mapByCommercial.get(other.empresa_id);
+  if(!mapping?.company_id)return;
+  const {data:company}=await supabase.from("companies").select("id,razon_social,nombre_comercial,email,telefono,pais,provincia,ciudad,direccion,estado").eq("id",mapping.company_id).maybeSingle();
+  if(!company)return;
+  const x=company as Record<string,any>;
+  setEmpresa({
+   nombre:x.nombre_comercial||x.razon_social||"Empresa participante",
+   rol:other.rol==="VENDEDOR"?"Vendedor":other.rol==="COMPRADOR"?"Comprador":other.rol==="INTERMEDIARIO"?"Intermediario":other.rol||"Participante",
+   pais:x.pais||"País no informado",
+   verificada:Boolean(mapping.verified),
+   confiable:false,productos:[],
+   direccion:[x.direccion,x.ciudad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",
+   telefono:x.telefono||"No informado",email:x.email||"No informado"
+  });
  }
  const fecha=(s:string)=>new Date(s).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
