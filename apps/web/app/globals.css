@@ -1322,3 +1322,16 @@ body{background:var(--ab-bg)}
  .security-head-actions button{width:100%}
  .security-level{flex-direction:column;align-items:flex-start;padding-bottom:8px}
 }
+
+
+/* Logistics responsive cards: prevent the transport chart label from collapsing into a narrow column. */
+.logistics-bottom{grid-template-columns:minmax(0,1.1fr) minmax(0,.9fr) minmax(0,1.2fr) minmax(0,1fr)}
+.logistics-bottom>.log-panel{min-width:0;overflow:hidden}
+.transport-chart{display:grid;grid-template-columns:minmax(88px,104px) minmax(0,1fr);align-items:center;gap:12px;min-width:0}
+.transport-donut{width:104px;height:104px}
+.transport-donut:before{width:66px;height:66px}
+.transport-chart p{min-width:0;margin:0;font-size:11px;line-height:1.45;overflow-wrap:break-word;word-break:normal;white-space:normal;color:#43566b}
+.route-map{min-width:0}
+.log-legend,.log-bars,.activity-list{min-width:0;overflow-wrap:anywhere}
+@media(max-width:1250px){.logistics-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:700px){.logistics-bottom{grid-template-columns:minmax(0,1fr)}.transport-chart{grid-template-columns:100px minmax(0,1fr)}.transport-donut{width:96px;height:96px}}
