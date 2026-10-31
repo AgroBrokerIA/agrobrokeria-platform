@@ -162,7 +162,9 @@ export default function NuevaPublicacionForm() {
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
   const [lugaresSeleccionados, setLugaresSeleccionados] = useState<string[]>([]);
-  const [busquedaPuerto, setBusquedaPuerto] = useState("");\n  const [cargandoPuertos, setCargandoPuertos] = useState(false);\n  const [lugarTemporal, setLugarTemporal] = useState("");
+  const [busquedaPuerto, setBusquedaPuerto] = useState("");
+  const [cargandoPuertos, setCargandoPuertos] = useState(false);
+  const [lugarTemporal, setLugarTemporal] = useState("");
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
@@ -199,12 +201,12 @@ export default function NuevaPublicacionForm() {
           if (!response.ok) throw new Error(data.error || "No se pudo consultar el catálogo de puertos.");
           return data;
         })
-        .then((data) => { if (activo) setPuertos(Array.isArray(data.ports) ? data.ports : []); })
+        .then((data) => { if (activo) setPuertos((actuales) => { const seleccionados = actuales.filter((puerto) => puertosSeleccionados.includes(puerto.codigo)); return [...seleccionados, ...(Array.isArray(data.ports) ? data.ports.filter((puerto: Puerto) => !seleccionados.some((item) => item.codigo === puerto.codigo)) : [])]; }); })
         .catch((e) => { if (e.name !== "AbortError") { console.error("No se pudieron cargar los puertos:", e); if (activo) setPuertos([]); } })
         .finally(() => { if (activo) setCargandoPuertos(false); });
     }, busquedaPuerto.trim().length >= 2 ? 300 : 0);
     return () => { activo = false; clearTimeout(timer); controller.abort(); };
-  }, [form.pais_id, paises, busquedaPuerto]);
+  }, [form.pais_id, paises, busquedaPuerto, puertosSeleccionados]);
 
 
 
@@ -531,10 +533,18 @@ export default function NuevaPublicacionForm() {
             "CONDICIONES DE CALIDAD Y DESCARGA:",
             "TOLERANCIAS, MERMAS O PENALIDADES:",
             "OTRAS CONDICIONES ACORDADAS:",
-          ].join("\n"))}>Insertar guía de detalle</button>
+          ].join("
+"))}>Insertar guía de detalle</button>
         </div>
         <textarea className="publication-observations-input" value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={9}
-          placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:\n\n• Puerto y terminal exacta de entrega.\n• Modalidad y plazo de pago (transferencia, días desde descarga, etc.).\n• Si la entrega será en una sola vez o en varias cargas; indicar cantidades y fechas.\n• Quién asume flete, carga, descarga y gastos portuarios.\n• Documentación, calidad, tolerancias y requisitos adicionales.\n• Cualquier condición comercial o logística que deba conocer la contraparte."} />
+          placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:
+
+• Puerto y terminal exacta de entrega.
+• Modalidad y plazo de pago (transferencia, días desde descarga, etc.).
+• Si la entrega será en una sola vez o en varias cargas; indicar cantidades y fechas.
+• Quién asume flete, carga, descarga y gastos portuarios.
+• Documentación, calidad, tolerancias y requisitos adicionales.
+• Cualquier condición comercial o logística que deba conocer la contraparte."} />
         <small>Cuanto más completas sean las observaciones, menos dudas habrá durante la negociación y la formalización del contrato.</small>
       </section>
 
