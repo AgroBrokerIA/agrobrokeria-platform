@@ -11,6 +11,8 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [mfaChallenge, setMfaChallenge] = useState<{factorId:string;challengeId:string;userId:string}|null>(null);
+  const [mfaCode, setMfaCode] = useState("");
 
   async function recuperarPassword() {
     setError("");
@@ -33,6 +35,18 @@ export default function LoginPage() {
     if (error) { setError(error.message); setLoading(false); }
   }
 
+  async function completarIngreso(userId:string) {
+    const [{ data: legal, error: legalError }, { data: accepted, error: acceptedError }] = await Promise.all([
+      supabase.from("documentos_legales").select("id,version").eq("estado","VIGENTE"),
+      supabase.from("aceptaciones_legales").select("documento_legal_id,version").eq("profile_id",userId),
+    ]);
+    if (legalError || acceptedError) { setError("No se pudo verificar la documentación legal. Intentá nuevamente."); return; }
+    const ok=(legal||[]).every((d:any)=> (accepted||[]).some((a:any)=>a.documento_legal_id===d.id&&a.version===d.version));
+    const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
+    const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    router.push(ok ? safeNext : "/legal/aceptar"); router.refresh();
+  }
+
   async function iniciarSesion() {
     setError("");
     if (!email || !password) { setError("Ingresá tu correo electrónico y contraseña."); return; }
@@ -41,16 +55,33 @@ export default function LoginPage() {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) { setError(error.message); return; }
       if (!data.session || !data.user) { setError("No se pudo crear la sesión."); return; }
-      const [{ data: legal, error: legalError }, { data: accepted, error: acceptedError }] = await Promise.all([
-        supabase.from("documentos_legales").select("id,version").eq("estado","VIGENTE"),
-        supabase.from("aceptaciones_legales").select("documento_legal_id,version").eq("profile_id",data.user.id),
-      ]);
-      if (legalError || acceptedError) { setError("No se pudo verificar la documentación legal. Intentá nuevamente."); return; }
-      const ok=(legal||[]).every((d:any)=> (accepted||[]).some((a:any)=>a.documento_legal_id===d.id&&a.version===d.version));
-      const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
-      const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
-      router.push(ok ? safeNext : "/legal/aceptar"); router.refresh();
-    } catch { setError("Ocurrió un error al iniciar sesión."); }
+      const { data: assurance, error: assuranceError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (assuranceError) throw assuranceError;
+      if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
+        const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
+        if (factorsError) throw factorsError;
+        const factor = (factors?.totp || []).find((item:any)=>item.status==="verified");
+        if (!factor) { setError("Tu cuenta requiere un segundo factor, pero no encontramos un autenticador verificado."); return; }
+        const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
+        if (challengeError) throw challengeError;
+        setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id});
+        return;
+      }
+      await completarIngreso(data.user.id);
+    } catch (e) { setError(e instanceof Error ? e.message : "Ocurrió un error al iniciar sesión."); }
+    finally { setLoading(false); }
+  }
+
+  async function verificarSegundoFactor() {
+    if (!mfaChallenge || mfaCode.trim().length !== 6) return;
+    setLoading(true); setError("");
+    try {
+      const { error } = await supabase.auth.mfa.verify({factorId:mfaChallenge.factorId,challengeId:mfaChallenge.challengeId,code:mfaCode.trim()});
+      if (error) throw error;
+      const userId=mfaChallenge.userId;
+      setMfaChallenge(null); setMfaCode("");
+      await completarIngreso(userId);
+    } catch(e) { setError(e instanceof Error ? e.message : "No se pudo verificar el segundo factor."); }
     finally { setLoading(false); }
   }
 
@@ -65,14 +96,15 @@ export default function LoginPage() {
         <Link href="/" className="auth-mobile-brand">AgroBroker IA</Link>
         <div className="auth-card">
           <div className="auth-logo">↗</div><h1>Iniciar sesión</h1><p>Ingresá a tu cuenta</p>
-          <form onSubmit={(e) => { e.preventDefault(); void iniciarSesion(); }}>
+          <form onSubmit={(e) => { e.preventDefault(); void (mfaChallenge ? verificarSegundoFactor() : iniciarSesion()); }}>
             <label>Correo electrónico<input type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
-            <label>Contraseña<input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>
-            <div className="auth-row"><label className="remember"><input type="checkbox" /> Recordarme</label><button type="button" onClick={recuperarPassword} disabled={loading} className="auth-link-button">¿Olvidaste tu contraseña?</button></div>
+            {!mfaChallenge && <label>Contraseña<input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>}
+            {mfaChallenge && <label>Código del autenticador<input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g,"").slice(0,6))} required /></label>}
+            {!mfaChallenge && <div className="auth-row"><label className="remember"><input type="checkbox" /> Recordarme</label><button type="button" onClick={recuperarPassword} disabled={loading} className="auth-link-button">¿Olvidaste tu contraseña?</button></div>}
             {error && <div className="auth-error">{error}</div>}
-            <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Ingresando..." : "Ingresar"}</button>
-            <div className="auth-divider"><span>o</span></div>
-            <button className="auth-submit" type="button" onClick={iniciarConGoogle} disabled={loading}>Continuar con Google</button>
+            <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Verificando..." : mfaChallenge ? "Verificar código" : "Ingresar"}</button>
+            {!mfaChallenge && <><div className="auth-divider"><span>o</span></div>
+            <button className="auth-submit" type="button" onClick={iniciarConGoogle} disabled={loading}>Continuar con Google</button></>}
           </form>
           <p className="auth-switch">¿No tenés cuenta? <Link href="/register">Registrate</Link></p>
         </div>
