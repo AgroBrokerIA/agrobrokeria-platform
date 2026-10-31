@@ -435,6 +435,7 @@ export default function NuevaPublicacionForm() {
         humedad: "",
         proteina: "",
         observaciones: "",
+        pais_id: paises.find((x) => x.codigo_iso === "AR")?.id ?? 1,
       });
       setPuertosSeleccionados([]);
       setLugaresSeleccionados([]);
