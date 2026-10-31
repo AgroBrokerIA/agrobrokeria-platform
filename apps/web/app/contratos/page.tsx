@@ -182,8 +182,8 @@ export default function ContratosPage(){
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
    setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
-   if(!p.error&&p.data?.length)setProductos(p.data.map((x:any)=>x.nombre));
-   if(!port.error&&port.data?.length)setPuertos(port.data.map((x:any)=>x.nombre));
+   if(p.error)setError("No se pudo cargar el catálogo de productos: "+p.error.message);else setProductos((p.data||[]).map((x:any)=>String(x.nombre)));
+   if(port.error)setError("No se pudo cargar el catálogo de puertos: "+port.error.message);else setPuertos((port.data||[]).map((x:any)=>String(x.nombre)));
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
    setExtensions((ext.data||[]) as Extension[]);
    if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
