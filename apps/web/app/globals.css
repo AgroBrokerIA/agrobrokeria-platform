@@ -1129,3 +1129,13 @@ body{background:var(--ab-bg)}
 .header-live-alert{position:fixed;z-index:16000;top:82px;right:22px;width:min(380px,calc(100vw - 28px));display:grid;gap:5px;padding:15px 42px 14px 16px;border:1px solid #b9dfca;border-left:4px solid #078d54;border-radius:11px;background:#fff;box-shadow:0 12px 36px rgba(12,45,35,.2);text-align:left;color:#183b35;cursor:pointer}
 .header-live-alert strong{font-size:13px}.header-live-alert span{font-size:11px;line-height:1.45;color:#5d716d}.header-live-alert i{font-size:10px;font-style:normal;font-weight:800;color:#078d54}.header-live-alert>b{position:absolute;right:12px;top:9px;font-size:19px;color:#71817d}
 @media(max-width:650px){.header-live-alert{top:68px;right:10px}}
+
+/* Mensajes: quitar indicadores rojos y mantener contadores verdes discretos */
+.messages-list-tabs i.messages-count{font-style:normal;background:#e5f5eb;color:#087a43;border:1px solid #c6e8d2;border-radius:999px;min-width:20px;height:20px;padding:0 6px;display:inline-flex;align-items:center;justify-content:center;margin-left:5px;font-size:10px;font-weight:800}
+.messages-list-tabs span{display:flex;align-items:center;gap:4px;color:#53677b}
+.messages-conversations>button.selected{background:#f6f8f7;border-left:3px solid #d5e3da;padding-left:8px}
+.conversation-meta em{background:#e5f5eb!important;color:#087a43!important;border:1px solid #c6e8d2!important}
+.chat-body>div>div:nth-child(3)>div>div>div{background:#fff!important;border-color:#e5e7eb!important}
+.chat-body>div>div:nth-child(3)>div>div>div button{color:#64748b!important}
+.sidebar-badge{background:#e5f5eb!important;color:#087a43!important;border:1px solid #c6e8d2}
+.header-icon i{background:#078d54!important;color:#fff!important;border-color:#fff!important}
