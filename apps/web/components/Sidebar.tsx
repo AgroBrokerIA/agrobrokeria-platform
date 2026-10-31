@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase/client";
 
 type MenuItem = { icon: string; key: string; fallback: string; ruta: string };
 
@@ -57,12 +58,19 @@ const translations: Record<string, Record<string, string>> = {
 
 export default function Sidebar() {
   const [lang, setLang] = useState("es");
+  const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   useEffect(() => {
     const saved = localStorage.getItem("agrobrokeria.language") || navigator.language?.split("-")[0] || "es";
     setLang(translations[saved] ? saved : "es");
+    let mounted = true;
+    supabase.rpc("es_administrador_plataforma").then(({ data, error }) => {
+      if (mounted && !error) setEsAdminPlataforma(data === true);
+    });
+    return () => { mounted = false; };
   }, []);
+  const visibleMenu = menu.filter((item) => item.ruta !== "/administracion" || esAdminPlataforma);
   return <aside style={{width:260,background:"#111827",color:"white",minHeight:"100vh",padding:20,overflowY:"auto"}}>
     <h2 style={{marginBottom:30,color:"#22c55e"}}>AgroBroker IA</h2>
-    {menu.map((item)=><Link key={item.key+":"+item.ruta} href={item.ruta} style={{display:"block",color:"white",textDecoration:"none",padding:"10px 0"}}><span aria-hidden="true">{item.icon}</span>{" "}{translations[lang][item.key] || item.fallback}</Link>)}
+    {visibleMenu.map((item)=><Link key={item.key+":"+item.ruta} href={item.ruta} style={{display:"block",color:"white",textDecoration:"none",padding:"10px 0"}}><span aria-hidden="true">{item.icon}</span>{" "}{translations[lang][item.key] || item.fallback}</Link>)}
   </aside>;
 }
