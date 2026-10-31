@@ -15,6 +15,8 @@ export interface Publicacion {
 
   incoterm_id: number | null;
 
+  pais_id?: number | null;
+
   provincia: string | null;
 
   localidad: string | null;
