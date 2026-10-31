@@ -14,7 +14,8 @@ export default function Header() {
   const [notificaciones, setNotificaciones] = useState(0);
   const [empresaVerificada, setEmpresaVerificada] = useState(false);
   const [busqueda, setBusqueda] = useState("");
-  const [menuAbierto, setMenuAbierto] = useState(false);\n  const [avisoEnVivo, setAvisoEnVivo] = useState<{titulo:string;mensaje:string;href:string}|null>(null);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [avisoEnVivo, setAvisoEnVivo] = useState<{titulo:string;mensaje:string;href:string}|null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   async function cargar() {
