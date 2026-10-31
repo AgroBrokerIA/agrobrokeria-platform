@@ -15,6 +15,8 @@ export default function MensajesPage(){
  const [empresa,setEmpresa]=useState<EmpresaInfo|null>(null);
  const [cargando,setCargando]=useState(true);
  const [error,setError]=useState("");
+ const [aviso,setAviso]=useState("");
+ const [menuAcciones,setMenuAcciones]=useState(false);
  const [tab,setTab]=useState("Información");
  const [busqueda,setBusqueda]=useState("");
  const [mostrarSelectorOperacion,setMostrarSelectorOperacion]=useState(false);
@@ -22,7 +24,7 @@ export default function MensajesPage(){
  const [operacionesDisponibles,setOperacionesDisponibles]=useState<OperacionDisponible[]>([]);
  const [busquedaOperacion,setBusquedaOperacion]=useState("");
  const [errorSelector,setErrorSelector]=useState("");
- const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo);setError("Código de operación copiado.");return}setError("Acción disponible desde la conversación seleccionada.");};
+ const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo).then(()=>{setAviso("Código de operación copiado.");setMenuAcciones(false)}).catch(()=>setError("No se pudo copiar el código. Seleccionalo manualmente."));return}if(accion==="informacion"){setTab("Información");setMenuAcciones(false);return}};
 
  useEffect(()=>{void cargarConversaciones()},[]);
  async function abrirSelectorOperacion(){
@@ -77,7 +79,7 @@ export default function MensajesPage(){
  const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo,flag:empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:""})).filter(c=>!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase())),[conversaciones,empresa,seleccionada,busqueda]);
  return <main className="messages-reference">
   <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>void abrirSelectorOperacion()}>＋ Iniciar desde una operación</button></header>
-  {error&&<div className="messages-error">{error}</div>}
+  {error&&<div className="messages-error">{error}</div>}{aviso&&<div className="messages-notice">{aviso}<button type="button" onClick={()=>setAviso("")}>Cerrar</button></div>}
   {cargando?<div className="messages-loading">Cargando conversaciones...</div>:<div className="messages-workspace">
    <aside className="messages-list-panel">
     <label className="messages-search">⌕ <input value={busqueda} onChange={e=>setBusqueda(e.target.value)} placeholder="Buscar conversaciones..." aria-label="Buscar conversaciones"/></label>
@@ -85,7 +87,7 @@ export default function MensajesPage(){
     <div className="messages-conversations">{rows.map((c,i)=><button key={c.operacion_id} className={seleccionada?.operacion_id===c.operacion_id?"selected":""} onClick={()=>setSeleccionada(c)}><div className="company-avatar">{initials(c.nombre)}</div><div className="conversation-copy"><div><strong>{c.nombre}</strong><small>{c.flag}</small></div><p>{c.ultimo_mensaje}</p></div><div className="conversation-meta"><time>{fecha(c.ultimo_mensaje_at)}</time>{c.no_leidos>0&&<em>{c.no_leidos}</em>}</div></button>)}</div>
    </aside>
    <section className="messages-chat">
-    {seleccionada?<><div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>{empresa?.pais||"País no informado"} | {empresa?.rol||"Rol no informado"}{empresa?.verificada&&<b> ✓</b>}</p><span>Estado no informado</span></div><div className="chat-actions"><button onClick={()=>accionHeader("videollamada")} aria-label="Iniciar videollamada">▣</button><button onClick={()=>setTab("Archivos")} aria-label="Ver archivos">⌕</button><button onClick={()=>accionHeader("copiar")} aria-label="Copiar operación">⋮</button></div></div><div className="chat-body"><PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/></div></>:<div className="messages-empty">Seleccioná una conversación</div>}
+    {seleccionada?<><div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>{empresa?.pais||"País no informado"} | {empresa?.rol||"Rol no informado"}{empresa?.verificada&&<b> ✓</b>}</p><span>Estado no informado</span></div><div className="chat-actions"><button onClick={()=>accionHeader("videollamada")} aria-label="Iniciar videollamada">▣</button><button onClick={()=>setTab("Archivos")} aria-label="Ver archivos">⌕</button><div className="chat-more-wrap"><button type="button" onClick={()=>setMenuAcciones(v=>!v)} aria-label="Más acciones" aria-expanded={menuAcciones}>⋮</button>{menuAcciones&&<div className="chat-more-menu"><button type="button" onClick={()=>accionHeader("copiar")}>Copiar código de operación</button><button type="button" onClick={()=>accionHeader("informacion")}>Ver información de la empresa</button></div>}</div></div></div><div className="chat-body"><PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/></div></>:<div className="messages-empty">Seleccioná una conversación</div>}
    </section>
    <aside className="messages-info">
     <div className="info-tabs">{["Información","Archivos","Operaciones"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</div>
