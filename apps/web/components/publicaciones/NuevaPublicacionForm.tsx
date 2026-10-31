@@ -272,7 +272,7 @@ export default function NuevaPublicacionForm() {
 
       const { data: publicacion, error: errorPublicacion } = await supabase
         .from("publicaciones")
-        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones")
+        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones")
         .eq("id", id)
         .single();
 
@@ -321,6 +321,7 @@ export default function NuevaPublicacionForm() {
         precio_tn: String(publicacion.precio_tn ?? ""),
         moneda_id: Number(publicacion.moneda_id),
         incoterm_id: Number(publicacion.incoterm_id),
+        pais_id: Number(publicacion.pais_id ?? 1),
         provincia: publicacion.provincia ?? "",
         localidad: publicacion.localidad ?? "",
         puerto: puertosGuardados[0] ?? publicacion.puerto ?? "",
@@ -505,15 +506,8 @@ export default function NuevaPublicacionForm() {
             ))}
           </select>
         </label>
-        <label>Localidad (opcional)
-          <select value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} disabled={!form.provincia || cargandoLocalidades}>
-            <option value="">{cargandoLocalidades ? "Cargando localidades..." : "Seleccionar localidad..."}</option>
-            {localidades.map((localidad) => (
-              <option key={localidad.id} value={localidad.name}>
-                {localidad.name}{localidad.postalCode ? " · CP " + localidad.postalCode : ""}
-              </option>
-            ))}
-          </select>
+        <label>Ciudad / localidad (opcional)
+          <input value={form.localidad} onChange={(e) => actualizarCampo("localidad", e.target.value)} placeholder="Ingresar ciudad o localidad..." />
         </label>
       </div>
 
