@@ -21,7 +21,7 @@ export default function OportunidadesPage(){
   const{data:ps,error:pe}=await supabase.rpc("listar_publicaciones_activas_oportunidades");
   if(pe)throw pe;
   const pubs=(ps||[]) as unknown as Publication[];
-  const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\\u0300-\\u036f]/g,"").replace(/\\s*\\([^)]*\\)/g,"").replace(/\\s+/g," ").trim().toLowerCase();
+  const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\([^)]*\)/g,"").replace(/\s+/g," ").trim().toLowerCase();
   const isBuy=(v:string)=>["COMPRA","DEMANDA","BUY","PURCHASE","NECESIDAD"].includes(norm(v).toUpperCase());
   const isSell=(v:string)=>["VENTA","OFERTA","SELL","SELLING"].includes(norm(v).toUpperCase());
   const score=(buy:Publication,sell:Publication)=>{
