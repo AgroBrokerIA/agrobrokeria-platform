@@ -85,10 +85,22 @@ export default function DetalleOperacion() {
         )
       `)
       .eq("operacion_id", id)
-      .single();
+      .order("creado_en", { ascending: false })
+      .limit(1)
+      .maybeSingle();
 
     if (wfError) {
       setMensaje(`Error cargando workflow: ${wfError.message}`);
+      setCargando(false);
+      return;
+    }
+
+    if (!wf) {
+      setOperacion(op);
+      setWorkflow({ id: "", etapa_actual_id: "", estado: "SIN_WORKFLOW", orden: 0, etapa_actual: "Workflow pendiente de configuración" });
+      setEtapas([]);
+      setHistorial([]);
+      setMensaje("La operación existe, pero todavía no tiene un workflow asociado. Se muestran los datos disponibles del expediente.");
       setCargando(false);
       return;
     }
