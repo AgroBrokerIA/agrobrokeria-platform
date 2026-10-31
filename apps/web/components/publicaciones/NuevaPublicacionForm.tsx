@@ -552,14 +552,16 @@ export default function NuevaPublicacionForm() {
           ].join("\n"))}>Insertar guía de detalle</button>
         </div>
         <textarea className="publication-observations-input" value={form.observaciones} onChange={(e) => actualizarCampo("observaciones", e.target.value)} rows={9}
-          placeholder={"Detallá aquí todas las condiciones de la operación. Por ejemplo:
-
-• Puerto y terminal exacta de entrega.
-• Modalidad y plazo de pago (transferencia, días desde descarga, etc.).
-• Si la entrega será en una sola vez o en varias cargas; indicar cantidades y fechas.
-• Quién asume flete, carga, descarga y gastos portuarios.
-• Documentación, calidad, tolerancias y requisitos adicionales.
-• Cualquier condición comercial o logística que deba conocer la contraparte."} />
+          placeholder={[
+            "Detallá aquí todas las condiciones de la operación. Por ejemplo:",
+            "",
+            "• Puerto y terminal exacta de entrega.",
+            "• Modalidad y plazo de pago (transferencia, días desde descarga, etc.).",
+            "• Si la entrega será en una sola vez o en varias cargas; indicar cantidades y fechas.",
+            "• Quién asume flete, carga, descarga y gastos portuarios.",
+            "• Documentación, calidad, tolerancias y requisitos adicionales.",
+            "• Cualquier condición comercial o logística que deba conocer la contraparte."
+          ].join("\\n")} />
         <small>Cuanto más completas sean las observaciones, menos dudas habrá durante la negociación y la formalización del contrato.</small>
       </section>
 
