@@ -516,7 +516,7 @@ export default function PanelMensajes({
                     maxWidth: "78%",
                     padding: "10px 13px",
                     borderRadius: 12,
-                    background: propio ? "#dcfce7" : "#ffffff",
+                    background: "#ffffff",
                     border: "1px solid #e2e8f0",
                   }}
                 >
@@ -543,7 +543,7 @@ export default function PanelMensajes({
                       type="button"
                       onClick={() => void traducirMensaje(m)}
                       disabled={traduciendo === m.id}
-                      style={{ marginTop: 6, border: 0, background: "transparent", padding: 0, fontSize: 11, color: "#166534", cursor: "pointer" }}
+                      style={{ marginTop: 6, border: 0, background: "transparent", padding: 0, fontSize: 11, color: "#64748b", cursor: "pointer" }}
                     >
                       {traduciendo === m.id ? "Traduciendo…" : "Traducir"}
                     </button>
