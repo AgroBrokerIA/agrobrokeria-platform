@@ -59,8 +59,21 @@ export default function MensajesPage(){
   const mapa=new Map((ops||[]).map(o=>[o.id,o.codigo]));
   const grouped=new Map<string,Conversacion>();
   for(const m of mensajes||[]){
-   if(!grouped.has(m.operacion_id)) grouped.set(m.operacion_id,{operacion_id:m.operacion_id,codigo:mapa.get(m.operacion_id)||m.operacion_id,ultimo_mensaje:m.mensaje,ultimo_mensaje_at:m.creado_at,no_leidos:m.destinatario_profile_id===user.id&&!m.leido_at&&m.estado!=="LEIDO"?1:0});
-   else if(m.destinatario_profile_id===user.id&&!m.leido_at&&m.estado!=="LEIDO") grouped.get(m.operacion_id)!.no_leidos++;
+   if(!grouped.has(m.operacion_id)) grouped.set(m.operacion_id,{
+    operacion_id:m.operacion_id,
+    codigo:mapa.get(m.operacion_id)||m.operacion_id,
+    ultimo_mensaje:m.mensaje,
+    ultimo_mensaje_at:m.creado_at,
+    no_leidos:m.destinatario_profile_id===user.id&&!m.leido_at&&m.estado!=="LEIDO"?1:0,
+    recibidos:m.destinatario_profile_id===user.id?1:0
+   });
+   else {
+    const row=grouped.get(m.operacion_id)!;
+    if(m.destinatario_profile_id===user.id){
+     row.recibidos++;
+     if(!m.leido_at&&m.estado!=="LEIDO")row.no_leidos++;
+    }
+   }
   }
   const list=[...grouped.values()];setConversaciones(list);if(list.length)setSeleccionada(list[0]);setCargando(false);
  }
