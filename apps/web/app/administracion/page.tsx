@@ -1,6 +1,9 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import { supabase } from "@/lib/supabase/client";
 
 const cards = [
   ["⚙️","Administración","Gestión administrativa y configuración operativa de la plataforma.","/admin"],
@@ -11,6 +14,18 @@ const cards = [
 ];
 
 export default function AdministracionPage(){
+  const router = useRouter();
+  const [autorizado, setAutorizado] = useState(false);
+  useEffect(() => {
+    let active = true;
+    supabase.rpc("es_administrador_plataforma").then(({ data, error }) => {
+      if (!active) return;
+      if (!error && data === true) setAutorizado(true);
+      else router.replace("/dashboard");
+    });
+    return () => { active = false; };
+  }, [router]);
+  if (!autorizado) return <main className="min-h-screen bg-slate-50 p-8 text-slate-600">Verificando permisos…</main>;
   return (
     <main className="min-h-screen bg-slate-50 p-6">
       <div className="mx-auto max-w-6xl">
