@@ -215,3 +215,49 @@
  .contactCta{grid-column:auto;align-items:flex-start;flex-direction:column}
  .contactCta a{width:100%;text-align:center}
 }
+
+
+/* Financial quote tables: reliable text-first layout, no third-party blank iframe. */
+.quoteRows{min-width:0}
+.quoteRow{grid-template-columns:35px minmax(0,1fr) auto minmax(0,auto);min-width:0}
+.quoteRow strong{min-width:0;line-height:1.3;overflow-wrap:normal;word-break:normal}
+.quoteEmpty{display:flex;flex-direction:column;gap:7px;padding:17px 0 15px;min-width:0}
+.quoteEmpty strong{display:block;font-size:13px;line-height:1.35;color:#fff;white-space:normal;overflow-wrap:normal;word-break:normal}
+.quoteEmpty p{font-size:11px;line-height:1.5;color:#d1dbd5;margin:0;max-width:100%;white-space:normal;overflow-wrap:normal;word-break:normal}
+.financePanel{max-width:1120px;margin:0 auto;background:#fff;border:1px solid #dfe8e2;border-radius:14px;overflow:hidden;box-shadow:0 8px 26px #10251a0b}
+.financeHeading{display:flex;align-items:center;justify-content:space-between;gap:14px;padding:17px 20px;border-bottom:1px solid #e7eeea}
+.financeHeading strong,.financeHeading small{display:block}
+.financeHeading strong{font-size:14px;color:#0b1653}
+.financeHeading small{font-size:10px;color:#718078;margin-top:4px}
+.financeHeading a{font-size:10px;color:#078d59;text-decoration:none;font-weight:800;white-space:nowrap}
+.financeTables{padding:13px 16px 18px;display:grid;gap:16px}
+.financeGroup h3{font-size:13px;color:#078d59;margin:0 0 8px}
+.financeTableWrap{width:100%;overflow-x:auto;border:1px solid #e5ece7;border-radius:9px}
+.financeTableWrap table{width:100%;border-collapse:collapse;min-width:680px;font-size:11px}
+.financeTableWrap th{background:#f0f7f3;color:#53645a;text-align:left;font-size:9px;letter-spacing:.35px;padding:10px 11px;white-space:nowrap}
+.financeTableWrap td{padding:10px 11px;border-top:1px solid #edf1ee;color:#33443a;white-space:nowrap}
+.financeTableWrap td strong,.financeTableWrap td small{display:block}
+.financeTableWrap td strong{font-size:11px;color:#0b1653}
+.financeTableWrap td small{font-size:9px;color:#7b8980;margin-top:3px}
+.financeTableWrap .financeNumber{font-weight:850;color:#0b1653;font-variant-numeric:tabular-nums}
+.financeUp{font-weight:800;color:#07965e!important}
+.financeDown{font-weight:800;color:#d94b53!important}
+.financeStatus{padding:34px 20px;text-align:center;font-size:12px;line-height:1.5;color:#65736b}
+.financeDisclaimer{max-width:1120px;margin:10px auto 0;color:#728078;font-size:9px;line-height:1.5}
+@media(min-width:801px){
+ .hero{display:block}
+ .heroCopy{width:min(52%,610px);max-width:610px;margin:0;position:relative;top:0}
+ .quote{top:50%;right:6%;transform:translateY(-50%);width:min(39%,455px)}
+}
+@media(max-width:800px){
+ .quote{transform:none}
+ .quoteRow{grid-template-columns:30px minmax(0,1fr) auto;gap:7px}
+ .quoteRow .up,.quoteRow .down{grid-column:2/-1}
+}
+@media(max-width:650px){
+ .quoteEmpty{padding:12px 0}
+ .quoteEmpty strong{font-size:12px}
+ .financeHeading{align-items:flex-start;flex-direction:column;padding:14px}
+ .financeTables{padding:10px}
+ .financeTableWrap table{min-width:620px}
+}
