@@ -648,6 +648,22 @@ export default function OperacionesPage() {
   // OFERTA ACEPTADA → ACUERDO COMERCIAL / RESERVA
   // =========================================================
 
+  async function avanzarAVisadoConComision(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const { data: agreement, error: agreementError } = await supabase.from("acuerdos_comerciales").select("estado").eq("operacion_id", operacion.id).maybeSingle();
+    if (agreementError || agreement?.estado !== "CONFIRMADO") { setError("Primero debe quedar confirmado el Acuerdo Comercial."); return false; }
+    const { data: retention, error: retentionError } = await supabase.from("operacion_comision_retenciones").select("estado").eq("operacion_id", operacion.id).maybeSingle();
+    if (retentionError || retention?.estado !== "RETENIDA") { setError("La transferencia de la comisión todavía no fue verificada y retenida por AgroBrokerIA."); return false; }
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 2) { setError("La operación ya no se encuentra en la etapa de Acuerdo Comercial."); return false; }
+    const { data: etapa, error: etapaError } = await supabase.from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 3).maybeSingle();
+    if (etapaError || !etapa) { setError("No se encontró la etapa Visado de mercadería."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("Comisión verificada y retenida. La operación pasó a Visado de mercadería.");
+    await cargarOperaciones(); return true;
+  }
+
   async function enviarComprobanteComision(operacion: Operacion) {
     setError("");
     setMensaje("");
@@ -2671,7 +2687,7 @@ Firma: ______________________________
           if (ordenDetalle === 1) {
             resultado = await iniciarAcuerdoComercial(detalleOperacion.id);
           } else if (ordenDetalle === 2) {
-            await abrirAcuerdo(detalleOperacion); resultado = true;
+            resultado = await avanzarAVisadoConComision(detalleOperacion);
           } else if (ordenDetalle === 3) {
             abrirVisado(detalleOperacion); resultado = true;
           } else if (ordenDetalle === 4) {
@@ -2713,7 +2729,7 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>Abrir acción de la etapa</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 2 ? "Verificar comisión y continuar a Visado" : "Abrir acción de la etapa"}</button></div>
           </section>
         </div>;
       })()}
