@@ -25,6 +25,18 @@ export default function LoginPage() {
     finally { setLoading(false); }
   }
 
+  async function iniciarConPasskey() {
+    setError("");setLoading(true);
+    try {
+      const {data,error}=await supabase.auth.signInWithPasskey();
+      if(error)throw error;
+      if(!data?.user)throw new Error("No se pudo iniciar sesión con la llave de acceso.");
+      await completarIngreso(data.user.id);
+    } catch(e) {
+      setError(e instanceof Error?e.message:"No se pudo autenticar con huella, rostro o llave de seguridad. Verificá que Passkeys esté habilitado en Supabase.");
+    } finally {setLoading(false);}
+  }
+
   async function iniciarConGoogle() {
     setError("");
     setLoading(true);
@@ -107,7 +119,8 @@ export default function LoginPage() {
             {error && <div className="auth-error">{error}</div>}
             <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Verificando..." : mfaChallenge ? "Verificar código" : "Ingresar"}</button>
             {!mfaChallenge && <><div className="auth-divider"><span>o</span></div>
-            <button className="auth-submit" type="button" onClick={iniciarConGoogle} disabled={loading}>Continuar con Google</button></>}
+            <button className="auth-submit" type="button" onClick={iniciarConGoogle} disabled={loading}>Continuar con Google</button>
+            <button className="auth-submit" type="button" onClick={iniciarConPasskey} disabled={loading}>Ingresar con huella, rostro o llave de acceso</button></>}
           </form>
           <p className="auth-switch">¿No tenés cuenta? <Link href="/register">Registrate</Link></p>
         </div>
