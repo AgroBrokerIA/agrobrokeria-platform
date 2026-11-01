@@ -28,20 +28,22 @@ export default function PublicacionChat() {
         if(!u) throw new Error("Iniciá sesión para contactar al publicador.");
         if(!live) return;
         setUser(u.id);
-        const {data:p,error:pe} = await supabase.from("publicaciones").select("tipo,producto_id,cantidad_tn,provincia,localidad,estado,empresas(razon_social,cuentas(email))").eq("id",id).single();
+        const {data:p,error:pe} = await supabase.from("publicaciones").select("tipo,producto_id,cantidad_tn,provincia,localidad,estado,empresa_id").eq("id",id).single();
         if(pe) throw pe;
         if(p.estado !== "PUBLICADA") throw new Error("La publicación ya no está disponible.");
         setTitle((p.tipo === "COMPRA" ? "Demanda" : "Oferta") + " · " + p.cantidad_tn + " TN · " + (p.localidad || p.provincia || "AgroBrokerIA"));
         const {data:cid,error:ce} = await supabase.rpc("iniciar_conversacion_publicacion",{p_publicacion_id:id});
         if(ce) throw ce;
+        const conversationId = typeof cid === "string" ? cid : (cid as any)?.id || (Array.isArray(cid) ? (cid as any)[0] : "");
+        if(!conversationId) throw new Error("No se pudo crear o recuperar la conversación. Volvé a intentar desde la publicación.");
         if(!live) return;
-        setConversation(cid);
-        const {data:conv,error:convError}=await supabase.from("conversaciones_publicaciones").select("publicador_profile_id,interesado_profile_id").eq("id",cid).single();
+        setConversation(conversationId);
+        const {data:conv,error:convError}=await supabase.from("conversaciones_publicaciones").select("publicador_profile_id,interesado_profile_id").eq("id",conversationId).single();
         if(convError) throw convError;
         const otherId=conv.publicador_profile_id===u.id?conv.interesado_profile_id:conv.publicador_profile_id;
         const {data:other}=await supabase.from("profiles").select("nombre,empresa").eq("id",otherId).maybeSingle();
         setContactName(other?.nombre||other?.empresa||"Contacto comercial");
-        await refresh(cid);
+        await refresh(conversationId);
       } catch(e:any) { if(live) setError(e?.message || "No se pudo abrir la conversación."); }
       finally { if(live) setBusy(false); }
     })();
@@ -52,10 +54,12 @@ export default function PublicacionChat() {
     e.preventDefault();
     if(!draft.trim() || !conversation) return;
     setBusy(true); setError("");
-    const {error:e1} = await supabase.rpc("enviar_mensaje_publicacion",{p_conversacion_id:conversation,p_mensaje:draft.trim()});
-    if(e1) setError("No se pudo enviar el mensaje. Intentá nuevamente.");
-    else { setDraft(""); try { await refresh(conversation); } catch { setError("El mensaje se envió, pero no se pudo actualizar la conversación."); } }
-    setBusy(false);
+    try {
+      const {error:e1} = await supabase.rpc("enviar_mensaje_publicacion",{p_conversacion_id:conversation,p_mensaje:draft.trim()});
+      if(e1) setError(`No se pudo enviar el mensaje: ${e1.message}`);
+      else { setDraft(""); try { await refresh(conversation); } catch { setError("El mensaje se envió, pero no se pudo actualizar la conversación. Actualizá la página para ver el historial."); } }
+    } catch(e:any) { setError(e?.message || "No se pudo conectar con el servicio de mensajes."); }
+    finally { setBusy(false); }
   }
   return <main style={{maxWidth:900,margin:"30px auto",padding:20}}>
     <Link href="/marketplace">← Volver a publicaciones</Link>
