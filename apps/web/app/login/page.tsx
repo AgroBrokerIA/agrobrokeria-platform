@@ -79,7 +79,7 @@ export default function LoginPage() {
         const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
         if (challengeError) throw challengeError;
         if (!challenge?.id) throw new Error("No se pudo iniciar el desafío del segundo factor.");
-        setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id,factorType:phoneFactor?"phone":"totp",destination:phoneFactor?.phone});
+        setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id,factorType:phoneFactor?"phone":"totp",destination:phoneFactor?.friendly_name});
         return;
       }
       await completarIngreso(data.user.id);
