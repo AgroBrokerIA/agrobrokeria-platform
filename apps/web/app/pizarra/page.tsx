@@ -7,9 +7,10 @@ type Quote={id:string;price:number|null;currency:string|null;unit:string|null;pr
 type Row={code:string;name:string;q?:Quote};
 
 const icon=(code:string)=>code==="SOJA"?"🫘":code==="MAIZ"?"🌽":code==="TRIGO"?"🌾":code==="GIRASOL"?"🌻":code.toLowerCase().includes("aceite")?"🫒":"🌾";
-const money=(q?:Quote)=>q?.price==null?"Sin cotización":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(q?:Quote)=>q?.price==null?"—":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const MARKET_OPTIONS=[
  {value:"ROSARIO",label:"Bolsa de Comercio de Rosario",url:"https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",aliases:["ROSARIO","BCR","BCR/CAC"]},
+ {value:"CHICAGO",label:"Chicago Board of Trade (CBOT)",url:"https://www.cmegroup.com/markets/agriculture.html",aliases:["CHICAGO","CBOT","CME","YAHOO FINANCE"]},
  {value:"BAHIA_BLANCA",label:"Bolsa de Cereales de Bahía Blanca",url:"https://www.bcp.org.ar/",aliases:["BAHIA BLANCA","BAHÍA BLANCA","BCBB","BAHIA_BLANCA"]},
  {value:"BUENOS_AIRES",label:"Bolsa de Cereales de Buenos Aires",url:"https://www.bolsadecereales.com/",aliases:["BUENOS AIRES","BUENOS_AIRES","BCBA","BOLSA DE CEREALES DE BUENOS AIRES"]},
  {value:"CORDOBA",label:"Bolsa de Cereales de Córdoba",url:"https://www.bccba.org.ar/",aliases:["CORDOBA","CÓRDOBA","BCCBA"]},
