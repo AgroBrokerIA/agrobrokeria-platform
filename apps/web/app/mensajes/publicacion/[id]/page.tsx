@@ -11,6 +11,7 @@ export default function PublicacionChat() {
   const [draft, setDraft] = useState("");
   const [user, setUser] = useState("");
   const [title, setTitle] = useState("Conversación comercial");
+  const [contactName,setContactName]=useState("Contacto comercial");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(true);
 
@@ -27,7 +28,7 @@ export default function PublicacionChat() {
         if(!u) throw new Error("Iniciá sesión para contactar al publicador.");
         if(!live) return;
         setUser(u.id);
-        const {data:p,error:pe} = await supabase.from("publicaciones").select("tipo,producto_id,cantidad_tn,provincia,localidad,estado").eq("id",id).single();
+        const {data:p,error:pe} = await supabase.from("publicaciones").select("tipo,producto_id,cantidad_tn,provincia,localidad,estado,empresas(razon_social,cuentas(email))").eq("id",id).single();
         if(pe) throw pe;
         if(p.estado !== "PUBLICADA") throw new Error("La publicación ya no está disponible.");
         setTitle((p.tipo === "COMPRA" ? "Demanda" : "Oferta") + " · " + p.cantidad_tn + " TN · " + (p.localidad || p.provincia || "AgroBrokerIA"));
@@ -35,6 +36,11 @@ export default function PublicacionChat() {
         if(ce) throw ce;
         if(!live) return;
         setConversation(cid);
+        const {data:conv,error:convError}=await supabase.from("conversaciones_publicaciones").select("publicador_profile_id,interesado_profile_id").eq("id",cid).single();
+        if(convError) throw convError;
+        const otherId=conv.publicador_profile_id===u.id?conv.interesado_profile_id:conv.publicador_profile_id;
+        const {data:other}=await supabase.from("profiles").select("nombre,empresa").eq("id",otherId).maybeSingle();
+        setContactName(other?.nombre||other?.empresa||p.empresas?.razon_social||"Contacto comercial");
         await refresh(cid);
       } catch(e:any) { if(live) setError(e?.message || "No se pudo abrir la conversación."); }
       finally { if(live) setBusy(false); }
@@ -54,7 +60,7 @@ export default function PublicacionChat() {
   return <main style={{maxWidth:900,margin:"30px auto",padding:20}}>
     <Link href="/marketplace">← Volver a publicaciones</Link>
     <section style={{marginTop:16,border:"1px solid #dbe4e8",borderRadius:14,background:"#fff",overflow:"hidden"}}>
-      <header style={{padding:20,borderBottom:"1px solid #e5e7eb"}}><h1 style={{margin:0,fontSize:23}}>Mensajes</h1><p>{title}</p></header>
+      <header style={{padding:20,borderBottom:"1px solid #e5e7eb"}}><h1 style={{margin:0,fontSize:23}}>{contactName}</h1><p>{title}</p></header>
       <div style={{padding:20,minHeight:300,maxHeight:500,overflowY:"auto"}}>
         {messages.map(m=><div key={m.id} style={{textAlign:m.remitente_profile_id===user?"right":"left",margin:"12px 0"}}><span style={{display:"inline-block",padding:12,borderRadius:12,background:m.remitente_profile_id===user?"#dcfce7":"#f1f5f9",maxWidth:"80%",textAlign:"left"}}>{m.mensaje}<small style={{display:"block",color:"#64748b",marginTop:6}}>{new Date(m.creado_at).toLocaleString("es-AR")}</small></span></div>)}
         {!messages.length && !busy && <p>Iniciá la conversación con un mensaje.</p>}
