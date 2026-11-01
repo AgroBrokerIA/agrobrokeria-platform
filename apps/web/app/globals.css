@@ -1395,3 +1395,26 @@ body{background:var(--ab-bg)}
   .offers-table-card{overflow-x:auto}
   .offers-table-head,.offer-row{min-width:900px}
 }
+
+/* Desktop viewport: give the offers/demands grid full width instead of squeezing
+   a ten-column table beside the filter panel. */
+@media(min-width:1101px) and (max-width:1550px){
+ .offers-layout{grid-template-columns:minmax(0,1fr)}
+ .offers-sidebar{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .offers-table-card{overflow-x:hidden}
+ .offers-table-head,.offer-row{min-width:0}
+ .offers-table-head,.offer-row{
+  grid-template-columns:
+   minmax(105px,1.2fr) minmax(68px,.72fr) minmax(90px,.95fr)
+   minmax(80px,.8fr) minmax(95px,1fr) minmax(95px,1fr)
+   minmax(78px,.78fr) minmax(105px,1.08fr) minmax(58px,.62fr)
+   minmax(105px,1fr);
+  gap:7px;
+ }
+ .offer-row{min-height:76px}
+ .offer-row>:last-child{display:flex;justify-content:flex-start;align-items:center;gap:5px;flex-wrap:wrap}
+}
+@media(min-width:1551px){
+ .offers-table-card{overflow-x:hidden}
+ .offers-table-head,.offer-row{min-width:0}
+}
