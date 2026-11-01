@@ -62,7 +62,7 @@ export async function GET(request: Request) {
 
     const needle = normalize(query);
     const localMatches = ((localPorts ?? []) as PortRecord[]).filter((port) => {
-      const sameCountry = Boolean(needle) || !countryCode || normalize(port.pais) === normalize(selectedCountryName);
+      const sameCountry = !countryCode || normalize(port.pais) === normalize(selectedCountryName);
       const matchesQuery = !needle || normalize([port.nombre, port.pais, port.provincia ?? "", port.localidad ?? "", port.codigo].join(" ")).includes(needle);
       return sameCountry && matchesQuery;
     }).map((port) => ({ ...port, source: "Catálogo AgroBrokerIA" }));
@@ -94,7 +94,7 @@ export async function GET(request: Request) {
       const name = (row[nameIndex] ?? "").trim();
       const functions = (row[functionIndex] ?? "").trim();
       if (!iso || !location || !name || functions[0] !== "1") return [];
-      if (countryCode && !needle && iso !== countryCode) return [];
+      if (countryCode && iso !== countryCode) return [];
       const countryName = countryNames.get(iso) ?? iso;
       if (needle && !normalize([name, iso, countryName, location, row[subdivisionIndex] ?? ""].join(" ")).includes(needle)) return [];
       return [{
