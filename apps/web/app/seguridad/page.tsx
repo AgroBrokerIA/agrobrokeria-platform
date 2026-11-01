@@ -37,8 +37,9 @@ function AuthMethods({onConfig}:{onConfig:()=>void}){
    {factors.filter(x=>x.status==="verified").map(x=><div key={x.id} style={{margin:"8px 0 0 34px"}}><small>{x.friendly_name||"Autenticador verificado"}</small> <button disabled={busy} onClick={()=>void remove(x.id)}>Desactivar</button></div>)}
    {qr&&<div style={{margin:"12px 0 0 34px"}}><p>Escaneá este QR con Google Authenticator, Microsoft Authenticator o una app TOTP:</p><img src={qr} alt="QR para configurar autenticación de dos factores" style={{width:180,height:180,background:"#fff",padding:8}}/><input value={code} onChange={e=>setCode(e.target.value.replace(/\D/g,"").slice(0,6))} placeholder="Código de 6 dígitos" inputMode="numeric" maxLength={6}/><button disabled={busy||code.length!==6} onClick={()=>void verify()}>Verificar y activar</button></div>}
   </div>
-  <div><b>◉</b><span><strong>Autenticación biométrica</strong><small>No disponible todavía en esta plataforma</small></span><em>Pendiente</em></div>
-  <div><b>▣</b><span><strong>Llaves de seguridad (FIDO2 / passkeys)</strong><small>No disponible todavía en esta plataforma</small></span><em>Pendiente</em></div>
+  <div><b>G</b><span><strong>Ingreso con Google (OAuth)</strong><small>Opción disponible en la pantalla de inicio de sesión; requiere proveedor Google configurado en Supabase.</small></span><em className="on">Implementado</em></div>
+  <div><b>◉</b><span><strong>Autenticación biométrica</strong><small>Requiere implementar WebAuthn/passkeys y su registro seguro por dispositivo.</small></span><em>Pendiente</em></div>
+  <div><b>▣</b><span><strong>Llaves de seguridad (FIDO2 / passkeys)</strong><small>No se habilita hasta completar el flujo WebAuthn y validar su almacenamiento.</small></span><em>Pendiente</em></div>
   {error&&<p role="alert" style={{color:"#b42318",fontSize:12,marginTop:8}}>{error}</p>}
  </div>
 }
