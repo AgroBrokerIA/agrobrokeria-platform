@@ -11,6 +11,7 @@ type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:strin
 
 export default function MensajesPage(){
  const [conversaciones,setConversaciones]=useState<Conversacion[]>([]);
+ const [chatsPublicaciones,setChatsPublicaciones]=useState<any[]>([]);
  const [seleccionada,setSeleccionada]=useState<Conversacion|null>(null);
  const [empresa,setEmpresa]=useState<EmpresaInfo|null>(null);
  const [cargando,setCargando]=useState(true);
@@ -26,7 +27,16 @@ export default function MensajesPage(){
  const [errorSelector,setErrorSelector]=useState("");
  const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo).then(()=>{setAviso("Código de operación copiado.");setMenuAcciones(false)}).catch(()=>setError("No se pudo copiar el código. Seleccionalo manualmente."));return}if(accion==="informacion"){setTab("Información");setMenuAcciones(false);return}if(accion==="verificaciones"){window.location.href="/verificaciones";return}};
 
- useEffect(()=>{void cargarConversaciones()},[]);
+ useEffect(()=>{void cargarConversaciones();void cargarChatsPublicaciones()},[]);
+ async function cargarChatsPublicaciones(){
+  const {data:{user}}=await supabase.auth.getUser();if(!user)return;
+  const {data,error}=await supabase.from("conversaciones_publicaciones").select("id,publicacion_id,publicador_profile_id,interesado_profile_id,actualizado_at").or(`publicador_profile_id.eq.${user.id},interesado_profile_id.eq.${user.id}`).order("actualizado_at",{ascending:false});
+  if(error){console.error("No se pudieron cargar los chats de publicaciones",error);return;}
+  const ids=[...new Set((data||[]).map(x=>x.publicacion_id))];
+  const {data:pubs}=ids.length?await supabase.from("publicaciones").select("id,tipo,cantidad_tn,localidad,provincia").in("id",ids):{data:[]};
+  const map=new Map((pubs||[]).map(x=>[x.id,x]));
+  setChatsPublicaciones((data||[]).map(x=>({...x,publicacion:map.get(x.publicacion_id)})));
+ }
  async function abrirSelectorOperacion(){
   setMostrarSelectorOperacion(true);setCargandoOperaciones(true);setErrorSelector("");setOperacionesDisponibles([]);
   try{
@@ -97,6 +107,7 @@ export default function MensajesPage(){
  const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo,flag:empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:""})).filter(c=>!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase())),[conversaciones,empresa,seleccionada,busqueda]);
  return <main className="messages-reference">
   <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>void abrirSelectorOperacion()}>＋ Iniciar desde una operación</button></header>
+  {chatsPublicaciones.length>0&&<section style={{margin:"12px 0 18px",padding:16,border:"1px solid #dce5e9",borderRadius:12,background:"#fff"}}><h2 style={{fontSize:18,margin:"0 0 12px"}}>Conversaciones desde ofertas y demandas</h2><div style={{display:"grid",gap:8}}>{chatsPublicaciones.map(x=><Link key={x.id} href={"/mensajes/publicacion/"+x.publicacion_id} style={{display:"flex",justifyContent:"space-between",gap:12,padding:12,borderRadius:8,background:"#f7faf9",color:"inherit",textDecoration:"none"}}><span><b>{x.publicacion?.tipo==="COMPRA"?"Demanda":"Oferta"} · {x.publicacion?.cantidad_tn||"—"} TN</b><small style={{display:"block",color:"#64748b"}}>{x.publicacion?.localidad||x.publicacion?.provincia||"Ubicación no informada"}</small></span><span>Ver conversación →</span></Link>)}</div></section>}
   {error&&<div className="messages-error">{error}</div>}{aviso&&<div className="messages-notice">{aviso}<button type="button" onClick={()=>setAviso("")}>Cerrar</button></div>}
   {cargando?<div className="messages-loading">Cargando conversaciones...</div>:<div className="messages-workspace">
    <aside className="messages-list-panel">
