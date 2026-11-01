@@ -1418,3 +1418,24 @@ body{background:var(--ab-bg)}
  .offers-table-card{overflow-x:hidden}
  .offers-table-head,.offer-row{min-width:0}
 }
+
+/* Keep horizontal table navigation visible so users can reach every column,
+   including the contact actions, on standard laptop widths. */
+@media(min-width:1101px){
+ .offers-layout{grid-template-columns:minmax(0,1fr) minmax(238px,258px)}
+ .offers-table-card{overflow-x:auto;overflow-y:visible;scrollbar-gutter:stable}
+ .offers-table-head,.offer-row{min-width:940px}
+ .offer-row>:last-child{min-width:116px;display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+ .offer-row-actions .offer-detail{white-space:nowrap}
+}
+@media(max-width:1100px){
+ .offers-layout{grid-template-columns:minmax(0,1fr)}
+ .offers-table-card{overflow-x:auto;overflow-y:visible}
+ .offers-table-head,.offer-row{min-width:940px}
+}
+.offers-table-card{scrollbar-width:auto;scrollbar-color:#8a929b #e9eef2}
+.offers-table-card::-webkit-scrollbar{height:13px}
+.offers-table-card::-webkit-scrollbar-track{background:#e9eef2;border-radius:8px}
+.offers-table-card::-webkit-scrollbar-thumb{background:#89939d;border:2px solid #e9eef2;border-radius:8px}
+.offer-row-actions{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
+.offer-row-actions .offer-detail{display:inline-flex;align-items:center;justify-content:center;min-width:78px;padding:8px 9px;line-height:1.2;white-space:nowrap}
