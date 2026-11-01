@@ -2405,7 +2405,7 @@ Firma: ______________________________
     // y cierra atómicamente la operación y su workflow. No debe intentarse un
     // segundo avance secuencial hacia la etapa 10.
     setMensaje(
-      "✅ Liquidación confirmada. Comisión AgroBroker IA registrada y operación cerrada."
+      "✅ Liquidación confirmada. Comisión AgroBrokerIA liberada y operación cerrada."
     );
 
     await cargarOperaciones();
@@ -2436,15 +2436,15 @@ Firma: ______________________________
     const fondosLiberados =
       controlActual.fondos_estado === "LIBERADOS";
 
-    const comisionAbonada =
-      controlActual.comision_estado === "ABONADA";
+    const comisionRetenida =
+      ["RETENIDA","LIBERADA"].includes(controlActual.comision_estado);
 
     const noElusionAceptada =
       controlActual.no_elusion_aceptada === true;
 
     if (
       !fondosLiberados ||
-      !comisionAbonada ||
+      !comisionRetenida ||
       !noElusionAceptada
     ) {
       setError(
@@ -2520,7 +2520,7 @@ Firma: ______________________________
 
     setError("");
     setMensaje(
-      "✅ Fondos liberados, comisión abonada y no elusión aceptada. Los datos operativos fueron habilitados."
+      "✅ Fondos liberados, comisión retenida y no elusión aceptada. Los datos operativos fueron habilitados."
     );
 
     await cargarOperaciones();
