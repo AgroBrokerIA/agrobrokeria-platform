@@ -33,7 +33,7 @@ async function parseAvailable(body:string,runId:string){
 
 const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BCP_ORIENTATIVOS="https://bcp.org.ar/cotizaciones/precios-orientativos.asp",BCBA_QUOTES="https://www.bolsadecereales.com/cotizaciones",BCCBA_HOME="https://bccba.org.ar/";
 function commodityCode(label:string){const n=code(label);if(n.includes("ACEITE")&&n.includes("GIRASOL"))return "ACEITE_GIRASOL";if(n.includes("ACEITE")&&n.includes("SOJA"))return "ACEITE_SOJA";if(n.includes("PELLET"))return "PELLETS_SOJA";if(n.includes("HARINA"))return "HARINA_SOJA";if(n.includes("EXPeller".toUpperCase()))return "EXPELLER_SOJA";if(n.includes("MANI"))return "MANI";if(n.includes("CEBADA"))return "CEBADA";if(n.includes("GIRASOL"))return "GIRASOL";if(n.includes("SOJA"))return "SOJA";if(n.includes("MAIZ"))return "MAIZ";if(n.includes("TRIGO"))return "TRIGO";if(n.includes("SORGO"))return "SORGO";return n.replace(/[^A-Z0-9]+/g,"_");}
-function pageDate(text:string){const matches=[...text.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];const m=matches[0];return m?m[3]+"-"+m[2]+"-"+m[1]:new Date().toISOString().slice(0,10)}
+function pageDate(text:string){const matches=[...text.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];const m=matches[0];if(!m)throw new Error("SOURCE_MARKET_DATE_NOT_FOUND");return m[3]+"-"+m[2]+"-"+m[1]}
 async function parseBahiaBlanca(body:string,runId:string,orientative=false){
  const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
  for(const tr of Array.from(d.querySelectorAll("tr"))){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(cells.length<2)continue;
