@@ -113,3 +113,20 @@ revoke all on function public.iniciar_conversacion_publicacion(uuid) from public
 revoke all on function public.enviar_mensaje_publicacion(uuid,text) from public;
 grant execute on function public.iniciar_conversacion_publicacion(uuid) to authenticated;
 grant execute on function public.enviar_mensaje_publicacion(uuid,text) to authenticated;
+
+
+create or replace function public.publicaciones_propias_ids()
+returns setof uuid
+language sql
+stable
+security definer
+set search_path=public
+as $$
+ select p.id from public.publicaciones p
+ join public.empresas e on e.id=p.empresa_id
+ join public.cuentas c on c.id=e.cuenta_id
+ join public.profiles pr on lower(pr.email)=lower(c.email)
+ where pr.id=auth.uid();
+$$;
+revoke all on function public.publicaciones_propias_ids() from public;
+grant execute on function public.publicaciones_propias_ids() to authenticated;
