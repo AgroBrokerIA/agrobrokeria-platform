@@ -54,11 +54,15 @@ declare
 begin
   if v_uid is null then raise exception 'AUTH_REQUIRED'; end if;
 
-  select e.cuenta_id, p.estado
+  select pr.id, p.estado
     into v_publicador, v_estado
   from public.publicaciones p
   join public.empresas e on e.id = p.empresa_id
-  where p.id = p_publicacion_id;
+  join public.cuentas c on c.id = e.cuenta_id
+  join public.profiles pr on lower(pr.email) = lower(c.email)
+  where p.id = p_publicacion_id and coalesce(e.activa,true) = true
+  order by e.creado_en asc
+  limit 1;
 
   if v_publicador is null then raise exception 'PUBLICACION_NO_DISPONIBLE'; end if;
   if upper(coalesce(v_estado,'')) <> 'PUBLICADA' then raise exception 'PUBLICACION_NO_DISPONIBLE'; end if;
