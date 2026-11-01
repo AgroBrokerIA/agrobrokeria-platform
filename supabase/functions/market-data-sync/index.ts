@@ -62,7 +62,8 @@ async function parseCordoba(body:string,runId:string){
  for(const [pattern,market] of patterns){const match=text.match(pattern);if(!match)continue;const section=match[0];for(const product of ["Trigo duro","Maní Industria","Maní Runner","Expeller de soja"]){const at=section.toLowerCase().indexOf(product.toLowerCase());if(at<0)continue;const snippet=section.slice(at,at+240);const moneyMatch=snippet.match(/(?:\$\s?[\d.]+(?:,\d+)?|U\$S\s?[\d.]+(?:,\d+)?)/i);if(!moneyMatch)continue;const value=num(moneyMatch[0]);if(value==null)continue;const currency=/U\$S/i.test(moneyMatch[0])?"USD":"ARS";const id=await commodityId(commodityCode(product));saved+=await save({source:"Bolsa de Cereales de Córdoba",source_reference:BCCBA_HOME,market_date:date,commodity_id:id,product_id:null,variety:null,position:"SPOT",market,port:"CORDOBA",price_type:"PIZARRA_CAC",price:value,currency,unit:product.toLowerCase().includes("mani")?"T":"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,excerpt:snippet,estimated:/estimado|s\/n/i.test(snippet),run_id:runId}});}}
  return saved;
 }
-\nasync function syncChicago(runId:string){
+ 
+async function syncChicago(runId:string){
  const contracts=[
   {symbol:"ZS=F",code:"SOJA",unit:"USD/bu"},
   {symbol:"ZC=F",code:"MAIZ",unit:"USD/bu"},
