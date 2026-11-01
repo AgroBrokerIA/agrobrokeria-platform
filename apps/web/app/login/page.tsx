@@ -11,7 +11,7 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [mfaChallenge, setMfaChallenge] = useState<{factorId:string;challengeId:string;userId:string}|null>(null);
+  const [mfaChallenge, setMfaChallenge] = useState<{factorId:string;challengeId:string;userId:string;factorType:"totp"|"phone";destination?:string}|null>(null);
   const [mfaCode, setMfaCode] = useState("");
 
   async function recuperarPassword() {
@@ -60,12 +60,14 @@ export default function LoginPage() {
       if (assurance?.nextLevel === "aal2" && assurance.currentLevel !== "aal2") {
         const { data: factors, error: factorsError } = await supabase.auth.mfa.listFactors();
         if (factorsError) throw factorsError;
-        const factor = (factors?.totp || []).find((item:any)=>item.status==="verified");
-        if (!factor) { setError("Tu cuenta requiere un segundo factor, pero no encontramos un autenticador verificado."); return; }
+        const phoneFactor = (factors?.phone || []).find((item:any)=>item.status==="verified");
+        const totpFactor = (factors?.totp || []).find((item:any)=>item.status==="verified");
+        const factor = phoneFactor || totpFactor;
+        if (!factor) { setError("Tu cuenta requiere un segundo factor, pero no encontramos un teléfono o autenticador verificado."); return; }
         const { data: challenge, error: challengeError } = await supabase.auth.mfa.challenge({ factorId: factor.id });
         if (challengeError) throw challengeError;
         if (!challenge?.id) throw new Error("No se pudo iniciar el desafío del segundo factor.");
-        setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id});
+        setMfaChallenge({factorId:factor.id,challengeId:challenge.id,userId:data.user.id,factorType:phoneFactor?"phone":"totp",destination:phoneFactor?.phone});
         return;
       }
       await completarIngreso(data.user.id);
@@ -100,7 +102,7 @@ export default function LoginPage() {
           <form onSubmit={(e) => { e.preventDefault(); void (mfaChallenge ? verificarSegundoFactor() : iniciarSesion()); }}>
             <label>Correo electrónico<input type="email" placeholder="tu@email.com" value={email} onChange={(e) => setEmail(e.target.value)} required /></label>
             {!mfaChallenge && <label>Contraseña<input type="password" placeholder="••••••••" value={password} onChange={(e) => setPassword(e.target.value)} required /></label>}
-            {mfaChallenge && <label>Código del autenticador<input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g,"").slice(0,6))} required /></label>}
+            {mfaChallenge && <label>{mfaChallenge.factorType==="phone"?"Código enviado por SMS":"Código del autenticador"}{mfaChallenge.destination&&<small> Enviado a {mfaChallenge.destination}</small>}<input type="text" inputMode="numeric" maxLength={6} placeholder="000000" value={mfaCode} onChange={(e) => setMfaCode(e.target.value.replace(/\D/g,"").slice(0,6))} required /></label>}
             {!mfaChallenge && <div className="auth-row"><label className="remember"><input type="checkbox" /> Recordarme</label><button type="button" onClick={recuperarPassword} disabled={loading} className="auth-link-button">¿Olvidaste tu contraseña?</button></div>}
             {error && <div className="auth-error">{error}</div>}
             <button className="auth-submit" type="submit" disabled={loading}>{loading ? "Verificando..." : mfaChallenge ? "Verificar código" : "Ingresar"}</button>
