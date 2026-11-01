@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 type Company={id:string;razon_social?:string|null;nombre_comercial?:string|null;cuit?:string|null;pais?:string|null;provincia?:string|null;ciudad?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;};
 type RoleColor={tipo_empresa:string;etiqueta:string;color_hex:string};
@@ -38,13 +39,14 @@ const companyName=(c:Company)=>c.nombre_comercial||c.razon_social||"Empresa sin 
 const verificationState=(c:Company,v?:Verification)=>{const raw=(v?.estado||"").toUpperCase();if(/RECHAZ|RECHAZADA/.test(raw))return "Rechazado";if(/NO_VERIFIC|SIN_RESULTADO|CUIT_INVALIDO/.test(raw))return "Sin verificar";if(/OBSERV|INACTIVO|BAJA/.test(raw))return "Con observaciones";if(c.verificada||/^VERIFICADA?$/.test(raw))return "Verificada";if(/ARCA_VERIFICADA/.test(raw))return "ARCA verificada";if(/PENDIENT|EN_PROCESO/.test(raw)||v)return "En proceso";return "Sin verificar";};
 
 export default function VerificacionesPage(){
+ const router=useRouter();
  const[companies,setCompanies]=useState<Company[]>([]),[verifications,setVerifications]=useState<Verification[]>([]),[roleColors,setRoleColors]=useState<Record<string,RoleColor>>({}),[requirements,setRequirements]=useState<Requirement[]>([]),[selected,setSelected]=useState<Company|null>(null),[query,setQuery]=useState(""),[country,setCountry]=useState(""),[sector,setSector]=useState(""),[status,setStatus]=useState("Todos"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10),[showNew,setShowNew]=useState(false),[detailOpen,setDetailOpen]=useState(false),[actionMenu,setActionMenu]=useState<{id:string;top:number;left:number}|null>(null),[newCompany,setNewCompany]=useState(""),[newType,setNewType]=useState("KYC / Identidad"),[actionMsg,setActionMsg]=useState("");
- useEffect(()=>{(async()=>{const [{data:c},{data:v},{data:dist},{data:req}] = await Promise.all([
+ useEffect(()=>{(async()=>{const {data:admin,error:adminError}=await supabase.rpc("es_administrador_plataforma");if(adminError||admin!==true){router.replace("/dashboard");return;}const [{data:c},{data:v},{data:dist},{data:req}] = await Promise.all([
   supabase.from("empresas").select("id,razon_social,nombre_comercial,cuit,pais,provincia,localidad,tipo_empresa,verificada,reputacion_score,operaciones_realizadas").order("nombre_comercial",{ascending:true}).limit(340),
   supabase.from("empresas_verificaciones").select("empresa_id,estado,tipo_consulta,fecha_verificacion,consultado_at,organismo,observaciones,fuente_oficial,resultado").order("consultado_at",{ascending:false}).limit(1000),
   supabase.from("empresa_distintivos").select("tipo_empresa,etiqueta,color_hex"),
   supabase.from("empresas_verificacion_requisitos").select("empresa_id,estado,observaciones,verificado_at,verificacion_requisitos_catalogo(codigo,nombre,fuente,obligatorio)").limit(1000)
- ]);const list=(c||[]).map((row)=>({...row,ciudad:row.localidad??null})) as Company[];setCompanies(list);setVerifications((v||[]) as Verification[]);setRoleColors(Object.fromEntries((dist||[]).map((x:any)=>[String(x.tipo_empresa||"").toUpperCase(),x as RoleColor])));setRequirements((req||[]) as unknown as Requirement[]);setSelected(list[0]||null)})()},[]);
+ ]);const list=(c||[]).map((row)=>({...row,ciudad:row.localidad??null})) as Company[];setCompanies(list);setVerifications((v||[]) as Verification[]);setRoleColors(Object.fromEntries((dist||[]).map((x:any)=>[String(x.tipo_empresa||"").toUpperCase(),x as RoleColor])));setRequirements((req||[]) as unknown as Requirement[]);setSelected(list[0]||null)})()},[router]);
  const vByCompany=useMemo(()=>{const m=new Map<string,Verification>();for(const v of verifications)if(!m.has(v.empresa_id))m.set(v.empresa_id,v);return m},[verifications]);
  const filtered=useMemo(()=>companies.filter(c=>{const q=query.toLowerCase();const match=!q||[companyName(c),c.cuit,c.pais,c.tipo_empresa,c.provincia,c.ciudad].filter(Boolean).join(" ").toLowerCase().includes(q);const matchCountry=!country||c.pais===country;const matchSector=!sector||c.tipo_empresa===sector;const st=verificationState(c,vByCompany.get(c.id));return match&&matchCountry&&matchSector&&(status==="Todos"||st===status)}),[companies,query,country,status,vByCompany]);
  const counts=useMemo(()=>({verified:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Verificada").length,process:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="En proceso").length,obs:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Con observaciones").length,rejected:companies.filter(c=>verificationState(c,vByCompany.get(c.id))==="Rechazado").length}),[companies,vByCompany]);
