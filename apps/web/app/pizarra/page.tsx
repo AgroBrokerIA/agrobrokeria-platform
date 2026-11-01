@@ -7,9 +7,10 @@ type Quote={id:string;price:number|null;currency:string|null;unit:string|null;pr
 type Row={code:string;name:string;q?:Quote};
 
 const icon=(code:string)=>code==="SOJA"?"🫘":code==="MAIZ"?"🌽":code==="TRIGO"?"🌾":code==="GIRASOL"?"🌻":code.toLowerCase().includes("aceite")?"🫒":"🌾";
-const money=(q?:Quote)=>q?.price==null?"Sin cotización":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(q?:Quote)=>q?.price==null?"—":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
 const MARKET_OPTIONS=[
  {value:"ROSARIO",label:"Bolsa de Comercio de Rosario",url:"https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",aliases:["ROSARIO","BCR","BCR/CAC"]},
+ {value:"CHICAGO",label:"Chicago Board of Trade (CBOT)",url:"https://www.cmegroup.com/markets/agriculture.html",aliases:["CHICAGO","CBOT","CME","YAHOO FINANCE"]},
  {value:"BAHIA_BLANCA",label:"Bolsa de Cereales de Bahía Blanca",url:"https://www.bcp.org.ar/",aliases:["BAHIA BLANCA","BAHÍA BLANCA","BCBB","BAHIA_BLANCA"]},
  {value:"BUENOS_AIRES",label:"Bolsa de Cereales de Buenos Aires",url:"https://www.bolsadecereales.com/",aliases:["BUENOS AIRES","BUENOS_AIRES","BCBA","BOLSA DE CEREALES DE BUENOS AIRES"]},
  {value:"CORDOBA",label:"Bolsa de Cereales de Córdoba",url:"https://www.bccba.org.ar/",aliases:["CORDOBA","CÓRDOBA","BCCBA"]},
@@ -44,7 +45,7 @@ export default function PizarraPage(){
  const categoryFor=(q:Quote)=>productCategories[String(q.product_id||"")]||"";
  const inTab=(q:Quote)=>{if(boardTab==="Granos"){const cat=categoryFor(q).toLowerCase();const code=codeFor(q).toUpperCase();return !cat&&!q.product_id&&!q.commodity_id||["cereal","oleaginosa","legumbre","pseudocereal y nicho","especialidad","semilla de cobertura","semilla forrajera"].includes(cat)||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"].includes(code);}const n=productNames[String(q.product_id||"")]?.toLowerCase()||"";if(boardTab==="Aceites")return n.includes("aceite");if(boardTab==="Harinas")return n.includes("harina")||categoryFor(q)==="Harina";if(boardTab==="Subproductos")return categoryFor(q)==="Subproducto"||["pellet","expeller","afrechillo","subproducto"].some(x=>n.includes(x));return true;};
  const selectedMarket=MARKET_OPTIONS.find(x=>x.value===market)||MARKET_OPTIONS[0];
- const filteredQuotes=useMemo(()=>quotes.filter(q=>{const marketText=[q.market,q.port,(q.payload as any)?.market,(q.payload as any)?.bolsa].filter(Boolean).join(" ").toLocaleUpperCase("es");const matchMarket=selectedMarket.aliases.some(a=>marketText.includes(a.toLocaleUpperCase("es")));return matchMarket&&(priceType==="ALL"||q.price_type===priceType)&&(productFilter==="ALL"||codeFor(q)===productFilter)&&inTab(q)}),[quotes,codes,productNames,productCategories,priceType,productFilter,boardTab,market]);
+ const filteredQuotes=useMemo(()=>quotes.filter(q=>{const marketText=[q.market,q.port,(q.payload as any)?.market,(q.payload as any)?.bolsa].filter(Boolean).join(" ").toLocaleUpperCase("es");const matchMarket=selectedMarket.aliases.some(a=>marketText.includes(a.toLocaleUpperCase("es")));const matchPriceType=priceType==="ALL"||(priceType==="FUTURES"?String(q.price_type||"").toUpperCase().includes("FUT"):q.price_type===priceType);return q.price!=null&&matchMarket&&matchPriceType&&(productFilter==="ALL"||codeFor(q)===productFilter)&&inTab(q)}),[quotes,codes,productNames,productCategories,priceType,productFilter,boardTab,market]);
  const latest=useMemo(()=>{const m=new Map<string,Quote>();for(const q of filteredQuotes){const code=codeFor(q);if(!m.has(code))m.set(code,q)}return m},[filteredQuotes,codes,productNames]);
  const wanted=useMemo(()=>Array.from(new Set(filteredQuotes.map(codeFor))),[filteredQuotes,codes,productNames]);
  const rows:Row[]=wanted.map(code=>({code,name:productNames[String(filteredQuotes.find(q=>codeFor(q)===code)?.product_id||"")]||((latest.get(code)?.product_id==null&&latest.get(code)?.commodity_id==null)?"Cotización BCR/CAC (producto no informado)":code),q:latest.get(code)}));
