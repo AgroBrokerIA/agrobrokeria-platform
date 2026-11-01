@@ -235,6 +235,9 @@ export default function OperacionesPage() {
   const [acuerdoAbierto, setAcuerdoAbierto] = useState<string | null>(null);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
+  const [comisionReferenciaTransferencia, setComisionReferenciaTransferencia] = useState("");
+  const [comisionComprobanteUrl, setComisionComprobanteUrl] = useState("");
+  const [enviandoComprobanteComision, setEnviandoComprobanteComision] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
 
@@ -644,6 +647,37 @@ export default function OperacionesPage() {
   // =========================================================
   // OFERTA ACEPTADA → ACUERDO COMERCIAL / RESERVA
   // =========================================================
+
+  async function enviarComprobanteComision(operacion: Operacion) {
+    setError("");
+    setMensaje("");
+    if (!comisionReferenciaTransferencia.trim()) {
+      setError("Ingresá la referencia de la transferencia bancaria.");
+      return;
+    }
+    setEnviandoComprobanteComision(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Necesitás iniciar sesión.");
+      const { data: profile, error: profileError } = await supabase.from("profiles").select("active_company_id").eq("id", user.id).single();
+      if (profileError || !profile?.active_company_id) throw new Error("No se encontró una empresa activa.");
+      const { error: submitError } = await supabase.rpc("registrar_comprobante_comision_plataforma", {
+        p_operacion_id: operacion.id,
+        p_empresa_pagadora_id: profile.active_company_id,
+        p_referencia_pago: comisionReferenciaTransferencia.trim(),
+        p_comprobante_url: comisionComprobanteUrl.trim() || null,
+      });
+      if (submitError) throw submitError;
+      setMensaje("Comprobante enviado. AgroBrokerIA verificará la transferencia; la operación no avanzará a Visado hasta que la comisión quede RETENIDA.");
+      setComisionReferenciaTransferencia("");
+      setComisionComprobanteUrl("");
+      await cargarOperaciones();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo registrar el comprobante.");
+    } finally {
+      setEnviandoComprobanteComision(false);
+    }
+  }
 
   async function iniciarAcuerdoComercial(operacionId: string) {
     setError("");
@@ -2668,6 +2702,16 @@ Firma: ______________________________
             <p><strong>Destino:</strong> {metaDetalle.destino}</p>
             <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
             <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
+            {ordenDetalle === 2 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+              <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito previo al contrato</h3>
+              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Una vez confirmado el acuerdo, se abona por transferencia bancaria y queda retenida hasta el cierre de la operación.</p>
+              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
+              <input value={comisionReferenciaTransferencia} onChange={e=>setComisionReferenciaTransferencia(e.target.value)} placeholder="Número de operación / referencia bancaria" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:10}}/>
+              <label style={{display:"block",fontWeight:700,marginBottom:6}}>URL del comprobante (opcional)</label>
+              <input value={comisionComprobanteUrl} onChange={e=>setComisionComprobanteUrl(e.target.value)} placeholder="Enlace al comprobante bancario" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
+              <button type="button" disabled={enviandoComprobanteComision} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer"}}>{enviandoComprobanteComision?"Enviando…":"Enviar comprobante de comisión"}</button>
+              <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
+            </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>Abrir acción de la etapa</button></div>
           </section>
