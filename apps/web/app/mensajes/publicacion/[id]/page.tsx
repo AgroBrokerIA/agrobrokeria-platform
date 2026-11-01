@@ -40,7 +40,7 @@ export default function PublicacionChat() {
         if(convError) throw convError;
         const otherId=conv.publicador_profile_id===u.id?conv.interesado_profile_id:conv.publicador_profile_id;
         const {data:other}=await supabase.from("profiles").select("nombre,empresa").eq("id",otherId).maybeSingle();
-        setContactName(other?.nombre||other?.empresa||p.empresas?.razon_social||"Contacto comercial");
+        setContactName(other?.nombre||other?.empresa||"Contacto comercial");
         await refresh(cid);
       } catch(e:any) { if(live) setError(e?.message || "No se pudo abrir la conversación."); }
       finally { if(live) setBusy(false); }
