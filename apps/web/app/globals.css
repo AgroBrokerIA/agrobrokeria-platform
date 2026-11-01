@@ -1335,3 +1335,15 @@ body{background:var(--ab-bg)}
 .log-legend,.log-bars,.activity-list{min-width:0;overflow-wrap:anywhere}
 @media(max-width:1250px){.logistics-bottom{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:700px){.logistics-bottom{grid-template-columns:minmax(0,1fr)}.transport-chart{grid-template-columns:100px minmax(0,1fr)}.transport-donut{width:96px;height:96px}}
+
+/* Seguridad: la vista de Políticas ocupa el ancho disponible y evita columnas comprimidas. */
+.security-tab-content{display:grid;width:100%;max-width:100%;min-width:0;grid-template-columns:minmax(0,1fr);gap:14px;align-items:stretch}
+.security-tab-content>.security-panel{width:100%;min-width:0;max-width:100%;grid-column:1/-1;overflow:visible}
+.security-tab-content .policies{display:flex;width:100%;min-width:0;flex-direction:column;gap:14px}
+.security-tab-content .policies .policy-intro{display:block;width:100%;max-width:none;margin:0;font-size:14px;line-height:1.6;color:#526477;overflow-wrap:anywhere}
+.security-tab-content .policies .policy-item{display:flex;width:100%;min-width:0;align-items:flex-start;gap:12px;padding:13px 15px;background:#f7fbf8;border:1px solid #e5eee8;border-radius:10px}
+.security-tab-content .policies .policy-item>b{display:grid;place-items:center;flex:0 0 30px;width:30px;height:30px;border-radius:8px;background:#e1f7eb;color:#078d54;font-size:16px}
+.security-tab-content .policies .policy-item span{display:block;flex:1;min-width:0}
+.security-tab-content .policies .policy-item strong{display:block;font-size:13px;line-height:1.45;color:#183a2a}
+.security-tab-content .policies .policy-item small{display:block;font-size:12px;line-height:1.5;color:#66776d;margin-top:4px;overflow-wrap:anywhere}
+.security-tab-content .policies>a{display:inline-flex;align-self:flex-start;margin-top:4px;color:#078d54;font-size:13px;font-weight:700;text-decoration:none}
