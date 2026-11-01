@@ -1439,3 +1439,12 @@ body{background:var(--ab-bg)}
 .offers-table-card::-webkit-scrollbar-thumb{background:#89939d;border:2px solid #e9eef2;border-radius:8px}
 .offer-row-actions{display:flex;align-items:center;justify-content:center;gap:6px;flex-wrap:wrap}
 .offer-row-actions .offer-detail{display:inline-flex;align-items:center;justify-content:center;min-width:78px;padding:8px 9px;line-height:1.2;white-space:nowrap}
+
+/* Marketplace: filtros y resumen regional debajo de la tabla, con más espacio para leer publicaciones. */
+.offers-layout{display:flex;flex-direction:column;gap:14px}
+.offers-main{width:100%;min-width:0}
+.offers-sidebar{width:100%;display:grid;grid-template-columns:minmax(0,1.35fr) minmax(260px,.65fr);align-items:start;gap:14px;margin-top:0}
+.offers-filter-card,.offers-region-card{min-width:0}
+@media(max-width:760px){
+ .offers-sidebar{grid-template-columns:minmax(0,1fr)}
+}
