@@ -57,12 +57,28 @@ async function parseBuenosAires(body:string,runId:string){
  }return saved;
 }
 async function parseCordoba(body:string,runId:string){
- const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
- const patterns:[RegExp,string][]=[[/Precios Pizarra Córdoba[^]*?(?=Precios Pizarra|Expeller de Soja|DATOS DE HOY)/i,"CORDOBA"],[/Expeller de Soja[^]*?(?=MERCADOS|DATOS DE HOY)/i,"CORDOBA"]];
- for(const [pattern,market] of patterns){const match=text.match(pattern);if(!match)continue;const section=match[0];for(const product of ["Trigo duro","Maní Industria","Maní Runner","Expeller de soja"]){const at=section.toLowerCase().indexOf(product.toLowerCase());if(at<0)continue;const snippet=section.slice(at,at+240);const moneyMatch=snippet.match(/(?:\$\s?[\d.]+(?:,\d+)?|U\$S\s?[\d.]+(?:,\d+)?)/i);if(!moneyMatch)continue;const value=num(moneyMatch[0]);if(value==null)continue;const currency=/U\$S/i.test(moneyMatch[0])?"USD":"ARS";const id=await commodityId(commodityCode(product));saved+=await save({source:"Bolsa de Cereales de Córdoba",source_reference:BCCBA_HOME,market_date:date,commodity_id:id,product_id:null,variety:null,position:"SPOT",market,port:"CORDOBA",price_type:"PIZARRA_CAC",price:value,currency,unit:product.toLowerCase().includes("mani")?"T":"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,excerpt:snippet,estimated:/estimado|s\/n/i.test(snippet),run_id:runId}});}}
+ const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
+ const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
+ const sections:[RegExp,string][]=[
+  [/Precios Pizarra Córdoba[^]*?(?=Precios Pizarra|Expeller de Soja|DATOS DE HOY)/i,"CORDOBA"],
+  [/Expeller de Soja[^]*?(?=MERCADOS|DATOS DE HOY)/i,"CORDOBA"]
+ ];
+ const products=["Trigo duro","Maní Industria","Maní Runner","Expeller de soja"];
+ for(const [pattern,market] of sections){
+  const match=text.match(pattern);if(!match)continue;const section=match[0];
+  const occurrences=products.map(product=>({product,index:section.toLowerCase().indexOf(product.toLowerCase())})).filter(x=>x.index>=0).sort((a,b)=>a.index-b.index);
+  for(let i=0;i<occurrences.length;i++){
+   const current=occurrences[i];const next=occurrences[i+1];const snippet=section.slice(current.index,next?next.index:Math.min(section.length,current.index+240));
+   const moneyMatch=snippet.match(/(?:U\\$S\\s?[\\d.]+(?:,\\d+)?|\\$\\s?[\\d.]+(?:,\\d+)?)/i);
+   if(!moneyMatch)continue;
+   const value=num(moneyMatch[0]);if(value==null)continue;
+   const currency=/U\\$S/i.test(moneyMatch[0])?"USD":"ARS";
+   const id=await commodityId(commodityCode(current.product));
+   saved+=await save({source:"Bolsa de Cereales de Córdoba",source_reference:BCCBA_HOME,market_date:date,commodity_id:id,product_id:null,variety:null,position:"SPOT",market,port:"CORDOBA",price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:current.product,excerpt:snippet,estimated:/estimado|s\\/n/i.test(snippet),run_id:runId}});
+  }
+ }
  return saved;
 }
- 
 async function syncChicago(runId:string){
  const contracts=[
   {symbol:"ZS=F",code:"SOJA",unit:"USD/bu"},
