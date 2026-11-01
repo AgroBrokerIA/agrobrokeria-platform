@@ -10,7 +10,7 @@ export async function GET(req: Request) {
   }
 
   const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY;
   const anon = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
   if (!base) return NextResponse.json({ error: "SUPABASE_URL_NOT_CONFIGURED" }, { status: 500 });
   if (!serviceKey || !anon) return NextResponse.json({ error: "SUPABASE_SERVER_KEYS_NOT_CONFIGURED" }, { status: 500 });
