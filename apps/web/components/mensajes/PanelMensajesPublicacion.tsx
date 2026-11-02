@@ -56,9 +56,11 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
     const row=payload.new as Msg;
     setMensajes(prev=>prev.some(m=>m.id===row.id)?prev:[...prev,row]);
     if(row.remitente_profile_id!==uid)void supabase.rpc("marcar_mensajes_publicacion_leidos",{p_conversacion_id:conversacionId});
-   }).subscribe();
+   })
+   .on("postgres_changes",{event:"INSERT",schema:"public",table:"propuestas_publicacion",filter:"conversacion_id=eq."+conversacionId},()=>{void cargarPropuestas();})
+   .subscribe();
   return()=>{void supabase.removeChannel(channel)};
- },[cargar,conversacionId,uid]);
+ },[cargar,cargarPropuestas,conversacionId,uid]);
  useEffect(()=>{if(listRef.current)listRef.current.scrollTop=listRef.current.scrollHeight},[mensajes.length]);
  async function enviar(){
   if(!texto.trim()||enviando)return;
