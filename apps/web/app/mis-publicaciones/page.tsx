@@ -35,58 +35,58 @@ export default function MisPublicacionesPage() {
 
   async function cargarPublicaciones() {
     setLoading(true);
-    const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
-    setMonedas(Object.fromEntries((monedaData || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
+    try {
+      const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
+      setMonedas(Object.fromEntries((monedaData || []).map((m: {id:number;codigo:string}) => [m.id, m.codigo])));
 
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) { setPublicaciones([]); setLoading(false); return; }
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) { setPublicaciones([]); return; }
 
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("active_company_id").eq("id", user.id).single();
-    if (profileError) { console.error("Error cargando perfil:", profileError); setPublicaciones([]); setLoading(false); return; }
-    let empresaId: string | null = null;
-    if (profile?.active_company_id) {
-      const { data: mapping, error: mappingError } = await supabase.from("company_empresa_map").select("empresa_id").eq("company_id", profile.active_company_id).maybeSingle();
-      if (mappingError) { console.error("Error resolviendo empresa comercial:", mappingError); }
-      if (mapping?.empresa_id) empresaId = mapping.empresa_id;
-      else {
-        const { data: legacy } = await supabase.from("empresas").select("id").eq("id", profile.active_company_id).eq("activa", true).maybeSingle();
-        if (legacy?.id) empresaId = legacy.id;
+      const { data: profile, error: profileError } = await supabase
+        .from("profiles")
+        .select("active_company_id")
+        .eq("id", user.id)
+        .maybeSingle();
+      if (profileError) throw profileError;
+
+      let empresaId: string | null = null;
+      if (profile?.active_company_id) {
+        const { data: mapping, error: mappingError } = await supabase
+          .from("company_empresa_map")
+          .select("empresa_id")
+          .eq("company_id", profile.active_company_id)
+          .maybeSingle();
+        if (mappingError) console.error("Error resolviendo empresa comercial:", mappingError);
+        if (mapping?.empresa_id) empresaId = mapping.empresa_id;
+        else {
+          const { data: legacy } = await supabase
+            .from("empresas").select("id")
+            .eq("id", profile.active_company_id).eq("activa", true).maybeSingle();
+          if (legacy?.id) empresaId = legacy.id;
+        }
       }
+
+      let query = supabase.from("publicaciones").select(`
+        id,tipo,moneda_id,cantidad_tn,precio_tn,estado,puerto,puertos,
+        lugares_recepcion,provincia,productos(nombre)
+      `).order("creada_en", { ascending: false });
+
+      // Las publicaciones independientes pertenecen al perfil publicador,
+      // no a una empresa. Incluir ambos caminos para cuentas mixtas/legadas.
+      query = empresaId
+        ? query.or(`publicador_profile_id.eq.${user.id},empresa_id.eq.${empresaId}`)
+        : query.eq("publicador_profile_id", user.id);
+
+      const { data, error } = await query;
+      if (error) throw error;
+      setPublicaciones((data as Publicacion[]) || []);
+    } catch (error) {
+      console.error("Error cargando publicaciones propias:", error);
+      setPublicaciones([]);
+      alert("No se pudieron cargar tus publicaciones. " + (error instanceof Error ? error.message : ""));
+    } finally {
+      setLoading(false);
     }
-    if (!empresaId) { setPublicaciones([]); setLoading(false); return; }
-
-    const { data, error } = await supabase
-      .from("publicaciones")
-      .select(`
-        id,
-        tipo,
-        moneda_id,
-        cantidad_tn,
-        precio_tn,
-        estado,
-        puerto,
-        puertos,
-        lugares_recepcion,
-        provincia,
-        productos(nombre)
-      `)
-      .eq("empresa_id", empresaId)
-      .order("creada_en", {
-        ascending: false,
-      });
-
-    if (error) {
-      console.error(
-        "Error cargando publicaciones:",
-        error
-      );
-    } else {
-      setPublicaciones(
-        (data as Publicacion[]) || []
-      );
-    }
-
-    setLoading(false);
   }
 
   async function cambiarEstado(
