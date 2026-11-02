@@ -73,3 +73,30 @@ No inferir F1/F2 únicamente por texto libre. La clasificación debe ser un dato
 
 ## Modelos aportados por negocio
 Los textos F1 y F2 aportados por AgroBrokerIA son bases de cláusulas comerciales, no plantillas rígidas. Se completan con los datos reales del expediente y se someten a revisión legal antes de utilizarlos como contratos vinculantes. No afirmar automáticamente que todas las partes están inscriptas en SISA, ni imponer una jurisdicción arbitral o tipo de cambio si no existe verificación/acuerdo.
+
+
+## Flujo de generación, descarga y firma bilateral (requisito operativo)
+
+### Autocompletado y carga manual
+- Al elegir F1 o F2, consultar el expediente de la operación y precargar todos los campos disponibles desde las tablas fuente: operación, publicaciones, participantes/partes, contactos y empresas, acuerdo comercial, control comercial/visado, análisis, logística/entregas, pricing, comisiones, mensajes/propuestas aceptadas, documentos y workflow.
+- Cada campo debe mostrar su procedencia y estado: autocompletado desde expediente, completado manualmente, pendiente de confirmar, no informado o no aplica.
+- Los campos faltantes editables se completan en un formulario manual dentro de la vista previa. Los valores manuales se guardan en el borrador del contrato y quedan auditados con usuario y fecha.
+- No reemplazar datos de origen silenciosamente. Si existe contradicción entre fuentes (por ejemplo, precio de operación y última propuesta aceptada), mostrar el conflicto y exigir resolución explícita antes de confirmar.
+- Al regenerar el documento, conservar los campos manuales y los cambios autorizados. No sobrescribirlos con una nueva carga automática.
+
+### Documentos independientes por parte
+- Una vez validado el contenido, generar un PDF único y versionado del contrato definitivo.
+- Crear dos tareas de firma independientes, una para el vendedor y otra para el comprador, asociadas al mismo contrato, versión y hash del PDF.
+- En el espacio privado de cada participante mostrar únicamente su acción: «Descargar contrato», «Firmar fuera de AgroBrokerIA y cargar documento firmado». Permitir PDF y formatos de imagen admitidos, validar tamaño/tipo y almacenar en bucket privado.
+- Cada carga registra parte, usuario autenticado, fecha/hora, nombre, tipo, hash y versión del contrato. No aceptar un archivo de una parte como firma de la otra.
+- Mostrar estados separados: pendiente de descarga, descargado (si se instrumenta), pendiente de firma/carga, archivo recibido, en revisión, aprobado u observado/rechazado. Permitir reemplazo solo mediante nueva versión auditada, sin borrar el archivo anterior.
+- Verificar que ambos archivos correspondan a la misma versión/hash contractual y que cada archivo esté vinculado al firmante correcto. El administrador o revisor autorizado puede validar autenticidad y legibilidad; el sistema no debe declarar válida una firma solo por recibir un archivo.
+- El avance a la etapa Fondos (etapa 6) queda bloqueado hasta que vendedor y comprador tengan su documento firmado cargado y validado. Si existe un intermediario que contractualmente debe firmar, agregar su tarea de firma independiente y exigirla según el acuerdo.
+- Las notificaciones se envían por separado a vendedor y comprador cuando el contrato queda disponible, cuando falta su firma y cuando el archivo se recibe/observa/aprueba.
+- El contrato final y sus anexos deben poder descargarse por las partes autorizadas. Los archivos de firma y el PDF base permanecen privados y con control de acceso por operación/participante.
+
+### Reglas de seguridad y consistencia
+- No permitir que un usuario suba o consulte el archivo privado de firma de otra parte salvo autorización explícita por rol.
+- No habilitar firma/carga hasta que la versión del contrato esté confirmada por las partes según el mecanismo de aceptación definido.
+- Si el contrato cambia después de que una parte descargó o firmó, invalidar las tareas pendientes de la versión anterior y solicitar nuevas firmas de la nueva versión; conservar la anterior en el historial.
+- La firma electrónica/digital integrada no se presume disponible. En este flujo, la parte descarga, firma por el medio acordado y vuelve a cargar el documento firmado. La validez legal y el mecanismo de firma deben revisarse con asesoramiento jurídico.
