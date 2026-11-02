@@ -2671,7 +2671,8 @@ Firma: ______________________________
           if (ordenDetalle === 1) {
             resultado = await iniciarAcuerdoComercial(detalleOperacion.id);
           } else if (ordenDetalle === 2) {
-            resultado = await avanzarAVisadoConComision(detalleOperacion);
+            await abrirAcuerdo(detalleOperacion);
+            resultado = true;
           } else if (ordenDetalle === 3) {
             const control = controlesComerciales[detalleOperacion.id];
             if (control?.visado_resultado === "APROBADO") {
@@ -2731,7 +2732,52 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Confirmar acuerdo preliminar y pasar a Visado" : ordenDetalle === 3 ? (controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? "Verificar comisión y continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? "Verificar comisión y continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+          </section>
+        </div>;
+      })()}
+
+      {acuerdoAbierto && (() => {
+        const operacionAcuerdo = operaciones.find((item) => item.id === acuerdoAbierto);
+        if (!operacionAcuerdo) return null;
+        const metaAcuerdo = operacionMeta[acuerdoAbierto] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
+        const comisionEstimada = Number(operacionAcuerdo.cantidad_tn || 0);
+        return <div role="dialog" aria-modal="true" aria-label="Acuerdo comercial preliminar" style={{position:"fixed",inset:0,zIndex:1100,background:"rgba(15,23,42,.58)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={() => !guardando && setAcuerdoAbierto(null)}>
+          <section style={{width:"min(100%,760px)",maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.28)",color:"#123"}} onClick={(event) => event.stopPropagation()}>
+            <header style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16,marginBottom:18}}>
+              <div><h2 style={{margin:"0 0 6px",fontSize:22}}>Acuerdo Comercial / Reserva preliminar</h2><p style={{margin:0,color:"#64748b",fontSize:13}}>Completá las condiciones pactadas por vendedor y comprador. Este acuerdo no es el contrato definitivo.</p></div>
+              <button type="button" onClick={() => setAcuerdoAbierto(null)} disabled={guardando} aria-label="Cerrar" style={{border:0,background:"transparent",fontSize:25,cursor:"pointer"}}>×</button>
+            </header>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,background:"#f8fafc",border:"1px solid #e2e8f0",borderRadius:12,padding:14,marginBottom:18}}>
+              <div><small style={{color:"#64748b"}}>Operación</small><strong style={{display:"block"}}>{operacionAcuerdo.codigo}</strong></div>
+              <div><small style={{color:"#64748b"}}>Producto</small><strong style={{display:"block"}}>{metaAcuerdo.producto}</strong></div>
+              <div><small style={{color:"#64748b"}}>Volumen</small><strong style={{display:"block"}}>{formatoNumero(operacionAcuerdo.cantidad_tn)} TN</strong></div>
+              <div><small style={{color:"#64748b"}}>Precio por tonelada</small><strong style={{display:"block"}}>{formatoNumero(operacionAcuerdo.precio_tn)} {monedaOperacion(operacionAcuerdo)}</strong></div>
+              <div><small style={{color:"#64748b"}}>Origen</small><strong style={{display:"block"}}>{metaAcuerdo.origen}</strong></div>
+              <div><small style={{color:"#64748b"}}>Destino</small><strong style={{display:"block"}}>{metaAcuerdo.destino}</strong></div>
+            </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(240px,1fr))",gap:14}}>
+              <Campo label="Lugar de carga" value={acuerdo.lugar_carga} onChange={(value)=>cambiarCampo("lugar_carga",value)} />
+              <Campo label="Destino / lugar de descarga" value={acuerdo.destino} onChange={(value)=>cambiarCampo("destino",value)} />
+              <Campo label="Condición de entrega (Incoterm / condición)" value={acuerdo.condicion_entrega} onChange={(value)=>cambiarCampo("condicion_entrega",value)} />
+              <Campo label="Forma de pago" value={acuerdo.forma_pago} onChange={(value)=>cambiarCampo("forma_pago",value)} />
+              <Campo label="Plazo de pago" value={acuerdo.plazo_pago} onChange={(value)=>cambiarCampo("plazo_pago",value)} />
+              <Campo label="Flete / responsable del transporte" value={acuerdo.flete} onChange={(value)=>cambiarCampo("flete",value)} />
+              <Campo label="Calidad y especificaciones" value={acuerdo.calidad} onChange={(value)=>cambiarCampo("calidad",value)} />
+            </div>
+            <label style={{display:"block",fontWeight:700,marginTop:14,marginBottom:6}}>Observaciones y condiciones adicionales</label>
+            <textarea value={acuerdo.observaciones} onChange={(event)=>cambiarCampo("observaciones",event.target.value)} rows={4} style={{width:"100%",boxSizing:"border-box",padding:12,border:"1px solid #cbd5e1",borderRadius:8,resize:"vertical"}} placeholder="Condiciones comerciales acordadas por las partes..." />
+            <div style={{marginTop:16,padding:14,border:"1px solid #bfdbfe",borderRadius:10,background:"#eff6ff"}}>
+              <strong>Comisión de plataforma: USD {formatoNumero(comisionEstimada)}</strong>
+              <p style={{margin:"5px 0 0",fontSize:13,color:"#1e40af"}}>Cálculo automático de USD 1 por tonelada. No se paga en esta etapa: se abonará después del visado aprobado y antes del contrato definitivo. Quedará retenida hasta el cierre de la operación.</p>
+            </div>
+            {error && <p role="alert" style={{marginTop:14,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
+            {mensaje && <p role="status" style={{marginTop:14,padding:12,borderRadius:8,background:"#dcfce7",color:"#166534"}}>{mensaje}</p>}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:20}}>
+              <button type="button" disabled={guardando} onClick={()=>setAcuerdoAbierto(null)} style={{padding:"10px 16px",border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",cursor:"pointer"}}>Cerrar</button>
+              <button type="button" disabled={guardando} onClick={()=>guardarAcuerdo(operacionAcuerdo,false)} style={{padding:"10px 16px",border:"1px solid #0f766e",borderRadius:8,background:"#fff",color:"#0f766e",fontWeight:700,cursor:"pointer"}}>{guardando?"Guardando…":"Guardar borrador"}</button>
+              <button type="button" disabled={guardando} onClick={()=>guardarAcuerdo(operacionAcuerdo,true)} style={{padding:"10px 18px",border:0,borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700,cursor:"pointer"}}>{guardando?"Confirmando…":"Confirmar acuerdo y pasar a Visado"}</button>
+            </div>
           </section>
         </div>;
       })()}
