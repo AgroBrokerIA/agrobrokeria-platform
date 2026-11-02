@@ -45,10 +45,10 @@ export default function NotificacionesPage(){
 
  async function marcarLeida(id:string){const ahora=new Date().toISOString();const {error:e}=await supabase.rpc("marcar_notificacion_leida",{p_notificacion_id:id});if(e){setError("No se pudo marcar como leída: "+e.message);return}setNotificaciones(a=>a.map(n=>n.id===id?{...n,leida:true,actualizado_at:ahora}:n));setSeleccionada(s=>s?.id===id?{...s,leida:true,actualizado_at:ahora}:s)}
  async function marcarSeleccionadasLeidas(){const ids=seleccionadasIds.filter(id=>visibles.some(n=>n.id===id));if(!ids.length){setError("Seleccioná las notificaciones que querés marcar como leídas.");return}const resultados=await Promise.all(ids.map(id=>supabase.rpc("marcar_notificacion_leida",{p_notificacion_id:id})));const fallo=resultados.find(r=>r.error);if(fallo?.error){setError("No se pudieron marcar las notificaciones seleccionadas: "+fallo.error.message);return}const ahora=new Date().toISOString();setNotificaciones(a=>a.map(n=>ids.includes(n.id)?{...n,leida:true,actualizado_at:ahora}:n));setSeleccionada(s=>s&&ids.includes(s.id)?{...s,leida:true,actualizado_at:ahora}:s);setSeleccionadasIds([]);setError("");}
- const todasVisiblesSeleccionadas=visibles.length>0&&visibles.every(n=>seleccionadasIds.includes(n.id));
  const pendientes=notificaciones.filter(n=>!n.leida).length;
  const counts=useMemo(()=>{const c:Record<string,number>={Todas:pendientes};notificaciones.forEach(n=>{const k=typeMeta(n.tipo).label;c[k]=(c[k]||0)+(!n.leida?1:0)});return c},[notificaciones,pendientes]);
  const visibles=useMemo(()=>{let rows=notificaciones.filter(n=>{const meta=typeMeta(n.tipo);return filtros[meta.label]!==false&&(filtro==="Todas"||meta.label===filtro)&&((n.titulo||"").toLowerCase().includes(buscando.toLowerCase())||(n.mensaje||"").toLowerCase().includes(buscando.toLowerCase()))});if(orden==="oldest")rows=[...rows].reverse();return rows},[notificaciones,filtro,filtros,buscando,orden]);
+ const todasVisiblesSeleccionadas=visibles.length>0&&visibles.every(n=>seleccionadasIds.includes(n.id));
  const fecha=(s:string|null)=>s?new Date(s).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",year:"numeric",hour:"2-digit",minute:"2-digit"}):"";
  const relativo=(s:string|null)=>s?fecha(s):"";
  return <main className="notifications-reference">
