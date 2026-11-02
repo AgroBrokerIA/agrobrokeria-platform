@@ -2579,16 +2579,27 @@ Firma: ______________________________
   }
 
 
+  const estadoVistaOperacion = (operacion: Operacion) => {
+    const workflow = obtenerWorkflow(operacion.id);
+    const orden = workflow?.orden ?? 0;
+    if (/CANCEL/i.test(operacion.estado)) return "Canceladas";
+    if (orden === 10 || /CERR|FINAL/i.test(operacion.estado)) return "Finalizadas";
+    if (orden >= 1 && orden <= 3) return "En negociación";
+    if (orden === 4 || orden === 5) return "En contrato";
+    if (orden >= 6 && orden <= 8) return "En logística";
+    if (orden === 9) return "En liquidación";
+    const estado = (operacion.estado || "").toUpperCase();
+    if (["NEGOCIACION", "EN_NEGOCIACION", "PENDIENTE_NEGOCIACION"].includes(estado)) return "En negociación";
+    if (["EN_CONTRATO", "CONTRATO"].includes(estado)) return "En contrato";
+    if (["EN_LOGISTICA", "LOGISTICA"].includes(estado)) return "En logística";
+    if (["EN_LIQUIDACION", "LIQUIDACION"].includes(estado)) return "En liquidación";
+    return "En negociación";
+  };
+
   const operacionesFiltradas = operaciones.filter((operacion) => {
     const workflow = obtenerWorkflow(operacion.id);
     const etapa = workflow?.etapa_actual || "";
-    const estadoVista =
-      workflow?.orden === 1 ? "En negociación" :
-      workflow?.orden === 4 || workflow?.orden === 5 ? "En contrato" :
-      workflow?.orden === 7 || workflow?.orden === 8 ? "En logística" :
-      workflow?.orden === 9 || /CERR|FINAL/i.test(operacion.estado) ? "Finalizadas" :
-      /CANCEL/i.test(operacion.estado) ? "Canceladas" :
-      "En liquidación";
+    const estadoVista = estadoVistaOperacion(operacion);
     const meta = operacionMeta[operacion.id] || { producto: "", origen: "", destino: "", contraparte: "" };
     const texto = `${operacion.codigo} ${operacion.tipo_operacion} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
@@ -2605,10 +2616,10 @@ Firma: ______________________________
       (!filtroHasta || fecha <= filtroHasta);
   });
   const totalVolumen = operaciones.reduce((a,o)=>a+o.cantidad_tn,0);
-  const enNegociacion = operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===1).length;
-  const enContrato = operaciones.filter(o=>[4,5].includes(obtenerWorkflow(o.id)?.orden||0)).length;
-  const enLogistica = operaciones.filter(o=>[7,8].includes(obtenerWorkflow(o.id)?.orden||0)).length;
-  const enLiquidacion = operaciones.filter(o=>[6,9].includes(obtenerWorkflow(o.id)?.orden||0)).length;
+  const enNegociacion = operaciones.filter(o=>estadoVistaOperacion(o)==="En negociación").length;
+  const enContrato = operaciones.filter(o=>estadoVistaOperacion(o)==="En contrato").length;
+  const enLogistica = operaciones.filter(o=>estadoVistaOperacion(o)==="En logística").length;
+  const enLiquidacion = operaciones.filter(o=>estadoVistaOperacion(o)==="En liquidación").length;
   const limpiarFiltros=()=>{setFiltroEstado("");setFiltroTipo("");setFiltroOrigen("");setFiltroDestino("");setFiltroProducto("");setFiltroMinVol("");setFiltroMaxVol("");setFiltroMinPrecio("");setFiltroMaxPrecio("");setFiltroDesde("");setFiltroHasta("")};
 
   return (
@@ -2643,7 +2654,7 @@ Firma: ______________________________
           {loading ? <div className="operations-empty">Cargando operaciones…</div> :
             operacionesFiltradas.map((operacion)=>{
               const workflow=obtenerWorkflow(operacion.id), orden=workflow?.orden||0;
-              const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
+              const estado=estadoVistaOperacion(operacion)==="Finalizadas"?"Finalizada":estadoVistaOperacion(operacion);
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
               const meta=operacionMeta[operacion.id] || {producto:"Producto registrado",origen:"No informado",destino:"No informado",contraparte:"No informado"};
               const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion.id):undefined;
@@ -2695,12 +2706,13 @@ Firma: ______________________________
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
           } else if (ordenDetalle === 0 || !workflowDetalle) {
-            // Las operaciones antiguas o recién aceptadas pueden no tener aún
-            // un workflow enlazado. El siguiente paso comercial es negociar.
-            window.location.href = "/mensajes?operacion=" + encodeURIComponent(detalleOperacion.id);
+            setError("Esta operación todavía no tiene un flujo de etapas asociado. No se puede avanzar hasta inicializar su workflow.");
             return;
-          } else if (ordenDetalle >= 8) {
-            window.location.href = "/mensajes?operacion=" + encodeURIComponent(detalleOperacion.id);
+          } else if (ordenDetalle === 8) {
+            setError("La operación está en Logística / Entrega. Abrí la sección Logística para registrar la entrega y avanzar a Liquidación.");
+            return;
+          } else if (ordenDetalle >= 9) {
+            setError("La operación ya está en Liquidación o finalizada. La acción correspondiente se gestiona desde el módulo Liquidación.");
             return;
           } else {
             setError("No hay una acción disponible para esta etapa. Podés continuar la negociación desde Mensajes.");
