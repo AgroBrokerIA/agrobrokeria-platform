@@ -1,5 +1,5 @@
--- Solamente intermediarios y comisionistas publican sin empresa propia.
--- Productores, vendedores, compradores y corredores deben estar vinculados a una empresa.
+-- Reglas de elegibilidad: solo intermediarios/comisionistas pueden publicar sin empresa propia.
+-- Productores, vendedores, compradores y corredores requieren empresa activa vinculada.
 CREATE OR REPLACE FUNCTION public.guardar_publicacion(p_publicacion_id uuid, p_datos jsonb)
  RETURNS uuid
  LANGUAGE plpgsql
@@ -126,3 +126,24 @@ BEGIN
 END;
 $function$
 
+-- SISA se controla por separado de ARCA. Estas filas exigen evidencia oficial y
+-- NO representan una integración API automática con SISA.
+INSERT INTO public.verificacion_requisitos_catalogo
+  (tipo_empresa,codigo,nombre,obligatorio,fuente,descripcion)
+VALUES
+  ('PRODUCTOR','SISA_REGISTRO','Inscripción vigente en SISA',true,'SISA / organismo oficial','Exigir constancia o consulta oficial vigente; declarar CUIT no acredita inscripción.'),
+  ('COMPRADOR','SISA_REGISTRO','Inscripción vigente en SISA',true,'SISA / organismo oficial','Exigir constancia o consulta oficial vigente.'),
+  ('BROKER','SISA_REGISTRO','Inscripción vigente en SISA',true,'SISA / organismo oficial','Exigir constancia o consulta oficial vigente.'),
+  ('CORREDOR','SISA_REGISTRO','Inscripción vigente en SISA',true,'SISA / organismo oficial','Exigir constancia o consulta oficial vigente.'),
+  ('VENDEDOR','IDENTIDAD_FISCAL','CUIT y constancia fiscal',true,'ARCA','Identidad fiscal vigente del vendedor titular.'),
+  ('VENDEDOR','SISA_REGISTRO','Inscripción vigente en SISA',true,'SISA / organismo oficial','Exigir constancia o consulta oficial vigente del vendedor titular.')
+ON CONFLICT (tipo_empresa,codigo) DO UPDATE SET
+  nombre=EXCLUDED.nombre, obligatorio=EXCLUDED.obligatorio, fuente=EXCLUDED.fuente, descripcion=EXCLUDED.descripcion;
+
+-- La exención del intermediario/comisionista es sobre su inscripción propia como operador.
+-- La facturación de honorarios/comisiones sigue el régimen fiscal que corresponda.
+UPDATE public.verificacion_requisitos_catalogo
+SET obligatorio=false,
+    descripcion='No se exige inscripción propia ARCA/SISA para actuar exclusivamente como intermediario/comisionista. La documentación fiscal de honorarios se gestiona según el régimen aplicable.'
+WHERE tipo_empresa='INTERMEDIARIO'
+  AND codigo IN ('IDENTIDAD_FISCAL','ACTIVIDAD','FACTURACION');
