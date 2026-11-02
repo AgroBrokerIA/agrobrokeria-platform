@@ -1809,6 +1809,26 @@ Firma: ______________________________
           : "Guardando acuerdo comercial..."
       );
 
+      if (confirmar) {
+        const obligatorios: Array<[keyof Acuerdo, string]> = [
+          ["lugar_carga", "lugar de carga / establecimiento"],
+          ["destino", "destino o puerto de entrega"],
+          ["condicion_entrega", "condición de entrega"],
+          ["forma_pago", "forma de pago"],
+          ["plazo_pago", "plazo de pago"],
+          ["flete", "responsable y condición del flete"],
+          ["calidad", "calidad / especificación de mercadería"],
+        ];
+        const faltantes = obligatorios
+          .filter(([campo]) => !String(acuerdo[campo] ?? "").trim())
+          .map(([, etiqueta]) => etiqueta);
+        if (faltantes.length) {
+          setMensaje("");
+          setError(`Para confirmar el Acuerdo Comercial completá: ${faltantes.join(", ")}.`);
+          return;
+        }
+      }
+
       /*
        * =========================================================
        * VALIDACIONES PARA CONFIRMAR ACUERDO COMERCIAL
@@ -1929,63 +1949,11 @@ Firma: ______________________________
         return;
       }
 
-      const workflow =
-        obtenerWorkflow(operacion.id);
-
-      if (!workflow) {
-        setMensaje("");
-        setError(
-          "El acuerdo se guardó, pero la operación no tiene workflow asociado."
-        );
-        return;
-      }
-
-      const {
-        data: siguienteEtapa,
-        error: errorEtapa,
-      } = await supabase
-        .from("workflow_etapas")
-        .select("id, nombre, orden")
-        .eq(
-          "workflow_id",
-          workflow.workflow_id
-        )
-        .eq("orden", 3)
-        .maybeSingle();
-
-      if (errorEtapa) {
-        setMensaje("");
-        setError(
-          `El acuerdo se guardó, pero no se pudo buscar Visado de mercadería: ${errorEtapa.message}`
-        );
-        return;
-      }
-
-      if (!siguienteEtapa) {
-        setMensaje("");
-        setError(
-          "El acuerdo se guardó, pero no existe la etapa 3 (Visado de mercadería) en este workflow."
-        );
-        return;
-      }
-
-      const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, siguienteEtapa.id);
-
-      if (errorWorkflow) {
-        setMensaje("");
-        setError(
-          `El acuerdo se guardó, pero no se pudo avanzar a Visado de mercadería: ${errorWorkflow.message}`
-        );
-        return;
-      }
-
       setError("");
       setMensaje(
-        "✅ Acuerdo Comercial confirmado. La operación pasó a Visado de mercadería."
+        "✅ Acuerdo Comercial confirmado. Ahora registrá el depósito de la comisión AgroBrokerIA y luego verificá el pago para avanzar a Visado de mercadería."
       );
-
       setAcuerdoAbierto(null);
-
       await cargarOperaciones();
     } catch (e) {
       console.error(
@@ -2648,7 +2616,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={()=>setDetalleOperacion(operacion)} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={()=>{setDetalleOperacion(operacion);if(orden===2)void abrirAcuerdo(operacion)}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2721,6 +2689,33 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
+            {ordenDetalle === 2 && <section aria-label="Acuerdo comercial y reserva" style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
+              <h3 style={{marginTop:0}}>Acuerdo Comercial / Reserva</h3>
+              <p style={{fontSize:13,color:"#334155"}}>Completá las condiciones pactadas por comprador y vendedor. El acuerdo debe quedar confirmado antes de validar la comisión y pasar al visado.</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {([
+                  ["lugar_carga","Lugar de carga / establecimiento","Ej.: Acopio, planta o establecimiento"],
+                  ["destino","Destino / puerto de entrega","Ej.: Puerto / terminal / destino"],
+                  ["condicion_entrega","Condición de entrega","Ej.: Disponible, puesto en destino"],
+                  ["forma_pago","Forma de pago","Ej.: Transferencia bancaria"],
+                  ["plazo_pago","Plazo de pago","Ej.: Contra descarga / 7 días"],
+                  ["flete","Responsable y condición del flete","Ej.: A cargo del comprador"],
+                  ["calidad","Calidad / especificación","Ej.: Según estándar contractual"],
+                ] as const).map(([campo,label,placeholder])=><label key={campo} style={{display:"flex",flexDirection:"column",gap:5,fontWeight:700,fontSize:13}}>
+                  {label}
+                  <input value={acuerdo[campo] || ""} onChange={e=>cambiarCampo(campo,e.target.value)} placeholder={placeholder} style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,fontWeight:400}}/>
+                </label>)}
+              </div>
+              <label style={{display:"flex",flexDirection:"column",gap:5,fontWeight:700,fontSize:13,marginTop:10}}>
+                Observaciones adicionales
+                <textarea value={acuerdo.observaciones || ""} onChange={e=>cambiarCampo("observaciones",e.target.value)} rows={3} placeholder="Cláusulas comerciales acordadas, tolerancias y aclaraciones" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,fontWeight:400}}/>
+              </label>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:14}}>
+                <button type="button" disabled={guardando} onClick={()=>guardarAcuerdo(detalleOperacion,false)} style={{padding:"10px 14px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>{guardando?"Guardando…":"Guardar borrador"}</button>
+                <button type="button" disabled={guardando || acuerdo.estado==="CONFIRMADO"} onClick={()=>guardarAcuerdo(detalleOperacion,true)} style={{padding:"10px 14px",border:0,borderRadius:8,background:acuerdo.estado==="CONFIRMADO"?"#64748b":"#078b58",color:"#fff",fontWeight:700,cursor:guardando||acuerdo.estado==="CONFIRMADO"?"not-allowed":"pointer"}}>{guardando?"Confirmando…":acuerdo.estado==="CONFIRMADO"?"Acuerdo confirmado":"Confirmar Acuerdo Comercial"}</button>
+              </div>
+              {acuerdo.estado==="CONFIRMADO"&&<p style={{marginBottom:0,color:"#166534",fontWeight:700,fontSize:13}}>Acuerdo confirmado. El siguiente paso es registrar y validar el depósito de la comisión de plataforma.</p>}
+            </section>}
             {ordenDetalle === 2 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito previo al contrato</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Una vez confirmado el acuerdo, se abona por transferencia bancaria y queda retenida hasta el cierre de la operación.</p>
