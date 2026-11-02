@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
 import PanelMensajesPublicacion from "@/components/mensajes/PanelMensajesPublicacion";
@@ -12,8 +11,7 @@ type EmpresaInfo={nombre:string;rol:string;pais:string;verificada:boolean;confia
 type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:string|null};
 
 export default function MensajesPage(){
- const searchParams=useSearchParams();
- const conversacionSolicitada=searchParams.get("conversacion");
+ const [conversacionSolicitada,setConversacionSolicitada]=useState<string|null>(null);
  const [conversaciones,setConversaciones]=useState<Conversacion[]>([]);
  const [seleccionada,setSeleccionada]=useState<Conversacion|null>(null);
  const [empresa,setEmpresa]=useState<EmpresaInfo|null>(null);
@@ -31,7 +29,7 @@ export default function MensajesPage(){
  const [errorSelector,setErrorSelector]=useState("");
  const accionHeader=(accion:string)=>{if(!seleccionada)return;if(accion==="videollamada"){window.location.href=`/videollamadas?operacion=${seleccionada.operacion_id}`;return}if(accion==="copiar"){void navigator.clipboard?.writeText(seleccionada.codigo).then(()=>{setAviso("Código de operación copiado.");setMenuAcciones(false)}).catch(()=>setError("No se pudo copiar el código. Seleccionalo manualmente."));return}if(accion==="informacion"){setTab("Información");setMenuAcciones(false);return}if(accion==="verificaciones"){window.location.href="/verificaciones";return}};
 
- useEffect(()=>{void cargarConversaciones()},[]);
+ useEffect(()=>{const params=new URLSearchParams(window.location.search);setConversacionSolicitada(params.get("conversacion"));void cargarConversaciones()},[]);
  useEffect(()=>{if(!conversacionSolicitada||!conversaciones.length)return;const target=conversaciones.find(c=>c.conversacion_id===conversacionSolicitada);if(target)setSeleccionada(target)},[conversacionSolicitada,conversaciones]);
  async function abrirSelectorOperacion(){
   setMostrarSelectorOperacion(true);setCargandoOperaciones(true);setErrorSelector("");setOperacionesDisponibles([]);
