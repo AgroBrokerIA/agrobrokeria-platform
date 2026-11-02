@@ -77,6 +77,17 @@ type Contrato = {
 
 
 
+type CuentaBancariaPlataforma = {
+  bank_name: string;
+  account_holder: string;
+  holder_tax_id?: string | null;
+  account_type?: string | null;
+  currency: string;
+  cbu: string;
+  alias?: string | null;
+  notes?: string | null;
+};
+
 type ControlComercialData = {
   id?: string;
   operacion_id: string;
@@ -237,7 +248,9 @@ export default function OperacionesPage() {
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [comisionReferenciaTransferencia, setComisionReferenciaTransferencia] = useState("");
-  const [comisionComprobanteUrl, setComisionComprobanteUrl] = useState("");
+  const [comisionComprobanteFile, setComisionComprobanteFile] = useState<File | null>(null);
+  const [cuentaBancariaPlataforma, setCuentaBancariaPlataforma] = useState<CuentaBancariaPlataforma | null>(null);
+  const [cargandoCuentaBancaria, setCargandoCuentaBancaria] = useState(true);
   const [enviandoComprobanteComision, setEnviandoComprobanteComision] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
@@ -330,7 +343,24 @@ export default function OperacionesPage() {
     cargarOperaciones();
     cargarContactos();
     cargarIntermediariosDisponibles();
+    cargarCuentaBancariaPlataforma();
   }, []);
+
+  async function cargarCuentaBancariaPlataforma() {
+    setCargandoCuentaBancaria(true);
+    const { data, error } = await supabase
+      .from("platform_payment_accounts")
+      .select("bank_name,account_holder,holder_tax_id,account_type,currency,cbu,alias,notes")
+      .eq("active", true)
+      .maybeSingle();
+    if (error) {
+      console.error("No se pudieron cargar los datos bancarios de AgroBrokerIA:", error);
+      setCuentaBancariaPlataforma(null);
+    } else {
+      setCuentaBancariaPlataforma(data as CuentaBancariaPlataforma | null);
+    }
+    setCargandoCuentaBancaria(false);
+  }
 
   async function cargarContactos() {
     const { data, error } = await supabase.rpc(
@@ -692,28 +722,58 @@ export default function OperacionesPage() {
   async function enviarComprobanteComision(operacion: Operacion) {
     setError("");
     setMensaje("");
+    if (!cuentaBancariaPlataforma) {
+      setError("AgroBrokerIA todavía no configuró su cuenta bancaria receptora. No realices la transferencia hasta que aparezcan los datos oficiales.");
+      return;
+    }
     if (!comisionReferenciaTransferencia.trim()) {
-      setError("Ingresá la referencia de la transferencia bancaria.");
+      setError("Ingresá la referencia o número de operación de la transferencia.");
+      return;
+    }
+    if (!comisionComprobanteFile) {
+      setError("Adjuntá el comprobante bancario para poder continuar.");
+      return;
+    }
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    if (!allowedTypes.includes(comisionComprobanteFile.type)) {
+      setError("El comprobante debe ser PDF, JPG o PNG.");
+      return;
+    }
+    if (comisionComprobanteFile.size > 10 * 1024 * 1024) {
+      setError("El comprobante no puede superar los 10 MB.");
       return;
     }
     setEnviandoComprobanteComision(true);
+    let uploadedPath: string | null = null;
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) throw new Error("Necesitás iniciar sesión.");
       const { data: profile, error: profileError } = await supabase.from("profiles").select("active_company_id").eq("id", user.id).single();
       if (profileError || !profile?.active_company_id) throw new Error("No se encontró una empresa activa.");
+      const safeName = comisionComprobanteFile.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
+      uploadedPath = `${operacion.id}/comisiones/${user.id}-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage
+        .from("documentos-operacion")
+        .upload(uploadedPath, comisionComprobanteFile, {
+          contentType: comisionComprobanteFile.type,
+          upsert: false,
+        });
+      if (uploadError) throw uploadError;
       const { error: submitError } = await supabase.rpc("registrar_comprobante_comision_plataforma", {
         p_operacion_id: operacion.id,
         p_empresa_pagadora_id: profile.active_company_id,
         p_referencia_pago: comisionReferenciaTransferencia.trim(),
-        p_comprobante_url: comisionComprobanteUrl.trim() || null,
+        p_comprobante_url: uploadedPath,
       });
       if (submitError) throw submitError;
-      setMensaje("Comprobante enviado. AgroBrokerIA verificará la transferencia. La operación permanece en Visado y no avanzará al Contrato Definitivo hasta que la comisión quede RETENIDA.");
+      setMensaje("Comprobante bancario cargado y enviado. AgroBrokerIA verificará la transferencia. La operación permanecerá en Visado hasta que la comisión quede RETENIDA.");
       setComisionReferenciaTransferencia("");
-      setComisionComprobanteUrl("");
+      setComisionComprobanteFile(null);
       await cargarOperaciones();
     } catch (e) {
+      if (uploadedPath) {
+        await supabase.storage.from("documentos-operacion").remove([uploadedPath]);
+      }
       setError(e instanceof Error ? e.message : "No se pudo registrar el comprobante.");
     } finally {
       setEnviandoComprobanteComision(false);
@@ -2745,12 +2805,26 @@ Firma: ______________________________
             {ordenDetalle === 3 && controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito posterior al visado y previo al contrato definitivo</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Con el visado aprobado, se abona por transferencia bancaria antes de preparar el contrato definitivo. Una vez verificada, queda retenida hasta el cierre de la operación.</p>
-              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
+              <section aria-label="Datos bancarios de AgroBrokerIA" style={{background:"#fff",border:"1px solid #fcd34d",borderRadius:10,padding:14,marginBottom:14}}>
+                <h4 style={{margin:"0 0 10px",fontSize:15}}>Datos bancarios para abonar la comisión</h4>
+                {cargandoCuentaBancaria ? <p style={{margin:0}}>Cargando cuenta bancaria…</p> : cuentaBancariaPlataforma ? <>
+                  <p style={{margin:"4px 0"}}><strong>Banco:</strong> {cuentaBancariaPlataforma.bank_name}</p>
+                  <p style={{margin:"4px 0"}}><strong>Titular:</strong> {cuentaBancariaPlataforma.account_holder}</p>
+                  {cuentaBancariaPlataforma.holder_tax_id && <p style={{margin:"4px 0"}}><strong>CUIT:</strong> {cuentaBancariaPlataforma.holder_tax_id}</p>}
+                  {cuentaBancariaPlataforma.account_type && <p style={{margin:"4px 0"}}><strong>Tipo de cuenta:</strong> {cuentaBancariaPlataforma.account_type}</p>}
+                  <p style={{margin:"4px 0"}}><strong>Moneda:</strong> {cuentaBancariaPlataforma.currency}</p>
+                  <p style={{margin:"4px 0",overflowWrap:"anywhere"}}><strong>CBU:</strong> {cuentaBancariaPlataforma.cbu}</p>
+                  {cuentaBancariaPlataforma.alias && <p style={{margin:"4px 0"}}><strong>Alias:</strong> {cuentaBancariaPlataforma.alias}</p>}
+                  {cuentaBancariaPlataforma.notes && <p style={{margin:"8px 0 0"}}>{cuentaBancariaPlataforma.notes}</p>}
+                </> : <p role="alert" style={{margin:0,color:"#92400e"}}>La cuenta bancaria oficial de AgroBrokerIA todavía no está configurada. No realices la transferencia hasta que se publiquen estos datos.</p>}
+              </section>
+              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia o número de transferencia</label>
               <input value={comisionReferenciaTransferencia} onChange={e=>setComisionReferenciaTransferencia(e.target.value)} placeholder="Número de operación / referencia bancaria" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:10}}/>
-              <label style={{display:"block",fontWeight:700,marginBottom:6}}>URL del comprobante (opcional)</label>
-              <input value={comisionComprobanteUrl} onChange={e=>setComisionComprobanteUrl(e.target.value)} placeholder="Enlace al comprobante bancario" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
-              <button type="button" disabled={enviandoComprobanteComision} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer"}}>{enviandoComprobanteComision?"Enviando…":"Enviar comprobante de comisión"}</button>
-              <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
+              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Adjuntar comprobante bancario (obligatorio)</label>
+              <input type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png" onChange={e=>setComisionComprobanteFile(e.target.files?.[0] || null)} style={{display:"block",width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:6}}/>
+              <p style={{fontSize:12,color:"#78350f",margin:"0 0 12px"}}>{comisionComprobanteFile ? `Archivo seleccionado: ${comisionComprobanteFile.name}` : "Formatos permitidos: PDF, JPG o PNG. Tamaño máximo: 10 MB."}</p>
+              <button type="button" disabled={enviandoComprobanteComision || cargandoCuentaBancaria || !cuentaBancariaPlataforma || !comisionComprobanteFile} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer",opacity:enviandoComprobanteComision || !cuentaBancariaPlataforma || !comisionComprobanteFile ? 0.6 : 1}}>{enviandoComprobanteComision?"Subiendo y enviando…":"Enviar comprobante de comisión"}</button>
+              <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? "Verificar comisión y continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
