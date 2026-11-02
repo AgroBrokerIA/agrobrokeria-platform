@@ -1,1 +1,37 @@
-CREATE OR REPLACE FUNCTION public.usuario_participa_operacion(p_operacion_id uuid) RETURNS boolean LANGUAGE sql STABLE SECURITY DEFINER SET search_path TO 'public', 'pg_temp' AS $function$ SELECT EXISTS (SELECT 1 FROM public.operacion_participantes op JOIN public.company_empresa_map cem ON cem.empresa_id = op.empresa_id JOIN public.company_users cu ON cu.company_id = cem.company_id WHERE op.operacion_id = p_operacion_id AND cu.profile_id = auth.uid() AND cu.activo IS TRUE) OR EXISTS (SELECT 1 FROM public.operacion_participantes op JOIN public.company_users cu ON cu.profile_id = auth.uid() AND cu.activo IS TRUE WHERE op.operacion_id = p_operacion_id AND op.empresa_id = cu.company_id) OR EXISTS (SELECT 1 FROM public.operacion_participantes op JOIN public.profiles p ON p.id = auth.uid() WHERE op.operacion_id = p_operacion_id AND p.active_company_id = op.empresa_id); $function$;
+CREATE OR REPLACE FUNCTION public.obtener_workflows_operaciones_usuario(p_operacion_ids uuid[])
+RETURNS TABLE (
+  id uuid,
+  operacion_id uuid,
+  workflow_id uuid,
+  etapa_actual_id uuid,
+  estado text,
+  orden integer,
+  nombre_etapa text
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, pg_temp
+AS $$
+BEGIN
+  IF auth.uid() IS NULL THEN
+    RAISE EXCEPTION 'Autenticación requerida.';
+  END IF;
+
+  RETURN QUERY
+  SELECT ow.id, ow.operacion_id, ow.workflow_id, ow.etapa_actual_id,
+         ow.estado, we.orden, we.nombre
+  FROM public.operacion_workflow ow
+  JOIN public.workflow_etapas we
+    ON we.id = ow.etapa_actual_id
+   AND we.workflow_id = ow.workflow_id
+  WHERE ow.operacion_id = ANY(COALESCE(p_operacion_ids, ARRAY[]::uuid[]))
+    AND (
+      public.usuario_participa_operacion(ow.operacion_id)
+      OR public.es_administrador_plataforma()
+    );
+END;
+$$;
+
+REVOKE ALL ON FUNCTION public.obtener_workflows_operaciones_usuario(uuid[]) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.obtener_workflows_operaciones_usuario(uuid[]) TO authenticated;
