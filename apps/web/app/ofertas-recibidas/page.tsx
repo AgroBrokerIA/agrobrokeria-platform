@@ -52,6 +52,7 @@ type OfertaDB = {
   observaciones: string | null;
   estado: string;
   operacion_id: string;
+  publicacion_id: string | null;
   operaciones:
     | {
         codigo: string | null;
@@ -148,150 +149,26 @@ export default function OfertasRecibidasPage() {
       // 2. OBTENER COMPANY_ID DEL USUARIO
       // =====================================================
 
-      const {
-        data: companyUser,
-        error: errorCompanyUser,
-      } = await supabase
-        .from("company_users")
-        .select("company_id")
-        .eq("profile_id", user.id)
-        .eq("activo", true)
-        .limit(1)
-        .maybeSingle();
-
+      const { data: companyUsers, error: errorCompanyUser } = await supabase
+        .from("company_users").select("company_id")
+        .eq("profile_id", user.id).eq("activo", true);
       if (errorCompanyUser) {
-        console.error(errorCompanyUser);
-
-        setError(
-          `No se pudo obtener la empresa del usuario: ${errorCompanyUser.message}`
-        );
-
+        setError(`No se pudieron obtener las empresas del usuario: ${errorCompanyUser.message}`);
         return;
       }
-
-      if (!companyUser?.company_id) {
-        setError(
-          "Tu usuario no tiene una empresa asociada."
-        );
-
-        return;
-      }
-
-      const perfilEmpresa: PerfilEmpresa = companyUser;
-
-      console.log(
-        "COMPANY ID DEL USUARIO:",
-        perfilEmpresa.company_id
-      );
-
-      // =====================================================
-      // 3. OBTENER EMPRESA
-      // =====================================================
-
-      const {
-        data: company,
-        error: errorCompany,
-      } = await supabase
-        .from("companies")
-        .select("id, razon_social")
-        .eq("id", perfilEmpresa.company_id)
-        .maybeSingle();
-
-      if (errorCompany) {
-        console.error(errorCompany);
-
-        setError(
-          `No se pudieron obtener los datos de tu empresa: ${errorCompany.message}`
-        );
-
-        return;
-      }
-
-      if (!company?.razon_social) {
-        setError(
-          "No encontramos la razón social de tu empresa."
-        );
-
-        return;
-      }
-
-      console.log(
-        "EMPRESA DEL USUARIO:",
-        company.razon_social
-      );
-
-      // =====================================================
-      // 4. BUSCAR EMPRESA OPERATIVA
-      // =====================================================
-
-      const {
-        data: empresa,
-        error: errorEmpresa,
-      } = await supabase
-        .from("empresas")
-        .select("id, razon_social, nombre_comercial, cuit")
-        .eq("id", perfilEmpresa.company_id)
-        .limit(1)
-        .maybeSingle();
-
-      if (errorEmpresa) {
-        console.error(errorEmpresa);
-
-        setError(
-          `No se pudo encontrar la empresa operativa: ${errorEmpresa.message}`
-        );
-
-        return;
-      }
-
-      if (!empresa) {
-        setError(
-          "No encontramos la empresa correspondiente en la tabla empresas."
-        );
-
-        return;
-      }
-
-      console.log(
-        "EMPRESA OPERATIVA:",
-        empresa
-      );
-
-      const empresaId = empresa.id;
-
-      // =====================================================
-      // 5. OBTENER PUBLICACIONES DE NUESTRA EMPRESA
-      // =====================================================
-
-      const {
-        data: publicaciones,
-        error: errorPublicaciones,
-      } = await supabase
+      const companyIds = [...new Set((companyUsers || []).map((item: {company_id:string}) => item.company_id).filter(Boolean))];
+      if (!companyIds.length) { setError("Tu usuario no tiene una empresa asociada."); return; }
+      const { data: empresasUsuario, error: errorEmpresas } = await supabase
+        .from("empresas").select("id").in("id", companyIds);
+      if (errorEmpresas) { setError(`No se pudieron obtener tus empresas operativas: ${errorEmpresas.message}`); return; }
+      const empresaIds = (empresasUsuario || []).map((item: {id:string}) => item.id);
+      if (!empresaIds.length) { setError("No encontramos empresas operativas asociadas a tu usuario."); return; }
+      const { data: publicaciones, error: errorPublicaciones } = await supabase
         .from("publicaciones")
-        .select(
-          "id, empresa_id, tipo, cantidad_tn, precio_tn, moneda_id, provincia, localidad, puerto, empresas(id, razon_social, nombre_comercial, cuit)"
-        )
-        .eq("empresa_id", empresaId);
-
-      if (errorPublicaciones) {
-        console.error(errorPublicaciones);
-
-        setError(
-          `No se pudieron cargar tus publicaciones: ${errorPublicaciones.message}`
-        );
-
-        return;
-      }
-
-      console.log(
-        "PUBLICACIONES DE NUESTRA EMPRESA:",
-        publicaciones
-      );
-
-      if (!publicaciones || publicaciones.length === 0) {
-        setOfertas([]);
-        return;
-      }
+        .select("id, empresa_id, tipo, cantidad_tn, precio_tn, moneda_id, provincia, localidad, puerto, empresas(id, razon_social, nombre_comercial, cuit)")
+        .in("empresa_id", empresaIds);
+      if (errorPublicaciones) { setError(`No se pudieron cargar tus publicaciones: ${errorPublicaciones.message}`); return; }
+      if (!publicaciones?.length) { setOfertas([]); return; }
 
       // =====================================================
       // 6. OBTENER OFERTAS
@@ -312,6 +189,7 @@ export default function OfertasRecibidasPage() {
           observaciones,
           estado,
           operacion_id,
+          publicacion_id,
           operaciones(
             codigo,
             publicacion_venta_id,
@@ -360,19 +238,12 @@ export default function OfertasRecibidasPage() {
           continue;
         }
 
-        const publicacionId =
-          operacion.publicacion_venta_id ||
-          operacion.publicacion_compra_id;
-
-        if (!publicacionId) {
-          continue;
-        }
-
-        const publicacion = (
-          publicaciones as PublicacionDB[]
-        ).find(
-          (item) => item.id === publicacionId
+        // La publicación propia puede ser de compra o de venta.
+        const publicacion = (publicaciones as PublicacionDB[]).find(
+          (item) => item.id === ofertaDB.publicacion_id || item.id === operacion.publicacion_venta_id || item.id === operacion.publicacion_compra_id
         );
+        const publicacionId = publicacion?.id;
+        if (!publicacionId) continue;
 
         if (!publicacion) {
           continue;

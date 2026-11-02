@@ -117,6 +117,7 @@ type ControlComercialData = {
   visado_observaciones?: string | null;
   visado_motivo_rechazo?: string | null;
   visado_humedad?: string | null;
+  visado_proteina?: string | null;
   visado_calidad?: string | null;
   visado_condicion?: string | null;
 
@@ -243,9 +244,43 @@ export default function OperacionesPage() {
 
   const [visadoAbierto, setVisadoAbierto] =
     useState<string | null>(null);
+  const [visadoResponsable, setVisadoResponsable] = useState("");
+  const [visadoCalidad, setVisadoCalidad] = useState("");
+  const [visadoHumedad, setVisadoHumedad] = useState("");
+  const [visadoProteina, setVisadoProteina] = useState("");
+  const [visadoObservaciones, setVisadoObservaciones] = useState("");
+  const [visadoMotivoRechazo, setVisadoMotivoRechazo] = useState("");
+  const [guardandoVisado, setGuardandoVisado] = useState(false);
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
+
+  useEffect(() => {
+    if (!detalleOperacion?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("operacion_control_comercial")
+        .select("*")
+        .eq("operacion_id", detalleOperacion.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.error("No se pudo actualizar el estado del visado:", error);
+        return;
+      }
+      if (data) {
+        setControlesComerciales((current) => ({
+          ...current,
+          [detalleOperacion.id]: {
+            ...data,
+            comision_monto: data.comision_monto == null ? null : Number(data.comision_monto),
+          } as ControlComercialData,
+        }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [detalleOperacion?.id]);
 
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
@@ -627,19 +662,33 @@ export default function OperacionesPage() {
   // OFERTA ACEPTADA → ACUERDO COMERCIAL / RESERVA
   // =========================================================
 
-  async function avanzarAVisadoConComision(operacion: Operacion) {
+  async function avanzarAVisado(operacion: Operacion) {
     setError(""); setMensaje("");
     const { data: agreement, error: agreementError } = await supabase.from("acuerdos_comerciales").select("estado").eq("operacion_id", operacion.id).maybeSingle();
     if (agreementError || agreement?.estado !== "CONFIRMADO") { setError("Primero debe quedar confirmado el Acuerdo Comercial."); return false; }
-    const { data: retention, error: retentionError } = await supabase.from("operacion_comision_retenciones").select("estado").eq("operacion_id", operacion.id).maybeSingle();
-    if (retentionError || retention?.estado !== "RETENIDA") { setError("La transferencia de la comisión todavía no fue verificada y retenida por AgroBrokerIA."); return false; }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 2) { setError("La operación ya no se encuentra en la etapa de Acuerdo Comercial."); return false; }
     const { data: etapa, error: etapaError } = await supabase.from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 3).maybeSingle();
     if (etapaError || !etapa) { setError("No se encontró la etapa Visado de mercadería."); return false; }
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Comisión verificada y retenida. La operación pasó a Visado de mercadería.");
+    setMensaje("Acuerdo confirmado. La operación pasó a Visado de mercadería. La comisión se abonará después de aprobar el visado y antes del contrato definitivo.");
+    await cargarOperaciones(); return true;
+  }
+
+  async function avanzarAContratoConComision(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const { data: control, error: controlError } = await supabase.from("operacion_control_comercial").select("visado_resultado").eq("operacion_id", operacion.id).maybeSingle();
+    if (controlError || control?.visado_resultado !== "APROBADO") { setError("Primero debe aprobarse el Visado de mercadería."); return false; }
+    const { data: retention, error: retentionError } = await supabase.from("operacion_comision_retenciones").select("estado").eq("operacion_id", operacion.id).maybeSingle();
+    if (retentionError || retention?.estado !== "RETENIDA") { setError("La comisión todavía no fue verificada y retenida por AgroBrokerIA."); return false; }
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 3) { setError("La operación debe permanecer en Visado de mercadería para habilitar el Contrato Definitivo."); return false; }
+    const { data: etapa, error: etapaError } = await supabase.from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
+    if (etapaError || !etapa) { setError("No se encontró la etapa Contrato Definitivo."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("Visado aprobado y comisión acreditada y retenida. La operación pasó a Contrato Definitivo.");
     await cargarOperaciones(); return true;
   }
 
@@ -801,11 +850,51 @@ export default function OperacionesPage() {
     };
   }
 
-  function abrirVisado(operacion: Operacion) {
+  async function abrirVisado(operacion: Operacion) {
     setError("");
     setMensaje("");
     setContratoAbierto(null);
+    const { data, error } = await supabase
+      .from("operacion_control_comercial")
+      .select("visado_responsable,visado_calidad,visado_humedad,visado_proteina,visado_observaciones,visado_motivo_rechazo")
+      .eq("operacion_id", operacion.id)
+      .maybeSingle();
+    if (error) {
+      setError(`No se pudo cargar el formulario de visado: ${error.message}`);
+      return;
+    }
+    setVisadoResponsable(data?.visado_responsable || "");
+    setVisadoCalidad(data?.visado_calidad || "");
+    setVisadoHumedad(data?.visado_humedad == null ? "" : String(data.visado_humedad));
+    setVisadoProteina(data?.visado_proteina == null ? "" : String(data.visado_proteina));
+    setVisadoObservaciones(data?.visado_observaciones || "");
+    setVisadoMotivoRechazo(data?.visado_motivo_rechazo || "");
     setVisadoAbierto(operacion.id);
+  }
+
+  async function guardarVisado(resultado: "APROBADO" | "RECHAZADO") {
+    if (!visadoAbierto) return;
+    if (!visadoResponsable.trim()) {
+      setError("Indicá quién realizó el visado de mercadería.");
+      return;
+    }
+    if (resultado === "RECHAZADO" && !visadoMotivoRechazo.trim()) {
+      setError("Indicá el motivo del rechazo del visado.");
+      return;
+    }
+    setGuardandoVisado(true);
+    const ok = await actualizarControlComercial(visadoAbierto, {
+      visado_estado: resultado,
+      visado_resultado: resultado,
+      visado_responsable: visadoResponsable.trim(),
+      visado_calidad: visadoCalidad.trim() || null,
+      visado_humedad: visadoHumedad.trim() || null,
+      visado_proteina: visadoProteina.trim() || null,
+      visado_observaciones: visadoObservaciones.trim() || null,
+      visado_motivo_rechazo: resultado === "RECHAZADO" ? visadoMotivoRechazo.trim() : null,
+    });
+    setGuardandoVisado(false);
+    if (ok) setVisadoAbierto(null);
   }
 
   async function cargarControlComercial(
@@ -1809,60 +1898,29 @@ Firma: ______________________________
           : "Guardando acuerdo comercial..."
       );
 
-      /*
-       * =========================================================
-       * VALIDACIONES PARA CONFIRMAR ACUERDO COMERCIAL
-       * =========================================================
-       *
-       * El Acuerdo Comercial puede confirmarse con o sin
-       * intermediario externo.
-       *
-       * La comisión de AgroBrokerIA es siempre automática:
-       * USD 1 por tonelada.
-       *
-       * Si existe un intermediario externo, su comisión se
-       * registra y liquida por separado.
-       */
       if (confirmar) {
-        const comisionAgroBrokerEsperada =
-          Number(operacion.cantidad_tn || 0);
-
-        const {
-          data: controlAgroBroker,
-          error: errorControlAgroBroker,
-        } = await supabase
-          .from("operacion_control_comercial")
-          .select("id, comision_monto, comision_moneda")
-          .eq("operacion_id", operacion.id)
-          .maybeSingle();
-
-        if (errorControlAgroBroker) {
+        const obligatorios: Array<[keyof Acuerdo, string]> = [
+          ["lugar_carga", "lugar de carga / establecimiento"],
+          ["destino", "destino o puerto de entrega"],
+          ["condicion_entrega", "condición de entrega"],
+          ["forma_pago", "forma de pago"],
+          ["plazo_pago", "plazo de pago"],
+          ["flete", "responsable y condición del flete"],
+          ["calidad", "calidad / especificación de mercadería"],
+        ];
+        const faltantes = obligatorios
+          .filter(([campo]) => !String(acuerdo[campo] ?? "").trim())
+          .map(([, etiqueta]) => etiqueta);
+        if (faltantes.length) {
           setMensaje("");
-          setError(
-            `No se pudo verificar la comisión de AgroBrokerIA: ${errorControlAgroBroker.message}`
-          );
-          return;
-        }
-
-        const comisionAgroBrokerRegistrada =
-          Number(controlAgroBroker?.comision_monto ?? 0);
-
-        const monedaAgroBroker =
-          controlAgroBroker?.comision_moneda;
-
-        if (
-          comisionAgroBrokerRegistrada !== comisionAgroBrokerEsperada ||
-          monedaAgroBroker !== "USD"
-        ) {
-          setMensaje("");
-          setError(
-            `No se puede confirmar el Acuerdo Comercial: la comisión de AgroBrokerIA debe ser de USD ${comisionAgroBrokerEsperada.toFixed(
-              2
-            )} (USD 1 por tonelada).`
-          );
+          setError(`Para confirmar el Acuerdo Comercial completá: ${faltantes.join(", ")}.`);
           return;
         }
       }
+
+      // La comisión de USD 1/TN se inicializa en guardar_acuerdo_comercial.
+      // No se consulta ni se exige un registro previo desde el frontend:
+      // confirmar el acuerdo define la comisión, pero no implica pagarla.
 
       const estado = confirmar
         ? "CONFIRMADO"
@@ -1929,63 +1987,11 @@ Firma: ______________________________
         return;
       }
 
-      const workflow =
-        obtenerWorkflow(operacion.id);
-
-      if (!workflow) {
-        setMensaje("");
-        setError(
-          "El acuerdo se guardó, pero la operación no tiene workflow asociado."
-        );
-        return;
-      }
-
-      const {
-        data: siguienteEtapa,
-        error: errorEtapa,
-      } = await supabase
-        .from("workflow_etapas")
-        .select("id, nombre, orden")
-        .eq(
-          "workflow_id",
-          workflow.workflow_id
-        )
-        .eq("orden", 3)
-        .maybeSingle();
-
-      if (errorEtapa) {
-        setMensaje("");
-        setError(
-          `El acuerdo se guardó, pero no se pudo buscar Visado de mercadería: ${errorEtapa.message}`
-        );
-        return;
-      }
-
-      if (!siguienteEtapa) {
-        setMensaje("");
-        setError(
-          "El acuerdo se guardó, pero no existe la etapa 3 (Visado de mercadería) en este workflow."
-        );
-        return;
-      }
-
-      const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, siguienteEtapa.id);
-
-      if (errorWorkflow) {
-        setMensaje("");
-        setError(
-          `El acuerdo se guardó, pero no se pudo avanzar a Visado de mercadería: ${errorWorkflow.message}`
-        );
-        return;
-      }
-
       setError("");
       setMensaje(
-        "✅ Acuerdo Comercial confirmado. La operación pasó a Visado de mercadería."
+        "✅ Acuerdo Comercial confirmado. Una vez aprobado el Visado de mercadería, registrá el depósito de la comisión AgroBrokerIA para habilitar el Contrato Definitivo."
       );
-
       setAcuerdoAbierto(null);
-
       await cargarOperaciones();
     } catch (e) {
       console.error(
@@ -2096,54 +2102,11 @@ Firma: ______________________________
     // =========================================================
 
     if (cambios.visado_resultado === "APROBADO") {
-      const workflow = obtenerWorkflow(operacionId);
-
-      if (!workflow) {
-        setError(
-          "El visado fue aprobado, pero la operación no tiene workflow asociado."
-        );
-        return false;
-      }
-
-      const { data: etapaContrato, error: errorEtapaContrato } =
-        await supabase
-          .from("workflow_etapas")
-          .select("id, nombre, orden")
-          .eq("workflow_id", workflow.workflow_id)
-          .eq("orden", 4)
-          .maybeSingle();
-
-      if (errorEtapaContrato) {
-        setError(
-          `El visado fue aprobado, pero no se pudo localizar la etapa Contrato Definitivo: ${errorEtapaContrato.message}`
-        );
-        return false;
-      }
-
-      if (!etapaContrato) {
-        setError(
-          "El visado fue aprobado, pero no existe la etapa 4 (Contrato Definitivo)."
-        );
-        return false;
-      }
-
-      const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaContrato.id);
-
-      if (errorAvance) {
-        setError(
-          `El visado fue aprobado, pero no se pudo avanzar a Contrato Definitivo: ${errorAvance.message}`
-        );
-        return false;
-      }
-
       setVisadoAbierto(null);
       setError("");
-      setMensaje(
-        "✅ Visado de mercadería APROBADO. La operación pasó a Contrato Definitivo."
-      );
-
+      setMensaje("✅ Visado de mercadería APROBADO. Ahora corresponde registrar y verificar la comisión AgroBrokerIA antes de habilitar el Contrato Definitivo.");
+      await cargarControlComercial({ id: operacionId } as Operacion);
       await cargarOperaciones();
-
       return true;
     }
 
@@ -2648,7 +2611,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={()=>setDetalleOperacion(operacion)} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={()=>{setDetalleOperacion(operacion);if(orden===2)void abrirAcuerdo(operacion)}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2677,7 +2640,7 @@ Firma: ______________________________
           if (ordenDetalle === 1) {
             resultado = await iniciarAcuerdoComercial(detalleOperacion.id);
           } else if (ordenDetalle === 2) {
-            resultado = await avanzarAVisadoConComision(detalleOperacion);
+            resultado = await avanzarAVisado(detalleOperacion);
           } else if (ordenDetalle === 3) {
             abrirVisado(detalleOperacion); resultado = true;
           } else if (ordenDetalle === 4) {
@@ -2721,18 +2684,86 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
-            {ordenDetalle === 2 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
-              <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito previo al contrato</h3>
-              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Una vez confirmado el acuerdo, se abona por transferencia bancaria y queda retenida hasta el cierre de la operación.</p>
-              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
+            {ordenDetalle === 2 && <section aria-label="Acuerdo comercial y reserva" style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
+              <h3 style={{marginTop:0}}>Acuerdo Comercial / Reserva</h3>
+              <p style={{fontSize:13,color:"#334155"}}>Completá las condiciones pactadas por comprador y vendedor. El acuerdo debe quedar confirmado para avanzar al Visado de mercadería. La comisión se gestiona después de aprobar el visado.</p>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                {([
+                  ["lugar_carga","Lugar de carga / establecimiento","Ej.: Acopio, planta o establecimiento"],
+                  ["destino","Destino / puerto de entrega","Ej.: Puerto / terminal / destino"],
+                  ["condicion_entrega","Condición de entrega","Ej.: Disponible, puesto en destino"],
+                  ["forma_pago","Forma de pago","Ej.: Transferencia bancaria"],
+                  ["plazo_pago","Plazo de pago","Ej.: Contra descarga / 7 días"],
+                  ["flete","Responsable y condición del flete","Ej.: A cargo del comprador"],
+                  ["calidad","Calidad / especificación","Ej.: Según estándar contractual"],
+                ] as const).map(([campo,label,placeholder])=><label key={campo} style={{display:"flex",flexDirection:"column",gap:5,fontWeight:700,fontSize:13}}>
+                  {label}
+                  <input value={acuerdo[campo] || ""} onChange={e=>cambiarCampo(campo,e.target.value)} placeholder={placeholder} style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,fontWeight:400}}/>
+                </label>)}
+              </div>
+              <label style={{display:"flex",flexDirection:"column",gap:5,fontWeight:700,fontSize:13,marginTop:10}}>
+                Observaciones adicionales
+                <textarea value={acuerdo.observaciones || ""} onChange={e=>cambiarCampo("observaciones",e.target.value)} rows={3} placeholder="Cláusulas comerciales acordadas, tolerancias y aclaraciones" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,fontWeight:400}}/>
+              </label>
+              <div style={{display:"flex",gap:10,flexWrap:"wrap",marginTop:14}}>
+                <button type="button" disabled={guardando} onClick={()=>guardarAcuerdo(detalleOperacion,false)} style={{padding:"10px 14px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>{guardando?"Guardando…":"Guardar borrador"}</button>
+                <button type="button" disabled={guardando || acuerdo.estado==="CONFIRMADO"} onClick={()=>guardarAcuerdo(detalleOperacion,true)} style={{padding:"10px 14px",border:0,borderRadius:8,background:acuerdo.estado==="CONFIRMADO"?"#64748b":"#078b58",color:"#fff",fontWeight:700,cursor:guardando||acuerdo.estado==="CONFIRMADO"?"not-allowed":"pointer"}}>{guardando?"Confirmando…":acuerdo.estado==="CONFIRMADO"?"Acuerdo confirmado":"Confirmar Acuerdo Comercial"}</button>
+              </div>
+              {acuerdo.estado==="CONFIRMADO"&&<p style={{marginBottom:0,color:"#166534",fontWeight:700,fontSize:13}}>Acuerdo confirmado. El siguiente paso es completar el Visado de mercadería. La comisión se gestiona después de aprobarlo.</p>}
+            </section>}
+            {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+              <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — después del Visado</h3>
+              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Solo se abona después de aprobar el Visado de mercadería y queda retenida hasta el cierre de la operación.</p>
+              {controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? <><label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
               <input value={comisionReferenciaTransferencia} onChange={e=>setComisionReferenciaTransferencia(e.target.value)} placeholder="Número de operación / referencia bancaria" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:10}}/>
               <label style={{display:"block",fontWeight:700,marginBottom:6}}>URL del comprobante (opcional)</label>
               <input value={comisionComprobanteUrl} onChange={e=>setComisionComprobanteUrl(e.target.value)} placeholder="Enlace al comprobante bancario" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
               <button type="button" disabled={enviandoComprobanteComision} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer"}}>{enviandoComprobanteComision?"Enviando…":"Enviar comprobante de comisión"}</button>
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
+              <button type="button" disabled={guardando} onClick={()=>void avanzarAContratoConComision(detalleOperacion)} style={{marginTop:12,padding:"10px 14px",border:0,borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700}}>Continuar al Contrato Definitivo</button>
+              </> : <p style={{fontSize:13,color:"#78350f"}}>Primero completá y aprobá el Visado de mercadería. El registro del pago se habilitará cuando el visado esté aprobado.</p>}
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Verificar comisión y continuar a Visado" : ordenDetalle === 3 ? "Registrar visado de mercadería" : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Continuar a Visado de mercadería" : ordenDetalle === 3 ? (controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? "Comisión AgroBrokerIA pendiente" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+          </section>
+        </div>;
+      })()}
+
+      {visadoAbierto && (() => {
+        const op = operaciones.find(item => item.id === visadoAbierto);
+        const control = controlesComerciales[visadoAbierto];
+        return <div role="dialog" aria-modal="true" aria-label="Visado de mercadería" className="operation-detail-backdrop" style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(15,23,42,.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>!guardandoVisado&&setVisadoAbierto(null)}>
+          <section style={{width:"min(100%,620px)",maxHeight:"90vh",overflowY:"auto",background:"#fff",color:"#123",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={event=>event.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+              <h2 style={{marginTop:0}}>Visado de mercadería</h2>
+              <button type="button" onClick={()=>setVisadoAbierto(null)} disabled={guardandoVisado} aria-label="Cerrar" style={{border:0,background:"transparent",fontSize:24,cursor:"pointer"}}>×</button>
+            </div>
+            {op && <p><strong>Operación:</strong> {op.codigo} · <strong>Volumen:</strong> {formatoNumero(op.cantidad_tn)} TN</p>}
+            <p style={{color:"#475569"}}>Registrá la inspección física y documental de la mercadería. La aprobación habilita el pago de la comisión AgroBrokerIA; el contrato definitivo seguirá bloqueado hasta que el pago sea verificado y retenido.</p>
+            {control?.visado_resultado && <p style={{padding:10,borderRadius:8,background:"#eff6ff"}}>Resultado registrado: <strong>{control.visado_resultado}</strong></p>}
+            <label style={{display:"block",fontWeight:700,marginBottom:6}}>Responsable del visado *</label>
+            <input value={visadoResponsable} onChange={e=>setVisadoResponsable(e.target.value)} placeholder="Nombre y apellido / inspector" style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <label style={{fontWeight:700}}>Calidad / clasificación
+                <input value={visadoCalidad} onChange={e=>setVisadoCalidad(e.target.value)} placeholder="Conforme / observada" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+              <label style={{fontWeight:700}}>Humedad (%)
+                <input type="number" min="0" max="100" step="0.01" value={visadoHumedad} onChange={e=>setVisadoHumedad(e.target.value)} placeholder="Ej. 14" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+              <label style={{fontWeight:700}}>Proteína (%)
+                <input type="number" min="0" max="100" step="0.01" value={visadoProteina} onChange={e=>setVisadoProteina(e.target.value)} placeholder="Opcional" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+            </div>
+            <label style={{display:"block",fontWeight:700,margin:"14px 0 6px"}}>Observaciones del visado</label>
+            <textarea value={visadoObservaciones} onChange={e=>setVisadoObservaciones(e.target.value)} rows={3} placeholder="Resultado de inspección, documentación, muestras, tolerancias..." style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8}}/>
+            <label style={{display:"block",fontWeight:700,margin:"14px 0 6px"}}>Motivo de rechazo (obligatorio si se rechaza)</label>
+            <textarea value={visadoMotivoRechazo} onChange={e=>setVisadoMotivoRechazo(e.target.value)} rows={2} placeholder="Detallá las diferencias o incumplimientos detectados" style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8}}/>
+            {error && <p role="alert" style={{padding:10,background:"#fee2e2",color:"#991b1b",borderRadius:8}}>{error}</p>}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:18}}>
+              <button type="button" onClick={()=>setVisadoAbierto(null)} disabled={guardandoVisado} style={{padding:"11px 16px",border:"1px solid #cbd5e1",borderRadius:8,background:"#fff"}}>Cancelar</button>
+              <button type="button" onClick={()=>void guardarVisado("RECHAZADO")} disabled={guardandoVisado} style={{padding:"11px 16px",border:0,borderRadius:8,background:"#dc2626",color:"#fff",fontWeight:700}}>{guardandoVisado?"Guardando…":"Rechazar visado"}</button>
+              <button type="button" onClick={()=>void guardarVisado("APROBADO")} disabled={guardandoVisado} style={{padding:"11px 16px",border:0,borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700}}>{guardandoVisado?"Guardando…":"Aprobar visado"}</button>
+            </div>
           </section>
         </div>;
       })()}
