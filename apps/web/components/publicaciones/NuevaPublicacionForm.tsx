@@ -53,7 +53,7 @@ type LugarRecepcion = {
 
 type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null };
 
-async function obtenerEmpresaDelUsuario() {
+async function obtenerEmpresaDelUsuario(): Promise<string | null> {
   const {
     data: { user },
     error: userError,
@@ -65,7 +65,7 @@ async function obtenerEmpresaDelUsuario() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("active_company_id")
+    .select("active_company_id,tipo_usuario")
     .eq("id", user.id)
     .maybeSingle();
 
@@ -124,6 +124,10 @@ async function obtenerEmpresaDelUsuario() {
     if (error) throw new Error(`No se pudo obtener la empresa: ${error.message}`);
     if (data?.id) return data.id;
   }
+
+  // Un intermediario puede publicar a título propio y registrar al representado
+  // cuando la negociación avance a la etapa de formalización.
+  if (String(profile?.tipo_usuario ?? "").toLowerCase().includes("intermedi")) return null;
 
   throw new Error("Tu usuario no tiene una empresa activa vinculada.");
 }
