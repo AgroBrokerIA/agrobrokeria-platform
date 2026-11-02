@@ -4,8 +4,9 @@ import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { supabase } from "@/lib/supabase/client";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
+import PanelMensajesPublicacion from "@/components/mensajes/PanelMensajesPublicacion";
 
-type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number;recibidos:number};
+type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number;recibidos:number;tipo:"operacion"|"publicacion";conversacion_id?:string;publicacion_id?:string;producto?:string;cantidad_tn?:number;tipo_publicacion?:string;otro_usuario?:string};
 type EmpresaInfo={nombre:string;rol:string;pais:string;verificada:boolean;confiable:boolean;productos:string[];direccion:string;telefono:string;email:string};
 type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:string|null};
 
@@ -51,34 +52,39 @@ export default function MensajesPage(){
   setCargando(true);setError("");
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){setError("Necesitás iniciar sesión.");setCargando(false);return}
-  const {data:mensajes,error:e}=await supabase.from("mensajes_comerciales").select("operacion_id,mensaje,creado_at,destinatario_profile_id,remitente_profile_id,estado,leido_at").or(`remitente_profile_id.eq.${user.id},destinatario_profile_id.eq.${user.id}`).order("creado_at",{ascending:false});
-  if(e){setError(e.message);setCargando(false);return}
-  const ids=[...new Set((mensajes||[]).map(m=>m.operacion_id))];
-  if(!ids.length){setConversaciones([]);setCargando(false);return}
-  const {data:ops,error:oe}=await supabase.from("operaciones").select("id,codigo").in("id",ids);
-  if(oe){setError(oe.message);setCargando(false);return}
-  const mapa=new Map((ops||[]).map(o=>[o.id,o.codigo]));
+  const [comerciales,pubChats]=await Promise.all([
+   supabase.from("mensajes_comerciales").select("operacion_id,mensaje,creado_at,destinatario_profile_id,remitente_profile_id,estado,leido_at").or(`remitente_profile_id.eq.${user.id},destinatario_profile_id.eq.${user.id}`).order("creado_at",{ascending:false}),
+   supabase.rpc("listar_conversaciones_publicaciones")
+  ]);
+  if(comerciales.error){setError("No se pudieron cargar los mensajes de operaciones: "+comerciales.error.message);setCargando(false);return}
+  if(pubChats.error){setError("No se pudieron cargar los mensajes de publicaciones: "+pubChats.error.message);setCargando(false);return}
+  const ids=[...new Set((comerciales.data||[]).map(m=>m.operacion_id))];
+  const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
+  if(opsResult.error){setError(opsResult.error.message);setCargando(false);return}
+  const pubIds=[...new Set((opsResult.data||[]).flatMap(o=>[o.publicacion_compra_id,o.publicacion_venta_id]).filter(Boolean))];
+  const productsResult=pubIds.length?await supabase.from("publicaciones").select("id,producto_id,productos(nombre)").in("id",pubIds):{data:[],error:null};
+  if(productsResult.error){setError(productsResult.error.message);setCargando(false);return}
+  const productMap=new Map((productsResult.data||[]).map((p:any)=>[p.id,Array.isArray(p.productos)?p.productos[0]?.nombre:p.productos?.nombre]));
+  const opMap=new Map((opsResult.data||[]).map(o=>[o.id,o]));
   const grouped=new Map<string,Conversacion>();
-  for(const m of mensajes||[]){
-   if(!grouped.has(m.operacion_id)) grouped.set(m.operacion_id,{
-    operacion_id:m.operacion_id,
-    codigo:mapa.get(m.operacion_id)||m.operacion_id,
-    ultimo_mensaje:m.mensaje,
-    ultimo_mensaje_at:m.creado_at,
-    no_leidos:m.destinatario_profile_id===user.id&&!m.leido_at&&m.estado!=="LEIDO"?1:0,
-    recibidos:m.destinatario_profile_id===user.id?1:0
-   });
-   else {
-    const row=grouped.get(m.operacion_id)!;
-    if(m.destinatario_profile_id===user.id){
-     row.recibidos++;
-     if(!m.leido_at&&m.estado!=="LEIDO")row.no_leidos++;
-    }
-   }
+  for(const m of comerciales.data||[]){
+   const op=opMap.get(m.operacion_id);
+   const prod=op?(productMap.get(op.publicacion_venta_id)||productMap.get(op.publicacion_compra_id)):"";
+   if(!grouped.has(m.operacion_id))grouped.set(m.operacion_id,{operacion_id:m.operacion_id,codigo:(op as any)?.codigo||"Operación",ultimo_mensaje:m.mensaje,ultimo_mensaje_at:m.creado_at,no_leidos:0,recibidos:0,tipo:"operacion",producto:prod||"Producto no informado"});
+   const row=grouped.get(m.operacion_id)!;
+   if(m.destinatario_profile_id===user.id){row.recibidos++;if(!m.leido_at&&m.estado!=="LEIDO")row.no_leidos++;}
   }
-  const list=[...grouped.values()];setConversaciones(list);if(list.length)setSeleccionada(list[0]);setCargando(false);
+  const pubs=(pubChats.data||[]) as any[];
+  for(const p of pubs){
+   const title=`${p.producto||"Producto"} · ${Number(p.cantidad_tn||0).toLocaleString("es-AR")} TN · ${p.tipo_publicacion==="VENTA"?"Oferta de venta":"Demanda de compra"}`;
+   grouped.set("pub:"+p.conversacion_id,{operacion_id:"pub:"+p.conversacion_id,codigo:title,ultimo_mensaje:p.ultimo_mensaje||"Conversación iniciada",ultimo_mensaje_at:p.ultimo_mensaje_at,no_leidos:Number(p.no_leidos||0),recibidos:Number(p.no_leidos||0),tipo:"publicacion",conversacion_id:p.conversacion_id,publicacion_id:p.publicacion_id,producto:p.producto||"Producto",cantidad_tn:Number(p.cantidad_tn||0),tipo_publicacion:p.tipo_publicacion,otro_usuario:p.otro_usuario_nombre||"Usuario AgroBrokerIA"});
+  }
+  const list=[...grouped.values()].sort((a,b)=>new Date(b.ultimo_mensaje_at).getTime()-new Date(a.ultimo_mensaje_at).getTime());
+  setConversaciones(list);
+  if(list.length)setSeleccionada(list[0]);else setSeleccionada(null);
+  setCargando(false);
  }
- useEffect(()=>{if(seleccionada)void cargarEmpresa(seleccionada.operacion_id)},[seleccionada?.operacion_id]);
+ useEffect(()=>{if(seleccionada?.tipo==="operacion")void cargarEmpresa(seleccionada.operacion_id);else setEmpresa(null)},[seleccionada?.operacion_id,seleccionada?.tipo]);
  async function cargarEmpresa(operacionId:string){
   setEmpresa(null);
   const {data,error}=await supabase.rpc("obtener_empresa_participante_mensajes",{p_operacion_id:operacionId});
@@ -95,7 +101,7 @@ export default function MensajesPage(){
  }
  const fecha=(s:string)=>new Date(s).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
- const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo,flag:empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:""})).filter(c=>(filtroConversaciones==="todas"||c.no_leidos>0)&&(!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase()))),[conversaciones,empresa,seleccionada,busqueda,filtroConversaciones]);
+ const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:c.tipo==="publicacion"?(c.otro_usuario||"Usuario AgroBrokerIA"):(empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo),flag:c.tipo==="publicacion"?c.codigo:(empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:"")})).filter(c=>(filtroConversaciones==="todas"||c.no_leidos>0)&&(!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase()))),[conversaciones,empresa,seleccionada,busqueda,filtroConversaciones]);
  return <main className="messages-reference">
   <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>void abrirSelectorOperacion()}>＋ Iniciar desde una operación</button></header>
   {error&&<div className="messages-error">{error}</div>}{aviso&&<div className="messages-notice">{aviso}<button type="button" onClick={()=>setAviso("")}>Cerrar</button></div>}
@@ -106,7 +112,7 @@ export default function MensajesPage(){
     <div className="messages-conversations">{rows.length===0?<div className="messages-empty">{filtroConversaciones==="no_leidas"?"No tenés conversaciones sin leer.":"Todavía no hay conversaciones."}</div>:rows.map((c,i)=><button key={c.operacion_id} className={seleccionada?.operacion_id===c.operacion_id?"selected":""} onClick={()=>setSeleccionada(c)}><div className="company-avatar">{initials(c.nombre)}</div><div className="conversation-copy"><div><strong>{c.nombre}</strong><small>{c.flag}</small></div><p>{c.ultimo_mensaje}</p></div><div className="conversation-meta"><time>{fecha(c.ultimo_mensaje_at)}</time>{c.no_leidos>0&&<em>{c.no_leidos}</em>}</div></button>)}</div>
    </aside>
    <section className="messages-chat">
-    {seleccionada?<><div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>{empresa?.pais||"País no informado"} | {empresa?.rol||"Rol no informado"}{empresa?.verificada&&<b> ✓</b>}</p><span>Estado no informado</span></div><div className="chat-actions"><button onClick={()=>accionHeader("videollamada")} aria-label="Iniciar videollamada">▣</button><button onClick={()=>setTab("Archivos")} aria-label="Ver archivos">⌕</button><div className="chat-more-wrap"><button type="button" onClick={()=>setMenuAcciones(v=>!v)} aria-label="Más acciones" aria-expanded={menuAcciones}>⋮</button>{menuAcciones&&<div className="chat-more-menu"><button type="button" onClick={()=>accionHeader("copiar")}>Copiar código de operación</button><button type="button" onClick={()=>accionHeader("informacion")}>Ver información de la empresa</button><button type="button" onClick={()=>accionHeader("verificaciones")}>Ir a verificaciones de empresas</button></div>}</div></div></div><div className="chat-body"><PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/></div></>:<div className="messages-empty">Seleccioná una conversación</div>}
+    {seleccionada?<>{seleccionada.tipo==="publicacion"?<div className="chat-head"><div className="company-avatar large">{initials(seleccionada.otro_usuario||"US")}</div><div className="chat-company"><h2>{seleccionada.producto} · {seleccionada.cantidad_tn?.toLocaleString("es-AR")} TN</h2><p>{seleccionada.tipo_publicacion==="VENTA"?"Oferta de venta":"Demanda de compra"} · {seleccionada.otro_usuario}</p><span>Conversación de Marketplace</span></div></div>:<div className="chat-head"><div className="company-avatar large">{initials(empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre||"EM")}</div><div className="chat-company"><h2>{empresa?.nombre||rows.find(x=>x.operacion_id===seleccionada.operacion_id)?.nombre}</h2><p>{empresa?.pais||"País no informado"} | {empresa?.rol||"Rol no informado"}{empresa?.verificada&&<b> ✓</b>}</p><span>Estado no informado</span></div><div className="chat-actions"><button onClick={()=>accionHeader("videollamada")} aria-label="Iniciar videollamada">▣</button><button onClick={()=>setTab("Archivos")} aria-label="Ver archivos">⌕</button><div className="chat-more-wrap"><button type="button" onClick={()=>setMenuAcciones(v=>!v)} aria-label="Más acciones" aria-expanded={menuAcciones}>⋮</button>{menuAcciones&&<div className="chat-more-menu"><button type="button" onClick={()=>accionHeader("copiar")}>Copiar código de operación</button><button type="button" onClick={()=>accionHeader("informacion")}>Ver información de la empresa</button><button type="button" onClick={()=>accionHeader("verificaciones")}>Ir a verificaciones de empresas</button></div>}</div></div></div>}<div className="chat-body">{seleccionada.tipo==="publicacion"&&seleccionada.conversacion_id?<PanelMensajesPublicacion conversacionId={seleccionada.conversacion_id} productoTitulo={seleccionada.codigo}/>:<PanelMensajes operacionId={seleccionada.operacion_id} codigoOperacion={seleccionada.codigo}/>}</div></>:<div className="messages-empty">Seleccioná una conversación</div>}
    </section>
    <aside className="messages-info">
     <div className="info-tabs">{["Información","Archivos","Operaciones"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</div>
