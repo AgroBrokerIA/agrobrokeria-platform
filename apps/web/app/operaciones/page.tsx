@@ -2687,7 +2687,7 @@ Firma: ______________________________
               </div>
               {acuerdo.estado==="CONFIRMADO"&&<p style={{marginBottom:0,color:"#166534",fontWeight:700,fontSize:13}}>Acuerdo confirmado. El siguiente paso es completar el Visado de mercadería. La comisión se gestiona después de aprobarlo.</p>}
             </section>}
-            {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+            {ordenDetalle === 3 && controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — después del Visado</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Solo se abona después de aprobar el Visado de mercadería y queda retenida hasta el cierre de la operación.</p>
               {controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? <><label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
