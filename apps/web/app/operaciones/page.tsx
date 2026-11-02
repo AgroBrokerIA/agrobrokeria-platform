@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 import ControlComercial from "./ControlComercial";
@@ -2761,7 +2761,7 @@ Firma: ______________________________
         const operacionVisado = operaciones.find((item) => item.id === visadoAbierto);
         if (!operacionVisado) return null;
         const metaVisado = operacionMeta[visadoAbierto] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
-        const inputStyle = { width: "100%", boxSizing: "border-box", padding: 11, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" };
+        const inputStyle: CSSProperties = { width: "100%", boxSizing: "border-box", padding: 11, border: "1px solid #cbd5e1", borderRadius: 8, background: "#fff" };
         return <div role="dialog" aria-modal="true" aria-label="Visado de mercadería" style={{position:"fixed",inset:0,zIndex:1150,background:"rgba(15,23,42,.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>!guardandoVisado&&setVisadoAbierto(null)}>
           <section style={{width:"min(100%,720px)",maxHeight:"90vh",overflowY:"auto",background:"#fff",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.28)",color:"#123"}} onClick={e=>e.stopPropagation()}>
             <header style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:16}}>
