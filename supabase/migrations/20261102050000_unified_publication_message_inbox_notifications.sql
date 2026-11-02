@@ -21,10 +21,10 @@ DECLARE v_uid uuid := auth.uid();
 BEGIN
   IF v_uid IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
   RETURN QUERY
-  SELECT c.id,p.id,upper(coalesce(p.tipo,'')),coalesce(pr.nombre,'Producto'),
+  SELECT c.id,p.id,upper(coalesce(p.tipo,'')::text),coalesce(pr.nombre,'Producto')::text,
          p.cantidad_tn,c.publicador_profile_id,c.interesado_profile_id,
-         coalesce(other_profile.nombre,other_profile.email,'Usuario AgroBrokerIA'),
-         coalesce(last_msg.mensaje,'Conversación iniciada'),
+         coalesce(other_profile.nombre::text,other_profile.email::text,'Usuario AgroBrokerIA'),
+         coalesce(last_msg.mensaje::text,'Conversación iniciada'),
          coalesce(last_msg.creado_at,c.actualizado_at),
          (SELECT count(*) FROM public.mensajes_publicaciones unread
           WHERE unread.conversacion_id=c.id
