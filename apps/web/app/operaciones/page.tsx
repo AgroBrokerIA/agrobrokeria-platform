@@ -118,6 +118,7 @@ type ControlComercialData = {
   visado_motivo_rechazo?: string | null;
   visado_humedad?: string | null;
   visado_calidad?: string | null;
+  visado_proteina?: string | null;
   visado_condicion?: string | null;
 
   vendedor_firma_estado: string;
