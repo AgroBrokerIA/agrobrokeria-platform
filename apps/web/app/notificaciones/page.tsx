@@ -30,7 +30,6 @@ export default function NotificacionesPage(){
  const [buscando,setBuscando]=useState("");
  const [filtros,setFiltros]=useState<Record<string,boolean>>({Operaciones:true,Mensajes:true,Contratos:true,Pagos:true,Logística:true,Sistema:true,"Oportunidades IA":true,Documentación:true});
  const [canales,setCanales]=useState<Record<string,boolean>>({"En la plataforma":true,Email:true,"Notificaciones push":true,SMS:true});
- const [actionMessage,setActionMessage]=useState("");
  const toggleCanal=()=>window.location.href="/configuracion";
 
  useEffect(()=>{let canal:ReturnType<typeof supabase.channel>|null=null;async function iniciar(){
@@ -53,7 +52,7 @@ export default function NotificacionesPage(){
  return <main className="notifications-reference">
   <header className="notifications-head"><div><h1>Notificaciones</h1><p>Mantente al día con todas las novedades de tus operaciones y del mercado</p></div><Link className="notifications-config" href="/configuracion">⚙ &nbsp; Configurar notificaciones</Link></header>
   <div className="notification-tabs">{["Todas","Operaciones","Mensajes","Contratos","Pagos","Logística","Sistema"].map(x=><button key={x} className={filtro===x?"active":""} onClick={()=>setFiltro(x)}>{x}{(counts[x]||0)>0&&<b>{counts[x]}</b>}</button>)}</div>
-  {(error||actionMessage)&&<div className="notifications-error">{error||actionMessage}</div>}
+  {error&&<div className="notifications-error">{error}</div>}
   {cargando?<div className="notifications-loading">Cargando notificaciones...</div>:<div className="notifications-grid">
    <section className="notifications-main">
     <div className="notifications-list-toolbar"><label><input type="checkbox" checked={visibles.length>0&&visibles.every(n=>seleccionIds.includes(n.id))} onChange={e=>setSeleccionIds(e.target.checked?visibles.map(n=>n.id):[])}/> Seleccionar todas</label><button onClick={()=>void marcarSeleccionadasLeidas()} disabled={procesandoLectura||(!seleccionIds.length&&!visibles.some(n=>!n.leida))}>♜ &nbsp; {procesandoLectura?"Guardando...":"Marcar como leídas"}</button><select value={orden} onChange={e=>setOrden(e.target.value)}><option value="recentes">Más recientes</option><option value="oldest">Más antiguas</option></select></div>
