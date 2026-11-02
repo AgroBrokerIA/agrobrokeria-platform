@@ -1864,35 +1864,16 @@ Firma: ______________________________
         // Sincronizamos el control comercial desde el dato maestro de la operación
         // para evitar bloquear la confirmación por un control desactualizado.
         const comisionAgroBrokerEsperada = Number(operacion.cantidad_tn || 0);
-        const { data: controlAgroBroker, error: errorControlAgroBroker } =
-          await supabase
-            .from("operacion_control_comercial")
-            .select("id, comision_monto, comision_moneda")
-            .eq("operacion_id", operacion.id)
-            .maybeSingle();
-
-        if (errorControlAgroBroker) {
+        // La función de base de datos calcula monto y moneda desde cantidad_tn.
+        // No enviar comision_estado: su cambio está reservado al circuito de retención verificada.
+        const { error: sincronizacionError } = await supabase.rpc("guardar_control_comercial", {
+          p_operacion_id: operacion.id,
+          p_cambios: {},
+        });
+        if (sincronizacionError) {
           setMensaje("");
-          setError(`No se pudo verificar el control comercial: ${errorControlAgroBroker.message}`);
+          setError(`No se pudo sincronizar la comisión automática de USD 1 por tonelada: ${sincronizacionError.message}`);
           return;
-        }
-
-        const montoActual = Number(controlAgroBroker?.comision_monto ?? 0);
-        const monedaActual = String(controlAgroBroker?.comision_moneda ?? "").toUpperCase();
-        if (!controlAgroBroker?.id || Math.abs(montoActual - comisionAgroBrokerEsperada) > 0.0001 || monedaActual !== "USD") {
-          const { error: sincronizacionError } = await supabase.rpc("guardar_control_comercial", {
-            p_operacion_id: operacion.id,
-            p_cambios: {
-              comision_monto: comisionAgroBrokerEsperada,
-              comision_moneda: "USD",
-              comision_estado: "PENDIENTE",
-            },
-          });
-          if (sincronizacionError) {
-            setMensaje("");
-            setError(`No se pudo sincronizar la comisión automática de USD 1 por tonelada: ${sincronizacionError.message}`);
-            return;
-          }
         }
       }
 
