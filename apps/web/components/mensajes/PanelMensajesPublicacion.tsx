@@ -1,4 +1,5 @@
 "use client";
+import { containsContactData, redactContactData } from "@/lib/mensajes/privacy";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {supabase} from "@/lib/supabase/client";
 
@@ -35,6 +36,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
  useEffect(()=>{if(listRef.current)listRef.current.scrollTop=listRef.current.scrollHeight},[mensajes.length]);
  async function enviar(){
   if(!texto.trim()||enviando)return;
+  if(containsContactData(texto)){setError("Por seguridad, no se pueden compartir teléfonos, correos, enlaces ni direcciones antes del contrato definitivo.");return;}
   setEnviando(true);setError("");
   const {error}=await supabase.rpc("enviar_mensaje_publicacion",{p_conversacion_id:conversacionId,p_mensaje:texto.trim()});
   if(error)setError("No se pudo enviar el mensaje: "+error.message);
@@ -46,7 +48,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   <div style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",fontWeight:700,color:"#14532d"}}>Publicación: {productoTitulo}</div>
   {error&&<div role="alert" style={{padding:8,color:"#b91c1c",fontSize:12}}>{error}</div>}
   <div ref={listRef} style={{flex:1,overflowY:"auto",padding:16,background:"#f8fafc"}}>
-   {cargando?<p>Cargando mensajes…</p>:mensajes.length===0?<p style={{textAlign:"center",color:"#64748b",padding:30}}>Todavía no hay mensajes en esta conversación.</p>:mensajes.map(m=><div key={m.id} style={{display:"flex",justifyContent:m.remitente_profile_id===uid?"flex-end":"flex-start",marginBottom:10}}><div style={{maxWidth:"80%",padding:"10px 13px",borderRadius:12,background:m.remitente_profile_id===uid?"#dcfce7":"#fff",border:"1px solid #e2e8f0"}}><div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{m.mensaje}</div><small style={{display:"block",textAlign:"right",color:"#64748b",marginTop:5}}>{time(m.creado_at)} {m.remitente_profile_id===uid?(m.leido_at?"· ✓✓":"· ✓"):""}</small></div></div>)}
+   {cargando?<p>Cargando mensajes…</p>:mensajes.length===0?<p style={{textAlign:"center",color:"#64748b",padding:30}}>Todavía no hay mensajes en esta conversación.</p>:mensajes.map(m=><div key={m.id} style={{display:"flex",justifyContent:m.remitente_profile_id===uid?"flex-end":"flex-start",marginBottom:10}}><div style={{maxWidth:"80%",padding:"10px 13px",borderRadius:12,background:m.remitente_profile_id===uid?"#dcfce7":"#fff",border:"1px solid #e2e8f0"}}><div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{redactContactData(m.mensaje)}</div><small style={{display:"block",textAlign:"right",color:"#64748b",marginTop:5}}>{time(m.creado_at)} {m.remitente_profile_id===uid?(m.leido_at?"· ✓✓":"· ✓"):""}</small></div></div>)}
   </div>
   <div style={{display:"flex",gap:8,padding:12,borderTop:"1px solid #e5e7eb"}}>
    <textarea value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void enviar()}}} placeholder="Escribí un mensaje…" rows={2} style={{flex:1,resize:"none",border:"1px solid #cbd5e1",borderRadius:9,padding:10}}/>
