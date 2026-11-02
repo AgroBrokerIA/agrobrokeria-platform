@@ -18,7 +18,7 @@ begin
     raise exception 'PUBLICACION_DE_OFERTA_INEXISTENTE';
   end if;
 
-  select coalesce(nullif(trim(p.nombre_completo), ''), nullif(trim(p.email), ''), 'Un usuario')
+  select coalesce(nullif(trim(p.nombre), ''), nullif(trim(p.email), ''), 'Un usuario')
     into v_emisor
   from public.profiles p
   where p.id = auth.uid();
