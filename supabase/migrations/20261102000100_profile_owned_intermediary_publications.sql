@@ -309,3 +309,35 @@ GRANT EXECUTE ON FUNCTION public.guardar_publicacion(uuid,jsonb) TO authenticate
 GRANT EXECUTE ON FUNCTION public.iniciar_conversacion_publicacion(uuid) TO authenticated;
 GRANT EXECUTE ON FUNCTION public.publicaciones_propias_ids() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.cambiar_estado_publicacion(uuid,text) TO authenticated;
+
+
+-- Profile-owned listings must remain visible to their publisher when paused.
+DROP POLICY IF EXISTS publicaciones_select_publicadas ON public.publicaciones;
+CREATE POLICY publicaciones_select_publicadas ON public.publicaciones
+FOR SELECT TO authenticated
+USING (
+  estado::text = 'PUBLICADA'
+  OR publicador_profile_id = auth.uid()
+  OR (empresa_id IS NOT NULL AND public.usuario_es_miembro_empresa(empresa_id))
+);
+
+CREATE OR REPLACE FUNCTION public.eliminar_publicacion(p_publicacion_id uuid)
+RETURNS boolean
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = public
+AS $function$
+DECLARE v_uid uuid := auth.uid();
+BEGIN
+  IF v_uid IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+  DELETE FROM public.publicaciones
+  WHERE id = p_publicacion_id
+    AND (publicador_profile_id = v_uid OR
+         (empresa_id IS NOT NULL AND public.usuario_es_miembro_empresa(empresa_id)));
+  IF NOT FOUND THEN RAISE EXCEPTION 'PUBLICACION_NO_AUTORIZADA'; END IF;
+  RETURN true;
+END;
+$function$;
+
+REVOKE ALL ON FUNCTION public.eliminar_publicacion(uuid) FROM PUBLIC;
+GRANT EXECUTE ON FUNCTION public.eliminar_publicacion(uuid) TO authenticated;
