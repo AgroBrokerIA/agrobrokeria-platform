@@ -23,7 +23,7 @@ export async function obtenerIncoterms() {
     .order("codigo");
 }
 
-export async function crearPublicacion(publicacion: Publicacion) {
+export async function crearPublicacion(publicacion: Partial<Publicacion>) {
   const { data, error } = await supabase.rpc("guardar_publicacion", {
     p_publicacion_id: null,
     p_datos: publicacion,
