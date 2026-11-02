@@ -59,7 +59,7 @@ export default function MensajesPage(){
   if(comerciales.error){setError("No se pudieron cargar los mensajes de operaciones: "+comerciales.error.message);setCargando(false);return}
   if(pubChats.error){setError("No se pudieron cargar los mensajes de publicaciones: "+pubChats.error.message);setCargando(false);return}
   const ids=[...new Set((comerciales.data||[]).map(m=>m.operacion_id))];
-  const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
+  const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,cantidad_tn,tipo_operacion,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
   if(opsResult.error){setError(opsResult.error.message);setCargando(false);return}
   const pubIds=[...new Set((opsResult.data||[]).flatMap(o=>[o.publicacion_compra_id,o.publicacion_venta_id]).filter(Boolean))];
   const productsResult=pubIds.length?await supabase.from("publicaciones").select("id,producto_id,productos(nombre)").in("id",pubIds):{data:[],error:null};
@@ -70,7 +70,7 @@ export default function MensajesPage(){
   for(const m of comerciales.data||[]){
    const op=opMap.get(m.operacion_id);
    const prod=op?(productMap.get(op.publicacion_venta_id)||productMap.get(op.publicacion_compra_id)):"";
-   if(!grouped.has(m.operacion_id))grouped.set(m.operacion_id,{operacion_id:m.operacion_id,codigo:(op as any)?.codigo||"Operación",ultimo_mensaje:m.mensaje,ultimo_mensaje_at:m.creado_at,no_leidos:0,recibidos:0,tipo:"operacion",producto:prod||"Producto no informado"});
+   if(!grouped.has(m.operacion_id))grouped.set(m.operacion_id,{operacion_id:m.operacion_id,codigo:op?`${(op as any).codigo||"Operación"} · ${prod||"Producto"} · ${Number((op as any).cantidad_tn||0).toLocaleString("es-AR")} TN`:"Operación",ultimo_mensaje:m.mensaje,ultimo_mensaje_at:m.creado_at,no_leidos:0,recibidos:0,tipo:"operacion",producto:prod||"Producto no informado"});
    const row=grouped.get(m.operacion_id)!;
    if(m.destinatario_profile_id===user.id){row.recibidos++;if(!m.leido_at&&m.estado!=="LEIDO")row.no_leidos++;}
   }
