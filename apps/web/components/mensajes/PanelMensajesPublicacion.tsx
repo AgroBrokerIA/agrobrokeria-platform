@@ -90,9 +90,9 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   await cargarPropuestas();setAccionando(false);
  }
  const time=(s:string)=>new Date(s).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
- return <div style={{display:"flex",flexDirection:"column",height:"100%",minHeight:420,background:"#fff"}}>
-  <div style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",fontWeight:700,color:"#14532d"}}>Publicación: {productoTitulo}</div>
-  <section style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",background:"#f8fafc"}}>
+ return <div style={{display:"flex",flexDirection:"column",height:"100%",minHeight:0,overflow:"hidden",background:"#fff"}}>
+  <div style={{flex:"0 0 auto",padding:"12px 16px",borderBottom:"1px solid #e5e7eb",fontWeight:700,color:"#14532d"}}>Publicación: {productoTitulo}</div>
+  <section style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",background:"#f8fafc",flex:"0 1 auto",minHeight:0,maxHeight:"48%",overflowY:"auto",overscrollBehavior:"contain"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
     <strong style={{color:"#0f172a"}}>Negociación comercial</strong>
     <button type="button" onClick={()=>{setMostrarOferta(v=>!v);setContraoferta(false);}} style={{border:0,borderRadius:8,padding:"9px 13px",background:"#07864b",color:"#fff",fontWeight:700}}>＋ Hacer una oferta</button>
@@ -122,10 +122,10 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
    </div>}
   </section>
   {error&&<div role="alert" style={{padding:8,color:"#b91c1c",fontSize:12}}>{error}</div>}
-  <div ref={listRef} style={{flex:1,overflowY:"auto",padding:16,background:"#f8fafc"}}>
+  <div ref={listRef} style={{flex:"1 1 0",minHeight:0,overflowY:"auto",padding:16,background:"#f8fafc"}}>
    {cargando?<p>Cargando mensajes…</p>:mensajes.length===0?<p style={{textAlign:"center",color:"#64748b",padding:30}}>Todavía no hay mensajes en esta conversación.</p>:mensajes.map(m=><div key={m.id} style={{display:"flex",justifyContent:m.remitente_profile_id===uid?"flex-end":"flex-start",marginBottom:10}}><div style={{maxWidth:"80%",padding:"10px 13px",borderRadius:12,background:m.remitente_profile_id===uid?"#dcfce7":"#fff",border:"1px solid #e2e8f0"}}><div style={{whiteSpace:"pre-wrap",wordBreak:"break-word"}}>{redactContactData(m.mensaje)}</div><small style={{display:"block",textAlign:"right",color:"#64748b",marginTop:5}}>{time(m.creado_at)} {m.remitente_profile_id===uid?(m.leido_at?"· ✓✓":"· ✓"):""}</small></div></div>)}
   </div>
-  <div style={{display:"flex",gap:8,padding:12,borderTop:"1px solid #e5e7eb"}}>
+  <div style={{display:"flex",flex:"0 0 auto",gap:8,padding:12,borderTop:"1px solid #e5e7eb",background:"#fff"}}>
    <textarea value={texto} onChange={e=>setTexto(e.target.value)} onKeyDown={e=>{if(e.key==="Enter"&&!e.shiftKey){e.preventDefault();void enviar()}}} placeholder="Escribí un mensaje…" rows={2} style={{flex:1,resize:"none",border:"1px solid #cbd5e1",borderRadius:9,padding:10}}/>
    <button type="button" onClick={()=>void enviar()} disabled={!texto.trim()||enviando} style={{border:0,borderRadius:9,padding:"0 18px",background:!texto.trim()||enviando?"#cbd5e1":"#07864b",color:"#fff",fontWeight:700}}>{enviando?"Enviando…":"Enviar"}</button>
   </div>
