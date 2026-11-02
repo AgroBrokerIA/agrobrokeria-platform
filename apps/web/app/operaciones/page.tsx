@@ -627,19 +627,33 @@ export default function OperacionesPage() {
   // OFERTA ACEPTADA → ACUERDO COMERCIAL / RESERVA
   // =========================================================
 
-  async function avanzarAVisadoConComision(operacion: Operacion) {
+  async function avanzarAVisado(operacion: Operacion) {
     setError(""); setMensaje("");
     const { data: agreement, error: agreementError } = await supabase.from("acuerdos_comerciales").select("estado").eq("operacion_id", operacion.id).maybeSingle();
     if (agreementError || agreement?.estado !== "CONFIRMADO") { setError("Primero debe quedar confirmado el Acuerdo Comercial."); return false; }
-    const { data: retention, error: retentionError } = await supabase.from("operacion_comision_retenciones").select("estado").eq("operacion_id", operacion.id).maybeSingle();
-    if (retentionError || retention?.estado !== "RETENIDA") { setError("La transferencia de la comisión todavía no fue verificada y retenida por AgroBrokerIA."); return false; }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 2) { setError("La operación ya no se encuentra en la etapa de Acuerdo Comercial."); return false; }
     const { data: etapa, error: etapaError } = await supabase.from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 3).maybeSingle();
     if (etapaError || !etapa) { setError("No se encontró la etapa Visado de mercadería."); return false; }
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Comisión verificada y retenida. La operación pasó a Visado de mercadería.");
+    setMensaje("Acuerdo confirmado. La operación pasó a Visado de mercadería. La comisión se abonará después de aprobar el visado y antes del contrato definitivo.");
+    await cargarOperaciones(); return true;
+  }
+
+  async function avanzarAContratoConComision(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const { data: control, error: controlError } = await supabase.from("operacion_control_comercial").select("visado_resultado").eq("operacion_id", operacion.id).maybeSingle();
+    if (controlError || control?.visado_resultado !== "APROBADO") { setError("Primero debe aprobarse el Visado de mercadería."); return false; }
+    const { data: retention, error: retentionError } = await supabase.from("operacion_comision_retenciones").select("estado").eq("operacion_id", operacion.id).maybeSingle();
+    if (retentionError || retention?.estado !== "RETENIDA") { setError("La comisión todavía no fue verificada y retenida por AgroBrokerIA."); return false; }
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 3) { setError("La operación debe permanecer en Visado de mercadería para habilitar el Contrato Definitivo."); return false; }
+    const { data: etapa, error: etapaError } = await supabase.from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
+    if (etapaError || !etapa) { setError("No se encontró la etapa Contrato Definitivo."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("Visado aprobado y comisión acreditada y retenida. La operación pasó a Contrato Definitivo.");
     await cargarOperaciones(); return true;
   }
 
@@ -2064,54 +2078,11 @@ Firma: ______________________________
     // =========================================================
 
     if (cambios.visado_resultado === "APROBADO") {
-      const workflow = obtenerWorkflow(operacionId);
-
-      if (!workflow) {
-        setError(
-          "El visado fue aprobado, pero la operación no tiene workflow asociado."
-        );
-        return false;
-      }
-
-      const { data: etapaContrato, error: errorEtapaContrato } =
-        await supabase
-          .from("workflow_etapas")
-          .select("id, nombre, orden")
-          .eq("workflow_id", workflow.workflow_id)
-          .eq("orden", 4)
-          .maybeSingle();
-
-      if (errorEtapaContrato) {
-        setError(
-          `El visado fue aprobado, pero no se pudo localizar la etapa Contrato Definitivo: ${errorEtapaContrato.message}`
-        );
-        return false;
-      }
-
-      if (!etapaContrato) {
-        setError(
-          "El visado fue aprobado, pero no existe la etapa 4 (Contrato Definitivo)."
-        );
-        return false;
-      }
-
-      const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaContrato.id);
-
-      if (errorAvance) {
-        setError(
-          `El visado fue aprobado, pero no se pudo avanzar a Contrato Definitivo: ${errorAvance.message}`
-        );
-        return false;
-      }
-
       setVisadoAbierto(null);
       setError("");
-      setMensaje(
-        "✅ Visado de mercadería APROBADO. La operación pasó a Contrato Definitivo."
-      );
-
+      setMensaje("✅ Visado de mercadería APROBADO. Ahora corresponde registrar y verificar la comisión AgroBrokerIA antes de habilitar el Contrato Definitivo.");
+      await cargarControlComercial({ id: operacionId } as Operacion);
       await cargarOperaciones();
-
       return true;
     }
 
@@ -2645,7 +2616,7 @@ Firma: ______________________________
           if (ordenDetalle === 1) {
             resultado = await iniciarAcuerdoComercial(detalleOperacion.id);
           } else if (ordenDetalle === 2) {
-            resultado = await avanzarAVisadoConComision(detalleOperacion);
+            resultado = await avanzarAVisado(detalleOperacion);
           } else if (ordenDetalle === 3) {
             abrirVisado(detalleOperacion); resultado = true;
           } else if (ordenDetalle === 4) {
@@ -2716,10 +2687,10 @@ Firma: ______________________________
               </div>
               {acuerdo.estado==="CONFIRMADO"&&<p style={{marginBottom:0,color:"#166534",fontWeight:700,fontSize:13}}>Acuerdo confirmado. El siguiente paso es registrar y validar el depósito de la comisión de plataforma.</p>}
             </section>}
-            {ordenDetalle === 2 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+            {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito previo al contrato</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Una vez confirmado el acuerdo, se abona por transferencia bancaria y queda retenida hasta el cierre de la operación.</p>
-              <label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
+              {controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? <><label style={{display:"block",fontWeight:700,marginBottom:6}}>Referencia de transferencia</label>
               <input value={comisionReferenciaTransferencia} onChange={e=>setComisionReferenciaTransferencia(e.target.value)} placeholder="Número de operación / referencia bancaria" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:10}}/>
               <label style={{display:"block",fontWeight:700,marginBottom:6}}>URL del comprobante (opcional)</label>
               <input value={comisionComprobanteUrl} onChange={e=>setComisionComprobanteUrl(e.target.value)} placeholder="Enlace al comprobante bancario" style={{width:"100%",boxSizing:"border-box",padding:10,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
