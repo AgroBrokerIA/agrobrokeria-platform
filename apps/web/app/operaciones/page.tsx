@@ -255,6 +255,33 @@ export default function OperacionesPage() {
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
 
+  useEffect(() => {
+    if (!detalleOperacion?.id) return;
+    let cancelled = false;
+    (async () => {
+      const { data, error } = await supabase
+        .from("operacion_control_comercial")
+        .select("*")
+        .eq("operacion_id", detalleOperacion.id)
+        .maybeSingle();
+      if (cancelled) return;
+      if (error) {
+        console.error("No se pudo actualizar el estado del visado:", error);
+        return;
+      }
+      if (data) {
+        setControlesComerciales((current) => ({
+          ...current,
+          [detalleOperacion.id]: {
+            ...data,
+            comision_monto: data.comision_monto == null ? null : Number(data.comision_monto),
+          } as ControlComercialData,
+        }));
+      }
+    })();
+    return () => { cancelled = true; };
+  }, [detalleOperacion?.id]);
+
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
 
