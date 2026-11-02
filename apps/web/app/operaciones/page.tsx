@@ -396,14 +396,12 @@ export default function OperacionesPage() {
         return;
       }
 
-      // Cargar workflows y etapas en consultas independientes para evitar
-      // que una relación embebida/RLS oculte la etapa actual al participante.
+      // RPC segura: devuelve workflow + etapa en una sola lectura autorizada.
       const idsOperaciones = (operacionesDB || []).map((item) => item.id);
       const { data: workflowsDB, error: errorWorkflows } = idsOperaciones.length
-        ? await supabase
-            .from("operacion_workflow")
-            .select("id, operacion_id, workflow_id, etapa_actual_id, estado")
-            .in("operacion_id", idsOperaciones)
+        ? await supabase.rpc("obtener_workflows_operaciones_usuario", {
+            p_operacion_ids: idsOperaciones,
+          })
         : { data: [], error: null };
 
       if (errorWorkflows) {
@@ -412,40 +410,15 @@ export default function OperacionesPage() {
         return;
       }
 
-      const etapaIds = [...new Set((workflowsDB || []).map((item) => item.etapa_actual_id).filter(Boolean))];
-      const { data: etapasDB, error: errorEtapas } = etapaIds.length
-        ? await supabase
-            .from("workflow_etapas")
-            .select("id, workflow_id, orden, nombre")
-            .in("id", etapaIds)
-        : { data: [], error: null };
-
-      if (errorEtapas) {
-        console.error("No se pudieron cargar las etapas actuales:", errorEtapas);
-        setError(`No se pudieron cargar las etapas del workflow: ${errorEtapas.message}`);
-        return;
-      }
-
-      const etapasPorId = new Map((etapasDB || []).map((etapa) => [String(etapa.id), etapa]));
-      const workflowsNormalizados: Workflow[] = (workflowsDB || []).map((item) => {
-        const etapa = etapasPorId.get(String(item.etapa_actual_id));
-        return {
-          id: item.id,
-          operacion_id: item.operacion_id,
-          workflow_id: item.workflow_id,
-          etapa_actual_id: item.etapa_actual_id,
-          estado: item.estado,
-          etapa_actual: etapa?.nombre || "Etapa pendiente de sincronización",
-          orden: Number(etapa?.orden || 0),
-        };
-      });
-
-      const workflowsSinEtapa = workflowsNormalizados.filter(
-        (item) => !item.etapa_actual_id || !etapasPorId.has(String(item.etapa_actual_id))
-      );
-      if (workflowsSinEtapa.length) {
-        console.error("Workflows sin correspondencia de etapa:", workflowsSinEtapa);
-      }
+      const workflowsNormalizados: Workflow[] = (workflowsDB || []).map((item: any) => ({
+        id: item.id,
+        operacion_id: item.operacion_id,
+        workflow_id: item.workflow_id,
+        etapa_actual_id: item.etapa_actual_id,
+        estado: item.estado,
+        etapa_actual: item.nombre_etapa || "Etapa sin nombre",
+        orden: Number(item.orden || 0),
+      }));
 
       const { data: monedaRows, error: monedaError } = await supabase.from("monedas").select("id,codigo");
       if (monedaError) console.error("No se pudieron cargar las monedas:", monedaError);
