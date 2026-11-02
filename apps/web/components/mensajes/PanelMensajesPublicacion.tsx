@@ -27,7 +27,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   const {data,error}=await supabase.rpc("listar_propuestas_publicacion",{p_conversacion_id:conversacionId});
   if(error){setError("No se pudieron cargar las ofertas: "+error.message);return;}
   setPropuestas((data||[]) as Propuesta[]);
- },[conversacionId,cargarPropuestas]);
+ },[conversacionId]);
  const cargar=useCallback(async()=>{
   const {data:{user}}=await supabase.auth.getUser();
   if(!user){setError("Necesitás iniciar sesión.");setCargando(false);return}
@@ -48,7 +48,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   const {error:readError}=await supabase.rpc("marcar_mensajes_publicacion_leidos",{p_conversacion_id:conversacionId});
   if(readError)console.error("No se pudo marcar como leído",readError);
   setCargando(false);
- },[conversacionId]);
+ },[conversacionId,cargarPropuestas]);
  useEffect(()=>{
   setCargando(true);setError("");void cargar();
   const channel=supabase.channel("publicacion-chat-"+conversacionId)
