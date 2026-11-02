@@ -53,7 +53,7 @@ type LugarRecepcion = {
 
 type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null };
 
-async function obtenerEmpresaDelUsuario() {
+async function obtenerEmpresaDelUsuario(): Promise<string | null> {
   const {
     data: { user },
     error: userError,
@@ -65,11 +65,15 @@ async function obtenerEmpresaDelUsuario() {
 
   const { data: profile, error: profileError } = await supabase
     .from("profiles")
-    .select("active_company_id")
+    .select("active_company_id,tipo_usuario")
     .eq("id", user.id)
     .maybeSingle();
 
   if (profileError) throw new Error(`No se pudo obtener el perfil: ${profileError.message}`);
+
+  // El rol intermediario publica con su identidad personal, aunque exista
+  // un contexto interno de plataforma asociado al perfil.
+  if (["comisionista", "intermediario", "intermediaria", "corredor", "corredora", "comprador", "compradora", "vendedor", "vendedora", "productor", "productora"].includes(String(profile?.tipo_usuario ?? "").trim().toLowerCase())) return null;
 
   if (profile?.active_company_id) {
     // El perfil guarda el ID del directorio global (companies), mientras que
