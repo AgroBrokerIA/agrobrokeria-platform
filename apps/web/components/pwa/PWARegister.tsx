@@ -13,7 +13,7 @@ export default function PWARegister() {
 
   useEffect(() => {
     if ("serviceWorker" in navigator && window.location.protocol === "https:") {
-      navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+      navigator.serviceWorker.register("/sw.js", { scope: "/", updateViaCache: "none" }).then((registration) => registration.update()).catch((error) => {
         console.error("No se pudo registrar el service worker de AgroBrokerIA", error);
       });
     }
