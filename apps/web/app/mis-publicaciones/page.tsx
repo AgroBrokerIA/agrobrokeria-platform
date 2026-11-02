@@ -41,19 +41,10 @@ export default function MisPublicacionesPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) { setPublicaciones([]); setLoading(false); return; }
 
-    const { data: profile, error: profileError } = await supabase.from("profiles").select("active_company_id").eq("id", user.id).single();
-    if (profileError) { console.error("Error cargando perfil:", profileError); setPublicaciones([]); setLoading(false); return; }
-    let empresaId: string | null = null;
-    if (profile?.active_company_id) {
-      const { data: mapping, error: mappingError } = await supabase.from("company_empresa_map").select("empresa_id").eq("company_id", profile.active_company_id).maybeSingle();
-      if (mappingError) { console.error("Error resolviendo empresa comercial:", mappingError); }
-      if (mapping?.empresa_id) empresaId = mapping.empresa_id;
-      else {
-        const { data: legacy } = await supabase.from("empresas").select("id").eq("id", profile.active_company_id).eq("activa", true).maybeSingle();
-        if (legacy?.id) empresaId = legacy.id;
-      }
-    }
-    if (!empresaId) { setPublicaciones([]); setLoading(false); return; }
+    const { data: ownIds, error: ownIdsError } = await supabase.rpc("publicaciones_propias_ids");
+    if (ownIdsError) { console.error("Error resolviendo publicaciones propias:", ownIdsError); setPublicaciones([]); setLoading(false); return; }
+    const ids = (ownIds || []) as string[];
+    if (!ids.length) { setPublicaciones([]); setLoading(false); return; }
 
     const { data, error } = await supabase
       .from("publicaciones")
@@ -70,10 +61,8 @@ export default function MisPublicacionesPage() {
         provincia,
         productos(nombre)
       `)
-      .eq("empresa_id", empresaId)
-      .order("creada_en", {
-        ascending: false,
-      });
+      .in("id", ids)
+      .order("creada_en", { ascending: false });
 
     if (error) {
       console.error(
