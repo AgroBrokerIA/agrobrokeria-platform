@@ -860,8 +860,8 @@ export default function OperacionesPage() {
       visado_resultado: resultado,
       visado_responsable: visadoResponsable.trim(),
       visado_calidad: visadoCalidad.trim() || null,
-      visado_humedad: visadoHumedad.trim() ? Number(visadoHumedad) : null,
-      visado_proteina: visadoProteina.trim() ? Number(visadoProteina) : null,
+      visado_humedad: visadoHumedad.trim() || null,
+      visado_proteina: visadoProteina.trim() || null,
       visado_observaciones: visadoObservaciones.trim() || null,
       visado_motivo_rechazo: resultado === "RECHAZADO" ? visadoMotivoRechazo.trim() : null,
     });
