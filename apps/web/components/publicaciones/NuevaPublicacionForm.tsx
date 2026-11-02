@@ -71,6 +71,10 @@ async function obtenerEmpresaDelUsuario(): Promise<string | null> {
 
   if (profileError) throw new Error(`No se pudo obtener el perfil: ${profileError.message}`);
 
+  // El rol intermediario publica con su identidad personal, aunque exista
+  // un contexto interno de plataforma asociado al perfil.
+  if (String(profile?.tipo_usuario ?? "").toLowerCase().includes("intermedi")) return null;
+
   if (profile?.active_company_id) {
     // El perfil guarda el ID del directorio global (companies), mientras que
     // las publicaciones referencian el catálogo comercial legado (empresas).
@@ -124,10 +128,6 @@ async function obtenerEmpresaDelUsuario(): Promise<string | null> {
     if (error) throw new Error(`No se pudo obtener la empresa: ${error.message}`);
     if (data?.id) return data.id;
   }
-
-  // Un intermediario puede publicar a título propio y registrar al representado
-  // cuando la negociación avance a la etapa de formalización.
-  if (String(profile?.tipo_usuario ?? "").toLowerCase().includes("intermedi")) return null;
 
   throw new Error("Tu usuario no tiene una empresa activa vinculada.");
 }
