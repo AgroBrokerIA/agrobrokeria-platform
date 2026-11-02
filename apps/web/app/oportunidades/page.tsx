@@ -4,8 +4,8 @@ import {useEffect,useMemo,useState} from "react";
 import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 
-type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;distancia_km:number|null;detalles?:Record<string,unknown>|null;publicacion?:Publication};
-type Publication={id:string;empresa_id:string;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
+type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;distancia_km:number|null;contactPublicationId?:string;detalles?:Record<string,unknown>|null;publicacion?:Publication};
+type Publication={id:string;empresa_id:string|null;publicador_profile_id?:string|null;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null}|null};
 
 const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const roleColor=(type?:string|null)=>({ACOPIO:"#15803D",COOPERATIVA:"#15803D",BROKER:"#2563EB",CORREDOR:"#2563EB",INTERMEDIARIO:"#EA580C",PRODUCTOR:"#CA8A04",COMPRADOR:"#CA8A04",EXPORTADOR:"#7C3AED",INDUSTRIA:"#7C3AED",MOLINO:"#7C3AED",LABORATORIO:"#475569",LOGISTICA:"#475569"} as Record<string,string>)[String(type||"").toUpperCase()]||"#475569";
