@@ -29,7 +29,8 @@ export default function HistorialPage(){
    supabase.from("pagos").select("id,operacion_id,importe,estado,fecha_pago,creado_en").order("fecha_pago",{ascending:false}).limit(80),
    supabase.from("documentos_operacion").select("id,operacion_id,tipo_documento,nombre_archivo,creado_en,aprobado").order("creado_en",{ascending:false}).limit(80),
    supabase.from("auditoria").select("id,accion,descripcion,registro_id,creado_en").order("creado_en",{ascending:false}).limit(100),
-   supabase.from("monedas").select("id,codigo")
+   supabase.from("monedas").select("id,codigo"),
+   supabase.from("notificaciones").select("id,titulo,mensaje,leida,creada_en,operacion_id,publicacion_id,conversacion_id").order("creada_en",{ascending:false}).limit(120)
   ]);
   const rows:Activity[]=[];
   const monedas=new Map((mons.data||[]).map((m:any)=>[m.id,m.codigo]));
