@@ -1965,7 +1965,7 @@ Firma: ______________________________
 
       setError("");
       setMensaje(
-        "✅ Acuerdo Comercial confirmado. Ahora registrá el depósito de la comisión AgroBrokerIA y luego verificá el pago para avanzar a Visado de mercadería."
+        "✅ Acuerdo Comercial confirmado. Una vez aprobado el Visado de mercadería, registrá el depósito de la comisión AgroBrokerIA para habilitar el Contrato Definitivo."
       );
       setAcuerdoAbierto(null);
       await cargarOperaciones();
@@ -2662,7 +2662,7 @@ Firma: ______________________________
             </section>
             {ordenDetalle === 2 && <section aria-label="Acuerdo comercial y reserva" style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
               <h3 style={{marginTop:0}}>Acuerdo Comercial / Reserva</h3>
-              <p style={{fontSize:13,color:"#334155"}}>Completá las condiciones pactadas por comprador y vendedor. El acuerdo debe quedar confirmado antes de validar la comisión y pasar al visado.</p>
+              <p style={{fontSize:13,color:"#334155"}}>Completá las condiciones pactadas por comprador y vendedor. El acuerdo debe quedar confirmado para avanzar al Visado de mercadería. La comisión se gestiona después de aprobar el visado.</p>
               <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
                 {([
                   ["lugar_carga","Lugar de carga / establecimiento","Ej.: Acopio, planta o establecimiento"],
