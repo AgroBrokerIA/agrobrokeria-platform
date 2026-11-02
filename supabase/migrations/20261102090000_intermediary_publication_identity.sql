@@ -69,7 +69,11 @@ BEGIN
     INTO v_company, v_email, v_tipo_usuario
   FROM public.profiles WHERE id = v_uid;
 
-  IF v_company IS NOT NULL THEN
+  IF v_tipo_usuario IN ('intermediario','intermediaria') THEN
+    -- El intermediario se identifica como publicador; nunca se usa una empresa
+    -- interna o de contexto como vendedor contractual.
+    v_empresa := NULL;
+  ELSIF v_company IS NOT NULL THEN
     IF EXISTS (
       SELECT 1 FROM public.company_users
       WHERE company_id = v_company AND profile_id = v_uid AND activo = true
