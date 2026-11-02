@@ -1,0 +1,1 @@
+alter table public.operacion_control_comercial add column if not exists visado_proteina text;
