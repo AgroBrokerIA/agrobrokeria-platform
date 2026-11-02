@@ -59,7 +59,12 @@ BEGIN
       RAISE EXCEPTION 'ACTIVE_COMPANY_NOT_AUTHORIZED';
     END IF;
 
-    SELECT empresa_id INTO v_empresa
+    SELECT CASE
+             WHEN lower(coalesce(v_tipo_usuario,'')) = 'intermediario'
+                  AND match_method = 'platform_internal' THEN NULL
+             ELSE empresa_id
+           END
+      INTO v_empresa
     FROM public.company_empresa_map
     WHERE company_id = v_company;
   END IF;
@@ -314,7 +319,7 @@ GRANT EXECUTE ON FUNCTION public.cambiar_estado_publicacion(uuid,text) TO authen
 -- Profile-owned listings must remain visible to their publisher when paused.
 DROP POLICY IF EXISTS publicaciones_select_publicadas ON public.publicaciones;
 CREATE POLICY publicaciones_select_publicadas ON public.publicaciones
-FOR SELECT TO authenticated
+FOR SELECT
 USING (
   estado::text = 'PUBLICADA'
   OR publicador_profile_id = auth.uid()
