@@ -143,7 +143,7 @@ BEGIN
 
   RETURN v_id;
 END;
-$function$
+$function$;
 
 -- SISA se controla por separado de ARCA. Estas filas exigen evidencia oficial y
 -- NO representan una integración API automática con SISA.
