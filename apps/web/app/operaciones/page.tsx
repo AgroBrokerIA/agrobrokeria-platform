@@ -243,6 +243,13 @@ export default function OperacionesPage() {
 
   const [visadoAbierto, setVisadoAbierto] =
     useState<string | null>(null);
+  const [visadoResponsable, setVisadoResponsable] = useState("");
+  const [visadoCalidad, setVisadoCalidad] = useState("");
+  const [visadoHumedad, setVisadoHumedad] = useState("");
+  const [visadoProteina, setVisadoProteina] = useState("");
+  const [visadoObservaciones, setVisadoObservaciones] = useState("");
+  const [visadoMotivoRechazo, setVisadoMotivoRechazo] = useState("");
+  const [guardandoVisado, setGuardandoVisado] = useState(false);
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
@@ -815,11 +822,51 @@ export default function OperacionesPage() {
     };
   }
 
-  function abrirVisado(operacion: Operacion) {
+  async function abrirVisado(operacion: Operacion) {
     setError("");
     setMensaje("");
     setContratoAbierto(null);
+    const { data, error } = await supabase
+      .from("operacion_control_comercial")
+      .select("visado_responsable,visado_calidad,visado_humedad,visado_proteina,visado_observaciones,visado_motivo_rechazo")
+      .eq("operacion_id", operacion.id)
+      .maybeSingle();
+    if (error) {
+      setError(`No se pudo cargar el formulario de visado: ${error.message}`);
+      return;
+    }
+    setVisadoResponsable(data?.visado_responsable || "");
+    setVisadoCalidad(data?.visado_calidad || "");
+    setVisadoHumedad(data?.visado_humedad == null ? "" : String(data.visado_humedad));
+    setVisadoProteina(data?.visado_proteina == null ? "" : String(data.visado_proteina));
+    setVisadoObservaciones(data?.visado_observaciones || "");
+    setVisadoMotivoRechazo(data?.visado_motivo_rechazo || "");
     setVisadoAbierto(operacion.id);
+  }
+
+  async function guardarVisado(resultado: "APROBADO" | "RECHAZADO") {
+    if (!visadoAbierto) return;
+    if (!visadoResponsable.trim()) {
+      setError("Indicá quién realizó el visado de mercadería.");
+      return;
+    }
+    if (resultado === "RECHAZADO" && !visadoMotivoRechazo.trim()) {
+      setError("Indicá el motivo del rechazo del visado.");
+      return;
+    }
+    setGuardandoVisado(true);
+    const ok = await actualizarControlComercial(visadoAbierto, {
+      visado_estado: resultado,
+      visado_resultado: resultado,
+      visado_responsable: visadoResponsable.trim(),
+      visado_calidad: visadoCalidad.trim() || null,
+      visado_humedad: visadoHumedad.trim() ? Number(visadoHumedad) : null,
+      visado_proteina: visadoProteina.trim() ? Number(visadoProteina) : null,
+      visado_observaciones: visadoObservaciones.trim() || null,
+      visado_motivo_rechazo: resultado === "RECHAZADO" ? visadoMotivoRechazo.trim() : null,
+    });
+    setGuardandoVisado(false);
+    if (ok) setVisadoAbierto(null);
   }
 
   async function cargarControlComercial(
@@ -2650,6 +2697,45 @@ Firma: ______________________________
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Continuar a Visado de mercadería" : ordenDetalle === 3 ? (controlesComerciales[detalleOperacion.id]?.visado_resultado === "APROBADO" ? "Comisión AgroBrokerIA pendiente" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+          </section>
+        </div>;
+      })()}
+
+      {visadoAbierto && (() => {
+        const op = operaciones.find(item => item.id === visadoAbierto);
+        const control = controlesComerciales[visadoAbierto];
+        return <div role="dialog" aria-modal="true" aria-label="Visado de mercadería" className="operation-detail-backdrop" style={{position:"fixed",inset:0,zIndex:1200,background:"rgba(15,23,42,.6)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>!guardandoVisado&&setVisadoAbierto(null)}>
+          <section style={{width:"min(100%,620px)",maxHeight:"90vh",overflowY:"auto",background:"#fff",color:"#123",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={event=>event.stopPropagation()}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",gap:12}}>
+              <h2 style={{marginTop:0}}>Visado de mercadería</h2>
+              <button type="button" onClick={()=>setVisadoAbierto(null)} disabled={guardandoVisado} aria-label="Cerrar" style={{border:0,background:"transparent",fontSize:24,cursor:"pointer"}}>×</button>
+            </div>
+            {op && <p><strong>Operación:</strong> {op.codigo} · <strong>Volumen:</strong> {formatoNumero(op.cantidad_tn)} TN</p>}
+            <p style={{color:"#475569"}}>Registrá la inspección física y documental de la mercadería. La aprobación habilita el pago de la comisión AgroBrokerIA; el contrato definitivo seguirá bloqueado hasta que el pago sea verificado y retenido.</p>
+            {control?.visado_resultado && <p style={{padding:10,borderRadius:8,background:"#eff6ff"}}>Resultado registrado: <strong>{control.visado_resultado}</strong></p>}
+            <label style={{display:"block",fontWeight:700,marginBottom:6}}>Responsable del visado *</label>
+            <input value={visadoResponsable} onChange={e=>setVisadoResponsable(e.target.value)} placeholder="Nombre y apellido / inspector" style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginBottom:12}}/>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:12}}>
+              <label style={{fontWeight:700}}>Calidad / clasificación
+                <input value={visadoCalidad} onChange={e=>setVisadoCalidad(e.target.value)} placeholder="Conforme / observada" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+              <label style={{fontWeight:700}}>Humedad (%)
+                <input type="number" min="0" max="100" step="0.01" value={visadoHumedad} onChange={e=>setVisadoHumedad(e.target.value)} placeholder="Ej. 14" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+              <label style={{fontWeight:700}}>Proteína (%)
+                <input type="number" min="0" max="100" step="0.01" value={visadoProteina} onChange={e=>setVisadoProteina(e.target.value)} placeholder="Opcional" style={{display:"block",width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,marginTop:6}}/>
+              </label>
+            </div>
+            <label style={{display:"block",fontWeight:700,margin:"14px 0 6px"}}>Observaciones del visado</label>
+            <textarea value={visadoObservaciones} onChange={e=>setVisadoObservaciones(e.target.value)} rows={3} placeholder="Resultado de inspección, documentación, muestras, tolerancias..." style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8}}/>
+            <label style={{display:"block",fontWeight:700,margin:"14px 0 6px"}}>Motivo de rechazo (obligatorio si se rechaza)</label>
+            <textarea value={visadoMotivoRechazo} onChange={e=>setVisadoMotivoRechazo(e.target.value)} rows={2} placeholder="Detallá las diferencias o incumplimientos detectados" style={{width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8}}/>
+            {error && <p role="alert" style={{padding:10,background:"#fee2e2",color:"#991b1b",borderRadius:8}}>{error}</p>}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:18}}>
+              <button type="button" onClick={()=>setVisadoAbierto(null)} disabled={guardandoVisado} style={{padding:"11px 16px",border:"1px solid #cbd5e1",borderRadius:8,background:"#fff"}}>Cancelar</button>
+              <button type="button" onClick={()=>void guardarVisado("RECHAZADO")} disabled={guardandoVisado} style={{padding:"11px 16px",border:0,borderRadius:8,background:"#dc2626",color:"#fff",fontWeight:700}}>{guardandoVisado?"Guardando…":"Rechazar visado"}</button>
+              <button type="button" onClick={()=>void guardarVisado("APROBADO")} disabled={guardandoVisado} style={{padding:"11px 16px",border:0,borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700}}>{guardandoVisado?"Guardando…":"Aprobar visado"}</button>
+            </div>
           </section>
         </div>;
       })()}
