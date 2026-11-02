@@ -396,50 +396,29 @@ export default function OperacionesPage() {
         return;
       }
 
-      const {
-        data: workflowsDB,
-        error: errorWorkflows,
-      } = await supabase
-        .from("operacion_workflow")
-        .select(
-          `
-          id,
-          operacion_id,
-          workflow_id,
-          etapa_actual_id,
-          estado,
-          workflow_etapas(
-            orden,
-            nombre
-          )
-        `
-        );
+      // RPC segura: devuelve workflow + etapa en una sola lectura autorizada.
+      const idsOperaciones = (operacionesDB || []).map((item) => item.id);
+      const { data: workflowsDB, error: errorWorkflows } = idsOperaciones.length
+        ? await supabase.rpc("obtener_workflows_operaciones_usuario", {
+            p_operacion_ids: idsOperaciones,
+          })
+        : { data: [], error: null };
 
       if (errorWorkflows) {
-        console.error(errorWorkflows);
-        setError(
-          `No se pudo cargar el workflow: ${errorWorkflows.message}`
-        );
+        console.error("No se pudieron cargar los workflows:", errorWorkflows);
+        setError(`No se pudo cargar el workflow: ${errorWorkflows.message}`);
         return;
       }
 
-      const workflowsNormalizados: Workflow[] = [];
-
-      for (const item of workflowsDB || []) {
-        const etapa = Array.isArray(item.workflow_etapas)
-          ? item.workflow_etapas[0]
-          : item.workflow_etapas;
-
-        workflowsNormalizados.push({
-          id: item.id,
-          operacion_id: item.operacion_id,
-          workflow_id: item.workflow_id,
-          etapa_actual_id: item.etapa_actual_id,
-          estado: item.estado,
-          etapa_actual: etapa?.nombre || "Sin etapa",
-          orden: etapa?.orden || 1,
-        });
-      }
+      const workflowsNormalizados: Workflow[] = (workflowsDB || []).map((item: any) => ({
+        id: item.id,
+        operacion_id: item.operacion_id,
+        workflow_id: item.workflow_id,
+        etapa_actual_id: item.etapa_actual_id,
+        estado: item.estado,
+        etapa_actual: item.nombre_etapa || "Etapa sin nombre",
+        orden: Number(item.orden || 0),
+      }));
 
       const { data: monedaRows, error: monedaError } = await supabase.from("monedas").select("id,codigo");
       if (monedaError) console.error("No se pudieron cargar las monedas:", monedaError);
@@ -2730,6 +2709,18 @@ Firma: ______________________________
             <p><strong>Destino:</strong> {metaDetalle.destino}</p>
             <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
             <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
+            <section aria-label="Progreso de la operación" style={{marginTop:18,padding:16,border:"1px solid #dbe3ee",borderRadius:12,background:"#f8fafc"}}>
+              <h3 style={{margin:"0 0 12px",fontSize:16}}>Etapas de la operación</h3>
+              <ol style={{listStyle:"none",padding:0,margin:0,display:"grid",gap:8}}>
+                {ETAPAS.map((etapa,index)=>{const orden=index+1;const completada=ordenDetalle>orden;const actual=ordenDetalle===orden;return <li key={etapa} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:actual?"#dbeafe":completada?"#dcfce7":"#fff",border:actual?"1px solid #60a5fa":completada?"1px solid #86efac":"1px solid #e2e8f0",color:actual?"#1d4ed8":completada?"#166534":"#64748b"}}>
+                  <span aria-hidden="true" style={{fontWeight:800,minWidth:22}}>{completada?"✓":actual?"●":"○"}</span>
+                  <span style={{flex:1,fontWeight:actual?700:500}}>{etapa}</span>
+                  <small>{completada?"Completada":actual?"Etapa actual":"Pendiente"}</small>
+                </li>})}
+              </ol>
+              {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
+              {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
+            </section>
             {ordenDetalle === 2 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito previo al contrato</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Una vez confirmado el acuerdo, se abona por transferencia bancaria y queda retenida hasta el cierre de la operación.</p>
@@ -2741,7 +2732,7 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>La transferencia se valida administrativamente. El envío del comprobante no equivale a confirmación del pago ni libera fondos.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 2 ? "Verificar comisión y continuar a Visado" : "Abrir acción de la etapa"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Verificar comisión y continuar a Visado" : ordenDetalle === 3 ? "Registrar visado de mercadería" : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
