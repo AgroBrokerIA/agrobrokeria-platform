@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
+import { containsContactData, redactContactData } from "@/lib/mensajes/privacy";
 
 type Mensaje = {
   id: string;
@@ -184,6 +185,11 @@ export default function PanelMensajes({
 
   async function enviarMensaje() {
     const contenido = texto.trim();
+
+    if (containsContactData(contenido)) {
+      setError("Por seguridad, no se pueden compartir teléfonos, correos, enlaces ni direcciones antes del contrato definitivo.");
+      return;
+    }
 
     if (
       !contenido ||
@@ -527,7 +533,7 @@ export default function PanelMensajes({
                       wordBreak: "break-word",
                     }}
                   >
-                    {traducciones[m.id] || m.mensaje}
+                    {redactContactData(traducciones[m.id] || m.mensaje)}
                   </div>
 
                   {traducciones[m.id] ? (
