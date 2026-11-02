@@ -24,7 +24,6 @@ type Oferta = {
   empresa_publicante: string | null;
   cuit_publicante: string | null;
   operacion_id: string;
-  publicacion_id: string;
   empresa_ofertante?: Empresa | null;
 };
 
@@ -53,6 +52,7 @@ type OfertaDB = {
   observaciones: string | null;
   estado: string;
   operacion_id: string;
+  publicacion_id: string | null;
   operaciones:
     | {
         codigo: string | null;
