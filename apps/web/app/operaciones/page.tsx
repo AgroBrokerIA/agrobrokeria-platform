@@ -1843,60 +1843,9 @@ Firma: ______________________________
         }
       }
 
-      /*
-       * =========================================================
-       * VALIDACIONES PARA CONFIRMAR ACUERDO COMERCIAL
-       * =========================================================
-       *
-       * El Acuerdo Comercial puede confirmarse con o sin
-       * intermediario externo.
-       *
-       * La comisión de AgroBrokerIA es siempre automática:
-       * USD 1 por tonelada.
-       *
-       * Si existe un intermediario externo, su comisión se
-       * registra y liquida por separado.
-       */
-      if (confirmar) {
-        const comisionAgroBrokerEsperada =
-          Number(operacion.cantidad_tn || 0);
-
-        const {
-          data: controlAgroBroker,
-          error: errorControlAgroBroker,
-        } = await supabase
-          .from("operacion_control_comercial")
-          .select("id, comision_monto, comision_moneda")
-          .eq("operacion_id", operacion.id)
-          .maybeSingle();
-
-        if (errorControlAgroBroker) {
-          setMensaje("");
-          setError(
-            `No se pudo verificar la comisión de AgroBrokerIA: ${errorControlAgroBroker.message}`
-          );
-          return;
-        }
-
-        const comisionAgroBrokerRegistrada =
-          Number(controlAgroBroker?.comision_monto ?? 0);
-
-        const monedaAgroBroker =
-          controlAgroBroker?.comision_moneda;
-
-        if (
-          comisionAgroBrokerRegistrada !== comisionAgroBrokerEsperada ||
-          monedaAgroBroker !== "USD"
-        ) {
-          setMensaje("");
-          setError(
-            `No se puede confirmar el Acuerdo Comercial: la comisión de AgroBrokerIA debe ser de USD ${comisionAgroBrokerEsperada.toFixed(
-              2
-            )} (USD 1 por tonelada).`
-          );
-          return;
-        }
-      }
+      // La comisión de USD 1/TN se inicializa en guardar_acuerdo_comercial.
+      // No se consulta ni se exige un registro previo desde el frontend:
+      // confirmar el acuerdo define la comisión, pero no implica pagarla.
 
       const estado = confirmar
         ? "CONFIRMADO"
