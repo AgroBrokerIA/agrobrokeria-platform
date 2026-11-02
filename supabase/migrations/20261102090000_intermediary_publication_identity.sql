@@ -69,7 +69,7 @@ BEGIN
     INTO v_company, v_email, v_tipo_usuario
   FROM public.profiles WHERE id = v_uid;
 
-  IF v_tipo_usuario IN ('intermediario','intermediaria') THEN
+  IF v_tipo_usuario IN ('intermediario','intermediaria','comisionista','corredor','corredora','comprador','compradora','vendedor','vendedora','productor','productora') THEN
     -- El intermediario se identifica como publicador; nunca se usa una empresa
     -- interna o de contexto como vendedor contractual.
     v_empresa := NULL;
@@ -84,7 +84,7 @@ BEGIN
   END IF;
 
   -- Solo el rol intermediario puede publicar sin una empresa vendedora asociada.
-  IF v_empresa IS NULL AND v_tipo_usuario NOT IN ('intermediario','intermediaria') THEN
+  IF v_empresa IS NULL AND v_tipo_usuario NOT IN ('intermediario','intermediaria','comisionista','corredor','corredora','comprador','compradora','vendedor','vendedora','productor','productora') THEN
     RAISE EXCEPTION 'EMPRESA_ACTIVA_REQUERIDA';
   END IF;
 
