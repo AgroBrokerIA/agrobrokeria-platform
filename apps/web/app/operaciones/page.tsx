@@ -568,91 +568,68 @@ export default function OperacionesPage() {
       // registradas antes de ejecutar esta lógica.
       // =========================================================
 
-      const { data: controlesFirmas, error: errorControlesFirmas } =
-        await supabase
-          .from("operacion_control_comercial")
-          .select(
-            "operacion_id, vendedor_firma_estado, comprador_firma_estado, intermediario_firma_estado"
-          );
+      for (const workflow of workflowsNormalizados) {
+        if (workflow.orden !== 5) continue;
 
-      if (errorControlesFirmas) {
-        console.error(errorControlesFirmas);
-      } else {
-        for (const workflow of workflowsNormalizados) {
-          if (workflow.orden !== 5) {
-            continue;
-          }
+        // La misma fuente de verdad que valida avanzar_operacion_workflow:
+        // contratos confirmados + contrato_firmantes. No usar los antiguos
+        // flags de operacion_control_comercial para habilitar Fondos.
+        const { data: contratosFirmados, error: contratosError } = await supabase
+          .from("contratos")
+          .select("id")
+          .eq("operacion_id", workflow.operacion_id)
+          .eq("estado", "CONFIRMADO")
+          .limit(1);
 
-          const control = (controlesFirmas || []).find(
-            (item) => item.operacion_id === workflow.operacion_id
-          );
+        if (contratosError || !contratosFirmados?.length) {
+          if (contratosError) console.error("No se pudo consultar el contrato confirmado:", contratosError);
+          continue;
+        }
 
-          if (!control) {
-            continue;
-          }
+        const contratoId = contratosFirmados[0].id;
+        const [{ data: participantesFirma, error: participantesError }, { data: firmasDB, error: firmasError }] = await Promise.all([
+          supabase.from("operacion_participantes").select("rol").eq("operacion_id", workflow.operacion_id).in("rol", ["VENDEDOR", "COMPRADOR", "INTERMEDIARIO"]),
+          supabase.from("contrato_firmantes").select("rol,firmado").eq("contrato_id", contratoId).in("rol", ["VENDEDOR", "COMPRADOR", "INTERMEDIARIO"]),
+        ]);
 
-          const vendedorFirmado =
-            control.vendedor_firma_estado === "FIRMADO";
+        if (participantesError || firmasError) {
+          console.error("No se pudieron verificar las firmas requeridas:", participantesError || firmasError);
+          continue;
+        }
 
-          const compradorFirmado =
-            control.comprador_firma_estado === "FIRMADO";
+        const rolesRequeridos = [...new Set((participantesFirma || []).map((p: any) => String(p.rol).toUpperCase()))];
+        const firmasPorRol = new Map((firmasDB || []).map((firma: any) => [String(firma.rol).toUpperCase(), firma.firmado === true]));
+        const todasFirmasCompletas = rolesRequeridos.length >= 2 && rolesRequeridos.every((rol) => firmasPorRol.get(rol) === true);
 
-          const intermediarioCumplido =
-            control.intermediario_firma_estado === "FIRMADO" ||
-            control.intermediario_firma_estado === "NO_CORRESPONDE";
+        if (!todasFirmasCompletas) continue;
 
-          if (
-            !vendedorFirmado ||
-            !compradorFirmado ||
-            !intermediarioCumplido
-          ) {
-            continue;
-          }
+        const { data: etapaFondos, error: errorEtapaFondos } = await supabase
+          .from("workflow_etapas")
+          .select("id")
+          .eq("workflow_id", workflow.workflow_id)
+          .eq("orden", 6)
+          .maybeSingle();
 
-          const { data: etapaFondos, error: errorEtapaFondos } =
-            await supabase
-              .from("workflow_etapas")
-              .select("id, nombre, orden")
-              .eq("workflow_id", workflow.workflow_id)
-              .eq("orden", 6)
-              .maybeSingle();
+        if (errorEtapaFondos || !etapaFondos) {
+          console.error("No se pudo localizar la etapa Fondos:", errorEtapaFondos);
+          continue;
+        }
 
-          if (errorEtapaFondos || !etapaFondos) {
-            console.error(
-              "No se pudo localizar la etapa Fondos:",
-              errorEtapaFondos
-            );
-            continue;
-          }
+        const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
+        if (errorAvanceFondos) {
+          console.error("No se pudo avanzar la operación a Fondos:", errorAvanceFondos);
+          continue;
+        }
 
-          const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
-
-          if (errorAvanceFondos) {
-            console.error(
-              "No se pudo avanzar la operación a Fondos:",
-              errorAvanceFondos
-            );
-            continue;
-          }
-
-          console.log(
-            `✅ Operación ${workflow.operacion_id} pasó automáticamente de Firmas a Fondos.`
-          );
-
-          try {
-            await notificarParticipantesOperacion({
-              operacionId: workflow.operacion_id,
-              titulo: "💰 Fondos",
-              mensaje:
-                `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a la etapa Fondos.`,
-              tipo: "FONDOS",
-            });
-          } catch (errorNotificacion) {
-            console.error(
-              "ERROR NOTIFICACIÓN FIRMAS → FONDOS:",
-              errorNotificacion
-            );
-          }
+        try {
+          await notificarParticipantesOperacion({
+            operacionId: workflow.operacion_id,
+            titulo: "💰 Fondos",
+            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a la etapa Fondos.`,
+            tipo: "FONDOS",
+          });
+        } catch (errorNotificacion) {
+          console.error("ERROR NOTIFICACIÓN FIRMAS → FONDOS:", errorNotificacion);
         }
       }
     } catch (e) {
