@@ -24,6 +24,7 @@ type Oferta = {
   empresa_publicante: string | null;
   cuit_publicante: string | null;
   operacion_id: string;
+  publicacion_id: string;
   empresa_ofertante?: Empresa | null;
 };
 
@@ -188,6 +189,7 @@ export default function OfertasRecibidasPage() {
           observaciones,
           estado,
           operacion_id,
+          publicacion_id,
           operaciones(
             codigo,
             publicacion_venta_id,
@@ -238,7 +240,7 @@ export default function OfertasRecibidasPage() {
 
         // La publicación propia puede ser de compra o de venta.
         const publicacion = (publicaciones as PublicacionDB[]).find(
-          (item) => item.id === operacion.publicacion_venta_id || item.id === operacion.publicacion_compra_id
+          (item) => item.id === ofertaDB.publicacion_id || item.id === operacion.publicacion_venta_id || item.id === operacion.publicacion_compra_id
         );
         const publicacionId = publicacion?.id;
         if (!publicacionId) continue;
