@@ -2583,12 +2583,13 @@ Firma: ______________________________
     const workflow = obtenerWorkflow(operacion.id);
     const etapa = workflow?.etapa_actual || "";
     const estadoVista =
-      workflow?.orden === 1 ? "En negociación" :
-      workflow?.orden === 4 || workflow?.orden === 5 ? "En contrato" :
-      workflow?.orden === 7 || workflow?.orden === 8 ? "En logística" :
-      workflow?.orden === 9 || /CERR|FINAL/i.test(operacion.estado) ? "Finalizadas" :
       /CANCEL/i.test(operacion.estado) ? "Canceladas" :
-      "En liquidación";
+      /CERR|FINAL/i.test(operacion.estado) || workflow?.orden === 10 ? "Finalizadas" :
+      workflow?.orden === 1 || !workflow && operacion.estado === "NEGOCIACION" ? "En negociación" :
+      workflow?.orden === 2 || workflow?.orden === 3 || workflow?.orden === 4 || workflow?.orden === 5 ? "En contrato" :
+      workflow?.orden === 6 || workflow?.orden === 7 || workflow?.orden === 8 ? "En logística" :
+      workflow?.orden === 9 ? "En liquidación" :
+      "Sin etapa";
     const meta = operacionMeta[operacion.id] || { producto: "", origen: "", destino: "", contraparte: "" };
     const texto = `${operacion.codigo} ${operacion.tipo_operacion} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
@@ -2605,10 +2606,10 @@ Firma: ______________________________
       (!filtroHasta || fecha <= filtroHasta);
   });
   const totalVolumen = operaciones.reduce((a,o)=>a+o.cantidad_tn,0);
-  const enNegociacion = operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===1).length;
+  const enNegociacion = operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===1 || (!obtenerWorkflow(o.id) && o.estado==="NEGOCIACION")).length;
   const enContrato = operaciones.filter(o=>[4,5].includes(obtenerWorkflow(o.id)?.orden||0)).length;
   const enLogistica = operaciones.filter(o=>[7,8].includes(obtenerWorkflow(o.id)?.orden||0)).length;
-  const enLiquidacion = operaciones.filter(o=>[6,9].includes(obtenerWorkflow(o.id)?.orden||0)).length;
+  const enLiquidacion = operaciones.filter(o=>[9].includes(obtenerWorkflow(o.id)?.orden||0)).length;
   const limpiarFiltros=()=>{setFiltroEstado("");setFiltroTipo("");setFiltroOrigen("");setFiltroDestino("");setFiltroProducto("");setFiltroMinVol("");setFiltroMaxVol("");setFiltroMinPrecio("");setFiltroMaxPrecio("");setFiltroDesde("");setFiltroHasta("")};
 
   return (
@@ -2643,7 +2644,7 @@ Firma: ______________________________
           {loading ? <div className="operations-empty">Cargando operaciones…</div> :
             operacionesFiltradas.map((operacion)=>{
               const workflow=obtenerWorkflow(operacion.id), orden=workflow?.orden||0;
-              const estado=orden===1?"En negociación":([4,5].includes(orden)?"En contrato":([7,8].includes(orden)?"En logística":([9].includes(orden)||/CERR|FINAL/i.test(operacion.estado)?"Finalizada":/CANCEL/i.test(operacion.estado)?"Cancelada":"En liquidación")));
+              const estado=/CANCEL/i.test(operacion.estado)?"Cancelada":(/CERR|FINAL/i.test(operacion.estado)||orden===10?"Finalizada":(orden===1||(!workflow&&operacion.estado==="NEGOCIACION")?"En negociación":([2,3,4,5].includes(orden)?"En contrato":([6,7,8].includes(orden)?"En logística":orden===9?"En liquidación":"Sin etapa"))));
               const estadoClass=estado.toLowerCase().replaceAll(" ","-").replace("ó","o");
               const meta=operacionMeta[operacion.id] || {producto:"Producto registrado",origen:"No informado",destino:"No informado",contraparte:"No informado"};
               const action=orden===1?()=>iniciarAcuerdoComercial(operacion.id):orden===2?()=>abrirAcuerdo(operacion):orden===3?()=>abrirVisado(operacion):orden===4?()=>abrirContrato(operacion):orden===7?()=>iniciarLogistica(operacion.id):undefined;
