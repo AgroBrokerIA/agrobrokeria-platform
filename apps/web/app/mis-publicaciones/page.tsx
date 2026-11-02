@@ -14,10 +14,10 @@ type Publicacion = {
   puerto: string;
   puertos?: string[] | null;
   lugares_recepcion?: string[] | null;
+  calidad?: string | null;
+  observaciones?: string | null;
   provincia: string;
-  productos?: {
-    nombre: string;
-  }[] | null;
+  productos?: { nombre: string } | { nombre: string }[] | null;
 };
 
 export default function MisPublicacionesPage() {
@@ -220,7 +220,7 @@ export default function MisPublicacionesPage() {
                 <div className="publication-card-top">
                   <div>
                     <div className="publication-tags"><span className={p.tipo === "DEMANDA" ? "demand-tag" : "sale-tag"}>{p.tipo}</span><span className={pausada ? "paused-tag" : "active-tag"}>● {p.estado}</span></div>
-                    <h2>{p.productos?.[0]?.nombre ?? "Commodity"}</h2>
+                    <h2>{(Array.isArray(p.productos) ? p.productos[0]?.nombre : p.productos?.nombre) ?? "Producto sin identificar"}</h2>
                     <p>{p.provincia || "Sin provincia"}{p.puerto ? ` · ${p.puerto}` : ""}{Array.isArray(p.puertos) && p.puertos.length > 1 ? ` · +${p.puertos.length - 1} puertos` : ""}</p>
                   </div>
                   <div className="publication-price"><strong>{monedas[p.moneda_id ?? 0] || "Moneda no informada"} {Number(p.precio_tn).toLocaleString("es-AR")}</strong><span>/ TN</span></div>
@@ -229,7 +229,7 @@ export default function MisPublicacionesPage() {
                   <div><span>Cantidad</span><strong>{Number(p.cantidad_tn).toLocaleString("es-AR")} TN</strong></div>
                   <div><span>Tipo</span><strong>{p.tipo}</strong></div>
                   <div><span>Provincia</span><strong>{p.provincia || "—"}</strong></div>
-                  <div><span>Puertos / entrega</span><strong>{Array.isArray(p.puertos) && p.puertos.length ? p.puertos.slice(0, 3).join(" · ") + (p.puertos.length > 3 ? ` · +${p.puertos.length - 3}` : "") : p.puerto || "—"}</strong></div><div><span>Lugares de recepción</span><strong>{Array.isArray(p.lugares_recepcion) && p.lugares_recepcion.length ? p.lugares_recepcion.join(" · ") : "—"}</strong></div>
+                  <div><span>Puertos / entrega</span><strong>{Array.isArray(p.puertos) && p.puertos.length ? p.puertos.slice(0, 3).join(" · ") + (p.puertos.length > 3 ? ` · +${p.puertos.length - 3}` : "") : p.puerto || "—"}</strong></div><div><span>Lugares de recepción</span><strong>{Array.isArray(p.lugares_recepcion) && p.lugares_recepcion.length ? p.lugares_recepcion.join(" · ") : "—"}</strong></div><div><span>Calidad</span><strong>{p.calidad?.trim() || "No especificada"}</strong></div><div className="publication-observations"><span>Observaciones y condiciones</span><strong style={{whiteSpace:"pre-wrap"}}>{p.observaciones?.trim() || "Sin observaciones adicionales."}</strong></div>
                 </div>
                 <div className="publication-actions">
                   <Link href={`/nueva-publicacion?id=${p.id}`} className="secondary-action">Editar</Link>
