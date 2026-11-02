@@ -73,7 +73,8 @@ async function obtenerEmpresaDelUsuario(): Promise<string | null> {
 
   // El rol intermediario publica con su identidad personal, aunque exista
   // un contexto interno de plataforma asociado al perfil.
-  if (["comisionista", "intermediario", "intermediaria"].includes(String(profile?.tipo_usuario ?? "").trim().toLowerCase())) return null;
+  const rol = String(profile?.tipo_usuario ?? "").trim().toLowerCase();
+  if (rol.includes("comisionista") || rol.includes("intermediario")) return null;
 
   if (profile?.active_company_id) {
     // El perfil guarda el ID del directorio global (companies), mientras que
