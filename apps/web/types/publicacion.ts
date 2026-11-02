@@ -1,7 +1,9 @@
 export interface Publicacion {
   id?: string;
 
-  empresa_id: string;
+  empresa_id?: string | null;
+
+  publicador_profile_id?: string | null;
 
   tipo: "COMPRA" | "VENTA";
 
