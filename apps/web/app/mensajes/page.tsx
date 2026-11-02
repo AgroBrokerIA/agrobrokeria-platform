@@ -89,6 +89,18 @@ export default function MensajesPage(){
  useEffect(()=>{if(seleccionada?.tipo==="operacion")void cargarEmpresa(seleccionada.operacion_id);else setEmpresa(null)},[seleccionada?.operacion_id,seleccionada?.tipo]);
  async function cargarEmpresa(operacionId:string){
   setEmpresa(null);
+  // Contact details are intentionally not requested from the server before
+  // the operation reaches the definitive-contract workflow stage (order 4).
+  const {data:workflow,error:workflowError}=await supabase.from("operacion_workflow")
+   .select("etapa_actual_id").eq("operacion_id",operacionId).maybeSingle();
+  if(workflowError){console.error("No se pudo comprobar la etapa contractual",workflowError);setEmpresa({nombre:"Participante de la operación",rol:"Participante",pais:"",verificada:false,confiable:false,productos:[],direccion:"Disponible al llegar a Contrato Definitivo",telefono:"Disponible al llegar a Contrato Definitivo",email:"Disponible al llegar a Contrato Definitivo"});return;}
+  const {data:etapa}=workflow?.etapa_actual_id
+   ? await supabase.from("workflow_etapas").select("orden").eq("id",workflow.etapa_actual_id).maybeSingle()
+   : {data:null};
+  if(!etapa || Number(etapa.orden)<4){
+   setEmpresa({nombre:"Participante de la operación",rol:"Participante",pais:"",verificada:false,confiable:false,productos:[],direccion:"Disponible al llegar a Contrato Definitivo",telefono:"Disponible al llegar a Contrato Definitivo",email:"Disponible al llegar a Contrato Definitivo"});
+   return;
+  }
   const {data,error}=await supabase.rpc("obtener_empresa_participante_mensajes",{p_operacion_id:operacionId});
   if(error){console.error("No se pudo cargar la empresa participante",error);setError("No se pudo cargar la información de la empresa participante.");return;}
   const x=Array.isArray(data)?data[0]:data;
