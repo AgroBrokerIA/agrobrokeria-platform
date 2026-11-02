@@ -46,6 +46,25 @@ BEGIN
     END IF;
   END IF;
 
+  -- Compatibilidad con perfiles heredados: active_company_id puede apuntar directamente
+  -- a empresas, o la empresa puede estar vinculada a la cuenta histórica por email.
+  IF v_empresa IS NULL AND v_company IS NOT NULL THEN
+    SELECT id INTO v_empresa
+    FROM public.empresas
+    WHERE id = v_company AND activa = true
+    LIMIT 1;
+  END IF;
+
+  IF v_empresa IS NULL AND v_tipo_usuario NOT IN ('intermediario','intermediaria','comisionista') THEN
+    SELECT e.id INTO v_empresa
+    FROM public.cuentas c
+    JOIN public.empresas e ON e.cuenta_id = c.id
+    WHERE lower(c.email) = lower(v_email)
+      AND e.activa = true
+    ORDER BY e.id
+    LIMIT 1;
+  END IF;
+
   -- Solo el rol intermediario puede publicar sin una empresa vendedora asociada.
   IF v_empresa IS NULL AND v_tipo_usuario NOT IN ('intermediario','intermediaria','comisionista') THEN
     RAISE EXCEPTION 'EMPRESA_ACTIVA_REQUERIDA';
