@@ -2783,9 +2783,9 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
-            {ordenDetalle === 3 && visadoAprobado(controlesComerciales[detalleOperacion.id]) && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+            {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito posterior al visado y previo al contrato definitivo</h3>
-              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Con el visado aprobado, se abona por transferencia bancaria antes de preparar el contrato definitivo. Una vez verificada, queda retenida hasta el cierre de la operación.</p>
+              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria después del visado y antes del contrato definitivo. Una vez verificada, queda retenida hasta el cierre.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{visadoAprobado(controlesComerciales[detalleOperacion.id])?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado de aprobación no se pudo confirmar en esta vista. Los datos bancarios se muestran, pero el servidor validará el visado al enviar el comprobante."}</p>
               <section aria-label="Datos bancarios de AgroBrokerIA" style={{background:"#fff",border:"1px solid #fcd34d",borderRadius:10,padding:14,marginBottom:14}}>
                 <h4 style={{margin:"0 0 10px",fontSize:15}}>Datos bancarios para abonar la comisión</h4>
                 {cargandoCuentaBancaria ? <p style={{margin:0}}>Cargando cuenta bancaria…</p> : cuentaBancariaPlataforma ? <>
