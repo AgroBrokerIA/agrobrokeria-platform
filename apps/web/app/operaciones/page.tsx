@@ -269,6 +269,7 @@ export default function OperacionesPage() {
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
+  const [detalleVisadoAprobado, setDetalleVisadoAprobado] = useState(false);
 
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
@@ -931,7 +932,7 @@ export default function OperacionesPage() {
 
   async function cargarControlComercial(
     operacion: Operacion
-  ) {
+  ): Promise<ControlComercialData | null> {
     const operacionId = operacion.id;
     const { data, error } = await supabase
       .from("operacion_control_comercial")
@@ -944,33 +945,18 @@ export default function OperacionesPage() {
       setError(
         `No se pudo cargar el control comercial: ${error.message}`
       );
-      return;
+      return null;
     }
 
     if (data) {
+      const controlNormalizado = { ...data, comision_monto: data.comision_monto == null ? null : Number(data.comision_monto), cantidad_cuotas: data.cantidad_cuotas == null ? null : Number(data.cantidad_cuotas), tasa_financiacion: data.tasa_financiacion == null ? null : Number(data.tasa_financiacion) } as ControlComercialData;
       setControlesComerciales((actual) => ({
         ...actual,
-        [operacionId]: {
-          ...data,
-          comision_monto:
-            data.comision_monto !== null &&
-            data.comision_monto !== undefined
-              ? Number(data.comision_monto)
-              : null,
-          cantidad_cuotas:
-            data.cantidad_cuotas !== null &&
-            data.cantidad_cuotas !== undefined
-              ? Number(data.cantidad_cuotas)
-              : null,
-          tasa_financiacion:
-            data.tasa_financiacion !== null &&
-            data.tasa_financiacion !== undefined
-              ? Number(data.tasa_financiacion)
-              : null,
-        },
+        [operacionId]: controlNormalizado,
       }));
+      return controlNormalizado;
     }
-
+    return null;
   }
 
   // La comisión de AgroBroker IA es fija y automática: USD 1 por tonelada.
@@ -2704,7 +2690,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{await cargarControlComercial(operacion);setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{const control=await cargarControlComercial(operacion);setDetalleVisadoAprobado(visadoAprobado(control));setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2785,7 +2771,7 @@ Firma: ______________________________
             </section>
             {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito posterior al visado y previo al contrato definitivo</h3>
-              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria después del visado y antes del contrato definitivo. Una vez verificada, queda retenida hasta el cierre.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{visadoAprobado(controlesComerciales[detalleOperacion.id])?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado de aprobación no se pudo confirmar en esta vista. Los datos bancarios se muestran, pero el servidor validará el visado al enviar el comprobante."}</p>
+              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria después del visado y antes del contrato definitivo. Una vez verificada, queda retenida hasta el cierre.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{detalleVisadoAprobado?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado del visado debe confirmarse antes de aceptar el comprobante."}</p>
               <section aria-label="Datos bancarios de AgroBrokerIA" style={{background:"#fff",border:"1px solid #fcd34d",borderRadius:10,padding:14,marginBottom:14}}>
                 <h4 style={{margin:"0 0 10px",fontSize:15}}>Datos bancarios para abonar la comisión</h4>
                 {cargandoCuentaBancaria ? <p style={{margin:0}}>Cargando cuenta bancaria…</p> : cuentaBancariaPlataforma ? <>
@@ -2808,7 +2794,7 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Verificar comisión y continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (detalleVisadoAprobado ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
