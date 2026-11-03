@@ -762,6 +762,42 @@ export default function OperacionesPage() {
     }
   }
 
+  async function registrarPruebaComision(operacion: Operacion) {
+    setError("");
+    setMensaje("");
+    if (!comisionReferenciaTransferencia.trim()) { setError("Ingresá una referencia identificatoria para la simulación."); return; }
+    if (!comisionComprobanteFile) { setError("Adjuntá una imagen o archivo de prueba."); return; }
+    const allowedTypes = ["application/pdf", "image/jpeg", "image/png"];
+    if (!allowedTypes.includes(comisionComprobanteFile.type)) { setError("El archivo de prueba debe ser PDF, JPG o PNG."); return; }
+    if (comisionComprobanteFile.size <= 0 || comisionComprobanteFile.size > 10 * 1024 * 1024) { setError("El archivo debe pesar entre 1 byte y 10 MB."); return; }
+    setEnviandoComprobanteComision(true);
+    let testPath: string | null = null;
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error("Necesitás iniciar sesión.");
+      const safeName = comisionComprobanteFile.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
+      testPath = `${operacion.id}/comisiones-prueba/${user.id}-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("documentos-operacion").upload(testPath, comisionComprobanteFile, { contentType: comisionComprobanteFile.type, upsert: false });
+      if (uploadError) throw uploadError;
+      const { error: rpcError } = await supabase.rpc("registrar_simulacion_comision_plataforma", {
+        p_operacion_id: operacion.id,
+        p_referencia_prueba: comisionReferenciaTransferencia.trim(),
+        p_archivo_path: testPath,
+        p_nombre_archivo: comisionComprobanteFile.name,
+        p_tamano_bytes: comisionComprobanteFile.size,
+      });
+      if (rpcError) throw rpcError;
+      setMensaje("SIMULACIÓN REGISTRADA. No se creó un pago, una retención ni un movimiento económico real. Podés revisar el circuito de prueba desde administración.");
+      setComisionReferenciaTransferencia("");
+      setComisionComprobanteFile(null);
+    } catch (e) {
+      if (testPath) await supabase.storage.from("documentos-operacion").remove([testPath]);
+      setError(e instanceof Error ? e.message : "No se pudo registrar la simulación.");
+    } finally {
+      setEnviandoComprobanteComision(false);
+    }
+  }
+
   async function iniciarAcuerdoComercial(operacionId: string) {
     setError("");
     setMensaje("");
@@ -2792,6 +2828,11 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",margin:"0 0 12px"}}>{comisionComprobanteFile ? `Archivo seleccionado: ${comisionComprobanteFile.name}` : "Formatos permitidos: PDF, JPG o PNG. Tamaño máximo: 10 MB."}</p>
               <button type="button" disabled={enviandoComprobanteComision || cargandoCuentaBancaria || !cuentaBancariaPlataforma || !comisionComprobanteFile} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer",opacity:enviandoComprobanteComision || !cuentaBancariaPlataforma || !comisionComprobanteFile ? 0.6 : 1}}>{enviandoComprobanteComision?"Subiendo y enviando…":"Enviar comprobante de comisión"}</button>
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
+              <div style={{marginTop:14,padding:12,border:"1px dashed #d97706",borderRadius:8,background:"#fffbeb"}}>
+                <strong style={{display:"block",color:"#92400e",marginBottom:6}}>¿Estás probando el sistema?</strong>
+                <p style={{fontSize:12,color:"#78350f",margin:"0 0 10px"}}>Esta opción guarda el archivo en un circuito aislado de pruebas. No registra pagos, no crea retenciones y no habilita el contrato. Disponible únicamente para administradores de plataforma.</p>
+                <button type="button" disabled={enviandoComprobanteComision || !comisionComprobanteFile} onClick={()=>registrarPruebaComision(detalleOperacion)} style={{padding:"9px 12px",border:"1px solid #d97706",borderRadius:8,background:"#fff",color:"#92400e",fontWeight:700,cursor:"pointer",opacity:enviandoComprobanteComision || !comisionComprobanteFile ? 0.6 : 1}}>Registrar simulación de prueba (sin pago real)</button>
+              </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (detalleVisadoAprobado ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
