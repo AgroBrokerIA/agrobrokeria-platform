@@ -706,67 +706,6 @@ export default function OperacionesPage() {
     return true;
   }
 
-  // Bypass temporal de QA: solo administradores de plataforma. No crea pagos,
-  // retenciones ni cambia el estado de comisión; se debe retirar al terminar las pruebas.
-  async function avanzarALiberacionOperativa(operacion: Operacion) {
-    setError(""); setMensaje("");
-    const workflow = obtenerWorkflow(operacion.id);
-    if (!workflow || workflow.orden !== 6) { setError("La operación debe estar en Firmas."); return false; }
-    const { data: control, error: controlError } = await supabase.from("operacion_control_comercial")
-      .select("fondos_estado,comision_estado").eq("operacion_id",operacion.id).single();
-    if (controlError) { setError("No se pudo consultar el estado de fondos: "+controlError.message); return false; }
-    if (control.fondos_estado !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(String(control.comision_estado||""))) {
-      setError("Antes de la liberación operativa, Administración debe confirmar Fondos LIBERADOS y comisión AgroBrokerIA RETENIDA.");
-      return false;
-    }
-    const { data: parties, error: partiesError } = await supabase.from("operacion_participantes")
-      .select("rol").eq("operacion_id",operacion.id).in("rol",["VENDEDOR","COMPRADOR"]);
-    if (partiesError) { setError("No se pudieron verificar las partes: "+partiesError.message); return false; }
-    const { data: signedContracts, error: signedError } = await supabase.from("contratos")
-      .select("id").eq("operacion_id",operacion.id).eq("estado","CONFIRMADO");
-    if (signedError) { setError("No se pudo consultar el contrato: "+signedError.message); return false; }
-    const contractIds=(signedContracts||[]).map((c:any)=>c.id);
-    const { data: signers, error: signersError } = contractIds.length
-      ? await supabase.from("contrato_firmantes").select("rol,firmado").in("contrato_id",contractIds).in("rol",["VENDEDOR","COMPRADOR"])
-      : {data:[],error:null};
-    if (signersError) { setError("No se pudieron verificar las firmas: "+signersError.message); return false; }
-    const required = new Set((parties||[]).map((p:any)=>p.rol));
-    const signed = new Set((signers||[]).filter((x:any)=>x.firmado===true).map((x:any)=>x.rol));
-    if (!["VENDEDOR","COMPRADOR"].every(role=>required.has(role)&&signed.has(role))) {
-      window.location.href="/contratos?tab=firmas";
-      return false;
-    }
-    const { data: next, error: nextError } = await supabase.from("workflow_etapas").select("id")
-      .eq("workflow_id",workflow.workflow_id).eq("orden",7).maybeSingle();
-    if (nextError||!next) { setError("No se encontró la etapa Liberación operativa."); return false; }
-    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id,next.id);
-    if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Firmas completas. La operación pasó a Liberación operativa.");
-    await cargarOperaciones(); return true;
-  }
-
-  async function omitirComisionParaPruebas(operacion: Operacion) {
-    setError(""); setMensaje("");
-    const { data: { user }, error: authError } = await supabase.auth.getUser();
-    if (authError || !user) { setError("No se pudo validar la sesión administrativa."); return false; }
-    const { data: admin, error: adminError } = await supabase
-      .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
-    if (adminError || !admin) { setError("Esta opción temporal está disponible únicamente para administradores de AgroBrokerIA."); return false; }
-    // QA temporal: el administrador puede saltar la etapa completa de visado/comisión
-    // para validar contrato y etapas posteriores. No modifica el estado del visado ni pagos.
-    const workflow = obtenerWorkflow(operacion.id);
-    if (!workflow || workflow.orden !== 3) { setError("La operación debe estar en Visado de mercadería."); return false; }
-    const { data: etapa, error: etapaError } = await supabase
-      .from("workflow_etapas").select("id")
-      .eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
-    if (etapaError || !etapa) { setError("No se encontró la etapa Fondos."); return false; }
-    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id, "QA_SIN_PAGO");
-    if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("AVANCE DE PRUEBA: pasó a Contrato Definitivo. La comisión sigue PENDIENTE; no se registró ni aprobó ningún pago real.");
-    await cargarOperaciones();
-    return true;
-  }
-
   async function enviarComprobanteComision(operacion: Operacion) {
     setError("");
     setMensaje("");
