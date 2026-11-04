@@ -11,7 +11,8 @@ const cards = [
   ["📊","Reportes","Consultar indicadores, operaciones e información histórica.","/reportes"],
   ["🏢","Empresas","Gestionar empresas, relaciones y verificación de terceros.","/empresas"],
   ["🌐","Configuración","Idioma, preferencias y configuración general.","/configuracion"],
-  ["🔒","Retenciones de comisión","Verificar transferencias y retener la comisión de AgroBrokerIA hasta el cierre.","/administracion/retenciones-comisiones"],\n  ["🧪","Pruebas de comisiones","Aprobar o rechazar comprobantes simulados sin movimientos financieros reales.","/administracion/pruebas-comisiones"],
+  ["🔒","Retenciones de comisión","Verificar transferencias y retener la comisión de AgroBrokerIA hasta el cierre.","/administracion/retenciones-comisiones"],
+  ["🧪","Pruebas de comisiones","Aprobar o rechazar comprobantes simulados sin movimientos financieros reales.","/administracion/pruebas-comisiones"],
 ];
 
 export default function AdministracionPage(){
