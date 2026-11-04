@@ -181,7 +181,20 @@ export default function ContratosPage(){
      selectedOperationId?supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:selectedOperationId}):Promise.resolve({data:[],error:null})
    ]);
    if(c.error)setError(c.error.message); if(v.error)setError(v.error.message);
-   setRows((c.data||[]) as C[]);setVersions((v.data||[]) as V[]);
+   const contratosCargados=(c.data||[]) as C[];
+   setRows(contratosCargados);setVersions((v.data||[]) as V[]);
+   const params=new URLSearchParams(window.location.search);
+   const requestedOperation=params.get("operacion");
+   if(requestedOperation){
+     const contratoDestino=contratosCargados.find(x=>x.operacion_id===requestedOperation);
+     if(contratoDestino){
+       setSelected(contratoDestino);setTab(params.get("tab")==="firmas"?"firmas":"mis");
+       setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:String(contratoDestino.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));
+       const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
+       if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
+       void loadSignedCopies(contratoDestino.id);
+     } else if(params.get("tab")==="mis") setTab("mis");
+   }
    if(p.error)setError("No se pudo cargar el catálogo de productos: "+p.error.message);else setProductos((p.data||[]).map((x:any)=>String(x.nombre)));
    if(port.error)setError("No se pudo cargar el catálogo de puertos: "+port.error.message);else setPuertos((port.data||[]).map((x:any)=>String(x.nombre)));
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
@@ -189,7 +202,7 @@ export default function ContratosPage(){
    if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
    setLoading(false);
  }
- useEffect(()=>{void load(); const requested=new URLSearchParams(window.location.search).get("tab"); if(requested==="firmas")setTab("firmas");},[]);
+ useEffect(()=>{void load(); const requested=new URLSearchParams(window.location.search).get("tab"); if(requested==="firmas")setTab("firmas"); else if(requested==="mis")setTab("mis");},[]);
  async function solicitarExtension(){
    if(!selected?.operacion_id){setMessage("Seleccioná primero un contrato en Mis contratos.");return;}
    const days=Number(extensionDays);
