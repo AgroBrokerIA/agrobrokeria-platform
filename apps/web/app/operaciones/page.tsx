@@ -669,15 +669,6 @@ export default function OperacionesPage() {
       setError("Primero debe aprobarse el visado de mercadería.");
       return false;
     }
-    const { data: retention, error: retentionError } = await supabase
-      .from("operacion_comision_retenciones")
-      .select("estado")
-      .eq("operacion_id", operacion.id)
-      .maybeSingle();
-    if (retentionError || retention?.estado !== "RETENIDA") {
-      setError("El visado está aprobado. Ahora debe abonarse y verificarse la comisión para continuar al contrato definitivo.");
-      return false;
-    }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 3) {
       setError("La operación debe estar en Visado de mercadería para pasar al contrato definitivo.");
@@ -695,7 +686,7 @@ export default function OperacionesPage() {
     }
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Comisión verificada y retenida. La operación pasó a Contrato Definitivo.");
+    setMensaje("Visado aprobado. La operación pasó a Contrato Definitivo; la comisión se verificará antes de habilitar Fondos.");
     await cargarOperaciones();
     return true;
   }
