@@ -164,12 +164,14 @@ export default function ContratosPage(){
  const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
  const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[externalDocs,setExternalDocs]=useState<ExternalDoc[]>([]),[externalDocId,setExternalDocId]=useState(""),[externalSha,setExternalSha]=useState(""),[externalBusy,setExternalBusy]=useState(false);
- const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[copyRole,setCopyRole]=useState<"VENDEDOR"|"COMPRADOR"|"INTERMEDIARIO">("VENDEDOR"),[copyFile,setCopyFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState(false);
+ const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[vendorFile,setVendorFile]=useState<File|null>(null),[buyerFile,setBuyerFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState<"VENDEDOR"|"COMPRADOR"|null>(null),[isPlatformAdmin,setIsPlatformAdmin]=useState(false);
  const [form,setForm]=useState<FormState>(initial);
  const [selected,setSelected]=useState<C|null>(null);
 
  async function load(){
    setLoading(true);setError("");
+   const {data:{user:sessionUser}}=await supabase.auth.getUser();
+   if(sessionUser){const {data:adminRow}=await supabase.from("platform_admins").select("user_id").eq("user_id",sessionUser.id).maybeSingle();setIsPlatformAdmin(!!adminRow);}
    const selectedOperationId=selected?.operacion_id||form.operacionId||null;
    const [c,v,p,port,op,ext,conf]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
@@ -219,27 +221,43 @@ export default function ContratosPage(){
  }
 
  async function loadSignedCopies(contractId:string){
-   const {data,error}=await supabase.from("contrato_copias_firmadas").select("id,rol,empresa_id,version_contrato,nombre_archivo,sha256,estado,observaciones,subido_at").eq("contrato_id",contractId).order("subido_at",{ascending:true});
+   const {data,error}=await supabase.from("contrato_copias_firmadas").select("id,rol,empresa_id,version_contrato,nombre_archivo,storage_path,sha256,estado,observaciones,subido_at,revisado_at").eq("contrato_id",contractId).order("subido_at",{ascending:true});
    if(error){setError(error.message);setCopyRows([]);return;} setCopyRows(data||[]);
  }
- async function uploadPartyCopy(){
+ async function uploadPartyCopy(role:"VENDEDOR"|"COMPRADOR",file:File|null){
    if(!selected?.id||!selected.operacion_id){setError("Seleccioná un contrato.");return;}
-   if(!copyFile||copyFile.type!=="application/pdf"){setError("Cada parte debe subir su copia firmada en PDF.");return;}
-   setCopyBusy(true);setError("");setMessage("");
+   if(!file||file.type!=="application/pdf"){setError("Cada parte debe subir su copia firmada en PDF.");return;}
+   setCopyBusy(role);setError("");setMessage("");
    let path:string|null=null;
    try{
      const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Iniciá sesión.");
-     const bytes=await copyFile.arrayBuffer();const digest=await crypto.subtle.digest("SHA-256",bytes);
+     const bytes=await file.arrayBuffer();const digest=await crypto.subtle.digest("SHA-256",bytes);
      const sha=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
-     const safe=copyFile.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
-     path=selected.operacion_id+"/contratos/"+selected.id+"/"+copyRole+"/"+crypto.randomUUID()+"-"+safe;
-     const {error:up}=await supabase.storage.from("documentos-operacion").upload(path,copyFile,{contentType:"application/pdf",upsert:false});if(up)throw up;
-     const {error:rpcError}=await supabase.rpc("registrar_copia_firmada_contrato",{p_contrato_id:selected.id,p_rol:copyRole,p_storage_path:path,p_nombre_archivo:copyFile.name,p_sha256:sha});
+     const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
+     path=selected.operacion_id+"/contratos/"+selected.id+"/"+role+"/"+crypto.randomUUID()+"-"+safe;
+     const {error:up}=await supabase.storage.from("documentos-operacion").upload(path,file,{contentType:"application/pdf",upsert:false});if(up)throw up;
+     const {error:rpcError}=await supabase.rpc("registrar_copia_firmada_contrato",{p_contrato_id:selected.id,p_rol:role,p_storage_path:path,p_nombre_archivo:file.name,p_sha256:sha});
      if(rpcError)throw rpcError;
-     setMessage("Copia firmada enviada por separado. Queda pendiente de validación administrativa; no habilita Fondos todavía.");
-     setCopyFile(null);await loadSignedCopies(selected.id);
+     setMessage("Firma del "+(role==="VENDEDOR"?"vendedor":"comprador")+" recibida. Queda pendiente de tu revisión.");
+     if(role==="VENDEDOR")setVendorFile(null);else setBuyerFile(null);
+     await loadSignedCopies(selected.id);
    }catch(e){if(path)await supabase.storage.from("documentos-operacion").remove([path]);setError(e instanceof Error?e.message:"No se pudo registrar la copia firmada.");}
-   finally{setCopyBusy(false);}
+   finally{setCopyBusy(null);}
+ }
+ async function revisarCopiaFirmada(id:string,result:"APROBADA"|"RECHAZADA"){
+   let reason:string|null=null;
+   if(result==="RECHAZADA"){reason=window.prompt("Indicá el motivo del rechazo para que la parte pueda corregirlo:")?.trim()||null;if(!reason){setError("Para rechazar una firma tenés que indicar el motivo.");return;}}
+   setError("");setMessage("");
+   const {error}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:id,p_resultado:result,p_observaciones:reason});
+   if(error){setError(error.message);return;}
+   setMessage(result==="APROBADA"?"Firma aprobada. Si ambas partes están aprobadas, la operación avanza a Fondos.":"Firma rechazada. Se notificará el motivo a la parte para que vuelva a cargarla.");
+   if(selected?.id)await loadSignedCopies(selected.id);
+   await load();
+ }
+ async function abrirCopiaFirmada(path:string){
+   const {data,error}=await supabase.storage.from("documentos-operacion").createSignedUrl(path,60);
+   if(error||!data?.signedUrl){setError(error?.message||"No se pudo abrir el PDF.");return;}
+   window.open(data.signedUrl,"_blank","noopener,noreferrer");
  }
  async function subirPdfFirmado(){
    if(!selected?.operacion_id){setError("Seleccioná primero un contrato.");return;}
@@ -449,7 +467,16 @@ export default function ContratosPage(){
   {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2><div className="contract-builder-alert">
   <strong>Firma digital — Próximamente</strong><br/>
   La integración con firma digital estará disponible próximamente. Esta función no bloquea la operación ni el lanzamiento de AgroBrokerIA.
- </div>{selected&&<div className="contract-info-panel" style={{marginTop:16}}><h3>Firmas bilaterales por parte</h3><p>Vendedor y comprador deben descargar, firmar y subir su propia copia del mismo contrato y versión. Cada archivo queda asociado a su empresa y rol; Administración valida cada uno por separado. No se habilitan Fondos hasta validar todas las copias requeridas.</p><label>Parte que presenta la copia<select value={copyRole} onChange={e=>setCopyRole(e.target.value as any)}><option value="VENDEDOR">Vendedor</option><option value="COMPRADOR">Comprador</option><option value="INTERMEDIARIO">Intermediario (si corresponde)</option></select></label><label>PDF firmado por esta parte<input type="file" accept="application/pdf" onChange={e=>setCopyFile(e.target.files?.[0]||null)}/></label><button className="contract-generate" disabled={copyBusy||!copyFile} onClick={()=>void uploadPartyCopy()}>{copyBusy?"Subiendo…":"Enviar copia firmada para validar →"}</button><div className="contract-sign-list">{copyRows.length===0?<p>Todavía no se recibieron copias firmadas.</p>:copyRows.map((r:any)=><article className="contract-sign-card" key={r.id}><div><strong>{r.rol} · versión {r.version_contrato}</strong><span>{r.estado}</span><small>{r.nombre_archivo} · {new Date(r.subido_at).toLocaleString("es-AR")}</small>{r.observaciones&&<small>{r.observaciones}</small>}</div></article>)}</div></div>}
+ </div>{selected&&<div className="contract-info-panel signature-workflow" style={{marginTop:16}}>
+  <h3>Firmas del contrato</h3><p>Solo se requieren dos copias del mismo contrato: una firmada por el vendedor y otra por el comprador. Administración revisa cada PDF y acepta o rechaza la evidencia.</p>
+  <div className="signature-upload-grid">
+   <article className="signature-upload-card"><h4>Firma del vendedor</h4><p>El vendedor descarga el contrato, lo firma y carga aquí su PDF.</p><input type="file" accept="application/pdf" onChange={e=>setVendorFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!vendorFile} onClick={()=>void uploadPartyCopy("VENDEDOR",vendorFile)}>{copyBusy==="VENDEDOR"?"Subiendo…":"Enviar firma del vendedor"}</button></article>
+   <article className="signature-upload-card"><h4>Firma del comprador</h4><p>El comprador descarga el mismo contrato, lo firma y carga aquí su PDF.</p><input type="file" accept="application/pdf" onChange={e=>setBuyerFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!buyerFile} onClick={()=>void uploadPartyCopy("COMPRADOR",buyerFile)}>{copyBusy==="COMPRADOR"?"Subiendo…":"Enviar firma del comprador"}</button></article>
+  </div>
+  <div className="signature-review-list"><h4>{isPlatformAdmin?"Revisión administrativa de firmas":"Estado de las firmas"}</h4>
+   {copyRows.length===0?<p>Todavía no se recibieron firmas.</p>:copyRows.map((r:any)=><article className="contract-sign-card" key={r.id}><div><strong>Firma {r.rol==="VENDEDOR"?"del vendedor":r.rol==="COMPRADOR"?"del comprador":r.rol} · versión {r.version_contrato}</strong><span>{r.estado==="APROBADA"?"Aceptada":r.estado==="RECHAZADA"?"Rechazada":"Pendiente de revisión"}</span><small>{r.nombre_archivo} · {new Date(r.subido_at).toLocaleString("es-AR")}</small>{r.observaciones&&<small>Observación: {r.observaciones}</small>}</div><div className="signature-review-actions"><button type="button" onClick={()=>void abrirCopiaFirmada(r.storage_path)}>Ver PDF</button>{isPlatformAdmin&&r.estado==="PENDIENTE"&&<><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"APROBADA")}>Aceptar</button><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"RECHAZADA")}>Rechazar</button></>}</div></article>)}
+  </div>
+ </div>}
  <div className="contract-info-panel contract-signed-upload-panel" style={{marginTop:16}}><h3>Subir PDF firmado</h3><label>Contrato<select value={selected?.id||""} onChange={e=>{const c=rows.find(x=>x.id===e.target.value)||null;setSelected(c);setSignedPdfFile(null);setExternalDocId("");setExternalSha("");if(c){void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id)}}}><option value="">Seleccionar contrato</option>{rows.map(c=><option key={c.id} value={c.id}>{c.numero_contrato} · {c.tipo_contrato||"Contrato"} · {c.estado}</option>)}</select></label>{selected?<><p>{selected.numero_contrato} · {selected.tipo_contrato||"Contrato"} · Estado actual: {selected.estado}</p><label>Archivo PDF firmado<input type="file" accept="application/pdf" onChange={e=>setSignedPdfFile(e.target.files?.[0]||null)}/></label><button className="contract-generate" disabled={signedUploadBusy||!signedPdfFile} onClick={()=>void subirPdfFirmado()}>{signedUploadBusy?"Subiendo…":"Subir PDF firmado →"}</button><p>Se guarda en almacenamiento privado y se calcula automáticamente el SHA-256.</p></>:<p>Seleccioná un contrato para habilitar la carga del PDF firmado.</p>}</div>{selected&&<div className="contract-info-panel" style={{marginTop:16}}><h3>Evidencia documental</h3><label>Documento firmado<select value={externalDocId} onChange={e=>setExternalDocId(e.target.value)}><option value="">Seleccionar documento</option>{externalDocs.map(d=><option key={d.id} value={d.id}>{d.nombre_archivo||"Documento"} · {d.aprobado?"Aprobado":"Pendiente"}{d.firmado_externamente?" · Confirmado":""}</option>)}</select></label>{externalDocId&&externalDocs.find(d=>d.id===externalDocId)?.url_archivo&&<p><button type="button" onClick={()=>{const u=externalDocs.find(d=>d.id===externalDocId)?.url_archivo;if(u)void abrirDocumentoExterno(u)}}>Abrir PDF registrado ↗</button></p>}<label>SHA-256<input value={externalSha} onChange={e=>setExternalSha(e.target.value)} placeholder="64 caracteres hexadecimales"/></label><button className="contract-generate" disabled={externalBusy||!externalDocId} onClick={()=>void confirmarFirmaExterna()}>{externalBusy?"Confirmando…":"Confirmar evidencia de firma →"}</button></div>}<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id);setMessage("Contrato seleccionado.")}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
 
 {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
