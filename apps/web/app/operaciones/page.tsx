@@ -215,9 +215,9 @@ const ETAPAS = [
   "Oferta aceptada",
   "Acuerdo Comercial / Reserva",
   "Visado de mercadería",
+  "Fondos y retención de comisión AgroBrokerIA",
   "Contrato Definitivo",
-  "Firmas",
-  "Fondos",
+  "Firmas del vendedor y comprador",
   "Liberación operativa",
   "Logística / Entrega",
   "Liquidación",
@@ -564,20 +564,20 @@ export default function OperacionesPage() {
       }
 
       // =========================================================
-      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS → FONDOS
+      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS → LIBERACIÓN OPERATIVA
       // =========================================================
-      // Si una operación está en etapa 5 (Firmas) y todas las
-      // firmas requeridas están completas, avanzamos a etapa 6.
+      // Si una operación está en etapa 6 (Firmas) y ambas
+      // firmas requeridas están completas, avanzamos a etapa 7.
       // Esto también corrige operaciones cuyas firmas ya estaban
       // registradas antes de ejecutar esta lógica.
       // =========================================================
 
       for (const workflow of workflowsNormalizados) {
-        if (workflow.orden !== 5) continue;
+        if (workflow.orden !== 6) continue;
 
         // La misma fuente de verdad que valida avanzar_operacion_workflow:
-        // contratos confirmados + contrato_firmantes. No usar los antiguos
-        // flags de operacion_control_comercial para habilitar Fondos.
+        // contratos confirmados + contrato_firmantes. La etapa siguiente es
+        // Liberación operativa; no se retrocede ni se vuelve a Fondos.
         const { data: contratosFirmados, error: contratosError } = await supabase
           .from("contratos")
           .select("id")
