@@ -611,26 +611,26 @@ export default function OperacionesPage() {
           .from("workflow_etapas")
           .select("id")
           .eq("workflow_id", workflow.workflow_id)
-          .eq("orden", 6)
+          .eq("orden", 7)
           .maybeSingle();
 
         if (errorEtapaFondos || !etapaFondos) {
-          console.error("No se pudo localizar la etapa Fondos:", errorEtapaFondos);
+          console.error("No se pudo localizar la etapa Liberación operativa:", errorEtapaFondos);
           continue;
         }
 
         const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
         if (errorAvanceFondos) {
-          console.error("No se pudo avanzar la operación a Fondos:", errorAvanceFondos);
+          console.error("No se pudo avanzar la operación a Liberación operativa:", errorAvanceFondos);
           continue;
         }
 
         try {
           await notificarParticipantesOperacion({
             operacionId: workflow.operacion_id,
-            titulo: "💰 Fondos",
-            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a la etapa Fondos.`,
-            tipo: "FONDOS",
+            titulo: "Liberación operativa",
+            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a Liberación operativa.`,
+            tipo: "LIBERACION_OPERATIVA",
           });
         } catch (errorNotificacion) {
           console.error("ERROR NOTIFICACIÓN FIRMAS → FONDOS:", errorNotificacion);
