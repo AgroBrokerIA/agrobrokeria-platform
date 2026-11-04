@@ -252,6 +252,7 @@ export default function OperacionesPage() {
   const [cuentaBancariaPlataforma, setCuentaBancariaPlataforma] = useState<CuentaBancariaPlataforma | null>(null);
   const [cargandoCuentaBancaria, setCargandoCuentaBancaria] = useState(true);
   const [enviandoComprobanteComision, setEnviandoComprobanteComision] = useState(false);
+  const [mostrarFormularioComision, setMostrarFormularioComision] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
 
@@ -2873,7 +2874,7 @@ Firma: ______________________________
           } else if (ordenDetalle === 4) {
             const controlActual = await cargarControlComercial(detalleOperacion);
             if (String(controlActual?.comision_estado||"").toUpperCase() !== "RETENIDA") {
-              window.location.href = "/comisiones";
+              setMostrarFormularioComision(true);
               return;
             }
             resultado = await avanzarAContratoConComision(detalleOperacion);
