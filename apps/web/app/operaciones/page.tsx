@@ -816,7 +816,10 @@ export default function OperacionesPage() {
       if (uploadedPath) {
         await supabase.storage.from("documentos-operacion").remove([uploadedPath]);
       }
-      setError(e instanceof Error ? e.message : "No se pudo registrar el comprobante.");
+      const detail = e && typeof e === "object" && "message" in e
+        ? String((e as {message?:unknown}).message || "")
+        : e instanceof Error ? e.message : "";
+      setError(detail || "No se pudo registrar el comprobante. Revisá tu autorización, la empresa pagadora y la etapa de la operación.");
     } finally {
       setEnviandoComprobanteComision(false);
     }
