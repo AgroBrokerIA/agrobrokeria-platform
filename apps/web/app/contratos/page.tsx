@@ -164,7 +164,7 @@ export default function ContratosPage(){
  const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
  const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[externalDocs,setExternalDocs]=useState<ExternalDoc[]>([]),[externalDocId,setExternalDocId]=useState(""),[externalSha,setExternalSha]=useState(""),[externalBusy,setExternalBusy]=useState(false);
- const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[vendorFile,setVendorFile]=useState<File|null>(null),[buyerFile,setBuyerFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState<"VENDEDOR"|"COMPRADOR"|null>(null),[isPlatformAdmin,setIsPlatformAdmin]=useState(false);
+ const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[vendorFile,setVendorFile]=useState<File|null>(null),[buyerFile,setBuyerFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState<"VENDEDOR"|"COMPRADOR"|null>(null),[isPlatformAdmin,setIsPlatformAdmin]=useState(false),[allowedCopyRoles,setAllowedCopyRoles]=useState<string[]>([]);
  const [form,setForm]=useState<FormState>(initial);
  const [selected,setSelected]=useState<C|null>(null);
 
@@ -223,6 +223,14 @@ export default function ContratosPage(){
  async function loadSignedCopies(contractId:string){
    const {data,error}=await supabase.from("contrato_copias_firmadas").select("id,rol,empresa_id,version_contrato,nombre_archivo,storage_path,sha256,estado,observaciones,subido_at,revisado_at").eq("contrato_id",contractId).order("subido_at",{ascending:true});
    if(error){setError(error.message);setCopyRows([]);return;} setCopyRows(data||[]);
+   const {data:{user}}=await supabase.auth.getUser();
+   if(user){
+     const {data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
+     if(profile?.active_company_id&&selected?.operacion_id){
+       const {data:participants}=await supabase.from("operacion_participantes").select("rol").eq("operacion_id",selected.operacion_id).eq("empresa_id",profile.active_company_id).in("rol",["VENDEDOR","COMPRADOR"]);
+       setAllowedCopyRoles((participants||[]).map((x:any)=>String(x.rol).toUpperCase()));
+     }else setAllowedCopyRoles([]);
+   }
  }
  async function uploadPartyCopy(role:"VENDEDOR"|"COMPRADOR",file:File|null){
    if(!selected?.id||!selected.operacion_id){setError("Seleccioná un contrato.");return;}
@@ -241,7 +249,7 @@ export default function ContratosPage(){
      setMessage("Firma del "+(role==="VENDEDOR"?"vendedor":"comprador")+" recibida. Queda pendiente de tu revisión.");
      if(role==="VENDEDOR")setVendorFile(null);else setBuyerFile(null);
      await loadSignedCopies(selected.id);
-   }catch(e){if(path)await supabase.storage.from("documentos-operacion").remove([path]);setError(e instanceof Error?e.message:"No se pudo registrar la copia firmada.");}
+   }catch(e:any){if(path)await supabase.storage.from("documentos-operacion").remove([path]);const detail=String(e?.message||e?.error_description||"Error desconocido");setError("No se pudo registrar la firma: "+detail+(e?.code?" (código "+e.code+")":""));}
    finally{setCopyBusy(null);}
  }
  async function revisarCopiaFirmada(id:string,result:"APROBADA"|"RECHAZADA"){
@@ -466,10 +474,10 @@ export default function ContratosPage(){
 
   {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2>{selected&&<div className="contract-info-panel signature-workflow" style={{marginTop:16}}>
   <h3>Firmas del contrato</h3><p>Solo se requieren dos copias del mismo contrato: una firmada por el vendedor y otra por el comprador. Administración revisa cada PDF y acepta o rechaza la evidencia.</p>
-  <div className="signature-upload-grid">
-   <article className="signature-upload-card"><h4>Firma del vendedor</h4><p>El vendedor descarga el contrato, lo firma y carga aquí su PDF.</p><input type="file" accept="application/pdf" onChange={e=>setVendorFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!vendorFile} onClick={()=>void uploadPartyCopy("VENDEDOR",vendorFile)}>{copyBusy==="VENDEDOR"?"Subiendo…":"Enviar firma del vendedor"}</button></article>
-   <article className="signature-upload-card"><h4>Firma del comprador</h4><p>El comprador descarga el mismo contrato, lo firma y carga aquí su PDF.</p><input type="file" accept="application/pdf" onChange={e=>setBuyerFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!buyerFile} onClick={()=>void uploadPartyCopy("COMPRADOR",buyerFile)}>{copyBusy==="COMPRADOR"?"Subiendo…":"Enviar firma del comprador"}</button></article>
-  </div>
+  {allowedCopyRoles.length>0?<div className="signature-upload-grid">
+   {allowedCopyRoles.includes("VENDEDOR")&&<article className="signature-upload-card"><h4>Firma del vendedor</h4><p>Descargá el contrato, firmalo y cargá aquí tu copia en PDF.</p><input type="file" accept="application/pdf" onChange={e=>setVendorFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!vendorFile} onClick={()=>void uploadPartyCopy("VENDEDOR",vendorFile)}>{copyBusy==="VENDEDOR"?"Subiendo…":"Enviar firma del vendedor"}</button></article>}
+   {allowedCopyRoles.includes("COMPRADOR")&&<article className="signature-upload-card"><h4>Firma del comprador</h4><p>Descargá el mismo contrato, firmalo y cargá aquí tu copia en PDF.</p><input type="file" accept="application/pdf" onChange={e=>setBuyerFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!buyerFile} onClick={()=>void uploadPartyCopy("COMPRADOR",buyerFile)}>{copyBusy==="COMPRADOR"?"Subiendo…":"Enviar firma del comprador"}</button></article>}
+  </div>:<div className="signature-no-upload">{isPlatformAdmin?"Tu cuenta tiene permisos de administración, pero no está asignada como vendedor ni comprador en esta operación. Desde aquí podés revisar y aceptar o rechazar las firmas que carguen las partes.":"Esta cuenta no tiene asignado el rol de vendedor o comprador en esta operación. Ingresá con la cuenta correspondiente para cargar la firma."}</div>}
   <div className="signature-review-list"><h4>{isPlatformAdmin?"Revisión administrativa de firmas":"Estado de las firmas"}</h4>
    {copyRows.length===0?<p>Todavía no se recibieron firmas.</p>:copyRows.map((r:any)=><article className="contract-sign-card" key={r.id}><div><strong>Firma {r.rol==="VENDEDOR"?"del vendedor":r.rol==="COMPRADOR"?"del comprador":r.rol} · versión {r.version_contrato}</strong><span>{r.estado==="APROBADA"?"Aceptada":r.estado==="RECHAZADA"?"Rechazada":"Pendiente de revisión"}</span><small>{r.nombre_archivo} · {new Date(r.subido_at).toLocaleString("es-AR")}</small>{r.observaciones&&<small>Observación: {r.observaciones}</small>}</div><div className="signature-review-actions"><button type="button" onClick={()=>void abrirCopiaFirmada(r.storage_path)}>Ver PDF</button>{isPlatformAdmin&&r.estado==="PENDIENTE"&&<><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"APROBADA")}>Aceptar</button><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"RECHAZADA")}>Rechazar</button></>}</div></article>)}
   </div>
