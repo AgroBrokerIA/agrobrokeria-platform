@@ -1292,6 +1292,25 @@ export default function OperacionesPage() {
         ].join(String.fromCharCode(10));
       }
     }
+    // Normalizar borradores antiguos que guardaron los saltos de línea escapados.
+    contenidoInicial = contenidoInicial.replace(/\\\\n/g, String.fromCharCode(10));
+    // Si el contenido proviene del texto genérico de respaldo, reconstruirlo
+    // con los contactos seleccionados en esta operación.
+    if (contenidoInicial.includes("DATOS DE VENDEDOR Y COMPRADOR: completar desde los contactos de la operación.") ||
+        contenidoInicial.includes("CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.")) {
+      try {
+        contenidoInicial = generarContenidoContratoF2(
+          operacion,
+          acuerdoContrato,
+          vendedorSeleccionado,
+          compradorSeleccionado,
+          numeroContratoInicial
+        );
+      } catch {
+        // Mantener el borrador editable; la confirmación exige seleccionar ambas partes.
+      }
+    }
+
     setContrato((actual) => ({
       ...actual,
       operacion_id: operacion.id,
