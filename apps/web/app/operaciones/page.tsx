@@ -749,7 +749,16 @@ export default function OperacionesPage() {
       setError("Primero debe aprobarse el visado de mercadería.");
       return false;
     }
-    const estadoComision = String(control?.comision_estado || "").toUpperCase();
+    const { data: retencion, error: retencionError } = await supabase
+      .from("operacion_comision_retenciones")
+      .select("estado")
+      .eq("operacion_id", operacion.id)
+      .maybeSingle();
+    if (retencionError) {
+      setError("No se pudo verificar la retención de la comisión: " + retencionError.message);
+      return false;
+    }
+    const estadoComision = String(retencion?.estado || control?.comision_estado || "").toUpperCase();
     if (!["RETENIDA", "LIBERADA"].includes(estadoComision)) {
       setError("El Contrato Definitivo se habilita únicamente cuando Administración confirma la retención de la comisión AgroBrokerIA.");
       return false;
@@ -2946,7 +2955,17 @@ Firma: ______________________________
             }
           } else if (ordenDetalle === 4) {
             const controlActual = await cargarControlComercial(detalleOperacion);
-            if (String(controlActual?.comision_estado||"").toUpperCase() !== "RETENIDA") {
+            const { data: retencionActual, error: retencionActualError } = await supabase
+              .from("operacion_comision_retenciones")
+              .select("estado")
+              .eq("operacion_id", detalleOperacion.id)
+              .maybeSingle();
+            if (retencionActualError) {
+              setError("No se pudo verificar la retención de la comisión: " + retencionActualError.message);
+              return;
+            }
+            const comisionRetenida = ["RETENIDA", "LIBERADA"].includes(String(retencionActual?.estado || controlActual?.comision_estado || "").toUpperCase());
+            if (!comisionRetenida) {
               setMostrarFormularioComision(true);
               return;
             }
@@ -3025,7 +3044,7 @@ Firma: ______________________________
               </div>}
               {!esAdminPlataforma && retencionComision.estado==="COMPROBANTE_ENVIADO" && <p style={{margin:0,fontSize:12,color:"#475569"}}>El comprobante fue enviado. Administración lo revisará desde esta misma operación.</p>}
             </section>}
-            {ordenDetalle === 4 && mostrarFormularioComision && String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()!=="RETENIDA" && retencionComision?.estado!=="RETENIDA" && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:12}}>
+            {ordenDetalle === 4 && mostrarFormularioComision && !["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:12}}>
               <h3 style={{margin:0}}>Comprobante de comisión AgroBrokerIA</h3>
               <p style={{margin:0,fontSize:13,color:"#475569"}}>La comisión es USD 1 por TN. Cargá aquí el comprobante; Administración lo revisará sin salir de Operaciones.</p>
               {cuentaBancariaPlataforma ? <div style={{padding:12,borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",fontSize:13}}>
@@ -3042,7 +3061,7 @@ Firma: ______________________________
               </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={ordenDetalle === 4 && String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()!=="RETENIDA" ? () => setMostrarFormularioComision(v=>!v) : continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA" ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Revisar firmas y pasar a Liberación operativa" : ordenDetalle === 7 ? (String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase()==="HABILITADOS" ? "Iniciar logística" : "Verificar fondos y habilitar datos operativos") : ordenDetalle === 8 ? "Gestionar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Revisar firmas y pasar a Liberación operativa" : ordenDetalle === 7 ? (String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase()==="HABILITADOS" ? "Iniciar logística" : "Verificar fondos y habilitar datos operativos") : ordenDetalle === 8 ? "Gestionar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
