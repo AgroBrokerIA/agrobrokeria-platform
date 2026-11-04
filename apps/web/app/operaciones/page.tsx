@@ -3019,9 +3019,13 @@ Firma: ______________________________
                 <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RETENIDA")} style={{padding:"9px 12px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{revisandoRetencionComision?"Procesando…":"Verificar transferencia y retener comisión"}</button>
                 <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RECHAZADO")} style={{padding:"9px 12px",border:"1px solid #b91c1c",borderRadius:8,background:"#fff",color:"#b91c1c",cursor:"pointer"}}>Rechazar comprobante</button>
               </div>}
+              {retencionComision.estado==="RETENIDA" && <div style={{display:"grid",gap:8}}>
+                <p style={{margin:0,color:"#166534",fontWeight:600}}>La comisión ya está retenida. La siguiente etapa es Contrato Definitivo.</p>
+                <button type="button" onClick={()=>void continuar()} style={{justifySelf:"start",padding:"11px 16px",border:0,borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700,cursor:"pointer"}}>Continuar al Contrato Definitivo →</button>
+              </div>}
               {!esAdminPlataforma && retencionComision.estado==="COMPROBANTE_ENVIADO" && <p style={{margin:0,fontSize:12,color:"#475569"}}>El comprobante fue enviado. Administración lo revisará desde esta misma operación.</p>}
             </section>}
-            {ordenDetalle === 4 && mostrarFormularioComision && String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()!=="RETENIDA" && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:12}}>
+            {ordenDetalle === 4 && mostrarFormularioComision && String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()!=="RETENIDA" && retencionComision?.estado!=="RETENIDA" && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:12}}>
               <h3 style={{margin:0}}>Comprobante de comisión AgroBrokerIA</h3>
               <p style={{margin:0,fontSize:13,color:"#475569"}}>La comisión es USD 1 por TN. Cargá aquí el comprobante; Administración lo revisará sin salir de Operaciones.</p>
               {cuentaBancariaPlataforma ? <div style={{padding:12,borderRadius:8,background:"#fff",border:"1px solid #e2e8f0",fontSize:13}}>
