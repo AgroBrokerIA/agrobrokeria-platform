@@ -1318,21 +1318,8 @@ export default function OperacionesPage() {
 
     if (!controlExistente) {
       const { error: errorCrearControl } =
-        await supabase.rpc("guardar_control_comercial", {
+        await supabase.rpc("inicializar_control_comercial_contrato", {
           p_operacion_id: operacion.id,
-          p_cambios: {
-            // La comisión se inicializa con el DEFAULT de base de datos.
-            // No enviar comision_estado: solo cambia mediante retención verificada.
-            fondos_estado: "PENDIENTES",
-            visado_estado: "PENDIENTE",
-            vendedor_firma_estado: "PENDIENTE",
-            comprador_firma_estado: "PENDIENTE",
-            intermediario_firma_estado:
-              operacion.tipo_operacion === "F1" ? "PENDIENTE" : "NO_CORRESPONDE",
-            datos_operativos_estado: "PROTEGIDOS",
-            no_elusion_aceptada: false,
-            cancelacion_estado: "NO_CANCELADA",
-          },
         });
 
       if (errorCrearControl) {
