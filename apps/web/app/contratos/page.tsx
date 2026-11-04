@@ -250,7 +250,7 @@ export default function ContratosPage(){
    setError("");setMessage("");
    const {error}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:id,p_resultado:result,p_observaciones:reason});
    if(error){setError(error.message);return;}
-   setMessage(result==="APROBADA"?"Firma aprobada. Si ambas partes están aprobadas, la operación avanza a Fondos.":"Firma rechazada. Se notificará el motivo a la parte para que vuelva a cargarla.");
+   setMessage(result==="APROBADA"?"Firma aprobada. Si ambas partes están aprobadas, la operación avanza a Fondos.":"Firma rechazada. El motivo queda registrado para que la parte corrija y vuelva a cargar el PDF.");
    if(selected?.id)await loadSignedCopies(selected.id);
    await load();
  }
