@@ -2659,49 +2659,18 @@ Firma: ______________________________
       return false;
     }
 
-    const { data: etapaLiberacion, error: errorEtapaLiberacion } =
-      await supabase
-        .from("workflow_etapas")
-        .select("id, nombre, orden")
-        .eq("workflow_id", workflow.workflow_id)
-        .eq("orden", 7)
-        .maybeSingle();
-
-    if (errorEtapaLiberacion) {
-      setError(
-        `No se pudo localizar la etapa Liberación operativa: ${errorEtapaLiberacion.message}`
-      );
-      return false;
-    }
-
-    if (!etapaLiberacion) {
-      setError(
-        "No existe la etapa 7 (Liberación operativa) en este workflow."
-      );
+    if (workflow.orden !== 7) {
+      setError(`La liberación operativa solo se puede verificar en su etapa correspondiente. Etapa actual: ${workflow.etapa_actual}.`);
       return false;
     }
 
     const ahora = new Date().toISOString();
-
-    const { error: errorActualizacionControl } =
-      await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacionId, p_cambios: { datos_operativos_estado: "HABILITADOS", datos_operativos_liberados_at: ahora } });
-
+    const { error: errorActualizacionControl } = await supabase.rpc("guardar_control_comercial", {
+      p_operacion_id: operacionId,
+      p_cambios: { datos_operativos_estado: "HABILITADOS", datos_operativos_liberados_at: ahora }
+    });
     if (errorActualizacionControl) {
-      setError(
-        `No se pudieron habilitar los datos operativos: ${errorActualizacionControl.message}`
-      );
-      return false;
-    }
-
-    const { error: errorWorkflow } = await avanzarWorkflowSeguro(workflow.id, etapaLiberacion.id);
-
-    if (errorWorkflow) {
-      // Si el workflow falla, volvemos a proteger los datos.
-      await supabase.rpc("guardar_control_comercial", { p_operacion_id: operacionId, p_cambios: { datos_operativos_estado: "PROTEGIDOS", datos_operativos_liberados_at: null } });
-
-      setError(
-        `No se pudo avanzar a Liberación operativa: ${errorWorkflow.message}`
-      );
+      setError(`No se pudieron habilitar los datos operativos: ${errorActualizacionControl.message}`);
       return false;
     }
 
@@ -2732,7 +2701,7 @@ Firma: ______________________________
     if (/CANCEL/i.test(operacion.estado)) return "Canceladas";
     if (orden === 10 || /CERR|FINAL/i.test(operacion.estado)) return "Finalizadas";
     if (orden >= 1 && orden <= 3) return "En negociación";
-    if (orden === 5 || orden === 6) return "En contrato";
+    if (orden >= 4 && orden <= 6) return "En contrato";
     if (orden >= 7 && orden <= 8) return "En logística";
     if (orden === 9) return "En liquidación";
     const estado = (operacion.estado || "").toUpperCase();
@@ -2875,7 +2844,8 @@ Firma: ______________________________
             setError("Esta operación todavía no tiene un flujo de etapas asociado. No se puede avanzar hasta inicializar su workflow.");
             return;
           } else if (ordenDetalle === 8) {
-            setError("La operación está en Logística / Entrega. Abrí la sección Logística para registrar la entrega y avanzar a Liquidación.");
+            window.location.href = "/logistica";
+            return;
             return;
           } else if (ordenDetalle >= 9) {
             setError("La operación ya está en Liquidación o finalizada. La acción correspondiente se gestiona desde el módulo Liquidación.");
