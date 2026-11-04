@@ -39,7 +39,8 @@ export default function ComisionesPage(){
   setLoading(false);
  }
  useEffect(()=>{void load();const ch=supabase.channel("comisiones-reference").on("postgres_changes",{event:"*",schema:"public",table:"operacion_comisiones"},()=>{void load()}).subscribe();return()=>{supabase.removeChannel(ch)}},[]);
- const opMap=useMemo(()=>new Map(ops.map(x=>[x.id,x])),[ops]);\n const visibleMoves=useMemo(()=>movesFor?moves.filter(m=>m.operacion_id===movesFor):moves,[moves,movesFor]);
+ const opMap=useMemo(()=>new Map(ops.map(x=>[x.id,x])),[ops]);
+ const visibleMoves=useMemo(()=>movesFor?moves.filter(m=>m.operacion_id===movesFor):moves,[moves,movesFor]);
  const products=useMemo(()=>[...new Set(rows.map(x=>String(x.concepto||"").trim()).filter(Boolean))],[rows]);
  const intermediaries=useMemo(()=>[...new Set(rows.filter(x=>x.empresa_id||x.profile_id).map(x=>x.empresa_id||x.profile_id).filter(Boolean))] as string[],[rows]);
  const filtered=useMemo(()=>{
