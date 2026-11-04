@@ -27,3 +27,24 @@
 .contract-sign-actions button:last-child{background:#00965f;color:#fff;border-color:#00965f}
 .contract-sign-actions button:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:760px){.contract-sign-card{align-items:flex-start;flex-direction:column}.contract-sign-actions{width:100%}.contract-sign-actions button{flex:1}}
+
+
+/* Firma bilateral: dos partes, revisión administrativa y estados claros */
+.signature-workflow{border:1px solid #dbe5ee;border-radius:14px;background:#fff;padding:20px}
+.signature-workflow>h3{font-size:19px;color:#102b46;margin:0 0 7px}
+.signature-workflow>p{font-size:13px;line-height:1.6;color:#64748b;margin:0 0 16px}
+.signature-upload-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px}
+.signature-upload-card{border:1px solid #d9e5ed;border-radius:12px;background:#f8fbfd;padding:16px;display:flex;flex-direction:column;gap:10px;min-width:0}
+.signature-upload-card h4{margin:0;color:#123451;font-size:16px}
+.signature-upload-card p{margin:0;color:#64748b;font-size:12px;line-height:1.5;min-height:36px}
+.signature-upload-card input[type=file]{width:100%;font-size:12px;color:#475569}
+.signature-upload-card .contract-generate{width:100%;margin-top:auto}
+.signature-review-list{margin-top:22px;border-top:1px solid #e5edf3;padding-top:16px}
+.signature-review-list>h4{margin:0 0 10px;color:#123451;font-size:16px}
+.signature-review-actions{display:flex;gap:7px;flex-wrap:wrap}
+.signature-review-actions button{border:1px solid #cbd5e1;border-radius:8px;background:#fff;color:#16405d;padding:8px 12px;font-size:12px;font-weight:700;cursor:pointer}
+.signature-review-actions button:nth-child(2){background:#078d5b;border-color:#078d5b;color:#fff}
+.signature-review-actions button:nth-child(3){background:#fff7f7;border-color:#fecaca;color:#b42318}
+.signature-review-actions button:hover{filter:brightness(.97)}
+.signature-review-list .contract-sign-card{align-items:center}
+@media(max-width:760px){.signature-upload-grid{grid-template-columns:1fr}.signature-workflow{padding:14px}.signature-review-list .contract-sign-card{align-items:flex-start}}
