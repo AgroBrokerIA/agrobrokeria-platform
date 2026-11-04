@@ -48,3 +48,25 @@
 .signature-review-actions button:hover{filter:brightness(.97)}
 .signature-review-list .contract-sign-card{align-items:center}
 @media(max-width:760px){.signature-upload-grid{grid-template-columns:1fr}.signature-workflow{padding:14px}.signature-review-list .contract-sign-card{align-items:flex-start}}
+
+
+/* Pulido visual de firmas y mensajes de permisos */
+.signature-workflow{max-width:100%;box-sizing:border-box;padding:22px;background:#fff;border:1px solid #d8e5ed;border-radius:16px;box-shadow:0 5px 18px rgba(15,45,70,.045)}
+.signature-workflow>h3{font-size:20px;line-height:1.3;margin:0 0 8px;color:#10324d}
+.signature-workflow>p{max-width:900px;font-size:13px;line-height:1.65;color:#536b80;margin:0 0 20px}
+.signature-upload-grid{align-items:stretch;gap:16px}
+.signature-upload-card{min-height:205px;padding:18px;border-radius:14px;background:linear-gradient(180deg,#f8fbfd 0%,#f3f8fb 100%);border:1px solid #dce8ef;box-shadow:0 2px 7px rgba(16,50,77,.035)}
+.signature-upload-card h4{font-size:16px;line-height:1.35;margin:0;color:#123c58}
+.signature-upload-card p{font-size:12px;line-height:1.55;min-height:38px;color:#5b7184}
+.signature-upload-card input[type=file]{display:block;box-sizing:border-box;width:100%;min-width:0;padding:10px;border:1px dashed #b8cbd8;border-radius:9px;background:#fff;color:#526b7e;font-size:12px}
+.signature-upload-card .contract-generate{min-height:42px;border-radius:9px;font-size:12px;letter-spacing:.1px}
+.signature-no-upload{padding:14px 16px;border:1px solid #d8e5ed;border-radius:11px;background:#f5f9fc;color:#405d72;font-size:13px;line-height:1.6}
+.signature-review-list{margin-top:22px;padding-top:18px}
+.signature-review-list>h4{font-size:16px;margin-bottom:12px}
+.signature-review-list>p{padding:14px 16px;background:#f8fafc;border:1px dashed #cbd8e2;border-radius:10px;color:#647789;font-size:13px}
+.signature-review-list .contract-sign-card{padding:14px 16px;border:1px solid #dce6ed;border-radius:11px;background:#fff;margin:9px 0;gap:14px}
+.signature-review-list .contract-sign-card strong{font-size:13px;color:#173b55}
+.signature-review-list .contract-sign-card small{display:block;margin-top:5px;color:#718397;font-size:11px;overflow-wrap:anywhere}
+.signature-review-actions button{min-height:35px;border-radius:8px}
+.contract-builder-alert.error{border:1px solid #fecaca;background:#fff5f5;color:#a52828;border-radius:10px;padding:11px 14px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
+@media(max-width:760px){.signature-workflow{padding:15px}.signature-upload-card{min-height:0}.signature-upload-card p{min-height:0}}
