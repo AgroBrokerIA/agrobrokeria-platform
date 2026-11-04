@@ -679,7 +679,7 @@ export default function OperacionesPage() {
 
   async function avanzarAContratoConComision(operacion: Operacion) {
     setError(""); setMensaje("");
-    const control = controlesComerciales[operacion.id];
+    const control = await cargarControlComercial(operacion);
     if (!visadoAprobado(control)) {
       setError("Primero debe aprobarse el visado de mercadería.");
       return false;
@@ -708,6 +708,43 @@ export default function OperacionesPage() {
 
   // Bypass temporal de QA: solo administradores de plataforma. No crea pagos,
   // retenciones ni cambia el estado de comisión; se debe retirar al terminar las pruebas.
+  async function avanzarALiberacionOperativa(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 6) { setError("La operación debe estar en Firmas."); return false; }
+    const { data: control, error: controlError } = await supabase.from("operacion_control_comercial")
+      .select("fondos_estado,comision_estado").eq("operacion_id",operacion.id).single();
+    if (controlError) { setError("No se pudo consultar el estado de fondos: "+controlError.message); return false; }
+    if (control.fondos_estado !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(String(control.comision_estado||""))) {
+      setError("Antes de la liberación operativa, Administración debe confirmar Fondos LIBERADOS y comisión AgroBrokerIA RETENIDA.");
+      return false;
+    }
+    const { data: parties, error: partiesError } = await supabase.from("operacion_participantes")
+      .select("rol").eq("operacion_id",operacion.id).in("rol",["VENDEDOR","COMPRADOR"]);
+    if (partiesError) { setError("No se pudieron verificar las partes: "+partiesError.message); return false; }
+    const { data: signedContracts, error: signedError } = await supabase.from("contratos")
+      .select("id").eq("operacion_id",operacion.id).eq("estado","CONFIRMADO");
+    if (signedError) { setError("No se pudo consultar el contrato: "+signedError.message); return false; }
+    const contractIds=(signedContracts||[]).map((c:any)=>c.id);
+    const { data: signers, error: signersError } = contractIds.length
+      ? await supabase.from("contrato_firmantes").select("rol,firmado").in("contrato_id",contractIds).in("rol",["VENDEDOR","COMPRADOR"])
+      : {data:[],error:null};
+    if (signersError) { setError("No se pudieron verificar las firmas: "+signersError.message); return false; }
+    const required = new Set((parties||[]).map((p:any)=>p.rol));
+    const signed = new Set((signers||[]).filter((x:any)=>x.firmado===true).map((x:any)=>x.rol));
+    if (!["VENDEDOR","COMPRADOR"].every(role=>required.has(role)&&signed.has(role))) {
+      window.location.href="/contratos?tab=firmas";
+      return false;
+    }
+    const { data: next, error: nextError } = await supabase.from("workflow_etapas").select("id")
+      .eq("workflow_id",workflow.workflow_id).eq("orden",7).maybeSingle();
+    if (nextError||!next) { setError("No se encontró la etapa Liberación operativa."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id,next.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("Firmas completas. La operación pasó a Liberación operativa.");
+    await cargarOperaciones(); return true;
+  }
+
   async function omitirComisionParaPruebas(operacion: Operacion) {
     setError(""); setMensaje("");
     const { data: { user }, error: authError } = await supabase.auth.getUser();
@@ -2843,7 +2880,7 @@ Firma: ______________________________
           } else if (ordenDetalle === 4) {
             const controlActual = await cargarControlComercial(detalleOperacion);
             if (String(controlActual?.comision_estado||"").toUpperCase() !== "RETENIDA") {
-              setError("El Contrato Definitivo se habilita cuando Administración confirma la retención de la comisión AgroBrokerIA.");
+              window.location.href = "/comisiones";
               return;
             }
             resultado = await avanzarAContratoConComision(detalleOperacion);
@@ -2851,8 +2888,7 @@ Firma: ______________________________
             await abrirContrato(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 6) {
-            window.location.href = "/contratos?tab=firmas";
-            return;
+            resultado = await avanzarALiberacionOperativa(detalleOperacion);
           } else if (ordenDetalle === 7) {
             const estadoOperativo = String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase();
             resultado = estadoOperativo === "HABILITADOS" ? await iniciarLogistica(detalleOperacion.id) : await verificarLiberacionOperativa(detalleOperacion.id);
@@ -2907,7 +2943,7 @@ Firma: ______________________________
               <p style={{margin:"8px 0 0",fontSize:12,color:"#475569"}}>La comisión solo se mostrará como RETENIDA cuando el sistema registre la retención confirmada por Administración.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA" ? "Continuar a Contrato Definitivo" : "Esperar retención de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Gestionar firmas del contrato" : ordenDetalle === 7 ? "Verificar fondos y habilitar datos operativos" : ordenDetalle === 7 ? "Iniciar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA" ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Revisar firmas y pasar a Liberación operativa" : ordenDetalle === 7 ? "Verificar fondos y habilitar datos operativos" : ordenDetalle === 7 ? "Iniciar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
