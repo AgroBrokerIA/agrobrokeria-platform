@@ -2031,13 +2031,13 @@ Firma: ______________________________
           .from("workflow_etapas")
           .select("id, nombre, orden")
           .eq("workflow_id", workflow.workflow_id)
-          .eq("orden", 5)
+          .eq("orden", 6)
           .maybeSingle();
 
       if (errorEtapa) {
         setMensaje("");
         setError(
-          `El Contrato Definitivo se guardó, pero no se pudo encontrar Firmas: ${errorEtapa.message}`
+          `El Contrato Definitivo se guardó, pero no se pudo encontrar la etapa Firmas del vendedor y comprador: ${errorEtapa.message}`
         );
         return;
       }
@@ -2045,7 +2045,7 @@ Firma: ______________________________
       if (!siguienteEtapa) {
         setMensaje("");
         setError(
-          "El Contrato Definitivo se guardó, pero no existe la etapa 5 (Firmas)."
+          "El Contrato Definitivo se guardó, pero no existe la etapa 6 (Firmas del vendedor y comprador)."
         );
         return;
       }
