@@ -269,7 +269,6 @@ export default function OperacionesPage() {
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
-  const [detalleVisadoAprobado, setDetalleVisadoAprobado] = useState(false);
 
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
@@ -2726,7 +2725,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{const control=await cargarControlComercial(operacion);setDetalleVisadoAprobado(visadoAprobado(control));setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{await cargarControlComercial(operacion);setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2759,8 +2758,9 @@ Firma: ______________________________
             await abrirAcuerdo(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 3) {
-            const control = controlesComerciales[detalleOperacion.id];
-            if (visadoAprobado(control)) {
+            // Leer el estado persistido antes de decidir; no depender de un estado React potencialmente desactualizado.
+            const controlActual = await cargarControlComercial(detalleOperacion);
+            if (visadoAprobado(controlActual)) {
               resultado = await avanzarAContratoConComision(detalleOperacion);
             } else {
               abrirVisado(detalleOperacion); resultado = true;
@@ -2808,7 +2808,7 @@ Firma: ______________________________
             </section>
             {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — depósito posterior al visado y previo al contrato definitivo</h3>
-              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria después del visado y antes del contrato definitivo. Una vez verificada, queda retenida hasta el cierre.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{detalleVisadoAprobado?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado del visado debe confirmarse antes de aceptar el comprobante."}</p>
+              <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria después del visado y antes del contrato definitivo. Una vez verificada, queda retenida hasta el cierre.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{visadoAprobado(controlesComerciales[detalleOperacion.id])?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado del visado debe confirmarse antes de aceptar el comprobante."}</p>
               <section aria-label="Datos bancarios de AgroBrokerIA" style={{background:"#fff",border:"1px solid #fcd34d",borderRadius:10,padding:14,marginBottom:14}}>
                 <h4 style={{margin:"0 0 10px",fontSize:15}}>Datos bancarios para abonar la comisión</h4>
                 {cargandoCuentaBancaria ? <p style={{margin:0}}>Cargando cuenta bancaria…</p> : cuentaBancariaPlataforma ? <>
