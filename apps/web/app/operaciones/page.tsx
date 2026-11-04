@@ -1245,6 +1245,74 @@ export default function OperacionesPage() {
       (parte) => parte.rol === "COMPRADOR"
     );
 
+    // Recuperar el acuerdo y generar el texto inicial al abrir el editor.
+    const { data: acuerdoInicial, error: errorAcuerdoInicial } = await supabase
+      .from("acuerdos_comerciales")
+      .select("*")
+      .eq("operacion_id", operacion.id)
+      .maybeSingle();
+
+    if (errorAcuerdoInicial) {
+      setError(`No se pudo cargar el acuerdo comercial: ${errorAcuerdoInicial.message}`);
+      return;
+    }
+
+    const acuerdoContrato: Acuerdo = {
+      operacion_id: operacion.id,
+      lugar_carga: acuerdoInicial?.lugar_carga || "",
+      destino: acuerdoInicial?.destino || "",
+      condicion_entrega: acuerdoInicial?.condicion_entrega || "",
+      forma_pago: acuerdoInicial?.forma_pago || "",
+      plazo_pago: acuerdoInicial?.plazo_pago || "",
+      flete: acuerdoInicial?.flete || "",
+      calidad: acuerdoInicial?.calidad || "",
+      observaciones: acuerdoInicial?.observaciones || "",
+      estado: acuerdoInicial?.estado || "BORRADOR",
+    };
+    setAcuerdo(acuerdoContrato);
+
+    const numeroContratoInicial = contratoData?.numero_contrato ||
+      `CON-${operacion.codigo.replace(/^OP-/, "")}`;
+    let contenidoInicial = contratoData?.contenido || "";
+    if (!contenidoInicial.trim()) {
+      try {
+        contenidoInicial = generarContenidoContratoF2(
+          operacion,
+          acuerdoContrato,
+          vendedor?.contacto_id || "",
+          comprador?.contacto_id || "",
+          numeroContratoInicial
+        );
+      } catch (e) {
+        contenidoInicial = [
+          "CONTRATO DEFINITIVO DE COMPRAVENTA DE GRANOS",
+          "",
+          `N.º ${numeroContratoInicial}`,
+          `OPERACIÓN: ${operacion.codigo}`,
+          `MODELO: ${operacion.tipo_operacion === "F1" ? "F1" : "F2"}`,
+          `CANTIDAD: ${formatoNumero(operacion.cantidad_tn)} TN`,
+          `PRECIO POR TN: ${monedaOperacion(operacion)} ${formatoNumero(operacion.precio_tn)}`,
+          `IMPORTE TOTAL: ${monedaOperacion(operacion)} ${formatoNumero(operacion.importe_total)}`,
+          "",
+          "DATOS DE VENDEDOR Y COMPRADOR: completar desde los contactos de la operación.",
+          "CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.",
+          "",
+          "Este borrador requiere revisión y aceptación expresa de ambas partes antes de su firma."
+        ].join("\\n");
+      }
+    }
+    setContrato((actual) => ({
+      ...actual,
+      operacion_id: operacion.id,
+      acuerdo_id: acuerdoInicial?.id || null,
+      numero_contrato: numeroContratoInicial,
+      estado: contratoData?.estado || "BORRADOR",
+      cantidad_tn: Number(contratoData?.cantidad_tn || operacion.cantidad_tn),
+      precio_tn: Number(contratoData?.precio_tn || operacion.precio_tn),
+      importe_total: Number(contratoData?.importe_total || operacion.importe_total),
+      contenido: contenidoInicial,
+    }));
+
     // ---------------------------------------------------------
     // Intermediario de la operación
     // La selección comercial se obtiene desde
@@ -1553,15 +1621,13 @@ export default function OperacionesPage() {
 
   function generarContenidoContratoF2(
     operacion: Operacion,
-    acuerdoDatos: Acuerdo
+    acuerdoDatos: Acuerdo,
+    vendedorId: string = vendedorSeleccionado,
+    compradorId: string = compradorSeleccionado,
+    numeroContrato: string = contrato.numero_contrato
   ) {
-    const vendedor = contactos.find(
-      (c) => c.id === vendedorSeleccionado
-    );
-
-    const comprador = contactos.find(
-      (c) => c.id === compradorSeleccionado
-    );
+    const vendedor = contactos.find((c) => c.id === vendedorId);
+    const comprador = contactos.find((c) => c.id === compradorId);
 
     const fecha = new Date().toLocaleDateString(
       "es-AR"
@@ -1628,7 +1694,7 @@ export default function OperacionesPage() {
 
     return `CONTRATO DE ABASTECIMIENTO DE GRANOS
 
-N.º ${contrato.numero_contrato}
+N.º ${numeroContrato}
 
 FECHA: ${fecha}
 
@@ -1815,12 +1881,14 @@ Firma: ______________________________
 
       let contenidoContrato = contrato.contenido;
 
-      if (operacion.tipo_operacion === "F2") {
+      if (!contenidoContrato.trim()) {
         try {
-          // Generar el contrato directamente con los datos recuperados de Supabase.
           contenidoContrato = generarContenidoContratoF2(
             operacion,
-            acuerdoReal
+            acuerdoReal,
+            vendedorSeleccionado,
+            compradorSeleccionado,
+            contrato.numero_contrato
           );
         } catch (e) {
           setMensaje("");
