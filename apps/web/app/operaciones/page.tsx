@@ -2990,6 +2990,11 @@ Firma: ______________________________
             </label>
             {mensaje && <p role="status" style={{padding:10,background:"#ecfdf5",color:"#166534",borderRadius:8}}>{mensaje}</p>}
             {error && <p role="alert" style={{padding:10,background:"#fee2e2",color:"#991b1b",borderRadius:8}}>{error}</p>}
+            {error.includes("CONFIDENCIALIDAD_PENDIENTE") && <div role="status" style={{padding:12,background:"#fff7ed",border:"1px solid #fdba74",borderRadius:8,color:"#9a3412",marginTop:12}}>
+              <strong>Falta aceptar la confidencialidad.</strong>
+              <p style={{margin:"6px 0 10px"}}>El borrador se conserva. Abrí el contrato guardado para revisar qué parte debe aceptar desde su propia cuenta.</p>
+              <button type="button" onClick={()=>{window.location.href="/contratos?tab=mis&operacion="+encodeURIComponent(operacionContrato.id)}} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#9a3412",color:"#fff",fontWeight:700,cursor:"pointer"}}>Ir a aceptar confidencialidad →</button>
+            </div>}
             <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:18}}>
               <button type="button" onClick={()=>generarPDFContrato()} style={{padding:"10px 14px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>Descargar PDF</button>
               <button type="button" disabled={guardandoContrato} onClick={()=>guardarContrato(operacionContrato,false)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#078b58",color:"#fff",cursor:"pointer",opacity:guardandoContrato?0.6:1}}>{guardandoContrato?"Guardando…":"Guardar borrador"}</button>
