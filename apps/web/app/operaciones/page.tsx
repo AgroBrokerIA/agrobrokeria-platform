@@ -685,6 +685,11 @@ export default function OperacionesPage() {
       setError("Primero debe aprobarse el visado de mercadería.");
       return false;
     }
+    const estadoComision = String(control?.comision_estado || "").toUpperCase();
+    if (!["RETENIDA", "LIBERADA"].includes(estadoComision)) {
+      setError("El Contrato Definitivo se habilita únicamente cuando Administración confirma la retención de la comisión AgroBrokerIA.");
+      return false;
+    }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 4) {
       setError("La operación debe estar en Fondos para pasar al Contrato Definitivo.");
@@ -702,7 +707,7 @@ export default function OperacionesPage() {
     }
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Visado aprobado. La operación pasó a Fondos para verificar y retener la comisión AgroBrokerIA antes del Contrato Definitivo.");
+    setMensaje("Comisión AgroBrokerIA retenida y visado aprobado. La operación pasó a Contrato Definitivo.");
     await cargarOperaciones();
     return true;
   }
@@ -808,7 +813,7 @@ export default function OperacionesPage() {
         p_comprobante_url: uploadedPath,
       });
       if (submitError) throw submitError;
-      setMensaje("Comprobante bancario cargado y enviado. AgroBrokerIA verificará la transferencia. La operación permanecerá en Visado hasta que la comisión quede RETENIDA.");
+      setMensaje("Comprobante bancario cargado y enviado. AgroBrokerIA verificará la transferencia. La operación permanecerá en Fondos hasta que Administración confirme la comisión como RETENIDA.");
       setComisionReferenciaTransferencia("");
       setComisionComprobanteFile(null);
       await cargarOperaciones();
