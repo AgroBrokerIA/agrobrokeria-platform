@@ -269,7 +269,6 @@ export default function OperacionesPage() {
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
-  const [detalleVisadoAprobado, setDetalleVisadoAprobado] = useState(false);
 
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
@@ -2726,7 +2725,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{const control=await cargarControlComercial(operacion);setDetalleVisadoAprobado(visadoAprobado(control));setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{await cargarControlComercial(operacion);setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2749,6 +2748,7 @@ Firma: ______________________________
       {detalleOperacion && (() => {
         const workflowDetalle = obtenerWorkflow(detalleOperacion.id);
         const ordenDetalle = workflowDetalle?.orden || 0;
+        const detalleVisadoAprobado = visadoAprobado(controlesComerciales[detalleOperacion.id]);
         const metaDetalle = operacionMeta[detalleOperacion.id] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
         const continuar = async () => {
           let resultado = false;
@@ -2759,7 +2759,7 @@ Firma: ______________________________
             resultado = true;
           } else if (ordenDetalle === 3) {
             const control = controlesComerciales[detalleOperacion.id];
-            if (control?.visado_resultado === "APROBADO") {
+            if (visadoAprobado(control)) {
               resultado = await avanzarAContratoConComision(detalleOperacion);
             } else {
               abrirVisado(detalleOperacion); resultado = true;
