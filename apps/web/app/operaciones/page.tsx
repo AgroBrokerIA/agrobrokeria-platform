@@ -593,7 +593,7 @@ export default function OperacionesPage() {
         const contratoId = contratosFirmados[0].id;
         const [{ data: participantesFirma, error: participantesError }, { data: firmasDB, error: firmasError }] = await Promise.all([
           supabase.from("operacion_participantes").select("rol").eq("operacion_id", workflow.operacion_id).in("rol", ["VENDEDOR", "COMPRADOR"]),
-          supabase.from("contrato_firmantes").select("rol,firmado").eq("contrato_id", contratoId).in("rol", ["VENDEDOR", "COMPRADOR", "INTERMEDIARIO"]),
+          supabase.from("contrato_firmantes").select("rol,firmado").eq("contrato_id", contratoId).in("rol", ["VENDEDOR", "COMPRADOR"]),
         ]);
 
         if (participantesError || firmasError) {
@@ -2890,7 +2890,13 @@ Firma: ______________________________
             <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
             <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
             <section aria-label="Progreso de la operación" style={{marginTop:18,padding:16,border:"1px solid #dbe3ee",borderRadius:12,background:"#f8fafc"}}>
-              <h3 style={{margin:"0 0 12px",fontSize:16}}>Etapas de la operación</h3>
+              <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:10,flexWrap:"wrap"}}>
+                <h3 style={{margin:0,fontSize:16}}>Etapas de la operación</h3>
+                <strong style={{fontSize:12,color:"#0f766e"}}>Etapa {Math.min(Math.max(ordenDetalle,1),10)} de 10</strong>
+              </div>
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(Math.max(ordenDetalle,0),10)/10*100)} style={{height:8,borderRadius:99,background:"#e2e8f0",overflow:"hidden",marginBottom:14}}>
+                <div style={{height:"100%",width:`${Math.min(Math.max(ordenDetalle,0),10)/10*100}%`,background:"#059669",borderRadius:99,transition:"width .25s ease"}}/>
+              </div>
               <ol style={{listStyle:"none",padding:0,margin:0,display:"grid",gap:8}}>
                 {ETAPAS.map((etapa,index)=>{const orden=index+1;const completada=ordenDetalle>orden;const actual=ordenDetalle===orden;return <li key={etapa} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:actual?"#dbeafe":completada?"#dcfce7":"#fff",border:actual?"1px solid #60a5fa":completada?"1px solid #86efac":"1px solid #e2e8f0",color:actual?"#1d4ed8":completada?"#166534":"#64748b"}}>
                   <span aria-hidden="true" style={{fontWeight:800,minWidth:22}}>{completada?"✓":actual?"●":"○"}</span>
