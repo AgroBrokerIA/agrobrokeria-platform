@@ -662,6 +662,21 @@ export default function OperacionesPage() {
     await cargarOperaciones(); return true;
   }
 
+  async function avanzarAFondos(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const control = await cargarControlComercial(operacion);
+    if (!visadoAprobado(control)) { setError("El Visado de mercadería debe estar APROBADO antes de pasar a Fondos."); return false; }
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 3) { setError("La operación debe estar en Visado de mercadería."); return false; }
+    const { data: etapa, error } = await supabase.from("workflow_etapas").select("id")
+      .eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
+    if (error || !etapa) { setError("No se encontró la etapa Fondos."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("Visado aprobado. La operación pasó a Fondos: la comisión AgroBrokerIA debe abonarse y quedar RETENIDA antes del Contrato Definitivo.");
+    await cargarOperaciones(); return true;
+  }
+
   async function avanzarAContratoConComision(operacion: Operacion) {
     setError(""); setMensaje("");
     const control = controlesComerciales[operacion.id];
@@ -2821,7 +2836,7 @@ Firma: ______________________________
             // Leer el estado persistido antes de decidir; no depender de un estado React potencialmente desactualizado.
             const controlActual = await cargarControlComercial(detalleOperacion);
             if (visadoAprobado(controlActual)) {
-              resultado = await avanzarAContratoConComision(detalleOperacion);
+              resultado = await avanzarAFondos(detalleOperacion);
             } else {
               abrirVisado(detalleOperacion); resultado = true;
             }
@@ -2839,7 +2854,8 @@ Firma: ______________________________
             window.location.href = "/contratos?tab=firmas";
             return;
           } else if (ordenDetalle === 7) {
-            resultado = await iniciarLogistica(detalleOperacion.id);
+            const estadoOperativo = String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase();
+            resultado = estadoOperativo === "HABILITADOS" ? await iniciarLogistica(detalleOperacion.id) : await verificarLiberacionOperativa(detalleOperacion.id);
           } else if (ordenDetalle === 0 || !workflowDetalle) {
             setError("Esta operación todavía no tiene un flujo de etapas asociado. No se puede avanzar hasta inicializar su workflow.");
             return;
