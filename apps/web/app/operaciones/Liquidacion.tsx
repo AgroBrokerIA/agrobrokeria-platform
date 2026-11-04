@@ -311,7 +311,7 @@ export default function Liquidacion({
       }}
     >
       <h3 style={{ marginTop: 0, fontSize: 24 }}>
-        💰 Liquidación
+        💰 Liquidación de la operación
       </h3>
 
       <div
@@ -470,7 +470,7 @@ export default function Liquidacion({
           borderRadius: 10,
         }}
       >
-        <strong>Comisión AgroBroker IA:</strong>{" "}
+        <strong>AgroBrokerIA — liquidación y comisión:</strong>{" "}
         USD {(calculos.entregadaTn || 0).toFixed(2)}
         <br />
         La plataforma la calcula automáticamente como USD 1 por cada tonelada
@@ -557,7 +557,7 @@ export default function Liquidacion({
                 : "not-allowed",
           }}
         >
-          ✅ CONFIRMAR LIQUIDACIÓN
+          Liberar liquidación AgroBrokerIA
         </button>
       </div>
     </div>
