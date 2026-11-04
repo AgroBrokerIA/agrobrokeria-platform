@@ -706,6 +706,60 @@ export default function OperacionesPage() {
     return true;
   }
 
+  async function avanzarALiberacionOperativa(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 6) {
+      setError("La operación debe estar en Firmas para verificar la liberación operativa.");
+      return false;
+    }
+    const { data: control, error: controlError } = await supabase
+      .from("operacion_control_comercial")
+      .select("fondos_estado,comision_estado")
+      .eq("operacion_id", operacion.id).single();
+    if (controlError) {
+      setError("No se pudo verificar fondos y comisión: " + controlError.message);
+      return false;
+    }
+    if (control.fondos_estado !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(String(control.comision_estado || ""))) {
+      setError("Se requiere que Administración confirme Fondos LIBERADOS y comisión AgroBrokerIA RETENIDA.");
+      return false;
+    }
+    const { data: contractRows, error: contractError } = await supabase
+      .from("contratos").select("id").eq("operacion_id", operacion.id).eq("estado", "CONFIRMADO");
+    if (contractError || !contractRows?.length) {
+      setError("No hay un contrato definitivo confirmado.");
+      return false;
+    }
+    const contractIds = contractRows.map((row: {id:string}) => row.id);
+    const { data: signers, error: signerError } = await supabase
+      .from("contrato_firmantes").select("rol,firmado")
+      .in("contrato_id", contractIds).in("rol", ["VENDEDOR","COMPRADOR"]);
+    if (signerError) {
+      setError("No se pudieron verificar las firmas: " + signerError.message);
+      return false;
+    }
+    const signedRoles = new Set((signers || []).filter((row: {rol:string;firmado:boolean}) => row.firmado).map((row: {rol:string}) => row.rol));
+    if (!signedRoles.has("VENDEDOR") || !signedRoles.has("COMPRADOR")) {
+      window.location.href = "/contratos?tab=firmas";
+      return false;
+    }
+    const { data: nextStage, error: stageError } = await supabase
+      .from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 7).maybeSingle();
+    if (stageError || !nextStage) {
+      setError("No se encontró la etapa Liberación operativa.");
+      return false;
+    }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, nextStage.id);
+    if (advanceError) {
+      setError(advanceError.message);
+      return false;
+    }
+    setMensaje("Firmas y fondos verificados. La operación pasó a Liberación operativa.");
+    await cargarOperaciones();
+    return true;
+  }
+
   async function enviarComprobanteComision(operacion: Operacion) {
     setError("");
     setMensaje("");
