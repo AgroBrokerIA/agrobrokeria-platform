@@ -253,6 +253,9 @@ export default function OperacionesPage() {
   const [cargandoCuentaBancaria, setCargandoCuentaBancaria] = useState(true);
   const [enviandoComprobanteComision, setEnviandoComprobanteComision] = useState(false);
   const [mostrarFormularioComision, setMostrarFormularioComision] = useState(false);
+  const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
+  const [retencionesComision, setRetencionesComision] = useState<Record<string, any>>({});
+  const [revisandoRetencionComision, setRevisandoRetencionComision] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
 
@@ -345,10 +348,57 @@ export default function OperacionesPage() {
     cargarContactos();
     cargarIntermediariosDisponibles();
     cargarCuentaBancariaPlataforma();
+    cargarPermisosAdminPlataforma();
   }, []);
 
   function visadoAprobado(control?: ControlComercialData | null) {
     return control?.visado_resultado === "APROBADO" || control?.visado_estado === "APROBADO";
+  }
+
+  async function cargarPermisosAdminPlataforma() {
+    const { data: { user } } = await supabase.auth.getUser();
+    if (!user) { setEsAdminPlataforma(false); return; }
+    const { data, error } = await supabase.from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    if (error) {
+      console.error("No se pudo verificar el rol de administración:", error);
+      setEsAdminPlataforma(false);
+      return;
+    }
+    setEsAdminPlataforma(Boolean(data));
+  }
+
+  async function abrirComprobanteRetencionComision(path: string) {
+    if (!esAdminPlataforma) { setError("Solo Administración puede abrir el comprobante bancario."); return; }
+    const { data, error } = await supabase.storage.from("documentos-operacion").createSignedUrl(path, 300);
+    if (error || !data?.signedUrl) { setError(error?.message || "No se pudo abrir el comprobante."); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function revisarRetencionComision(retencionId: string, resultado: "RETENIDA" | "RECHAZADO") {
+    if (!esAdminPlataforma) { setError("Solo Administración puede revisar la retención de comisión."); return; }
+    let observaciones: string | null = null;
+    if (resultado === "RECHAZADO") {
+      observaciones = window.prompt("Indicá el motivo del rechazo para que la empresa pueda volver a cargar el comprobante:")?.trim() || null;
+      if (!observaciones) { setError("Para rechazar el comprobante tenés que indicar el motivo."); return; }
+    } else {
+      observaciones = window.prompt("Observación administrativa (opcional):")?.trim() || null;
+      if (!window.confirm("¿Confirmás que la transferencia fue verificada y que la comisión quedará RETENIDA hasta el cierre contractual?")) return;
+    }
+    setRevisandoRetencionComision(true); setError(""); setMensaje("");
+    try {
+      const { error } = resultado === "RETENIDA"
+        ? await supabase.rpc("confirmar_retencion_comision_plataforma", { p_retencion_id: retencionId, p_observaciones: observaciones })
+        : await supabase.rpc("rechazar_comprobante_comision_plataforma", { p_retencion_id: retencionId, p_motivo: observaciones });
+      if (error) throw error;
+      setMensaje(resultado === "RETENIDA"
+        ? "Transferencia verificada. La comisión AgroBrokerIA quedó RETENIDA y ya se puede avanzar al Contrato Definitivo."
+        : "Comprobante rechazado. El motivo quedó registrado y la empresa pagadora puede volver a cargarlo desde Operaciones.");
+      await cargarOperaciones();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo revisar el comprobante de comisión.");
+    } finally {
+      setRevisandoRetencionComision(false);
+    }
   }
 
   async function cargarCuentaBancariaPlataforma() {
@@ -484,6 +534,20 @@ export default function OperacionesPage() {
         }));
 
       setOperaciones(operacionesNormalizadas);
+
+      if (idsOperaciones.length) {
+        const { data: retencionesDB, error: retencionesError } = await supabase
+          .from("operacion_comision_retenciones")
+          .select("id,operacion_id,importe,moneda_id,referencia_pago,comprobante_url,estado,observaciones,creado_at,verificado_at")
+          .in("operacion_id", idsOperaciones);
+        if (retencionesError) {
+          console.error("No se pudieron cargar los comprobantes de comisión:", retencionesError);
+        } else {
+          setRetencionesComision(Object.fromEntries((retencionesDB || []).map((row: any) => [row.operacion_id, row])));
+        }
+      } else {
+        setRetencionesComision({});
+      }
 
       const publicationIds = [...new Set(operacionesNormalizadas.flatMap((item) => [item.publicacion_compra_id, item.publicacion_venta_id]).filter(Boolean))] as string[];
       const meta: Record<string, OperacionMeta> = {};
@@ -2864,6 +2928,7 @@ Firma: ______________________________
         const ordenDetalle = workflowDetalle?.orden || 0;
 
         const metaDetalle = operacionMeta[detalleOperacion.id] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
+        const retencionComision = retencionesComision[detalleOperacion.id];
         const continuar = async () => {
           let resultado = false;
           if (ordenDetalle === 1) {
@@ -2943,6 +3008,18 @@ Firma: ______________________________
               <p style={{margin:"0 0 8px",color:"#14532d"}}>La comisión de plataforma se gestiona después del visado y antes del Contrato Definitivo. Importe de referencia: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por TN).</p>
               <strong style={{display:"inline-flex",padding:"6px 10px",borderRadius:999,background:(String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA"?"#dcfce7":"#fef3c7"),color:(String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA"?"#166534":"#92400e")}}>Comisión AgroBrokerIA: {String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()==="RETENIDA"?"RETENIDA":"PENDIENTE DE VERIFICACIÓN"}</strong>
               <p style={{margin:"8px 0 0",fontSize:12,color:"#475569"}}>La comisión solo se mostrará como RETENIDA cuando el sistema registre la retención confirmada por Administración.</p>
+            </section>}
+            {ordenDetalle === 4 && retencionComision && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff",display:"grid",gap:10}}>
+              <h3 style={{margin:0}}>Revisión del comprobante de comisión</h3>
+              <p style={{margin:0}}>Estado: <strong>{retencionComision.estado==="COMPROBANTE_ENVIADO"?"Pendiente de revisión":retencionComision.estado==="RETENIDA"?"Transferencia verificada · comisión retenida":retencionComision.estado==="RECHAZADO"?"Comprobante rechazado":retencionComision.estado}</strong></p>
+              <p style={{margin:0}}>Importe: <strong>USD {Number(retencionComision.importe||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}</strong> · Referencia: {retencionComision.referencia_pago||"No informada"}</p>
+              {retencionComision.observaciones && <p style={{margin:0,color:"#92400e"}}>Observaciones: {retencionComision.observaciones}</p>}
+              {esAdminPlataforma && retencionComision.comprobante_url && <button type="button" onClick={()=>void abrirComprobanteRetencionComision(retencionComision.comprobante_url)} style={{justifySelf:"start",padding:"8px 12px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>Abrir comprobante bancario</button>}
+              {esAdminPlataforma && retencionComision.estado==="COMPROBANTE_ENVIADO" && <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RETENIDA")} style={{padding:"9px 12px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{revisandoRetencionComision?"Procesando…":"Verificar transferencia y retener comisión"}</button>
+                <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RECHAZADO")} style={{padding:"9px 12px",border:"1px solid #b91c1c",borderRadius:8,background:"#fff",color:"#b91c1c",cursor:"pointer"}}>Rechazar comprobante</button>
+              </div>}
+              {!esAdminPlataforma && retencionComision.estado==="COMPROBANTE_ENVIADO" && <p style={{margin:0,fontSize:12,color:"#475569"}}>El comprobante fue enviado. Administración lo revisará desde esta misma operación.</p>}
             </section>}
             {ordenDetalle === 4 && mostrarFormularioComision && String(controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase()!=="RETENIDA" && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:12}}>
               <h3 style={{margin:0}}>Comprobante de comisión AgroBrokerIA</h3>
