@@ -1321,7 +1321,8 @@ export default function OperacionesPage() {
         await supabase.rpc("guardar_control_comercial", {
           p_operacion_id: operacion.id,
           p_cambios: {
-            comision_estado: "PENDIENTE",
+            // La comisión se inicializa con el DEFAULT de base de datos.
+            // No enviar comision_estado: solo cambia mediante retención verificada.
             fondos_estado: "PENDIENTES",
             visado_estado: "PENDIENTE",
             vendedor_firma_estado: "PENDIENTE",
