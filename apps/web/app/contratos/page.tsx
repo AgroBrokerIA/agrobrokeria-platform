@@ -194,7 +194,7 @@ export default function ContratosPage(){
        setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:String(contratoDestino.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F2"}));
        const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
        if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
-       void loadSignedCopies(contratoDestino.id);
+       void loadSignedCopies(contratoDestino.id,contratoDestino.operacion_id);
      } else if(params.get("tab")==="mis") setTab("mis");
    }
    if(p.error)setError("No se pudo cargar el catálogo de productos: "+p.error.message);else setProductos((p.data||[]).map((x:any)=>String(x.nombre)));
@@ -220,14 +220,14 @@ export default function ContratosPage(){
    }catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar la prórroga.");} finally{setExtensionBusy(false);}
  }
 
- async function loadSignedCopies(contractId:string){
+ async function loadSignedCopies(contractId:string,operationId?:string){
    const {data,error}=await supabase.from("contrato_copias_firmadas").select("id,rol,empresa_id,version_contrato,nombre_archivo,storage_path,sha256,estado,observaciones,subido_at,revisado_at").eq("contrato_id",contractId).order("subido_at",{ascending:true});
    if(error){setError(error.message);setCopyRows([]);return;} setCopyRows(data||[]);
    const {data:{user}}=await supabase.auth.getUser();
    if(user){
      const {data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
-     if(profile?.active_company_id&&selected?.operacion_id){
-       const {data:participants}=await supabase.from("operacion_participantes").select("rol").eq("operacion_id",selected.operacion_id).eq("empresa_id",profile.active_company_id).in("rol",["VENDEDOR","COMPRADOR"]);
+     if(profile?.active_company_id&&(operationId||selected?.operacion_id)){
+       const {data:participants}=await supabase.from("operacion_participantes").select("rol").eq("operacion_id",operationId||selected!.operacion_id).eq("empresa_id",profile.active_company_id).in("rol",["VENDEDOR","COMPRADOR"]);
        setAllowedCopyRoles((participants||[]).map((x:any)=>String(x.rol).toUpperCase()));
      }else setAllowedCopyRoles([]);
    }
@@ -248,7 +248,7 @@ export default function ContratosPage(){
      if(rpcError)throw rpcError;
      setMessage("Firma del "+(role==="VENDEDOR"?"vendedor":"comprador")+" recibida. Queda pendiente de tu revisión.");
      if(role==="VENDEDOR")setVendorFile(null);else setBuyerFile(null);
-     await loadSignedCopies(selected.id);
+     await loadSignedCopies(selected.id,selected.operacion_id);
    }catch(e:any){if(path)await supabase.storage.from("documentos-operacion").remove([path]);const detail=String(e?.message||e?.error_description||"Error desconocido");setError("No se pudo registrar la firma: "+detail+(e?.code?" (código "+e.code+")":""));}
    finally{setCopyBusy(null);}
  }
