@@ -2852,6 +2852,9 @@ Firma: ______________________________
           } else if (ordenDetalle === 4) {
             await abrirContrato(detalleOperacion);
             resultado = true;
+          } else if (ordenDetalle === 5) {
+            window.location.href = "/contratos?tab=firmas";
+            return;
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
           } else if (ordenDetalle === 0 || !workflowDetalle) {
@@ -2990,6 +2993,7 @@ Firma: ______________________________
             <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:18}}>
               <button type="button" onClick={()=>generarPDFContrato()} style={{padding:"10px 14px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>Descargar PDF</button>
               <button type="button" disabled={guardandoContrato} onClick={()=>guardarContrato(operacionContrato,false)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#078b58",color:"#fff",cursor:"pointer",opacity:guardandoContrato?0.6:1}}>{guardandoContrato?"Guardando…":"Guardar borrador"}</button>
+              <button type="button" disabled={guardandoContrato||!vendedorSeleccionado||!compradorSeleccionado||!contrato.contenido.trim()} onClick={()=>guardarContrato(operacionContrato,true)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#1d4ed8",color:"#fff",cursor:"pointer",opacity:guardandoContrato||!vendedorSeleccionado||!compradorSeleccionado||!contrato.contenido.trim()?0.55:1}}>{guardandoContrato?"Confirmando…":"Confirmar contrato y pasar a Firmas"}</button>
               <button type="button" onClick={()=>setContratoAbierto(null)} style={{padding:"10px 14px",border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",cursor:"pointer"}}>Cerrar</button>
             </div>
           </section>
