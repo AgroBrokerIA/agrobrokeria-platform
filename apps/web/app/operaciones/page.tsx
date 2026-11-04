@@ -717,7 +717,7 @@ export default function OperacionesPage() {
       .from("workflow_etapas").select("id")
       .eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
     if (etapaError || !etapa) { setError("No se encontró la etapa Contrato Definitivo."); return false; }
-    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id, "QA_SIN_PAGO");
     if (advanceError) { setError(advanceError.message); return false; }
     setMensaje("AVANCE DE PRUEBA: pasó a Contrato Definitivo. La comisión sigue PENDIENTE; no se registró ni aprobó ningún pago real.");
     await cargarOperaciones();
