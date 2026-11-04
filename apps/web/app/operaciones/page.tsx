@@ -1298,7 +1298,7 @@ export default function OperacionesPage() {
           "CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.",
           "",
           "Este borrador requiere revisión y aceptación expresa de ambas partes antes de su firma."
-        ].join("\\n");
+        ].join(String.fromCharCode(10));
       }
     }
     setContrato((actual) => ({
@@ -1440,7 +1440,11 @@ export default function OperacionesPage() {
     doc.setFont("helvetica", "normal");
     doc.setFontSize(10);
 
-    for (const linea of contrato.contenido.split(String.fromCharCode(10))) {
+    const contenidoNormalizado = contrato.contenido
+      .replace(/\\n/g, String.fromCharCode(10))
+      .replace(/\\r/g, "")
+      .replace(/\\t/g, "  ");
+    for (const linea of contenidoNormalizado.split(String.fromCharCode(10))) {
       const texto = linea.trim();
 
       if (!texto) {
@@ -2938,7 +2942,18 @@ Firma: ______________________________
                 <select style={inputContrato} value={vendedorSeleccionado} onChange={async (e) => {
                   const id = e.target.value;
                   setVendedorSeleccionado(id);
-                  if (id) await guardarParteOperacion(operacionContrato.id, "VENDEDOR", id);
+                  if (id) {
+                    await guardarParteOperacion(operacionContrato.id, "VENDEDOR", id);
+                    const compradorId = compradorSeleccionado;
+                    if (compradorId) {
+                      try {
+                        const texto = generarContenidoContratoF2(operacionContrato, acuerdo, id, compradorId, contrato.numero_contrato);
+                        setContrato(actual => ({ ...actual, contenido: texto }));
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
+                      }
+                    }
+                  }
                 }}>
                   <option value="">Seleccionar vendedor…</option>
                   {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre_razon_social}{contacto.cuit ? ` — CUIT ${contacto.cuit}` : ""}</option>)}
@@ -2948,7 +2963,18 @@ Firma: ______________________________
                 <select style={inputContrato} value={compradorSeleccionado} onChange={async (e) => {
                   const id = e.target.value;
                   setCompradorSeleccionado(id);
-                  if (id) await guardarParteOperacion(operacionContrato.id, "COMPRADOR", id);
+                  if (id) {
+                    await guardarParteOperacion(operacionContrato.id, "COMPRADOR", id);
+                    const vendedorId = vendedorSeleccionado;
+                    if (vendedorId) {
+                      try {
+                        const texto = generarContenidoContratoF2(operacionContrato, acuerdo, vendedorId, id, contrato.numero_contrato);
+                        setContrato(actual => ({ ...actual, contenido: texto }));
+                      } catch (e) {
+                        setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
+                      }
+                    }
+                  }
                 }}>
                   <option value="">Seleccionar comprador…</option>
                   {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre_razon_social}{contacto.cuit ? ` — CUIT ${contacto.cuit}` : ""}</option>)}
