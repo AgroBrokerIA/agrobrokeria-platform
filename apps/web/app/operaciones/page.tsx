@@ -2933,6 +2933,29 @@ Firma: ______________________________
               <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
               <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
             </div>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginTop:16}}>
+              <label style={{display:"block"}}>Vendedor
+                <select style={inputContrato} value={vendedorSeleccionado} onChange={async (e) => {
+                  const id = e.target.value;
+                  setVendedorSeleccionado(id);
+                  if (id) await guardarParteOperacion(operacionContrato.id, "VENDEDOR", id);
+                }}>
+                  <option value="">Seleccionar vendedor…</option>
+                  {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre_razon_social}{contacto.cuit ? ` — CUIT ${contacto.cuit}` : ""}</option>)}
+                </select>
+              </label>
+              <label style={{display:"block"}}>Comprador
+                <select style={inputContrato} value={compradorSeleccionado} onChange={async (e) => {
+                  const id = e.target.value;
+                  setCompradorSeleccionado(id);
+                  if (id) await guardarParteOperacion(operacionContrato.id, "COMPRADOR", id);
+                }}>
+                  <option value="">Seleccionar comprador…</option>
+                  {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre_razon_social}{contacto.cuit ? ` — CUIT ${contacto.cuit}` : ""}</option>)}
+                </select>
+              </label>
+            </div>
+            {contactos.length === 0 && <p style={{marginTop:8,color:"#b45309"}}>No hay contactos comerciales disponibles. Revisá permisos o registrá primero los contactos de vendedor y comprador.</p>}
             <label style={{display:"block",marginTop:16}}>Contenido del contrato (editable)
               <textarea style={{...inputContrato,minHeight:260,marginTop:6,fontFamily:"inherit",resize:"vertical"}} value={contrato.contenido} onChange={e=>setContrato(v=>({...v,contenido:e.target.value}))} placeholder="El contenido contractual se completará con los datos del Acuerdo Comercial guardado. Revisá y completá los campos antes de guardar."/>
             </label>
