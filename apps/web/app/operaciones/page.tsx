@@ -1297,7 +1297,8 @@ export default function OperacionesPage() {
     // Si el contenido proviene del texto genérico de respaldo, reconstruirlo
     // con los contactos seleccionados en esta operación.
     if (contenidoInicial.includes("DATOS DE VENDEDOR Y COMPRADOR: completar desde los contactos de la operación.") ||
-        contenidoInicial.includes("CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.")) {
+        contenidoInicial.includes("CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.") ||
+        (contenidoInicial.includes("TERCERA: PLAZO DE ENTREGA") && contenidoInicial.includes("de 2027"))) {
       try {
         contenidoInicial = generarContenidoContratoF2(
           operacion,
@@ -2639,16 +2640,12 @@ Firma: ______________________________
     const comisionRetenida =
       ["RETENIDA","LIBERADA"].includes(controlActual.comision_estado);
 
-    const noElusionAceptada =
-      controlActual.no_elusion_aceptada === true;
-
     if (
       !fondosLiberados ||
-      !comisionRetenida ||
-      !noElusionAceptada
+      !comisionRetenida
     ) {
       setError(
-        "🔒 Los datos operativos continúan protegidos. Para liberarlos deben cumplirse: Fondos LIBERADOS + Comisión AgroBroker IA ABONADA + No elusión ACEPTADA."
+        "🔒 Los datos operativos continúan protegidos. Para liberarlos deben cumplirse: Fondos LIBERADOS + Comisión AgroBrokerIA RETENIDA."
       );
       return false;
     }
@@ -2720,7 +2717,7 @@ Firma: ______________________________
 
     setError("");
     setMensaje(
-      "✅ Fondos liberados, comisión retenida y no elusión aceptada. Los datos operativos fueron habilitados."
+      "✅ Fondos liberados y comisión retenida. Los datos operativos fueron habilitados."
     );
 
     await cargarOperaciones();
