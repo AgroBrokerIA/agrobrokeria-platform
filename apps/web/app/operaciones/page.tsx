@@ -700,6 +700,30 @@ export default function OperacionesPage() {
     return true;
   }
 
+  // Bypass temporal de QA: solo administradores de plataforma. No crea pagos,
+  // retenciones ni cambia el estado de comisión; se debe retirar al terminar las pruebas.
+  async function omitirComisionParaPruebas(operacion: Operacion) {
+    setError(""); setMensaje("");
+    const { data: { user }, error: authError } = await supabase.auth.getUser();
+    if (authError || !user) { setError("No se pudo validar la sesión administrativa."); return false; }
+    const { data: admin, error: adminError } = await supabase
+      .from("platform_admins").select("user_id").eq("user_id", user.id).maybeSingle();
+    if (adminError || !admin) { setError("Esta opción temporal está disponible únicamente para administradores de AgroBrokerIA."); return false; }
+    const control = await cargarControlComercial(operacion);
+    if (!visadoAprobado(control)) { setError("Primero debe aprobarse el visado de mercadería."); return false; }
+    const workflow = obtenerWorkflow(operacion.id);
+    if (!workflow || workflow.orden !== 3) { setError("La operación debe estar en Visado de mercadería."); return false; }
+    const { data: etapa, error: etapaError } = await supabase
+      .from("workflow_etapas").select("id")
+      .eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
+    if (etapaError || !etapa) { setError("No se encontró la etapa Contrato Definitivo."); return false; }
+    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
+    if (advanceError) { setError(advanceError.message); return false; }
+    setMensaje("AVANCE DE PRUEBA: pasó a Contrato Definitivo. La comisión sigue PENDIENTE; no se registró ni aprobó ningún pago real.");
+    await cargarOperaciones();
+    return true;
+  }
+
   async function enviarComprobanteComision(operacion: Operacion) {
     setError("");
     setMensaje("");
@@ -2831,7 +2855,7 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle === 3 && visadoAprobado(controlesComerciales[detalleOperacion.id]) && <button type="button" style={{padding:"10px 14px",borderRadius:8,border:"1px dashed #b45309",background:"#fffbeb",color:"#92400e",cursor:"pointer"}} onClick={async()=>{const ok=await omitirComisionParaPruebas(detalleOperacion);if(ok)setDetalleOperacion(null);}}>Omitir comisión solo para pruebas</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
