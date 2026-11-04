@@ -269,6 +269,7 @@ export default function OperacionesPage() {
 
   const [controlesComerciales, setControlesComerciales] =
     useState<Record<string, ControlComercialData>>({});
+  const [detalleVisadoAprobado, setDetalleVisadoAprobado] = useState(false);
 
   const [, setComisionesIntermediarios] =
     useState<Record<string, ComisionIntermediario[]>>({});
@@ -2725,7 +2726,7 @@ Firma: ______________________________
                 <span><small>{meta.contraparte}</small></span>
                 <span><em className={"op-status "+estadoClass}>{estado}</em></span>
                 <span>{formatoFecha(operacion.fecha_operacion)}</span>
-                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{await cargarControlComercial(operacion);setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
+                <span className="op-actions"><button aria-label={"Ver acciones de "+operacion.codigo} title="Ver detalle y acciones" onClick={async()=>{const control=await cargarControlComercial(operacion);setDetalleVisadoAprobado(visadoAprobado(control));setDetalleOperacion(operacion);}} className="op-more">⋮</button></span>
               </div>
             })}
           {!loading&&!operacionesFiltradas.length&&<div className="operations-empty">No hay operaciones que coincidan con los filtros seleccionados.</div>}
@@ -2748,7 +2749,7 @@ Firma: ______________________________
       {detalleOperacion && (() => {
         const workflowDetalle = obtenerWorkflow(detalleOperacion.id);
         const ordenDetalle = workflowDetalle?.orden || 0;
-        const detalleVisadoAprobado = visadoAprobado(controlesComerciales[detalleOperacion.id]);
+
         const metaDetalle = operacionMeta[detalleOperacion.id] || { producto: "Producto registrado", origen: "No informado", destino: "No informado", contraparte: "No informado" };
         const continuar = async () => {
           let resultado = false;
@@ -2828,11 +2829,6 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",margin:"0 0 12px"}}>{comisionComprobanteFile ? `Archivo seleccionado: ${comisionComprobanteFile.name}` : "Formatos permitidos: PDF, JPG o PNG. Tamaño máximo: 10 MB."}</p>
               <button type="button" disabled={enviandoComprobanteComision || cargandoCuentaBancaria || !cuentaBancariaPlataforma || !comisionComprobanteFile} onClick={()=>enviarComprobanteComision(detalleOperacion)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#b45309",color:"#fff",fontWeight:700,cursor:"pointer",opacity:enviandoComprobanteComision || !cuentaBancariaPlataforma || !comisionComprobanteFile ? 0.6 : 1}}>{enviandoComprobanteComision?"Subiendo y enviando…":"Enviar comprobante de comisión"}</button>
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
-              <div style={{marginTop:14,padding:12,border:"1px dashed #d97706",borderRadius:8,background:"#fffbeb"}}>
-                <strong style={{display:"block",color:"#92400e",marginBottom:6}}>¿Estás probando el sistema?</strong>
-                <p style={{fontSize:12,color:"#78350f",margin:"0 0 10px"}}>Esta opción guarda el archivo en un circuito aislado de pruebas. No registra pagos, no crea retenciones y no habilita el contrato. Disponible únicamente para administradores de plataforma.</p>
-                <button type="button" disabled={enviandoComprobanteComision || !comisionComprobanteFile} onClick={()=>registrarPruebaComision(detalleOperacion)} style={{padding:"9px 12px",border:"1px solid #d97706",borderRadius:8,background:"#fff",color:"#92400e",fontWeight:700,cursor:"pointer",opacity:enviandoComprobanteComision || !comisionComprobanteFile ? 0.6 : 1}}>Registrar simulación de prueba (sin pago real)</button>
-              </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (detalleVisadoAprobado ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
