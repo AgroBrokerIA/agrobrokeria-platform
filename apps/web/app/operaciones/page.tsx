@@ -2778,7 +2778,8 @@ Firma: ______________________________
               abrirVisado(detalleOperacion); resultado = true;
             }
           } else if (ordenDetalle === 4) {
-            abrirContrato(detalleOperacion); resultado = true;
+            await abrirContrato(detalleOperacion);
+            resultado = true;
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
           } else if (ordenDetalle === 0 || !workflowDetalle) {
@@ -2844,6 +2845,36 @@ Firma: ______________________________
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
             <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle === 3 && <button type="button" style={{padding:"10px 14px",borderRadius:8,border:"2px solid #b45309",background:"#ffedd5",color:"#7c2d12",fontWeight:800,cursor:"pointer"}} onClick={async()=>{const ok=await omitirComisionParaPruebas(detalleOperacion);if(ok)setDetalleOperacion(null);}}>SALTAR VISADO Y COMISIÓN — SOLO PRUEBAS</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+          </section>
+        </div>;
+      })()}
+
+      {contratoAbierto && (() => {
+        const operacionContrato = operaciones.find((item) => item.id === contratoAbierto);
+        if (!operacionContrato) return null;
+        const inputContrato: CSSProperties = {width:"100%",boxSizing:"border-box",padding:11,border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",color:"#123"};
+        return <div role="dialog" aria-modal="true" aria-label="Contrato definitivo" style={{position:"fixed",inset:0,zIndex:1300,background:"rgba(15,23,42,.62)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setContratoAbierto(null)}>
+          <section style={{width:"min(100%,850px)",maxHeight:"92vh",overflowY:"auto",background:"#fff",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.3)",color:"#123"}} onClick={e=>e.stopPropagation()}>
+            <header style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
+              <div><h2 style={{margin:"0 0 6px"}}>Contrato definitivo</h2><p style={{margin:0,color:"#64748b"}}>{contrato.numero_contrato} · {operacionContrato.tipo_operacion} · {formatoNumero(operacionContrato.cantidad_tn)} TN</p></div>
+              <button type="button" onClick={()=>setContratoAbierto(null)} style={{border:0,background:"transparent",fontSize:26,cursor:"pointer"}} aria-label="Cerrar">×</button>
+            </header>
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:18}}>
+              <label>Número de contrato<input style={inputContrato} value={contrato.numero_contrato} onChange={e=>setContrato(v=>({...v,numero_contrato:e.target.value}))}/></label>
+              <label>Modelo contractual<input style={inputContrato} value={operacionContrato.tipo_operacion==="F1"?"F1":"F2"} readOnly/></label>
+              <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
+              <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
+            </div>
+            <label style={{display:"block",marginTop:16}}>Contenido del contrato (editable)
+              <textarea style={{...inputContrato,minHeight:260,marginTop:6,fontFamily:"inherit",resize:"vertical"}} value={contrato.contenido} onChange={e=>setContrato(v=>({...v,contenido:e.target.value}))} placeholder="El contenido contractual se completará con los datos del Acuerdo Comercial guardado. Revisá y completá los campos antes de guardar."/>
+            </label>
+            {mensaje && <p role="status" style={{padding:10,background:"#ecfdf5",color:"#166534",borderRadius:8}}>{mensaje}</p>}
+            {error && <p role="alert" style={{padding:10,background:"#fee2e2",color:"#991b1b",borderRadius:8}}>{error}</p>}
+            <div style={{display:"flex",justifyContent:"flex-end",gap:10,flexWrap:"wrap",marginTop:18}}>
+              <button type="button" onClick={()=>generarPDFContrato()} style={{padding:"10px 14px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>Descargar PDF</button>
+              <button type="button" disabled={guardandoContrato} onClick={()=>guardarContrato(operacionContrato,false)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#078b58",color:"#fff",cursor:"pointer",opacity:guardandoContrato?0.6:1}}>{guardandoContrato?"Guardando…":"Guardar borrador"}</button>
+              <button type="button" onClick={()=>setContratoAbierto(null)} style={{padding:"10px 14px",border:"1px solid #cbd5e1",borderRadius:8,background:"#fff",cursor:"pointer"}}>Cerrar</button>
+            </div>
           </section>
         </div>;
       })()}
