@@ -2862,6 +2862,9 @@ Firma: ______________________________
           } else if (ordenDetalle === 5) {
             window.location.href = "/contratos?tab=firmas";
             return;
+          } else if (ordenDetalle === 6) {
+            window.location.href = "/comisiones";
+            return;
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
           } else if (ordenDetalle === 0 || !workflowDetalle) {
@@ -2907,7 +2910,7 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
-            {ordenDetalle === 3 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
+            {ordenDetalle === 6 && <section style={{marginTop:18,padding:16,border:"1px solid #f59e0b",borderRadius:12,background:"#fffbeb"}}>
               <h3 style={{marginTop:0}}>Comisión AgroBrokerIA — retención antes de liberar fondos</h3>
               <p>Comisión automática: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por tonelada). Se abona por transferencia bancaria durante la etapa de Fondos. La administración verifica el comprobante y la comisión queda retenida antes de la liberación operativa.</p><p role="status" style={{fontSize:13,color:visadoAprobado(controlesComerciales[detalleOperacion.id])?"#166534":"#92400e",fontWeight:700}}>{visadoAprobado(controlesComerciales[detalleOperacion.id])?"Visado aprobado: podés realizar el pago y enviar el comprobante.":"El estado del visado debe confirmarse antes de aceptar el comprobante."}</p>
               <section aria-label="Datos bancarios de AgroBrokerIA" style={{background:"#fff",border:"1px solid #fcd34d",borderRadius:10,padding:14,marginBottom:14}}>
@@ -2932,7 +2935,7 @@ Firma: ______________________________
               <p style={{fontSize:12,color:"#78350f",marginBottom:0}}>El archivo se guarda en el almacenamiento privado de la operación. El envío no confirma el pago ni libera la comisión: el equipo de AgroBrokerIA debe verificar la transferencia.</p>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle === 3 && <button type="button" style={{padding:"10px 14px",borderRadius:8,border:"2px solid #b45309",background:"#ffedd5",color:"#7c2d12",fontWeight:800,cursor:"pointer"}} onClick={async()=>{const ok=await omitirComisionParaPruebas(detalleOperacion);if(ok)setDetalleOperacion(null);}}>SALTAR VISADO Y COMISIÓN — SOLO PRUEBAS</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle === 3 && <button type="button" style={{padding:"10px 14px",borderRadius:8,border:"2px solid #b45309",background:"#ffedd5",color:"#7c2d12",fontWeight:800,cursor:"pointer"}} onClick={async()=>{const ok=await omitirComisionParaPruebas(detalleOperacion);if(ok)setDetalleOperacion(null);}}>SALTAR VISADO Y COMISIÓN — SOLO PRUEBAS</button>}<button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Contrato Definitivo" : "Registrar visado de mercadería") : ordenDetalle === 4 ? "Preparar contrato definitivo" : ordenDetalle === 5 ? "Gestionar firmas del contrato" : ordenDetalle === 6 ? "Verificar fondos" : ordenDetalle === 6 ? "Ir a verificar fondos y comisiones" : ordenDetalle === 7 ? "Habilitar logística" : ordenDetalle === 8 ? "Registrar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
