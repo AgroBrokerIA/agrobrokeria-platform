@@ -195,7 +195,15 @@ export default function ContratosPage(){
        const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
        if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
        void loadSignedCopies(contratoDestino.id,contratoDestino.operacion_id);
-     } else if(params.get("tab")==="mis") setTab("mis");
+     } else {
+       const {data:requestedOp,error:requestedOpError}=await supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,publicacion_compra_id,publicacion_venta_id").eq("id",requestedOperation).maybeSingle();
+       if(requestedOpError)setError("No se pudo cargar la operación solicitada: "+requestedOpError.message);
+       else if(requestedOp){
+         setTab("tipos");
+         setForm(x=>({...x,operacionId:requestedOp.id,cantidad:String(requestedOp.cantidad_tn??""),precio:String(requestedOp.precio_tn??""),moneda:"USD",tipoOperacion:requestedOp.publicacion_compra_id&&requestedOp.publicacion_venta_id?"COMPRAVENTA (COMPRA + VENTA)":requestedOp.publicacion_compra_id?"COMPRA":"VENTA"}));
+         void cargarPartesOperacion(requestedOperation);
+       }
+     }
    }
    if(p.error)setError("No se pudo cargar el catálogo de productos: "+p.error.message);else setProductos((p.data||[]).map((x:any)=>String(x.nombre)));
    if(port.error)setError("No se pudo cargar el catálogo de puertos: "+port.error.message);else setPuertos((port.data||[]).map((x:any)=>String(x.nombre)));
@@ -360,14 +368,79 @@ export default function ContratosPage(){
  async function saveDraft(){
    if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
    setBusy(true);setError("");setMessage("");
+   try{
+     const op=operaciones.find(x=>x.id===form.operacionId);
+     if(!op)throw new Error("La operación seleccionada ya no está disponible.");
+     if(selected?.estado==="CONFIRMADO")throw new Error("El contrato ya está confirmado y no se puede sobrescribir.");
+     const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
+     const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
+     const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+     const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
+     if(error)throw error;
+     setMessage("Borrador guardado en la operación. Revisá las condiciones y confirmá el contrato definitivo cuando esté listo.");
+     await load();
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo guardar el borrador.");}
+   finally{setBusy(false);}
+ }
+ async function confirmarContratoDefinitivo(){
+   if(!form.operacionId){setError("Seleccioná una operación.");return;}
    const op=operaciones.find(x=>x.id===form.operacionId);
-   if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
-   const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
-   const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
-   const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
-   if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
-   setBusy(false);
+   if(!op){setError("La operación seleccionada ya no está disponible.");return;}
+   if(!form.producto.trim()||!form.vendedor.trim()||!form.comprador.trim()||!form.pago.trim()){
+     setError("Completá producto, vendedor, comprador y forma de pago antes de confirmar.");
+     return;
+   }
+   if(Number(form.cantidad)!==Number(op.cantidad_tn)||Number(form.precio)!==Number(op.precio_tn)){
+     setError("La cantidad y el precio del contrato deben coincidir exactamente con la operación aceptada.");
+     return;
+   }
+   const {data:agreement,error:agreementError}=await supabase.from("acuerdos_comerciales").select("id").eq("operacion_id",form.operacionId).eq("estado","CONFIRMADO").maybeSingle();
+   if(agreementError){setError("No se pudo verificar el Acuerdo Comercial: "+agreementError.message);return;}
+   if(!agreement){setError("No se puede confirmar el contrato: primero debe estar confirmado el Acuerdo Comercial / Reserva.");return;}
+   if(!window.confirm("¿Confirmás el Contrato Definitivo de esta operación? Al confirmarlo quedará bloqueada la edición comercial y se habilitará la carga de firmas del vendedor y comprador."))return;
+   setBusy(true);setError("");setMessage("");
+   let pdfPath:string|null=null;
+   try{
+     const finalForm={...effectiveForm,tipo:form.tipo,moneda:"USD"};
+     const pdf=buildPdf(finalForm);
+     const blob=pdf.output("blob");
+     const bytes=await blob.arrayBuffer();
+     const digest=await crypto.subtle.digest("SHA-256",bytes);
+     const sha=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
+     pdfPath=`${op.id}/contratos/${crypto.randomUUID()}-contrato-${form.tipo}.pdf`;
+     const {error:uploadError}=await supabase.storage.from("documentos-operacion").upload(pdfPath,blob,{contentType:"application/pdf",upsert:false});
+     if(uploadError)throw uploadError;
+     const payload={
+       numero_contrato:`ABIA-${op.codigo}-${new Date().toISOString().slice(0,10).replace(/-/g,"")}`,
+       tipo_contrato:form.tipo,
+       estado:"CONFIRMADO",
+       acuerdo_id:agreement.id,
+       cantidad_tn:Number(op.cantidad_tn),
+       precio_tn:Number(op.precio_tn),
+       importe_total:Number(op.importe_total),
+       moneda:"USD",
+       condicion_entrega:form.condicion,
+       lugar_carga:form.procedencia,
+       destino:form.puerto,
+       forma_pago:form.pago,
+       plazo_pago:"",
+       flete:"",
+       calidad:form.observaciones,
+       observaciones:form.observaciones,
+       vendedor:form.vendedor,
+       comprador:form.comprador,
+       contenido:JSON.stringify({...JSON.parse(contractContent(finalForm)),pdf_storage_path:pdfPath,pdf_sha256:sha})
+     };
+     const {data,error:saveError}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
+     if(saveError)throw saveError;
+     if(data&&typeof data==="object"&&"id" in data)setSelected(data as C);
+     setMessage("Contrato definitivo confirmado y PDF archivado en la operación. Ya se puede gestionar la firma del vendedor y del comprador.");
+     setTab("mis");
+     await load();
+   }catch(e){
+     if(pdfPath)await supabase.storage.from("documentos-operacion").remove([pdfPath]);
+     setError(e instanceof Error?e.message:"No se pudo confirmar el Contrato Definitivo.");
+   }finally{setBusy(false);}
  }
  function contractContent(f:FormState){
    return JSON.stringify({tipo:f.tipo,tipo_operacion:f.tipoOperacion,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:"USD",condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador,intermediario:f.intermediario,procedencia:f.procedencia,comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
@@ -449,7 +522,8 @@ export default function ContratosPage(){
       <label className="contract-builder-observation">Observaciones (opcional)<textarea value={form.observaciones} onChange={e=>update("observaciones",e.target.value)} /></label>
 
       <button className="contract-generate" onClick={()=>download(form.tipo)}>Generar contrato PDF&nbsp; →</button>
-      <button className="contract-generate" disabled={busy||!form.operacionId} onClick={saveDraft}>{busy?"Guardando…":"Guardar borrador en la operación →"}</button>
+      <button className="contract-generate" disabled={busy||!form.operacionId||selected?.estado==="CONFIRMADO"} onClick={saveDraft}>{busy?"Guardando…":"Guardar borrador en la operación →"}</button>
+      <button className="contract-generate" disabled={busy||!form.operacionId||selected?.estado==="CONFIRMADO"} onClick={()=>void confirmarContratoDefinitivo()}>{busy?"Procesando…":"Confirmar contrato definitivo y habilitar firmas →"}</button>
       <div className="contract-output-actions"><button onClick={()=>download(form.tipo)}>▣ Descargar PDF</button><button onClick={printPdf}>▣ Imprimir</button><button onClick={emailPdf}>✉ Enviar por email</button><button onClick={sharePdf}>⌁ Compartir</button></div>
     </div>
     <div className="contract-previews">
