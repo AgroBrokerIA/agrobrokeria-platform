@@ -464,10 +464,7 @@ export default function ContratosPage(){
 
   {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
 
-  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2><div className="contract-builder-alert">
-  <strong>Firma digital — Próximamente</strong><br/>
-  La integración con firma digital estará disponible próximamente. Esta función no bloquea la operación ni el lanzamiento de AgroBrokerIA.
- </div>{selected&&<div className="contract-info-panel signature-workflow" style={{marginTop:16}}>
+  {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2>{selected&&<div className="contract-info-panel signature-workflow" style={{marginTop:16}}>
   <h3>Firmas del contrato</h3><p>Solo se requieren dos copias del mismo contrato: una firmada por el vendedor y otra por el comprador. Administración revisa cada PDF y acepta o rechaza la evidencia.</p>
   <div className="signature-upload-grid">
    <article className="signature-upload-card"><h4>Firma del vendedor</h4><p>El vendedor descarga el contrato, lo firma y carga aquí su PDF.</p><input type="file" accept="application/pdf" onChange={e=>setVendorFile(e.target.files?.[0]||null)}/><button className="contract-generate" disabled={copyBusy!==null||!vendorFile} onClick={()=>void uploadPartyCopy("VENDEDOR",vendorFile)}>{copyBusy==="VENDEDOR"?"Subiendo…":"Enviar firma del vendedor"}</button></article>
