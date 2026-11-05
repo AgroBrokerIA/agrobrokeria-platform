@@ -141,7 +141,11 @@ export default function LogisticaEntrega({
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
   const [cartas, setCartas] = useState<CartaPorte[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
-  const [comisiones, setComisiones] = useState<ComisionViaje[]>([]);\n  const [corredores, setCorredores] = useState<Corredor[]>([]);\n  const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);\n  const [busquedaCorredor, setBusquedaCorredor] = useState("");\n  const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
+  const [comisiones, setComisiones] = useState<ComisionViaje[]>([]);
+  const [corredores, setCorredores] = useState<Corredor[]>([]);
+  const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);
+  const [busquedaCorredor, setBusquedaCorredor] = useState("");
+  const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
   const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
@@ -162,7 +166,8 @@ export default function LogisticaEntrega({
       supabase.rpc("listar_transportistas_verificados", { p_operacion_id: operacionId }),
       supabase.from("viaje_cartas_porte").select("*").eq("operacion_id", operacionId).order("creada_at", { ascending: false }),
       supabase.from("viaje_eventos").select("*").eq("operacion_id", operacionId).order("registrado_at", { ascending: true }),
-      supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId).eq("estado", "LIBERADA"),\n      supabase.from("operacion_carta_porte_autorizaciones").select("*").eq("operacion_id", operacionId).order("autorizado_at", { ascending: false }),
+      supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId).eq("estado", "LIBERADA"),
+      supabase.from("operacion_carta_porte_autorizaciones").select("*").eq("operacion_id", operacionId).order("autorizado_at", { ascending: false }),
     ]);
     if (v.error) setError("No se pudieron cargar los viajes: " + v.error.message);
     else setViajes((v.data || []) as Viaje[]);
@@ -175,6 +180,8 @@ export default function LogisticaEntrega({
     else setEventos((e.data || []) as Evento[]);
     if (m.error) setError((actual) => actual || "No se pudieron cargar las comisiones por viaje: " + m.error.message);
     else setComisiones((m.data || []) as ComisionViaje[]);
+    if (a.error) setError((actual) => actual || "No se pudieron cargar las autorizaciones: " + a.error.message);
+    else setAutorizaciones((a.data || []) as Autorizacion[]);
     setLoading(false);
   }, [operacionId]);
 
@@ -189,7 +196,37 @@ export default function LogisticaEntrega({
     comision: comisiones.reduce((n, x) => n + Number(x.importe_liberado || 0), 0),
   }), [viajes, comisiones]);
 
-  async function buscarCorredores() {\n    const { data, error: rpcError } = await supabase.rpc("buscar_corredores_para_autorizar", { p_operacion_id: operacionId, p_texto: busquedaCorredor || null });\n    if (rpcError) setError("No se pudieron buscar corredores: " + rpcError.message);\n    else setCorredores((data || []) as Corredor[]);\n  }\n\n  async function autorizarCorredor() {\n    if (!corredorSeleccionado) return;\n    setGuardando(true);\n    const { error: rpcError } = await supabase.rpc("autorizar_corredor_cartas_porte", { p_operacion_id: operacionId, p_corredor_profile_id: corredorSeleccionado, p_motivo: "Acceso documental autorizado para esta operación." });\n    if (rpcError) setError("No se pudo autorizar al corredor: " + rpcError.message);\n    else { setMensaje("Acceso a las Cartas de Porte autorizado."); setCorredorSeleccionado(""); await cargar(); }\n    setGuardando(false);\n  }\n\n  async function revocarCorredor(id: string) {\n    setGuardando(true);\n    const { error: rpcError } = await supabase.rpc("revocar_corredor_cartas_porte", { p_autorizacion_id: id });\n    if (rpcError) setError("No se pudo revocar el acceso: " + rpcError.message);\n    else { setMensaje("Acceso del corredor revocado."); await cargar(); }\n    setGuardando(false);\n  }\n\n  async function verFotoTransportista(path: string | null) {\n    if (!path) { setError("El transportista todavía no cargó su fotografía."); return; }\n    const { data, error: signedError } = await supabase.storage.from("agrobroker-private").createSignedUrl(path, 90);\n    if (signedError || !data?.signedUrl) { setError("No se pudo abrir la fotografía: " + (signedError?.message || "sin enlace")); return; }\n    window.open(data.signedUrl, "_blank", "noopener,noreferrer");\n  }\n\n  async function crearViaje() {
+  async function buscarCorredores() {
+    const { data, error: rpcError } = await supabase.rpc("buscar_corredores_para_autorizar", { p_operacion_id: operacionId, p_texto: busquedaCorredor || null });
+    if (rpcError) setError("No se pudieron buscar corredores: " + rpcError.message);
+    else setCorredores((data || []) as Corredor[]);
+  }
+
+  async function autorizarCorredor() {
+    if (!corredorSeleccionado) return;
+    setGuardando(true);
+    const { error: rpcError } = await supabase.rpc("autorizar_corredor_cartas_porte", { p_operacion_id: operacionId, p_corredor_profile_id: corredorSeleccionado, p_motivo: "Acceso documental autorizado para esta operación." });
+    if (rpcError) setError("No se pudo autorizar al corredor: " + rpcError.message);
+    else { setMensaje("Acceso a las Cartas de Porte autorizado."); setCorredorSeleccionado(""); await cargar(); }
+    setGuardando(false);
+  }
+
+  async function revocarCorredor(id: string) {
+    setGuardando(true);
+    const { error: rpcError } = await supabase.rpc("revocar_corredor_cartas_porte", { p_autorizacion_id: id });
+    if (rpcError) setError("No se pudo revocar el acceso: " + rpcError.message);
+    else { setMensaje("Acceso del corredor revocado."); await cargar(); }
+    setGuardando(false);
+  }
+
+  async function verFotoTransportista(path: string | null) {
+    if (!path) { setError("El transportista todavía no cargó su fotografía."); return; }
+    const { data, error: signedError } = await supabase.storage.from("agrobroker-private").createSignedUrl(path, 90);
+    if (signedError || !data?.signedUrl) { setError("No se pudo abrir la fotografía: " + (signedError?.message || "sin enlace")); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function crearViaje() {
     setError("");
     setMensaje("");
     if (!transportistaId || !origenNombre.trim() || !destinoNombre.trim() || !patente.trim()) {
@@ -417,7 +454,8 @@ export default function LogisticaEntrega({
               <div>
                 <div style={{ fontSize: 15, fontWeight: 850 }}>Camión {index + 1} · {viaje.patente_camion || "Patente pendiente"}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{viaje.origen_nombre || viaje.origen || "Origen pendiente"} → {viaje.destino_nombre || viaje.destino || "Destino pendiente"}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Identidad: transportista verificado</div>\n                {transportista?.foto_perfil_path && <button type="button" style={{ ...secondary, marginTop: 7 }} onClick={() => void verFotoTransportista(transportista.foto_perfil_path)}>Ver fotografía del conductor</button>}
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Identidad: transportista verificado</div>
+                {transportista?.foto_perfil_path && <button type="button" style={{ ...secondary, marginTop: 7 }} onClick={() => void verFotoTransportista(transportista.foto_perfil_path)}>Ver fotografía del conductor</button>}
               </div>
               <span style={{ padding: "6px 10px", borderRadius: 99, background: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#dcfce7" : "#eaf2ff", color: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 800 }}>{estadoLabel(viaje.estado)}</span>
             </div>
