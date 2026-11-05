@@ -266,7 +266,7 @@ export default function Liquidacion({
     }
 
     setMensaje(
-      "✅ Liquidación confirmada. La operación pasó a Cerrada."
+      "✅ Comisión AgroBrokerIA liberada. La operación pasó a Cerrada."
     );
     setGuardando(false);
   }
@@ -557,7 +557,7 @@ export default function Liquidacion({
                 : "not-allowed",
           }}
         >
-          Liberar liquidación AgroBrokerIA
+          Liberar comisión AgroBrokerIA
         </button>
       </div>
     </div>
