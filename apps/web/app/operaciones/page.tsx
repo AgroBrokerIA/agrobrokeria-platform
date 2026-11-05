@@ -627,74 +627,41 @@ export default function OperacionesPage() {
       }
 
       // =========================================================
-      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS → LOGÍSTICA / ENTREGA
+      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS APROBADAS → LOGÍSTICA
+      // La base valida las dos copias aprobadas y mueve el workflow
+      // de forma atómica, sin depender de estados React desactualizados.
       // =========================================================
-      // Si una operación está en etapa 6 (Firmas) y ambas firmas
-      // están completas, avanza directamente a Logística / Entrega (etapa 7).
-      // =========================================================
-
       for (const workflow of workflowsNormalizados) {
         if (workflow.orden !== 6) continue;
-
-        // La misma fuente de verdad que valida avanzar_operacion_workflow:
-        // contratos confirmados + contrato_firmantes. La etapa siguiente es
-        // Las firmas completas habilitan directamente Logística / Entrega.
         const { data: contratosFirmados, error: contratosError } = await supabase
           .from("contratos")
           .select("id")
           .eq("operacion_id", workflow.operacion_id)
           .eq("estado", "CONFIRMADO")
           .limit(1);
-
         if (contratosError || !contratosFirmados?.length) {
           if (contratosError) console.error("No se pudo consultar el contrato confirmado:", contratosError);
           continue;
         }
-
-        const contratoId = contratosFirmados[0].id;
-        const [{ data: participantesFirma, error: participantesError }, { data: firmasDB, error: firmasError }] = await Promise.all([
-          supabase.from("operacion_participantes").select("rol").eq("operacion_id", workflow.operacion_id).in("rol", ["VENDEDOR", "COMPRADOR"]),
-          supabase.from("contrato_firmantes").select("rol,firmado").eq("contrato_id", contratoId).in("rol", ["VENDEDOR", "COMPRADOR"]),
-        ]);
-
-        if (participantesError || firmasError) {
-          console.error("No se pudieron verificar las firmas requeridas:", participantesError || firmasError);
+        const { data: syncResult, error: syncError } = await supabase.rpc(
+          "sincronizar_workflow_firmas_contrato",
+          { p_contrato_id: contratosFirmados[0].id }
+        );
+        if (syncError) {
+          console.error("No se pudo avanzar automáticamente a Logística / Entrega:", syncError);
           continue;
         }
-
-        const rolesRequeridos = [...new Set((participantesFirma || []).map((p: any) => String(p.rol).toUpperCase()))];
-        const firmasPorRol = new Map((firmasDB || []).map((firma: any) => [String(firma.rol).toUpperCase(), firma.firmado === true]));
-        const todasFirmasCompletas = rolesRequeridos.length === 2 && ["VENDEDOR", "COMPRADOR"].every((rol) => firmasPorRol.get(rol) === true);
-
-        if (!todasFirmasCompletas) continue;
-
-        const { data: etapaFondos, error: errorEtapaFondos } = await supabase
-          .from("workflow_etapas")
-          .select("id")
-          .eq("workflow_id", workflow.workflow_id)
-          .eq("orden", 7)
-          .maybeSingle();
-
-        if (errorEtapaFondos || !etapaFondos) {
-          console.error("No se pudo localizar la etapa Logística / Entrega:", errorEtapaFondos);
-          continue;
-        }
-
-        const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
-        if (errorAvanceFondos) {
-          console.error("No se pudo avanzar la operación a Logística / Entrega:", errorAvanceFondos);
-          continue;
-        }
-
-        try {
-          await notificarParticipantesOperacion({
-            operacionId: workflow.operacion_id,
-            titulo: "Logística / Entrega",
-            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a Logística / Entrega.`,
-            tipo: "LOGISTICA_ENTREGA",
-          });
-        } catch (errorNotificacion) {
-          console.error("ERROR NOTIFICACIÓN FIRMAS → FONDOS:", errorNotificacion);
+        if (syncResult?.avanzada) {
+          try {
+            await notificarParticipantesOperacion({
+              operacionId: workflow.operacion_id,
+              titulo: "Logística / Entrega",
+              mensaje: `La operación ${workflow.operacion_id} completó las dos firmas aprobadas y pasó automáticamente a Logística / Entrega.`,
+              tipo: "LOGISTICA_ENTREGA",
+            });
+          } catch (errorNotificacion) {
+            console.error("ERROR NOTIFICACIÓN FIRMAS → LOGÍSTICA:", errorNotificacion);
+          }
         }
       }
     } catch (e) {
