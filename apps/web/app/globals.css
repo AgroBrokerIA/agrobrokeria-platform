@@ -1492,3 +1492,10 @@ body{background:var(--ab-bg)}
 .auth-register .auth-register-card .auth-switch{font-size:13px!important}
 @media(max-width:900px){.auth-register .auth-register-card>form{grid-template-columns:repeat(2,minmax(0,1fr))}.auth-register .auth-register-card>form>.auth-field-row-three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.auth-register .auth-register-card>form{grid-template-columns:minmax(0,1fr)}.auth-register .auth-register-card>form>.auth-two-col,.auth-register .auth-register-card>form>.auth-field-row-two,.auth-register .auth-register-card>form>.auth-field-row-three{grid-template-columns:minmax(0,1fr)}.auth-register .auth-register-card>form label{font-size:13px}}
+
+/* Ajustes finales del formulario de alta */
+.auth-register .auth-register-card>form>.auth-declaration-row{grid-column:1/-1;display:grid;grid-template-columns:minmax(0,1fr);gap:10px}
+.auth-register .auth-register-card>form>.auth-declaration-row label{width:100%}
+.auth-register .auth-register-card>form>.auth-field-row-three:has(input[type=file]){grid-template-columns:repeat(3,minmax(0,1fr))}
+.auth-register .auth-register-card>form>.auth-two-col:has(input[type=password]){grid-template-columns:repeat(2,minmax(0,1fr))}
+@media(max-width:620px){.auth-register .auth-register-card>form>.auth-two-col:has(input[type=password]),.auth-register .auth-register-card>form>.auth-field-row-three:has(input[type=file]){grid-template-columns:minmax(0,1fr)}}
