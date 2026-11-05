@@ -146,7 +146,7 @@ export default function LogisticaEntrega({
   const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);
   const [busquedaCorredor, setBusquedaCorredor] = useState("");
   const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);\n  const [esTransportista, setEsTransportista] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -470,11 +470,11 @@ export default function LogisticaEntrega({
                   </div>
                   <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
                     <button type="button" style={secondary} onClick={() => void abrirCarta(c.archivo_path)}>Ver PDF</button>
-                    {c.estado_verificacion !== "VALIDADA" && viaje.estado !== "ENTREGADO_CONFIRMADO" && <button type="button" style={primary} disabled={guardando} onClick={() => void validarCarta(c)}>Revisar cantidad del PDF</button>}
+                    {!esTransportista && c.estado_verificacion !== "VALIDADA" && viaje.estado !== "ENTREGADO_CONFIRMADO" && <button type="button" style={primary} disabled={guardando} onClick={() => void validarCarta(c)}>Revisar cantidad del PDF</button>}
                   </div>
                 </div>
               ))}
-              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 750, color: "#0f766e" }}>
+              {!esTransportista && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 750, color: "#0f766e" }}>
                 <input type="file" accept="application/pdf,.pdf" multiple disabled={guardando || viaje.estado === "ENTREGADO_CONFIRMADO"} onChange={(e) => { void subirCartas(viaje, e.target.files); e.currentTarget.value = ""; }} />
                 Cargar uno o varios PDF de Cartas de Porte
               </label>
@@ -506,8 +506,8 @@ export default function LogisticaEntrega({
 
             {viaje.estado !== "ENTREGADO_CONFIRMADO" ? (
               <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>La comisión se libera únicamente después de validar la CPE y confirmar la recepción el comprador.</div>
-                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA")} onClick={() => void confirmarEntrega(viaje)}>Confirmar entrega y liberar comisión</button>
+                <div style={{ fontSize: 12, color: "#64748b" }}>La comisión se libera únicamente después de validar la CPE, finalizar la descarga y confirmar la recepción el comprador.</div>
+                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA") || !eventosViaje.some((e) => e.estado === "DESCARGA_FINALIZADA")} onClick={() => void confirmarEntrega(viaje)}>Confirmar entrega y liberar comisión</button>
               </div>
             ) : (
               <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, background: "#f0fdf4", borderRadius: 9, padding: 12 }}>
