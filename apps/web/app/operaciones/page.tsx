@@ -256,6 +256,7 @@ export default function OperacionesPage() {
   const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   const [retencionesComision, setRetencionesComision] = useState<Record<string, any>>({});
   const [revisandoRetencionComision, setRevisandoRetencionComision] = useState(false);
+  const [registrandoLiberacionFondos, setRegistrandoLiberacionFondos] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
 
@@ -398,6 +399,36 @@ export default function OperacionesPage() {
       setError(e instanceof Error ? e.message : "No se pudo revisar el comprobante de comisión.");
     } finally {
       setRevisandoRetencionComision(false);
+    }
+  }
+
+  async function registrarLiberacionFondos(operacionId: string) {
+    if (!esAdminPlataforma) { setError("Solo Administración de AgroBrokerIA puede registrar la liberación de fondos."); return; }
+    const referencia = window.prompt("Ingresá la referencia bancaria de la transferencia de fondos de esta operación. Solo registrá la liberación si verificaste el ingreso efectivo:");
+    if (!referencia?.trim()) { setError("La referencia bancaria es obligatoria. No se modificó el estado de los fondos."); return; }
+    if (!window.confirm("¿Confirmás que verificaste efectivamente los fondos de esta operación y que corresponde registrarlos como LIBERADOS?")) return;
+    setRegistrandoLiberacionFondos(true); setError(""); setMensaje("");
+    try {
+      const { data, error } = await supabase.rpc("registrar_liberacion_fondos_plataforma", {
+        p_operacion_id: operacionId,
+        p_referencia: referencia.trim(),
+      });
+      if (error) throw error;
+      setControlesComerciales((actual) => ({
+        ...actual,
+        [operacionId]: {
+          ...actual[operacionId],
+          fondos_estado: "LIBERADOS",
+          fondos_fecha_liberacion: data?.fondos_fecha_liberacion || new Date().toISOString(),
+          fondos_referencia: data?.fondos_referencia || referencia.trim(),
+        } as ControlComercialData,
+      }));
+      setMensaje("Liberación efectiva de fondos registrada por Administración. Ya podés volver a verificar firmas y avanzar a Liberación operativa.");
+      await cargarOperaciones();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "No se pudo registrar la liberación de fondos.");
+    } finally {
+      setRegistrandoLiberacionFondos(false);
     }
   }
 
@@ -3051,6 +3082,15 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
+            {ordenDetalle === 6 && <section style={{marginTop:18,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:10}}>
+              <h3 style={{margin:0}}>Verificación de fondos de la operación</h3>
+              <p style={{margin:0}}>Fondos: <strong>{String(controlesComerciales[detalleOperacion.id]?.fondos_estado || "PENDIENTES").toUpperCase()}</strong> · Comisión AgroBrokerIA: <strong>{String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "PENDIENTE").toUpperCase()}</strong></p>
+              {controlesComerciales[detalleOperacion.id]?.fondos_estado === "LIBERADOS" ? <p style={{margin:0,color:"#166534"}}>Liberación registrada. Referencia: {controlesComerciales[detalleOperacion.id]?.fondos_referencia || "No informada"}.</p> : esAdminPlataforma ? <div style={{display:"grid",gap:8}}>
+                <p style={{margin:0,fontSize:13,color:"#475569"}}>Cuando hayas comprobado el ingreso efectivo de los fondos en la cuenta correspondiente, registrá aquí la referencia bancaria. Este registro no realiza una transferencia: deja constancia de la verificación administrativa.</p>
+                <button type="button" disabled={registrandoLiberacionFondos || !["RETENIDA","LIBERADA"].includes(String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase())} onClick={()=>void registrarLiberacionFondos(detalleOperacion.id)} style={{justifySelf:"start",padding:"10px 14px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{registrandoLiberacionFondos?"Registrando…":"Registrar fondos verificados y liberados"}</button>
+                {!["RETENIDA","LIBERADA"].includes(String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) && <small style={{color:"#92400e"}}>Primero debe estar verificada y retenida la comisión AgroBrokerIA.</small>}
+              </div> : <p style={{margin:0,fontSize:13,color:"#475569"}}>Los fondos continúan pendientes. Administración debe verificar el ingreso y registrar la referencia bancaria desde esta misma operación.</p>}
+            </section>}
             {ordenDetalle === 4 && <section style={{marginTop:18,padding:16,border:"1px solid #86efac",borderRadius:12,background:"#f0fdf4"}}>
               <h3 style={{margin:"0 0 8px",color:"#166534"}}>Comisión AgroBrokerIA</h3>
               <p style={{margin:"0 0 8px",color:"#14532d"}}>La comisión de plataforma se gestiona después del visado y antes del Contrato Definitivo. Importe de referencia: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por TN).</p>
