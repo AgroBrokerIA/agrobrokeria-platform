@@ -5,7 +5,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Corredor","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario","intermediario"],["Comisionista","comisionista"],["Productor","productor"]];
+const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Corredor","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario","intermediario"],["Comisionista","comisionista"],["Productor","productor"]];
 const bankRoles = ["corredor","intermediario","comisionista"];
 const initial = {
   accountType:"PERSONA", role:"comprador", documentType:"DNI", documentNumber:"", cuilCuit:"", companyCuit:"", representativeCuil:"",
@@ -28,9 +28,12 @@ export default function RegisterPage() {
   const [message,setMessage] = useState("");
   const [dniFront,setDniFront] = useState<File|null>(null);
   const [dniBack,setDniBack] = useState<File|null>(null);
+  const [driverPhoto,setDriverPhoto] = useState<File|null>(null);
+  const [driverDni,setDriverDni] = useState<File|null>(null);
   const [companyDocs,setCompanyDocs] = useState<File[]>([]);
   const isBankRole = bankRoles.includes(form.role);
   const isCompany = form.accountType === "EMPRESA";
+  const isTransportista = form.role === "transportista";
   const update = (key:keyof FormState,value:string) => setForm(p=>({...p,[key]:value}));
   const normalize = (value:string) => value.trim().toLocaleUpperCase("es-AR");
   const upload = async (userId:string,file:File,type:string) => {
@@ -46,6 +49,9 @@ export default function RegisterPage() {
     if(!accepted){setError("Aceptá los Términos y Condiciones para continuar.");return;}
     if(form.password.length<8||form.password!==form.confirmPassword){setError("Revisá la contraseña: debe tener 8 caracteres como mínimo y coincidir.");return;}
     if(!form.documentNumber.trim()||!form.cuilCuit.trim()||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
+    if(isTransportista && (!driverPhoto || !driverDni)){setError("Para registrarte como transportista, la foto de perfil y el DNI son obligatorios.");return;}
+    if(isTransportista && driverPhoto && !["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
+    if(isTransportista && driverDni && driverDni.type !== "application/pdf" && !driverDni.type.startsWith("image/")){setError("El DNI debe adjuntarse como imagen o PDF.");return;}
     if(isCompany && (!form.legalName.trim()||!form.cuilCuit.trim())){setError("Para registrar una empresa se requiere razón social y CUIT.");return;}
     if(isBankRole && (!form.bankName||!form.accountHolder.trim()||!form.cbuCvu.trim())){setError("Para corredores, intermediarios y comisionistas, completá los datos bancarios para cobrar comisiones.");return;}
     setLoading(true);
@@ -74,7 +80,9 @@ export default function RegisterPage() {
           const {error:bankError}=await supabase.from("user_bank_accounts").insert({user_id:data.user.id,bank_name:form.bankName,account_type:form.accountTypeBank,currency:form.currency,account_holder:normalize(form.accountHolder),cbu_cvu:form.cbuCvu.replace(/\s/g,""),alias:form.alias.trim()||null});
           if(bankError) throw bankError;
         }
-        if(dniFront) await upload(data.user.id,dniFront,"DNI_FRENTE");
+        if(isTransportista && driverPhoto) await upload(data.user.id,driverPhoto,"FOTO_PERFIL_TRANSPORTISTA");
+        if(isTransportista && driverDni) await upload(data.user.id,driverDni,"DNI_TRANSPORTISTA");
+        if(!isTransportista && dniFront) await upload(data.user.id,dniFront,"DNI_FRENTE");
         if(dniBack) await upload(data.user.id,dniBack,"DNI_DORSO");
         for(const file of companyDocs) await upload(data.user.id,file,"DOCUMENTACION_EMPRESA");
         router.replace("/dashboard"); router.refresh(); return;
@@ -86,7 +94,7 @@ export default function RegisterPage() {
 
   return <main className="auth-page auth-register">
     <div className="auth-art"><Link href="/" className="auth-brand"><span>↗</span><strong>AgroBroker IA</strong></Link><div className="auth-art-copy"><span>CREÁ TU CUENTA</span><h1>Entrá al mercado<br/>agrocomercial.</h1><p>Registrate y empezá a operar. La verificación documental es voluntaria para acceder al sistema.</p></div><div className="auth-art-grain" aria-hidden="true"/></div>
-    <section className="auth-panel"><div className="auth-card auth-register-card">
+    <section className="auth-panel auth-register-panel"><div className="auth-card auth-register-card">
       <div className="auth-logo">↗</div><h1>Crear cuenta</h1><p>Completá tus datos principales para ingresar a AgroBrokerIA.</p>
       {error&&<div className="auth-error" role="alert">{error}</div>}{message&&<div className="auth-success" role="status">{message}<p><Link href="/login">Ir a iniciar sesión</Link></p></div>}
       <form onSubmit={registrarse}>
@@ -98,7 +106,7 @@ export default function RegisterPage() {
         <h2>Datos laborales e impositivos</h2><label>Actividad económica<input value={form.economicActivity} onChange={e=>update("economicActivity",e.target.value)} placeholder="Actividad principal"/></label><div className="auth-two-col"><label>Condición de Ganancias<select value={form.incomeTaxStatus} onChange={e=>update("incomeTaxStatus",e.target.value)}><option value="">Seleccionar</option>{["Inscripto","Monotributo","Exento","No inscripto","No responsable","Extranjero"].map(x=><option key={x}>{x}</option>)}</select></label><label>Condición IVA<select value={form.vatStatus} onChange={e=>update("vatStatus",e.target.value)}><option value="">Seleccionar</option>{["Responsable Inscripto","Monotributo","Consumidor final","Exento","No responsable"].map(x=><option key={x}>{x}</option>)}</select></label></div><label>Condición laboral<select value={form.employmentStatus} onChange={e=>update("employmentStatus",e.target.value)}><option value="">Seleccionar</option>{["Responsable inscripto","Empleado en relación de dependencia","Monotributista","Jubilado","Estudiante","Autónomo","Desempleado"].map(x=><option key={x}>{x}</option>)}</select></label>
         <h2>Declaraciones juradas</h2>{([["politicallyExposed","¿Es persona expuesta políticamente?"],["obligedSubject","¿Es sujeto obligado?"],["lawfulFunds","¿Los ingresos declarados son de origen lícito?"],["usTaxResident","¿Es residente fiscal de EE.UU. (FATCA)?"]] as const).map(([key,label])=><div className="auth-two-col" key={key}><label>{label}<select value={form[key]} onChange={e=>update(key,e.target.value)}><option value="">Seleccionar</option><option value="true">Sí</option><option value="false">No</option></select></label></div>)}
         {isBankRole&&<><h2>Cuenta bancaria para cobrar comisiones</h2><div className="auth-two-col"><label>Banco<input value={form.bankName} onChange={e=>update("bankName",e.target.value)} required/></label><label>Tipo de cuenta<select value={form.accountTypeBank} onChange={e=>update("accountTypeBank",e.target.value)}><option>Caja de ahorro</option><option>Cuenta corriente</option></select></label></div><div className="auth-two-col"><label>Moneda<select value={form.currency} onChange={e=>update("currency",e.target.value)}><option>ARS</option><option>USD</option></select></label><label>Titular de la cuenta<input value={form.accountHolder} onChange={e=>update("accountHolder",e.target.value)} required/></label></div><label>CBU / CVU<input value={form.cbuCvu} onChange={e=>update("cbuCvu",e.target.value)} required/></label><label>Alias (opcional)<input value={form.alias} onChange={e=>update("alias",e.target.value)}/></label></>}
-        <h2>Documentación (opcional)</h2><p className="auth-legal">Podés registrarte y operar aunque no cargues documentos. Sin documentación aprobada no se otorga la insignia de verificado.</p>{!isCompany&&<><label>DNI frente<input type="file" accept="image/*,.pdf" onChange={e=>setDniFront(e.target.files?.[0]||null)}/></label><label>DNI dorso<input type="file" accept="image/*,.pdf" onChange={e=>setDniBack(e.target.files?.[0]||null)}/></label></>} {isCompany&&<label>Documentación de la empresa<input type="file" accept="image/*,.pdf" multiple onChange={e=>setCompanyDocs(Array.from(e.target.files||[]))}/></label>}
+        <h2>{isTransportista?"Verificación obligatoria del transportista":"Documentación (opcional)"}</h2>{isTransportista?<><p className="auth-legal">Para proteger a compradores y vendedores, todo transportista debe cargar una foto de perfil actual y su DNI. El DNI completo queda privado para el titular y Administración.</p><div className="auth-two-col"><label>Foto de perfil del conductor (obligatoria)<input type="file" accept="image/jpeg,image/png,image/webp" required onChange={e=>setDriverPhoto(e.target.files?.[0]||null)}/></label><label>DNI del conductor (obligatorio)<input type="file" accept="image/*,application/pdf" required onChange={e=>setDriverDni(e.target.files?.[0]||null)}/></label></div></>:<><p className="auth-legal">Podés registrarte y operar aunque no cargues documentos. Sin documentación aprobada no se otorga la insignia de verificado.</p>{!isCompany&&<><label>DNI frente<input type="file" accept="image/*,.pdf" onChange={e=>setDniFront(e.target.files?.[0]||null)}/></label><label>DNI dorso<input type="file" accept="image/*,.pdf" onChange={e=>setDniBack(e.target.files?.[0]||null)}/></label></>} {isCompany&&<label>Documentación de la empresa<input type="file" accept="image/*,.pdf" multiple onChange={e=>setCompanyDocs(Array.from(e.target.files||[]))}/></label>}</>}
         <h2>Seguridad</h2><div className="auth-two-col"><label>Contraseña<input type="password" value={form.password} onChange={e=>update("password",e.target.value)} minLength={8} required/></label><label>Confirmar contraseña<input type="password" value={form.confirmPassword} onChange={e=>update("confirmPassword",e.target.value)} minLength={8} required/></label></div>
         <label className="auth-legal-check"><input type="checkbox" checked={accepted} onChange={e=>setAccepted(e.target.checked)}/> Acepto los <Link href="/terminos">Términos y Condiciones</Link> y la Política de Privacidad.</label>
         <button className="auth-submit" type="submit" disabled={loading||!accepted}>{loading?"Creando cuenta...":"Crear cuenta y comenzar a operar"}</button>
