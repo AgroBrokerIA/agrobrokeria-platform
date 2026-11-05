@@ -288,7 +288,7 @@ export default function LogisticaEntrega({
       <div style={{position:"sticky",bottom:0,zIndex:2,display:"flex",justifyContent:"flex-end",gap:9,flexWrap:"wrap",padding:"12px 0 2px",background:"linear-gradient(180deg,rgba(255,255,255,0),#fff 22%)"}}>
         <button type="button" disabled={guardando} onClick={()=>guardar()} style={{height:42,padding:"0 15px",border:"1px solid #cbd5e1",borderRadius:9,background:"#fff",color:"#334155",fontWeight:700,cursor:"pointer"}}>Guardar cambios</button>
         <button type="button" disabled={guardando} onClick={()=>guardar("PROGRAMADA")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#2563eb",color:"#fff",fontWeight:700,cursor:"pointer"}}>Programar carga</button>
-        <button type="button" disabled={guardando||datos.carta_porte_estado!=="EMITIDA_ARCA"} onClick={()=>guardar("EN_TRANSITO")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#d97706",color:"#fff",fontWeight:700,cursor:guardando?"wait":"pointer",opacity:datos.carta_porte_estado!=="EMITIDA_ARCA"?.55:1}}>Iniciar traslado</button>
+        <button type="button" disabled={guardando||datos.carta_porte_estado!=="EMITIDA_ARCA"} onClick={()=>guardar("EN_TRANSITO")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#d97706",color:"#fff",fontWeight:700,cursor:guardando?"wait":"pointer",opacity:datos.carta_porte_estado!=="EMITIDA_ARCA" ? 0.55 : 1}}>Iniciar traslado</button>
         <button type="button" disabled={guardando} onClick={async()=>{
           const faltantes:string[]=[];
           if(datos.carta_porte_estado!=="EMITIDA_ARCA"||!datos.carta_porte_numero.trim())faltantes.push("Carta de Porte emitida y registrada en ARCA");
@@ -309,10 +309,5 @@ export default function LogisticaEntrega({
         }} style={{height:42,padding:"0 16px",border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:800,cursor:"pointer"}}>{guardando?"Procesando…":"Confirmar entrega"}</button>
         <button type="button" disabled={guardando} onClick={()=>guardar("OBSERVADA")} style={{height:42,padding:"0 14px",border:"1px solid #fecaca",borderRadius:9,background:"#fff7f7",color:"#b91c1c",fontWeight:700,cursor:"pointer"}}>Observar</button>
       </div>
-      <style jsx>{`
-        @media(max-width:640px){
-          .unused{}
-        }
-      `}</style>
     </div>
   );}
