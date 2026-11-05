@@ -56,7 +56,7 @@ export default function OportunidadesPage(){
    const aBuy=isBuy(a.tipo),bBuy=isBuy(b.tipo);
    if(aBuy===bBuy)continue;
    const buy=aBuy?a:b, sell=aBuy?b:a;
-   const s=score(buy,sell); if(s<60)continue;
+   const s=score(buy,sell); if(s<45)continue;
    const other=ownPublicationIds.has(buy.id)?sell:buy;
    matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,contactPublicationId:other.id,empresa_id:other.empresa_id||"",indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:new Date().toISOString(),distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.razon_social||"Publicador independiente",venta_empresa:sell.empresas?.razon_social||"Publicador independiente",compra_publicador_id:buy.publicador_profile_id,venta_publicador_id:sell.publicador_profile_id,producto:buy.productos?.nombre,compra_pais:buy.paises?.nombre,venta_pais:sell.paises?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
   }
