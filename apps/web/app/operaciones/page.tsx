@@ -254,7 +254,6 @@ export default function OperacionesPage() {
   const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   const [retencionesComision, setRetencionesComision] = useState<Record<string, any>>({});
   const [revisandoRetencionComision, setRevisandoRetencionComision] = useState(false);
-  const [registrandoLiberacionFondos, setRegistrandoLiberacionFondos] = useState(false);
 
   const [contratoAbierto, setContratoAbierto] = useState<string | null>(null);
 
@@ -397,36 +396,6 @@ export default function OperacionesPage() {
       setError(e instanceof Error ? e.message : "No se pudo revisar el comprobante de comisión.");
     } finally {
       setRevisandoRetencionComision(false);
-    }
-  }
-
-  async function registrarLiberacionFondos(operacionId: string) {
-    if (!esAdminPlataforma) { setError("Solo Administración de AgroBrokerIA puede registrar la liberación de fondos."); return; }
-    const referencia = window.prompt("Ingresá la referencia bancaria de la transferencia de fondos de esta operación. Solo registrá la liberación si verificaste el ingreso efectivo:");
-    if (!referencia?.trim()) { setError("La referencia bancaria es obligatoria. No se modificó el estado de los fondos."); return; }
-    if (!window.confirm("¿Confirmás que verificaste efectivamente los fondos de esta operación y que corresponde registrarlos como LIBERADOS?")) return;
-    setRegistrandoLiberacionFondos(true); setError(""); setMensaje("");
-    try {
-      const { data, error } = await supabase.rpc("registrar_liberacion_fondos_plataforma", {
-        p_operacion_id: operacionId,
-        p_referencia: referencia.trim(),
-      });
-      if (error) throw error;
-      setControlesComerciales((actual) => ({
-        ...actual,
-        [operacionId]: {
-          ...actual[operacionId],
-          fondos_estado: "LIBERADOS",
-          fondos_fecha_liberacion: data?.fondos_fecha_liberacion || new Date().toISOString(),
-          fondos_referencia: data?.fondos_referencia || referencia.trim(),
-        } as ControlComercialData,
-      }));
-      setMensaje("Liberación efectiva de fondos registrada por Administración. Ya podés volver a verificar firmas y avanzar a Liberación operativa.");
-      await cargarOperaciones();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : "No se pudo registrar la liberación de fondos.");
-    } finally {
-      setRegistrandoLiberacionFondos(false);
     }
   }
 
@@ -819,77 +788,6 @@ export default function OperacionesPage() {
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
     setMensaje("Comisión AgroBrokerIA retenida y visado aprobado. La operación pasó a Contrato Definitivo.");
-    await cargarOperaciones();
-    return true;
-  }
-
-  async function avanzarALiberacionOperativa(operacion: Operacion) {
-    setError(""); setMensaje("");
-    const workflow = obtenerWorkflow(operacion.id);
-    if (!workflow || workflow.orden !== 6) {
-      setError("La operación debe estar en Firmas para verificar la liberación operativa.");
-      return false;
-    }
-    const { data: estadoLiberacion, error: controlError } = await supabase.rpc(
-      "obtener_estado_liberacion_operacion",
-      { p_operacion_id: operacion.id }
-    );
-    if (controlError) {
-      setError("No se pudo verificar fondos y comisión: " + controlError.message);
-      return false;
-    }
-    const control = estadoLiberacion as {
-      control_encontrado?: boolean;
-      fondos_estado?: string | null;
-      comision_estado?: string | null;
-    } | null;
-    if (!control?.control_encontrado) {
-      setError("No existe un control comercial registrado para esta operación. Administración debe inicializarlo antes de liberar.");
-      return false;
-    }
-    const estadoFondos = String(control.fondos_estado || "PENDIENTES").toUpperCase();
-    const estadoComision = String(control.comision_estado || "").toUpperCase();
-    if (estadoFondos !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(estadoComision)) {
-      const detalleFondos = estadoFondos !== "LIBERADOS"
-        ? "Fondos: " + estadoFondos + "."
-        : "Fondos: LIBERADOS.";
-      const detalleComision = ["RETENIDA","LIBERADA"].includes(estadoComision)
-        ? "Comisión: " + estadoComision + "."
-        : "Comisión: " + (estadoComision || "SIN RETENCIÓN") + ".";
-      setError("No se puede pasar a Liberación operativa. " + detalleFondos + " " + detalleComision + " Administración debe registrar la liberación efectiva de los fondos; la comisión retenida se conserva.");
-      return false;
-    }
-    const { data: contractRows, error: contractError } = await supabase
-      .from("contratos").select("id").eq("operacion_id", operacion.id).eq("estado", "CONFIRMADO");
-    if (contractError || !contractRows?.length) {
-      setError("No hay un contrato definitivo confirmado.");
-      return false;
-    }
-    const contractIds = contractRows.map((row: {id:string}) => row.id);
-    const { data: signers, error: signerError } = await supabase
-      .from("contrato_firmantes").select("rol,firmado")
-      .in("contrato_id", contractIds).in("rol", ["VENDEDOR","COMPRADOR"]);
-    if (signerError) {
-      setError("No se pudieron verificar las firmas: " + signerError.message);
-      return false;
-    }
-    const signedRoles = new Set((signers || []).filter((row: {rol:string;firmado:boolean}) => row.firmado).map((row: {rol:string}) => row.rol));
-    if (!signedRoles.has("VENDEDOR") || !signedRoles.has("COMPRADOR")) {
-      window.location.href = "/contratos?tab=firmas";
-      return false;
-    }
-    const { data: nextStage, error: stageError } = await supabase
-      .from("workflow_etapas").select("id").eq("workflow_id", workflow.workflow_id).eq("orden", 7).maybeSingle();
-    if (stageError || !nextStage) {
-      setError("No se encontró la etapa Liberación operativa.");
-      return false;
-    }
-    const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, nextStage.id);
-    if (advanceError) {
-      setError(advanceError.message);
-      return false;
-    }
-    setMensaje("Firmas y fondos verificados. La operación pasó a Liberación operativa.");
     await cargarOperaciones();
     return true;
   }
@@ -2592,19 +2490,6 @@ Firma: ______________________________
       return true;
     }
 
-    // Evaluar automáticamente si corresponde liberar
-    // los datos operativos.
-    const etapaFondosActual = data.fondos_estado === "LIBERADOS";
-
-    const cambioCondicionLiberacion =
-      cambios.fondos_estado !== undefined ||
-      cambios.comision_estado !== undefined ||
-      cambios.no_elusion_aceptada !== undefined;
-
-    if (etapaFondosActual && cambioCondicionLiberacion) {
-      await verificarLiberacionOperativa(operacionId);
-    }
-
     return true;
   }
 
@@ -2729,96 +2614,14 @@ Firma: ______________________________
     return true;
   }
 
-  async function verificarLiberacionOperativa(
-    operacionId: string
-  ) {
-    const { data: controlActual, error: errorControl } = await supabase.rpc(
-      "obtener_estado_liberacion_operacion",
-      { p_operacion_id: operacionId }
-    );
-
-    if (errorControl) {
-      console.error(errorControl);
-      setError(`No se pudo verificar la liberación operativa: ${errorControl.message}`);
-      return false;
-    }
-    const estadoControl = controlActual as {
-      control_encontrado?: boolean;
-      fondos_estado?: string | null;
-      comision_estado?: string | null;
-      no_elusion_aceptada?: boolean | null;
-      datos_operativos_estado?: string | null;
-    } | null;
-    if (!estadoControl?.control_encontrado) {
-      setError("No existe un control comercial registrado para esta operación.");
-      return false;
-    }
-
-    const fondosLiberados = String(estadoControl.fondos_estado || "").toUpperCase() === "LIBERADOS";
-    const comisionRetenida = ["RETENIDA","LIBERADA"].includes(String(estadoControl.comision_estado || "").toUpperCase());
-
-    if (
-      !fondosLiberados ||
-      !comisionRetenida
-    ) {
-      setError(
-        "🔒 Los datos operativos continúan protegidos. Para liberarlos deben cumplirse: Fondos LIBERADOS + Comisión AgroBrokerIA RETENIDA."
-      );
-      return false;
-    }
-
-    const workflow = obtenerWorkflow(operacionId);
-
-    if (!workflow) {
-      setError(
-        "Las condiciones fueron cumplidas, pero la operación no tiene workflow asociado."
-      );
-      return false;
-    }
-
-    if (workflow.orden !== 7) {
-      setError(`La liberación operativa solo se puede verificar en su etapa correspondiente. Etapa actual: ${workflow.etapa_actual}.`);
-      return false;
-    }
-
-    const ahora = new Date().toISOString();
-    const { error: errorActualizacionControl } = await supabase.rpc("guardar_control_comercial", {
-      p_operacion_id: operacionId,
-      p_cambios: { datos_operativos_estado: "HABILITADOS", datos_operativos_liberados_at: ahora }
-    });
-    if (errorActualizacionControl) {
-      setError(`No se pudieron habilitar los datos operativos: ${errorActualizacionControl.message}`);
-      return false;
-    }
-
-    setControlesComerciales((actual) => ({
-      ...actual,
-      [operacionId]: {
-        ...actual[operacionId],
-        datos_operativos_estado: "HABILITADOS",
-        datos_operativos_liberados_at: ahora,
-      },
-    }));
-
-    setError("");
-    setMensaje(
-      "✅ Fondos liberados y comisión retenida. Los datos operativos fueron habilitados."
-    );
-
-    await cargarOperaciones();
-
-    return true;
-  }
-
-
   const estadoVistaOperacion = (operacion: Operacion) => {
     const workflow = obtenerWorkflow(operacion.id);
     const orden = workflow?.orden ?? 0;
     if (/CANCEL/i.test(operacion.estado)) return "Canceladas";
-    if (orden === 10 || /CERR|FINAL/i.test(operacion.estado)) return "Finalizadas";
+    if (orden === 9 || /CERR|FINAL/i.test(operacion.estado)) return "Finalizadas";
     if (orden >= 1 && orden <= 3) return "En negociación";
     if (orden >= 4 && orden <= 6) return "En contrato";
-    if (orden >= 7 && orden <= 8) return "En logística";
+    if (orden === 7) return "En logística";
     if (orden === 8) return "En liquidación";
     const estado = (operacion.estado || "").toUpperCase();
     if (["NEGOCIACION", "EN_NEGOCIACION", "PENDIENTE_NEGOCIACION"].includes(estado)) return "En negociación";
@@ -2999,10 +2802,10 @@ Firma: ______________________________
             <section aria-label="Progreso de la operación" style={{marginTop:18,padding:16,border:"1px solid #dbe3ee",borderRadius:12,background:"#f8fafc"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:10,flexWrap:"wrap"}}>
                 <h3 style={{margin:0,fontSize:16}}>Etapas de la operación</h3>
-                <strong style={{fontSize:12,color:"#0f766e"}}>Etapa {Math.min(Math.max(ordenDetalle,1),10)} de 10</strong>
+                <strong style={{fontSize:12,color:"#0f766e"}}>Etapa {Math.min(Math.max(ordenDetalle,1),9)} de 9</strong>
               </div>
-              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(Math.max(ordenDetalle,0),10)/10*100)} style={{height:8,borderRadius:99,background:"#e2e8f0",overflow:"hidden",marginBottom:14}}>
-                <div style={{height:"100%",width:`${Math.min(Math.max(ordenDetalle,0),10)/10*100}%`,background:"#059669",borderRadius:99,transition:"width .25s ease"}}/>
+              <div role="progressbar" aria-valuemin={0} aria-valuemax={100} aria-valuenow={Math.round(Math.min(Math.max(ordenDetalle,0),9)/9*100)} style={{height:8,borderRadius:99,background:"#e2e8f0",overflow:"hidden",marginBottom:14}}>
+                <div style={{height:"100%",width:`${Math.min(Math.max(ordenDetalle,0),9)/9*100}%`,background:"#059669",borderRadius:99,transition:"width .25s ease"}}/>
               </div>
               <ol style={{listStyle:"none",padding:0,margin:0,display:"grid",gap:8}}>
                 {ETAPAS.map((etapa,index)=>{const orden=index+1;const completada=ordenDetalle>orden;const actual=ordenDetalle===orden;return <li key={etapa} style={{display:"flex",alignItems:"center",gap:10,padding:"8px 10px",borderRadius:8,background:actual?"#dbeafe":completada?"#dcfce7":"#fff",border:actual?"1px solid #60a5fa":completada?"1px solid #86efac":"1px solid #e2e8f0",color:actual?"#1d4ed8":completada?"#166534":"#64748b"}}>
@@ -3011,8 +2814,8 @@ Firma: ______________________________
                   <small>{completada?"Completada":actual?"Etapa actual":"Pendiente"}</small>
                 </li>})}
               </ol>
-              {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
-              {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
+              {ordenDetalle>0&&ordenDetalle<9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
+              {ordenDetalle===9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
             {ordenDetalle === 8 && <section style={{marginTop:18,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff"}}>
               <h3 style={{marginTop:0}}>Liquidación de la operación</h3>
