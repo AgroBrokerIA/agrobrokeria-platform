@@ -1529,3 +1529,9 @@ body{background:var(--ab-bg)}
 .contract-cancel-request:disabled{opacity:.55;cursor:not-allowed}
 @media(max-width:1050px){.contract-builder-grid{grid-template-columns:minmax(0,1fr)}.contract-previews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
 @media(max-width:650px){.contract-builder-fields,.contract-previews{grid-template-columns:minmax(0,1fr)}.contract-builder-head{align-items:flex-start;flex-direction:column}.contract-builder-actions{flex-wrap:wrap}.contract-builder-tabs{overflow-x:auto}}
+
+.contract-cancel-request-row{padding:12px 0;border-top:1px solid #e6eaf0;display:grid;gap:7px;font-size:11px;color:#28344e}
+.contract-cancel-request-row>div{display:flex;gap:8px;flex-wrap:wrap}
+.contract-cancel-request-row button{border:0;border-radius:6px;padding:8px 11px;background:#0b9662;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
+.contract-cancel-request-row button+button{background:#b93636}
+.contract-cancel-request-row a{color:#1767bd;font-weight:700}
