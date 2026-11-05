@@ -82,7 +82,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   setAccionando(false);
  }
  async function responder(id:string,accion:"ACEPTAR"|"RECHAZAR"){
-  if(!window.confirm(accion==="ACEPTAR"?"¿Aceptás esta propuesta? Se creará la operación.":"¿Querés rechazar esta propuesta?"))return;
+  if(!window.confirm(accion==="ACEPTAR"?"¿Aceptás esta propuesta? Se creará la operación y un borrador contractual formal F1 para revisión y firma. Solo se admiten operaciones reales y declaradas.":"¿Querés rechazar esta propuesta?"))return;
   setAccionando(true);setError("");
   const {data,error}=await supabase.rpc("responder_propuesta_publicacion",{p_propuesta_id:id,p_accion:accion});
   if(error)setError("No se pudo responder la oferta: "+error.message);
