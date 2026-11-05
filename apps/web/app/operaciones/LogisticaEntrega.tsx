@@ -56,6 +56,8 @@ type ComisionViaje = {
   importe_liberado: number;
   estado: string;
 };
+type Corredor = { profile_id: string; nombre: string | null; email: string | null };
+type Autorizacion = { id: string; corredor_profile_id: string; autorizado_at: string; revocado_at: string | null; motivo: string | null };
 
 const ETAPAS = [
   ["CAMION_ASIGNADO", "Camión asignado"],
@@ -97,7 +99,7 @@ const panel: CSSProperties = {
   display: "grid",
   gap: 12,
 };
-const input: React.CSSProperties = {
+const input: CSSProperties = {
   width: "100%",
   minWidth: 0,
   height: 41,
@@ -109,7 +111,7 @@ const input: React.CSSProperties = {
   color: "#0f172a",
   fontSize: 14,
 };
-const primary: React.CSSProperties = {
+const primary: CSSProperties = {
   minHeight: 39,
   border: 0,
   borderRadius: 9,
@@ -119,7 +121,7 @@ const primary: React.CSSProperties = {
   fontWeight: 750,
   cursor: "pointer",
 };
-const secondary: React.CSSProperties = {
+const secondary: CSSProperties = {
   minHeight: 38,
   border: "1px solid #cbd5e1",
   borderRadius: 9,
@@ -146,7 +148,8 @@ export default function LogisticaEntrega({
   const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);
   const [busquedaCorredor, setBusquedaCorredor] = useState("");
   const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
-  const [loading, setLoading] = useState(true);\n  const [esTransportista, setEsTransportista] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const [esTransportista, setEsTransportista] = useState(false);
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -187,6 +190,12 @@ export default function LogisticaEntrega({
 
   useEffect(() => {
     void cargar();
+    void (async () => {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) return;
+      const { data } = await supabase.from("profiles").select("tipo_usuario").eq("id", auth.user.id).maybeSingle();
+      setEsTransportista(String(data?.tipo_usuario || "").toLowerCase().includes("transportista"));
+    })();
   }, [cargar]);
 
   const resumen = useMemo(() => ({
@@ -402,6 +411,27 @@ export default function LogisticaEntrega({
         </div>
       </section>
 
+      {!esTransportista && <section style={panel}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Acceso documental para corredores</div>
+          <div style={{ fontSize: 12, color: "#64748b" }}>Autoriza únicamente la consulta de Cartas de Porte de esta operación. No habilita acceso a logística, transportistas ni seguimiento.</div>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "minmax(0,1fr) auto", gap: 8 }}>
+          <input value={busquedaCorredor} onChange={e => setBusquedaCorredor(e.target.value)} placeholder="Nombre o email del corredor" style={input} />
+          <button type="button" style={secondary} onClick={() => void buscarCorredores()}>Buscar</button>
+        </div>
+        {corredores.length > 0 && <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <select value={corredorSeleccionado} onChange={e => setCorredorSeleccionado(e.target.value)} style={{ ...input, flex: 1 }}>
+            <option value="">Seleccionar corredor</option>
+            {corredores.map(x => <option key={x.profile_id} value={x.profile_id}>{x.nombre || "Corredor"}{x.email ? " — " + x.email : ""}</option>)}
+          </select>
+          <button type="button" style={primary} disabled={guardando || !corredorSeleccionado} onClick={() => void autorizarCorredor()}>Autorizar</button>
+        </div>}
+        {autorizaciones.map(a => <div key={a.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, border: "1px solid #e2e8f0", borderRadius: 8, padding: 9 }}>
+          <span style={{ fontSize: 12 }}>{a.corredor_profile_id.slice(0,8)} · {a.revocado_at ? "Acceso revocado" : "Acceso activo"}</span>
+          {!a.revocado_at && <button type="button" style={secondary} disabled={guardando} onClick={() => void revocarCorredor(a.id)}>Revocar</button>}
+        </div>)}
+      </section>}
       {!esTransportista && <section style={panel}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800 }}>Asignar un camión</div>
