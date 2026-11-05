@@ -744,19 +744,21 @@ export default function OperacionesPage() {
 
   async function avanzarAContratoConComision(operacion: Operacion) {
     setError(""); setMensaje("");
-    const { data: control, error: controlError } = await supabase
-      .from("operacion_control_comercial")
-      .select("visado_resultado,visado_estado,comision_estado")
-      .eq("operacion_id", operacion.id)
-      .maybeSingle();
-    if (controlError) {
-      setError("No se pudo consultar el visado de mercadería: " + controlError.message);
+    const { data: visadoRows, error: visadoError } = await supabase.rpc(
+      "obtener_visado_operacion_para_avance",
+      { p_operacion_id: operacion.id }
+    );
+    if (visadoError) {
+      setError("No se pudo consultar el visado aprobado: " + visadoError.message);
       return false;
     }
-    if (!control || !["APROBADO"].includes(String(control.visado_resultado || control.visado_estado || "").toUpperCase())) {
-      setError("El visado de mercadería todavía no figura APROBADO en el control comercial de esta operación. Verificá que el visado corresponda a esta misma operación.");
+    const visado = Array.isArray(visadoRows) ? visadoRows[0] : visadoRows;
+    const resultadoVisado = String(visado?.visado_resultado || visado?.visado_estado || "").trim().toUpperCase();
+    if (resultadoVisado !== "APROBADO") {
+      setError("El visado de mercadería no está APROBADO para esta operación. Estado leído: " + (resultadoVisado || "SIN REGISTRO") + ".");
       return false;
     }
+    const control = { visado_resultado: visado.visado_resultado, visado_estado: visado.visado_estado };
     setControlesComerciales((actual) => ({...actual,[operacion.id]:{...actual[operacion.id],...control}}));
     const { data: retencion, error: retencionError } = await supabase
       .from("operacion_comision_retenciones")
