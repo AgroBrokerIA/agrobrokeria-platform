@@ -2670,7 +2670,7 @@ Firma: ______________________________
                 <span className="op-product"><b>🌾</b><strong>{meta.producto}</strong></span>
                 <span><strong>{formatoNumero(operacion.cantidad_tn)} TN</strong></span>
                 <span><strong>{formatoNumero(operacion.precio_tn)}</strong></span>
-                <span><em className={"op-condition "+(operacion.tipo_operacion==="F1"?"f1":"f2")}>F1</em></span>
+                <span><em className={"op-condition "+"f1"}>F1</em></span>
                 <span>🌎 <small>{meta.origen}</small></span>
                 <span>🌎 <small>{meta.destino}</small></span>
                 <span><small>{meta.contraparte}</small></span>
@@ -2849,7 +2849,7 @@ Firma: ______________________________
             </header>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:18}}>
               <label>Número de contrato<input style={inputContrato} value={contrato.numero_contrato} onChange={e=>setContrato(v=>({...v,numero_contrato:e.target.value}))}/></label>
-              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F1";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal</option></select></label>
+              <label>Modelo contractual<input style={inputContrato} value="F1 · Formal" readOnly/><small>La operación utiliza exclusivamente el modelo formal.</small></label>
               <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
               <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
             </div>
