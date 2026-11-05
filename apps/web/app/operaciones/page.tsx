@@ -2750,7 +2750,7 @@ Firma: ______________________________
           if (resultado) setDetalleOperacion(null);
         };
         return <div role="dialog" aria-modal="true" aria-label={"Detalle " + detalleOperacion.codigo} className="operation-detail-backdrop" style={{position:"fixed",inset:0,zIndex:1000,background:"rgba(15,23,42,.55)",display:"flex",alignItems:"center",justifyContent:"center",padding:20}} onClick={() => setDetalleOperacion(null)}>
-          <section className="operation-detail-dialog" style={{position:"relative",width:"min(100%,560px)",maxHeight:"85vh",overflowY:"auto",background:"#fff",color:"#123",borderRadius:16,padding:28,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={(event) => event.stopPropagation()}>
+          <section className="operation-detail-dialog" style={{position:"relative",width:"min(100%,920px)",maxHeight:"92vh",overflowY:"auto",background:"#fff",color:"#123",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.25)"}} onClick={(event) => event.stopPropagation()}>
             <button type="button" className="operation-detail-close" style={{position:"absolute",right:12,top:8,fontSize:24,border:0,background:"transparent",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)} aria-label="Cerrar">×</button>
             <h2>Operación {detalleOperacion.codigo}</h2>
             <p><strong>Producto:</strong> {metaDetalle.producto}</p>
