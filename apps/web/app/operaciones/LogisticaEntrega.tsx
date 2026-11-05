@@ -1,63 +1,133 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { supabase } from "../../lib/supabase";
 
-type Logistica = {
-  id?: string;
+type Viaje = {
+  id: string;
   operacion_id: string;
   estado: string;
-  carta_porte_numero: string;
-  carta_porte_estado: string;
-  carta_porte_origen: string;
-  carta_porte_verificada_at: string;
-  carta_porte_response: unknown;
-  carta_porte_codigo: string;
-  carta_porte_fecha_emision: string;
-  carta_porte_fecha_vencimiento: string;
-  carta_porte_qr: string;
-  transportista: string;
-  transportista_cuit: string;
-  chofer_nombre: string;
-  chofer_documento: string;
-  patente_camion: string;
-  patente_acoplado: string;
-  fecha_carga: string;
-  hora_carga: string;
-  fecha_estimada_entrega: string;
-  destino: string;
-  numero_turno: string;
-  fecha_entrega: string;
-  kilos_entregados: string;
-  observaciones_entrega: string;
+  transportista_profile_id: string | null;
+  origen: string | null;
+  destino: string | null;
+  origen_nombre: string | null;
+  destino_nombre: string | null;
+  patente_camion: string | null;
+  patente_acoplado: string | null;
+  kilos_cargados: number | null;
+  kilos_entregados: number | null;
+  entregado_confirmado_at: string | null;
 };
 
-const inicial: Logistica = {
-  operacion_id: "",
-  estado: "PENDIENTE",
-  carta_porte_numero: "",
-  carta_porte_estado: "PENDIENTE_ARCA",
-  carta_porte_origen: "ARCA",
-  carta_porte_verificada_at: "",
-  carta_porte_response: null,
-    carta_porte_codigo: "",
-    carta_porte_fecha_emision: "",
-    carta_porte_fecha_vencimiento: "",
-    carta_porte_qr: "",
-  transportista: "",
-  transportista_cuit: "",
-  chofer_nombre: "",
-  chofer_documento: "",
-  patente_camion: "",
-  patente_acoplado: "",
-  fecha_carga: "",
-  hora_carga: "",
-  fecha_estimada_entrega: "",
-  destino: "",
-  numero_turno: "",
-  fecha_entrega: "",
-  kilos_entregados: "",
-  observaciones_entrega: "",
+type Transportista = {
+  profile_id: string;
+  nombre_completo: string;
+  empresa_transporte: string | null;
+  telefono: string | null;
+  foto_perfil_path: string | null;
+};
+
+type CartaPorte = {
+  id: string;
+  viaje_id: string;
+  numero_carta_porte: string;
+  archivo_path: string;
+  nombre_archivo: string;
+  kilos_declarados: number | null;
+  toneladas_declaradas: number | null;
+  estado_verificacion: string;
+  observaciones: string | null;
+};
+
+type Evento = {
+  id: string;
+  viaje_id: string;
+  estado: string;
+  lugar: string | null;
+  empresa_nombre: string | null;
+  toneladas: number | null;
+  observaciones: string | null;
+  registrado_at: string;
+};
+
+type ComisionViaje = {
+  viaje_id: string;
+  toneladas_entregadas: number;
+  importe_liberado: number;
+  estado: string;
+};
+
+const ETAPAS = [
+  ["CAMION_ASIGNADO", "Camión asignado"],
+  ["ARRIBO_ORIGEN", "Arribo a planta de origen"],
+  ["INICIO_CARGA", "Inicio de carga"],
+  ["CARGA_FINALIZADA", "Carga finalizada"],
+  ["SALIDA_ORIGEN", "Salida de origen"],
+  ["EN_TRANSITO", "En tránsito"],
+  ["ARRIBO_DESTINO", "Arribo a destino"],
+  ["INICIO_DESCARGA", "Inicio de descarga"],
+  ["DESCARGA_FINALIZADA", "Descarga finalizada"],
+] as const;
+
+const estadoLabel = (estado: string) =>
+  ({
+    ASIGNADO: "Camión asignado",
+    CAMION_ASIGNADO: "Camión asignado",
+    ARRIBO_ORIGEN: "Arribo a planta de origen",
+    INICIO_CARGA: "Inicio de carga",
+    CARGA_FINALIZADA: "Carga finalizada",
+    SALIDA_ORIGEN: "Salida de origen",
+    EN_TRANSITO: "En tránsito",
+    ARRIBO_DESTINO: "Arribo a destino",
+    INICIO_DESCARGA: "Inicio de descarga",
+    DESCARGA_FINALIZADA: "Descarga finalizada",
+    ENTREGADO_CONFIRMADO: "Entrega confirmada",
+    ENTREGA_CONFIRMADA: "Entrega confirmada",
+    OBSERVADO: "Observado",
+  })[estado] || estado.replaceAll("_", " ");
+
+const fecha = (value?: string | null) =>
+  value ? new Date(value).toLocaleString("es-AR") : "—";
+
+const panel: React.CSSProperties = {
+  border: "1px solid #dbe3ed",
+  borderRadius: 13,
+  background: "#fff",
+  padding: 15,
+  display: "grid",
+  gap: 12,
+};
+const input: React.CSSProperties = {
+  width: "100%",
+  minWidth: 0,
+  height: 41,
+  boxSizing: "border-box",
+  border: "1px solid #cbd5e1",
+  borderRadius: 9,
+  padding: "8px 10px",
+  background: "#fff",
+  color: "#0f172a",
+  fontSize: 14,
+};
+const primary: React.CSSProperties = {
+  minHeight: 39,
+  border: 0,
+  borderRadius: 9,
+  padding: "8px 13px",
+  background: "#078b58",
+  color: "#fff",
+  fontWeight: 750,
+  cursor: "pointer",
+};
+const secondary: React.CSSProperties = {
+  minHeight: 38,
+  border: "1px solid #cbd5e1",
+  borderRadius: 9,
+  padding: "7px 12px",
+  background: "#fff",
+  color: "#334155",
+  fontWeight: 700,
+  cursor: "pointer",
 };
 
 export default function LogisticaEntrega({
@@ -67,247 +137,350 @@ export default function LogisticaEntrega({
   operacionId: string;
   onEntregaConfirmada?: () => Promise<boolean>;
 }) {
-  const [datos, setDatos] = useState<Logistica>({
-    ...inicial,
-    operacion_id: operacionId,
-  });
-
+  const [viajes, setViajes] = useState<Viaje[]>([]);
+  const [transportistas, setTransportistas] = useState<Transportista[]>([]);
+  const [cartas, setCartas] = useState<CartaPorte[]>([]);
+  const [eventos, setEventos] = useState<Evento[]>([]);
+  const [comisiones, setComisiones] = useState<ComisionViaje[]>([]);
+  const [loading, setLoading] = useState(true);
   const [guardando, setGuardando] = useState(false);
-  const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const [mensaje, setMensaje] = useState("");
+  const [transportistaId, setTransportistaId] = useState("");
+  const [origenNombre, setOrigenNombre] = useState("");
+  const [origenDireccion, setOrigenDireccion] = useState("");
+  const [destinoNombre, setDestinoNombre] = useState("");
+  const [destinoDireccion, setDestinoDireccion] = useState("");
+  const [patente, setPatente] = useState("");
+  const [acoplado, setAcoplado] = useState("");
 
-  useEffect(() => {
-    cargar();
+  const cargar = useCallback(async () => {
+    setLoading(true);
+    setError("");
+    const [v, t, c, e, m] = await Promise.all([
+      supabase.from("viajes").select("*").eq("operacion_id", operacionId).order("creado_en", { ascending: true }),
+      supabase.rpc("listar_transportistas_verificados"),
+      supabase.from("viaje_cartas_porte").select("*").eq("operacion_id", operacionId).order("creada_at", { ascending: false }),
+      supabase.from("viaje_eventos").select("*").eq("operacion_id", operacionId).order("registrado_at", { ascending: true }),
+      supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId).eq("estado", "LIBERADA"),
+    ]);
+    if (v.error) setError("No se pudieron cargar los viajes: " + v.error.message);
+    else setViajes((v.data || []) as Viaje[]);
+    if (t.error && !String(t.error.message).includes("listar_transportistas_verificados")) {
+      setError((actual) => actual || "No se pudieron cargar los transportistas: " + t.error.message);
+    } else setTransportistas((t.data || []) as Transportista[]);
+    if (c.error) setError((actual) => actual || "No se pudieron cargar las cartas de porte: " + c.error.message);
+    else setCartas((c.data || []) as CartaPorte[]);
+    if (e.error) setError((actual) => actual || "No se pudo cargar el seguimiento: " + e.error.message);
+    else setEventos((e.data || []) as Evento[]);
+    if (m.error) setError((actual) => actual || "No se pudieron cargar las comisiones por viaje: " + m.error.message);
+    else setComisiones((m.data || []) as ComisionViaje[]);
+    setLoading(false);
   }, [operacionId]);
 
-  async function cargar() {
+  useEffect(() => {
+    void cargar();
+  }, [cargar]);
+
+  const resumen = useMemo(() => ({
+    viajes: viajes.length,
+    entregados: viajes.filter((v) => v.estado === "ENTREGADO_CONFIRMADO").length,
+    toneladas: comisiones.reduce((n, x) => n + Number(x.toneladas_entregadas || 0), 0),
+    comision: comisiones.reduce((n, x) => n + Number(x.importe_liberado || 0), 0),
+  }), [viajes, comisiones]);
+
+  async function crearViaje() {
     setError("");
-
-    const { data, error } = await supabase
-      .from("operacion_logistica")
-      .select("*")
-      .eq("operacion_id", operacionId)
-      .order("creado_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    if (error) {
-      setError(`No se pudo cargar la logística: ${error.message}`);
+    setMensaje("");
+    if (!transportistaId || !origenNombre.trim() || !destinoNombre.trim() || !patente.trim()) {
+      setError("Completá transportista, origen, destino y patente del camión.");
       return;
     }
+    setGuardando(true);
+    const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion", {
+      p_operacion_id: operacionId,
+      p_transportista_profile_id: transportistaId,
+      p_origen: origenDireccion || origenNombre,
+      p_destino: destinoDireccion || destinoNombre,
+      p_origen_nombre: origenNombre,
+      p_destino_nombre: destinoNombre,
+      p_patente_camion: patente.toUpperCase(),
+      p_patente_acoplado: acoplado.toUpperCase() || null,
+    });
+    if (rpcError) setError("No se pudo crear el viaje: " + rpcError.message);
+    else {
+      setMensaje("Viaje creado y transportista asignado correctamente.");
+      setTransportistaId("");
+      setPatente("");
+      setAcoplado("");
+      await cargar();
+    }
+    setGuardando(false);
+  }
 
-    if (data) {
-      setDatos({
-        ...inicial,
-        ...data,
-        fecha_carga: data.fecha_carga || "",
-        hora_carga: data.hora_carga || "",
-        fecha_estimada_entrega: data.fecha_estimada_entrega || "",
-        fecha_entrega: data.fecha_entrega || "",
-        kilos_entregados:
-          data.kilos_entregados != null
-            ? String(data.kilos_entregados)
-            : "",
+  async function subirCartas(viaje: Viaje, files: FileList | null) {
+    if (!files?.length) return;
+    setGuardando(true);
+    setError("");
+    setMensaje("");
+    for (const file of Array.from(files)) {
+      if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+        setError("Solo se permiten archivos PDF de Cartas de Porte.");
+        continue;
+      }
+      const numero = window.prompt("Número de Carta de Porte que figura en " + file.name);
+      if (!numero?.trim()) continue;
+      const kilosText = window.prompt("Ingresá los kilos declarados que leíste en ese PDF. Se revisarán antes de liberar comisión.");
+      if (!kilosText?.trim() || !Number.isFinite(Number(kilosText)) || Number(kilosText) <= 0) {
+        setError("No se cargó " + file.name + ": los kilos declarados deben ser un número mayor a cero.");
+        continue;
+      }
+      const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
+      const path = "cpe/" + operacionId + "/" + viaje.id + "/" + Date.now() + "-" + safeName;
+      const upload = await supabase.storage.from("agrobroker-private").upload(path, file, {
+        contentType: "application/pdf",
+        upsert: false,
       });
+      if (upload.error) {
+        setError("No se pudo subir " + file.name + ": " + upload.error.message);
+        continue;
+      }
+      const { error: insertError } = await supabase.from("viaje_cartas_porte").insert({
+        viaje_id: viaje.id,
+        operacion_id: operacionId,
+        numero_carta_porte: numero.trim(),
+        archivo_path: path,
+        nombre_archivo: file.name,
+        kilos_declarados: Number(kilosText),
+        toneladas_declaradas: Number(kilosText) / 1000,
+        estado_verificacion: "PENDIENTE_REVISION",
+      });
+      if (insertError) {
+        await supabase.storage.from("agrobroker-private").remove([path]);
+        setError("El PDF " + file.name + " se subió pero no se pudo registrar: " + insertError.message);
+      }
     }
-  }
-
-  function cambiar(campo: keyof Logistica, valor: string) {
-    setDatos((actual) => ({
-      ...actual,
-      [campo]: valor,
-    }));
-  }
-
-  function abrirARCA() {
-    window.open(
-      "https://auth.arca.gob.ar/",
-      "_blank",
-      "noopener,noreferrer"
-    );
-  }
-
-  async function registrarCartaPorteARCA() {
-    setError("");
-    setMensaje("");
-
-    const numero = datos.carta_porte_numero.trim();
-
-    if (!numero) {
-      setError("⚠️ Ingresá el número de Carta de Porte Electrónica emitida por ARCA.");
-      return;
-    }
-
-    setGuardando(true);
-
-    const ahora = new Date().toISOString();
-
-    const cambios = {
-      carta_porte_numero: numero,
-      carta_porte_estado: "EMITIDA_ARCA",
-      carta_porte_origen: "ARCA",
-      carta_porte_verificada_at: ahora,
-      updated_at: ahora,
-    };
-
-    const resultado = await supabase.rpc("guardar_operacion_logistica", {
-      p_operacion_id: operacionId,
-      p_datos: { id: datos.id || null, ...datos, ...cambios },
-    });
-
-    if (resultado.error) {
-      setError(
-        `No se pudo registrar la Carta de Porte ARCA: ${resultado.error.message}`
-      );
-      setGuardando(false);
-      return;
-    }
-
-    setDatos({
-      ...datos,
-      ...resultado.data,
-      carta_porte_estado: "EMITIDA_ARCA",
-      carta_porte_origen: "ARCA",
-      carta_porte_verificada_at: ahora,
-    });
-
-    setMensaje(
-      "✅ Carta de Porte registrada como emitida por ARCA."
-    );
-
+    await cargar();
+    setMensaje("Carga de documentos finalizada. Las cartas quedan pendientes de revisión; todavía no habilitan comisiones.");
     setGuardando(false);
   }
 
-  async function guardar(nuevoEstado?: string) {
-    setGuardando(true);
-    setMensaje("");
-    setError("");
-
-    const payload = {
-      ...datos,
-      operacion_id: operacionId,
-      estado: nuevoEstado || datos.estado,
-      kilos_entregados:
-        datos.kilos_entregados === ""
-          ? null
-          : Number(datos.kilos_entregados),
-      fecha_entrega:
-        datos.fecha_entrega === "" ? null : datos.fecha_entrega,
-      updated_at: new Date().toISOString(),
-    };
-
-    const { data, error } = await supabase.rpc("guardar_operacion_logistica", {
-      p_operacion_id: operacionId,
-      p_datos: { id: datos.id || null, ...payload },
-    });
-
-    if (error) {
-      setError(`No se pudo guardar la logística: ${error.message}`);
-      setGuardando(false);
+  async function abrirCarta(path: string) {
+    const { data, error: signedError } = await supabase.storage.from("agrobroker-private").createSignedUrl(path, 90);
+    if (signedError || !data?.signedUrl) {
+      setError("No se pudo abrir el PDF: " + (signedError?.message || "enlace no disponible"));
       return;
     }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
 
-    setDatos({
-      ...datos,
-      ...data,
-      estado: data.estado,
-      kilos_entregados:
-        data.kilos_entregados != null
-          ? String(data.kilos_entregados)
-          : "",
+  async function validarCarta(carta: CartaPorte) {
+    const kilos = window.prompt("Revisá el PDF y confirmá los kilos exactos declarados en la Carta de Porte:", String(carta.kilos_declarados || ""));
+    if (!kilos || !Number.isFinite(Number(kilos)) || Number(kilos) <= 0) return;
+    setGuardando(true);
+    const { error: rpcError } = await supabase.rpc("validar_carta_porte_viaje", {
+      p_carta_porte_id: carta.id,
+      p_kilos_declarados: Number(kilos),
+      p_observaciones: "Cantidad revisada contra el PDF cargado.",
     });
-
-    setMensaje("✅ Información logística guardada.");
+    if (rpcError) setError("No se pudo validar la carta: " + rpcError.message);
+    else setMensaje("Carta de Porte validada. La comisión se liberará cuando el comprador confirme la entrega.");
+    await cargar();
     setGuardando(false);
   }
 
-  const campo = (label: string, nombre: keyof Logistica, tipo = "text") => (
-    <label style={{display:"grid",gap:6,minWidth:0,color:"#334155",fontSize:13,fontWeight:700}}>
-      {label}
-      <input
-        type={tipo}
-        value={String(datos[nombre] || "")}
-        onChange={(e) => cambiar(nombre, e.target.value)}
-        style={{width:"100%",minWidth:0,boxSizing:"border-box",height:42,padding:"9px 11px",borderRadius:9,border:"1px solid #cbd5e1",background:"#fff",color:"#0f172a",fontSize:14,fontWeight:500,outlineColor:"#0d9566"}}
-      />
-    </label>
-  );
+  async function registrarEtapa(viaje: Viaje, estado: string) {
+    const lugar = estado === "ARRIBO_ORIGEN" || estado === "INICIO_CARGA" || estado === "CARGA_FINALIZADA" || estado === "SALIDA_ORIGEN"
+      ? (viaje.origen || viaje.origen_nombre || "")
+      : (viaje.destino || viaje.destino_nombre || "");
+    const empresa = estado === "ARRIBO_ORIGEN" || estado === "INICIO_CARGA" || estado === "CARGA_FINALIZADA" || estado === "SALIDA_ORIGEN"
+      ? (viaje.origen_nombre || "")
+      : (viaje.destino_nombre || "");
+    setGuardando(true);
+    const { error: rpcError } = await supabase.rpc("registrar_evento_viaje", {
+      p_viaje_id: viaje.id,
+      p_estado: estado,
+      p_lugar: lugar,
+      p_empresa_nombre: empresa,
+      p_toneladas: null,
+      p_observaciones: null,
+    });
+    if (rpcError) setError("No se pudo actualizar el seguimiento: " + rpcError.message);
+    else setMensaje("Seguimiento actualizado: " + estadoLabel(estado));
+    await cargar();
+    setGuardando(false);
+  }
+
+  async function confirmarEntrega(viaje: Viaje) {
+    const cartaValidada = cartas.find((c) => c.viaje_id === viaje.id && c.estado_verificacion === "VALIDADA");
+    if (!cartaValidada) {
+      setError("Primero debe validarse la Carta de Porte de este camión.");
+      return;
+    }
+    const kilos = window.prompt("Ingresá los kilos efectivamente recibidos y confirmados por el comprador:", String(cartaValidada.kilos_declarados || ""));
+    if (!kilos || !Number.isFinite(Number(kilos)) || Number(kilos) <= 0) return;
+    if (Number(kilos) > Number(cartaValidada.kilos_declarados)) {
+      setError("La cantidad entregada no puede superar los kilos validados en la Carta de Porte.");
+      return;
+    }
+    if (!window.confirm("¿Confirmás que el comprador recibió " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? Se liberará automáticamente USD " + (Number(kilos) / 1000).toLocaleString("es-AR") + " de comisión AgroBrokerIA.")) return;
+    setGuardando(true);
+    const { data, error: rpcError } = await supabase.rpc("confirmar_entrega_viaje_y_liberar_comision", {
+      p_viaje_id: viaje.id,
+      p_kilos_entregados: Number(kilos),
+    });
+    if (rpcError) setError("No se pudo confirmar la entrega: " + rpcError.message);
+    else {
+      setMensaje("Entrega confirmada. Comisión liberada: USD " + Number(data?.comision_liberada || 0).toLocaleString("es-AR") + ".");
+      if (onEntregaConfirmada) await onEntregaConfirmada();
+    }
+    await cargar();
+    setGuardando(false);
+  }
+
+  if (loading) return <div style={{ padding: 18, color: "#64748b" }}>Cargando viajes, cartas de porte y seguimiento…</div>;
 
   return (
-    <div style={{display:"grid",gap:16,minWidth:0,color:"#0f172a"}}>
-      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",padding:"12px 15px",border:"1px solid #dbe7f2",borderRadius:12,background:"#f8fafc"}}>
-        <div><div style={{fontSize:15,fontWeight:800}}>🚚 Datos de transporte y entrega</div><div style={{fontSize:12,color:"#64748b",marginTop:3}}>Los cambios quedan asociados a esta operación.</div></div>
-        <span style={{padding:"6px 10px",borderRadius:999,background:datos.estado==="ENTREGADA"?"#dcfce7":"#eaf2ff",color:datos.estado==="ENTREGADA"?"#166534":"#1d4ed8",fontSize:12,fontWeight:800}}>{String(datos.estado).replaceAll("_"," ")}</span>
-      </div>
-
-      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
-        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
-          <div><h4 style={{margin:0,fontSize:15}}>🧾 Carta de Porte Electrónica (ARCA)</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Emitila en ARCA y registrá aquí el número oficial.</p></div>
-          <span style={{fontSize:11,fontWeight:800,padding:"6px 9px",borderRadius:999,background:datos.carta_porte_estado==="EMITIDA_ARCA"?"#dcfce7":"#fff1f2",color:datos.carta_porte_estado==="EMITIDA_ARCA"?"#166534":"#be123c"}}>{datos.carta_porte_estado==="EMITIDA_ARCA"?"EMITIDA":"PENDIENTE"}</span>
-        </div>
-        <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:10,alignItems:"end"}}>
-          <div>{campo("Número de Carta de Porte emitida por ARCA","carta_porte_numero")}</div>
-          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-            <button type="button" onClick={abrirARCA} disabled={guardando} style={{height:42,padding:"0 13px",border:0,borderRadius:9,background:"#2563eb",color:"#fff",fontWeight:700,cursor:"pointer"}}>Abrir ARCA ↗</button>
-            <button type="button" onClick={registrarCartaPorteARCA} disabled={guardando} style={{height:42,padding:"0 13px",border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:700,cursor:"pointer"}}>{guardando?"Guardando…":"Registrar CPE"}</button>
+    <div style={{ display: "grid", gap: 15, minWidth: 0, color: "#0f172a" }}>
+      <section style={{ ...panel, background: "#f8fafc" }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 10 }}>
+          <div>
+            <div style={{ fontWeight: 850, fontSize: 16 }}>🚚 Transporte y seguimiento por camión</div>
+            <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Cada camión tiene su propio viaje, carta de porte, eventos y liquidación parcial.</div>
           </div>
+          <button type="button" style={secondary} disabled={guardando} onClick={() => void cargar()}>Actualizar</button>
+        </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8 }}>
+          {[
+            ["Camiones", resumen.viajes],
+            ["Entregados", resumen.entregados],
+            ["TN confirmadas", resumen.toneladas.toLocaleString("es-AR", { maximumFractionDigits: 3 })],
+            ["Comisión liberada", "USD " + resumen.comision.toLocaleString("es-AR", { maximumFractionDigits: 2 })],
+          ].map(([label, value]) => (
+            <div key={String(label)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, minWidth: 0 }}>
+              <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{label}</div>
+              <div style={{ fontSize: 17, fontWeight: 850, marginTop: 4 }}>{value}</div>
+            </div>
+          ))}
         </div>
       </section>
 
-      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
-        <div><h4 style={{margin:0,fontSize:15}}>🚛 Transporte y carga</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Identificación del transportista, chofer y unidad.</p></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-          {campo("Transportista","transportista")}
-          {campo("CUIT del transportista","transportista_cuit")}
-          {campo("Nombre del chofer","chofer_nombre")}
-          {campo("Documento del chofer","chofer_documento")}
-          {campo("Patente del camión","patente_camion")}
-          {campo("Patente del acoplado","patente_acoplado")}
-          {campo("Fecha de carga","fecha_carga","date")}
-          {campo("Hora de carga","hora_carga","time")}
+      <section style={panel}>
+        <div>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Asignar un camión</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Solo aparecen transportistas registrados y verificados por AgroBrokerIA.</div>
         </div>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10 }}>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Transportista
+            <select value={transportistaId} onChange={(e) => setTransportistaId(e.target.value)} style={input}>
+              <option value="">Seleccionar transportista</option>
+              {transportistas.map((t) => <option key={t.profile_id} value={t.profile_id}>{t.nombre_completo}{t.empresa_transporte ? " — " + t.empresa_transporte : ""}</option>)}
+            </select>
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Patente del camión
+            <input value={patente} onChange={(e) => setPatente(e.target.value)} placeholder="Ej. AB123CD" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Empresa / productor de origen
+            <input value={origenNombre} onChange={(e) => setOrigenNombre(e.target.value)} placeholder="Nombre exacto de planta, productor o acopio" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Dirección de origen
+            <input value={origenDireccion} onChange={(e) => setOrigenDireccion(e.target.value)} placeholder="Localidad, provincia y dirección" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Empresa / acopio de destino
+            <input value={destinoNombre} onChange={(e) => setDestinoNombre(e.target.value)} placeholder="Nombre exacto del comprador o destino" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Dirección de destino
+            <input value={destinoDireccion} onChange={(e) => setDestinoDireccion(e.target.value)} placeholder="Localidad, provincia y dirección" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Patente del acoplado (opcional)
+            <input value={acoplado} onChange={(e) => setAcoplado(e.target.value)} placeholder="Patente del acoplado" style={input} />
+          </label>
+        </div>
+        <div><button type="button" style={primary} disabled={guardando} onClick={() => void crearViaje()}>{guardando ? "Guardando…" : "Crear viaje y asignar transportista"}</button></div>
       </section>
 
-      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
-        <div><h4 style={{margin:0,fontSize:15}}>📍 Entrega y recepción</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Registrá destino, turno, volumen recibido y observaciones.</p></div>
-        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
-          {campo("Destino","destino")}
-          {campo("Número de turno","numero_turno")}
-          {campo("Fecha estimada de entrega","fecha_estimada_entrega","date")}
-          {campo("Kilos entregados","kilos_entregados","number")}
-          {campo("Fecha y hora efectiva de entrega","fecha_entrega","datetime-local")}
-        </div>
-        <label style={{display:"grid",gap:6,fontSize:13,fontWeight:700,color:"#334155"}}>Observaciones de entrega
-          <textarea value={datos.observaciones_entrega||""} onChange={e=>cambiar("observaciones_entrega",e.target.value)} rows={3} style={{width:"100%",boxSizing:"border-box",resize:"vertical",padding:11,borderRadius:9,border:"1px solid #cbd5e1",fontSize:14,color:"#0f172a"}}/>
-        </label>
-      </section>
+      {error && <div role="alert" style={{ padding: 11, borderRadius: 9, border: "1px solid #fecaca", background: "#fff1f2", color: "#9f1239", fontSize: 13 }}>{error}</div>}
+      {mensaje && <div role="status" style={{ padding: 11, borderRadius: 9, border: "1px solid #a7f3d0", background: "#ecfdf5", color: "#166534", fontSize: 13 }}>{mensaje}</div>}
 
-      {error&&<div role="alert" style={{padding:12,borderRadius:9,background:"#fff1f2",border:"1px solid #fecdd3",color:"#9f1239",fontSize:13,fontWeight:600}}>{error}</div>}
-      {mensaje&&<div role="status" style={{padding:12,borderRadius:9,background:"#ecfdf5",border:"1px solid #a7f3d0",color:"#166534",fontSize:13,fontWeight:600}}>{mensaje}</div>}
+      {viajes.length === 0 && <div style={{ ...panel, color: "#64748b", textAlign: "center" }}>Todavía no hay camiones asignados a esta operación.</div>}
 
-      <div style={{position:"sticky",bottom:0,zIndex:2,display:"flex",justifyContent:"flex-end",gap:9,flexWrap:"wrap",padding:"12px 0 2px",background:"linear-gradient(180deg,rgba(255,255,255,0),#fff 22%)"}}>
-        <button type="button" disabled={guardando} onClick={()=>guardar()} style={{height:42,padding:"0 15px",border:"1px solid #cbd5e1",borderRadius:9,background:"#fff",color:"#334155",fontWeight:700,cursor:"pointer"}}>Guardar cambios</button>
-        <button type="button" disabled={guardando} onClick={()=>guardar("PROGRAMADA")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#2563eb",color:"#fff",fontWeight:700,cursor:"pointer"}}>Programar carga</button>
-        <button type="button" disabled={guardando||datos.carta_porte_estado!=="EMITIDA_ARCA"} onClick={()=>guardar("EN_TRANSITO")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#d97706",color:"#fff",fontWeight:700,cursor:guardando?"wait":"pointer",opacity:datos.carta_porte_estado!=="EMITIDA_ARCA" ? 0.55 : 1}}>Iniciar traslado</button>
-        <button type="button" disabled={guardando} onClick={async()=>{
-          const faltantes:string[]=[];
-          if(datos.carta_porte_estado!=="EMITIDA_ARCA"||!datos.carta_porte_numero.trim())faltantes.push("Carta de Porte emitida y registrada en ARCA");
-          if(!datos.transportista.trim())faltantes.push("Transportista");
-          if(!datos.chofer_nombre.trim())faltantes.push("Chofer");
-          if(!datos.patente_camion.trim())faltantes.push("Patente del camión");
-          if(!datos.fecha_carga)faltantes.push("Fecha de carga");
-          if(!datos.destino.trim())faltantes.push("Destino");
-          if(datos.kilos_entregados===""||Number(datos.kilos_entregados)<=0)faltantes.push("Kilos entregados");
-          if(faltantes.length){setError("No se puede confirmar la entrega. Completá: "+faltantes.join(", ")+".");setMensaje("");return;}
-          const ahora=new Date().toISOString();setGuardando(true);setError("");setMensaje("");
-          const payload={...datos,operacion_id:operacionId,estado:"ENTREGADA",kilos_entregados:Number(datos.kilos_entregados),fecha_entrega:datos.fecha_entrega||ahora,updated_at:ahora};
-          const resultado=await supabase.rpc("guardar_operacion_logistica",{p_operacion_id:operacionId,p_datos:{id:datos.id||null,...payload}});
-          if(resultado.error){setError("No se pudo confirmar la entrega: "+resultado.error.message);setGuardando(false);return;}
-          setDatos({...datos,...resultado.data,estado:"ENTREGADA",kilos_entregados:resultado.data.kilos_entregados!=null?String(resultado.data.kilos_entregados):datos.kilos_entregados});
-          setMensaje("Entrega confirmada correctamente.");setGuardando(false);
-          if(onEntregaConfirmada)await onEntregaConfirmada();
-        }} style={{height:42,padding:"0 16px",border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:800,cursor:"pointer"}}>{guardando?"Procesando…":"Confirmar entrega"}</button>
-        <button type="button" disabled={guardando} onClick={()=>guardar("OBSERVADA")} style={{height:42,padding:"0 14px",border:"1px solid #fecaca",borderRadius:9,background:"#fff7f7",color:"#b91c1c",fontWeight:700,cursor:"pointer"}}>Observar</button>
-      </div>
+      {viajes.map((viaje, index) => {
+        const cartasViaje = cartas.filter((c) => c.viaje_id === viaje.id);
+        const eventosViaje = eventos.filter((e) => e.viaje_id === viaje.id);
+        const comisionViaje = comisiones.find((c) => c.viaje_id === viaje.id);
+        const ultimoEvento = eventosViaje[eventosViaje.length - 1];
+        const siguienteEtapa = ETAPAS.find(([key]) => !eventosViaje.some((e) => e.estado === key));
+        const transportista = transportistas.find((t) => t.profile_id === viaje.transportista_profile_id);
+        return (
+          <section key={viaje.id} style={panel}>
+            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 10, flexWrap: "wrap" }}>
+              <div>
+                <div style={{ fontSize: 15, fontWeight: 850 }}>Camión {index + 1} · {viaje.patente_camion || "Patente pendiente"}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{viaje.origen_nombre || viaje.origen || "Origen pendiente"} → {viaje.destino_nombre || viaje.destino || "Destino pendiente"}</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")}</div>
+              </div>
+              <span style={{ padding: "6px 10px", borderRadius: 99, background: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#dcfce7" : "#eaf2ff", color: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 800 }}>{estadoLabel(viaje.estado)}</span>
+            </div>
+
+            <div style={{ display: "grid", gap: 8 }}>
+              <div style={{ fontSize: 13, fontWeight: 800 }}>Cartas de Porte del camión</div>
+              {cartasViaje.map((c) => (
+                <div key={c.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8, flexWrap: "wrap", padding: 10, border: "1px solid #e2e8f0", borderRadius: 9 }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ fontSize: 13, fontWeight: 750 }}>CPE {c.numero_carta_porte}</div>
+                    <div style={{ fontSize: 11, color: "#64748b" }}>{c.nombre_archivo} · {c.kilos_declarados ? (Number(c.kilos_declarados) / 1000).toLocaleString("es-AR") + " TN" : "Cantidad pendiente"} · {c.estado_verificacion === "VALIDADA" ? "Validada" : c.estado_verificacion === "OBSERVADA" ? "Observada" : "Pendiente de revisión"}</div>
+                  </div>
+                  <div style={{ display: "flex", gap: 7, flexWrap: "wrap" }}>
+                    <button type="button" style={secondary} onClick={() => void abrirCarta(c.archivo_path)}>Ver PDF</button>
+                    {c.estado_verificacion !== "VALIDADA" && viaje.estado !== "ENTREGADO_CONFIRMADO" && <button type="button" style={primary} disabled={guardando} onClick={() => void validarCarta(c)}>Revisar cantidad del PDF</button>}
+                  </div>
+                </div>
+              ))}
+              <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 750, color: "#0f766e" }}>
+                <input type="file" accept="application/pdf,.pdf" multiple disabled={guardando || viaje.estado === "ENTREGADO_CONFIRMADO"} onChange={(e) => { void subirCartas(viaje, e.target.files); e.currentTarget.value = ""; }} />
+                Cargar uno o varios PDF de Cartas de Porte
+              </label>
+              <div style={{ fontSize: 11, color: "#64748b" }}>El número y los kilos se ingresan según cada PDF. La cantidad queda pendiente hasta que un participante autorizado revise el documento.</div>
+            </div>
+
+            <div style={{ display: "grid", gap: 9 }}>
+              <div style={{ fontSize: 13, fontWeight: 800 }}>Línea de tiempo del viaje</div>
+              {eventosViaje.length === 0 && <div style={{ color: "#64748b", fontSize: 12 }}>Sin movimientos registrados.</div>}
+              <div style={{ display: "grid", gap: 8 }}>
+                {eventosViaje.map((evento) => (
+                  <div key={evento.id} style={{ display: "grid", gridTemplateColumns: "12px minmax(0,1fr)", gap: 9 }}>
+                    <div style={{ display: "flex", justifyContent: "center" }}><span style={{ width: 9, height: 9, borderRadius: 99, background: "#078b58", marginTop: 4 }} /></div>
+                    <div style={{ borderLeft: "2px solid #d1fae5", padding: "0 0 8px 10px", marginLeft: -6 }}>
+                      <div style={{ fontSize: 12, fontWeight: 800 }}>{estadoLabel(evento.estado)}</div>
+                      <div style={{ fontSize: 11, color: "#64748b" }}>{evento.empresa_nombre || ""}{evento.lugar ? " · " + evento.lugar : ""} · {fecha(evento.registrado_at)}</div>
+                      {evento.observaciones && <div style={{ fontSize: 11, color: "#475569", marginTop: 3 }}>{evento.observaciones}</div>}
+                    </div>
+                  </div>
+                ))}
+              </div>
+              {siguienteEtapa && viaje.estado !== "ENTREGADO_CONFIRMADO" && (
+                <div style={{ display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                  <button type="button" style={secondary} disabled={guardando} onClick={() => void registrarEtapa(viaje, siguienteEtapa[0])}>Registrar: {siguienteEtapa[1]}</button>
+                  {ultimoEvento && <span style={{ fontSize: 11, color: "#64748b" }}>Último movimiento: {estadoLabel(ultimoEvento.estado)}</span>}
+                </div>
+              )}
+            </div>
+
+            {viaje.estado !== "ENTREGADO_CONFIRMADO" ? (
+              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
+                <div style={{ fontSize: 12, color: "#64748b" }}>La comisión se libera únicamente después de validar la CPE y confirmar la recepción el comprador.</div>
+                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA")} onClick={() => void confirmarEntrega(viaje)}>Confirmar entrega y liberar comisión</button>
+              </div>
+            ) : (
+              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, background: "#f0fdf4", borderRadius: 9, padding: 12 }}>
+                <div style={{ fontWeight: 850, color: "#166534", fontSize: 13 }}>Entrega confirmada · {viaje.kilos_entregados ? (Number(viaje.kilos_entregados) / 1000).toLocaleString("es-AR") + " TN" : ""}</div>
+                <div style={{ color: "#166534", fontSize: 12, marginTop: 3 }}>Comisión AgroBrokerIA liberada: USD {Number(comisionViaje?.importe_liberado || 0).toLocaleString("es-AR")}.</div>
+                <div style={{ color: "#64748b", fontSize: 11, marginTop: 3 }}>Confirmado: {fecha(viaje.entregado_confirmado_at)}</div>
+              </div>
+            )}
+          </section>
+        );
+      })}
     </div>
-  );}
+  );
+}
