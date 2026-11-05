@@ -67,7 +67,7 @@ export default function ComisionesPage(){
   return list;
  },[rows,tab,estado,pago,producto,intermediario,fromDate,toDate,minVol,maxVol,minRate,maxRate,opMap]);
  const totals=useMemo(()=>({total:filtered.reduce((a,x)=>a+n(x.total),0),pending:filtered.reduce((a,x)=>a+n(x.saldo_pendiente),0),paid:filtered.reduce((a,x)=>a+n(x.saldo_pagado),0),intermediaries:new Set(filtered.map(x=>x.empresa_id||x.profile_id).filter(Boolean)).size}),[filtered]);
- const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario??0,[rows]);
+ const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario??1,[rows]);
  const statusCounts=useMemo(()=>({paid:filtered.filter(x=>String(x.estado).toUpperCase()==="ABONADA").length,pending:filtered.filter(x=>["PENDIENTE","A_PAGAR"].includes(String(x.estado).toUpperCase())).length,process:filtered.filter(x=>!["ABONADA","PENDIENTE","A_PAGAR","ANULADA"].includes(String(x.estado).toUpperCase())).length,cancelled:filtered.filter(x=>String(x.estado).toUpperCase()==="ANULADA").length}),[filtered]);
  const productSummary=useMemo(()=>Object.entries(filtered.reduce<Record<string,number>>((a,x)=>{const k=x.concepto||"Sin producto";a[k]=(a[k]||0)+n(x.total);return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,6),[filtered]);
  async function pay(){
@@ -86,7 +86,7 @@ export default function ComisionesPage(){
    <Kpi icon="◷" value={money(totals.pending)} label="Pendientes de pago" trend={`${filtered.filter(x=>n(x.saldo_pendiente)>0).length} registros`} tone="blue"/>
    <Kpi icon="✓" value={money(totals.paid)} label="Pagadas" trend={`${statusCounts.paid} registros abonados`} tone="purple"/>
    <Kpi icon="♟" value={String(totals.intermediaries)} label="Intermediarios con comisión" trend="Según registros" tone="yellow"/>
-   <Kpi icon="▥" value={fixed?money(fixed,monedas[rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.moneda_id||0]||""):"No registrada"} label="Comisión AgroBrokerIA" trend={fixed?"Valor registrado por TN":"Sin comisión automática registrada"} tone="red"/>
+   <Kpi icon="▥" value={money(fixed,"USD")} label="Comisión AgroBrokerIA" trend="Tarifa automática fija por tonelada" tone="red"/>
   </section>
   <nav className="commission-ref-tabs">{tabs.map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
   <section className="commission-ref-layout">
