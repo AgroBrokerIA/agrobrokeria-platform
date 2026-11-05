@@ -2608,10 +2608,10 @@ Firma: ______________________________
     const etapa = workflow?.etapa_actual || "";
     const estadoVista = estadoVistaOperacion(operacion);
     const meta = operacionMeta[operacion.id] || { producto: "", origen: "", destino: "", contraparte: "" };
-    const texto = `${operacion.codigo} ${operacion.tipo_operacion} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
+    const texto = `${operacion.codigo} F1 ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
     return (!filtroEstado || estadoVista === filtroEstado) &&
-      (!filtroTipo || operacion.tipo_operacion === filtroTipo) &&
+      (!filtroTipo || filtroTipo === "F1") &&
       (!filtroProducto || texto.includes(filtroProducto.toLowerCase())) &&
       (!filtroOrigen || meta.origen.toLowerCase().includes(filtroOrigen.toLowerCase())) &&
       (!filtroDestino || meta.destino.toLowerCase().includes(filtroDestino.toLowerCase())) &&
@@ -2670,7 +2670,7 @@ Firma: ______________________________
                 <span className="op-product"><b>🌾</b><strong>{meta.producto}</strong></span>
                 <span><strong>{formatoNumero(operacion.cantidad_tn)} TN</strong></span>
                 <span><strong>{formatoNumero(operacion.precio_tn)}</strong></span>
-                <span><em className={"op-condition "+(operacion.tipo_operacion==="F1"?"f1":"f2")}>{operacion.tipo_operacion}</em></span>
+                <span><em className={"op-condition "+(operacion.tipo_operacion==="F1"?"f1":"f2")}>F1</em></span>
                 <span>🌎 <small>{meta.origen}</small></span>
                 <span>🌎 <small>{meta.destino}</small></span>
                 <span><small>{meta.contraparte}</small></span>
@@ -2844,12 +2844,12 @@ Firma: ______________________________
         return <div role="dialog" aria-modal="true" aria-label="Contrato definitivo" style={{position:"fixed",inset:0,zIndex:1300,background:"rgba(15,23,42,.62)",display:"flex",alignItems:"center",justifyContent:"center",padding:16}} onClick={()=>setContratoAbierto(null)}>
           <section style={{width:"min(100%,850px)",maxHeight:"92vh",overflowY:"auto",background:"#fff",borderRadius:16,padding:24,boxShadow:"0 20px 60px rgba(0,0,0,.3)",color:"#123"}} onClick={e=>e.stopPropagation()}>
             <header style={{display:"flex",justifyContent:"space-between",gap:12,alignItems:"center"}}>
-              <div><h2 style={{margin:"0 0 6px"}}>Contrato definitivo</h2><p style={{margin:0,color:"#64748b"}}>{contrato.numero_contrato} · {operacionContrato.tipo_operacion} · {formatoNumero(operacionContrato.cantidad_tn)} TN</p></div>
+              <div><h2 style={{margin:"0 0 6px"}}>Contrato definitivo</h2><p style={{margin:0,color:"#64748b"}}>{contrato.numero_contrato} · F1 · {formatoNumero(operacionContrato.cantidad_tn)} TN</p></div>
               <button type="button" onClick={()=>setContratoAbierto(null)} style={{border:0,background:"transparent",fontSize:26,cursor:"pointer"}} aria-label="Cerrar">×</button>
             </header>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:18}}>
               <label>Número de contrato<input style={inputContrato} value={contrato.numero_contrato} onChange={e=>setContrato(v=>({...v,numero_contrato:e.target.value}))}/></label>
-              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F1";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal / blanco</option><option value="F1">F1 · Privado</option></select></label>
+              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F1";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal</option></select></label>
               <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
               <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
             </div>
