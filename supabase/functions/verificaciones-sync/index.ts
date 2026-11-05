@@ -20,11 +20,11 @@ function getPem(key:string):string {
 }
 function createTRA():string {
   const now=new Date(), expires=new Date(now.getTime()+10*60*1000);
-  const dest=environment()==="PRODUCCION"?"cn=wsaa,o=afip,c=ar,serialNumber=CUIT 33693450239":"cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
+  // WSAA source/destination are optional; omit them to avoid stale DN values.
   const cuit=Deno.env.get("ARCA_CUIT")||"";
   if(!/^\d{11}$/.test(cuit))throw new Error("ARCA_CUIT_NO_CONFIGURADO");
   return `<?xml version="1.0" encoding="UTF-8"?>
-<loginTicketRequest version="1.0"><header><destination>${escapeXml(dest)}</destination><uniqueId>${Math.floor(Date.now()/1000)%4294967295}</uniqueId><generationTime>${now.toISOString()}</generationTime><expirationTime>${expires.toISOString()}</expirationTime></header><service>${PADRON_SERVICE}</service></loginTicketRequest>`;
+<loginTicketRequest version="1.0"><header><uniqueId>${Math.floor(Date.now()/1000)%4294967295}</uniqueId><generationTime>${now.toISOString()}</generationTime><expirationTime>${expires.toISOString()}</expirationTime></header><service>${PADRON_SERVICE}</service></loginTicketRequest>`;
 }
 function signTRA(tra:string,certPem:string,keyPem:string):string {
   const cert=forge.pki.certificateFromPem(certPem),key=forge.pki.privateKeyFromPem(keyPem);
@@ -39,7 +39,7 @@ function signTRA(tra:string,certPem:string,keyPem:string):string {
 }
 async function obtainTicket(cert:string,key:string) {
   const prod=environment()==="PRODUCCION";
-  const wsaa=prod?"https://wsaa.afip.gov.ar/ws/services/LoginCms":"https://wsaahomo.afip.gov.ar/ws/services/LoginCms";
+  const wsaa=prod?"https://wsaa.arca.gov.ar/ws/services/LoginCms":"https://wsaa.homo.arca.gov.ar/ws/services/LoginCms";
   const cms=signTRA(createTRA(),cert,key);
   const envelope=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>${cms}</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>`;
@@ -68,8 +68,8 @@ async function queryOfficialPadron(cuit:string,verificationId:string,actorToken:
   }
   const ticket=await obtainTicket(cert,key);
   const endpoint=environment()==="PRODUCCION"
-    ?"https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.arca.gov.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.arca.gov.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="${SOAP_NS}"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${escapeXml(ticket.token)}</token><sign>${escapeXml(ticket.sign)}</sign><cuitRepresentada>${escapeXml(Deno.env.get("ARCA_CUIT")||"")}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`;
   const response=await fetch(endpoint,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8",accept:"text/xml"},body:soap,signal:AbortSignal.timeout(25000)});
