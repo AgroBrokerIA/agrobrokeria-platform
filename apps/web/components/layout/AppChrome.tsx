@@ -22,7 +22,9 @@ export default function AppChrome({ children }: { children: ReactNode }) {
     return () => { activo = false; };
   }, [isPublic, pathname, router]);
 
-  const footer=<footer className="legal-site-footer"><div><strong>AgroBrokerIA · Operatoria formal</strong><p>Plataforma tecnológica para vincular oferta y demanda agrocomercial. Las partes son responsables de la operación, calidad, pagos, documentación fiscal y cumplimiento normativo.</p><p>La plataforma exige identificación y controles documentales. Las verificaciones se informan según la fuente y fecha efectivamente consultadas.</p><nav><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><Link href="/como-verificamos">Verificación</Link></nav><small>© {new Date().getFullYear()} AgroBrokerIA. Todos los derechos reservados.</small></div></footer>;\n\n  if (isPublic) return <>{children}{footer}</>;
+  const footer=<footer className="legal-site-footer"><div><strong>AgroBrokerIA · Operatoria formal</strong><p>Plataforma tecnológica para vincular oferta y demanda agrocomercial. Las partes son responsables de la operación, calidad, pagos, documentación fiscal y cumplimiento normativo.</p><p>La plataforma exige identificación y controles documentales. Las verificaciones se informan según la fuente y fecha efectivamente consultadas.</p><nav><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><Link href="/como-verificamos">Verificación</Link></nav><small>© {new Date().getFullYear()} AgroBrokerIA. Todos los derechos reservados.</small></div></footer>;
+
+  if (isPublic) return <>{children}{footer}</>;
 
   return (
     <>
