@@ -13,7 +13,6 @@ type Operacion = {
   id: string;
   codigo: string;
   estado: string;
-  tipo_operacion: string;
   precio_tn: number;
   cantidad_tn: number;
   importe_total: number;
@@ -56,7 +55,6 @@ type Contrato = {
   operacion_id: string;
   acuerdo_id?: string | null;
   numero_contrato: string;
-  tipo_contrato: "F1";
   estado: string;
 
   cantidad_tn?: number;
@@ -232,7 +230,6 @@ export default function OperacionesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [filtroEstado, setFiltroEstado] = useState("");
-  const [filtroTipo, setFiltroTipo] = useState("");
   const [filtroOrigen, setFiltroOrigen] = useState("");
   const [filtroDestino, setFiltroDestino] = useState("");
   const [filtroProducto, setFiltroProducto] = useState("");
@@ -324,7 +321,6 @@ export default function OperacionesPage() {
     operacion_id: "",
     acuerdo_id: "",
     numero_contrato: "",
-    tipo_contrato: "F1",
     estado: "BORRADOR",
     contenido: "",
   });
@@ -523,7 +519,6 @@ export default function OperacionesPage() {
           id: item.id,
           codigo: item.codigo,
           estado: item.estado,
-          tipo_operacion: item.tipo_operacion || "F1",
           precio_tn: Number(item.precio_tn),
           cantidad_tn: Number(item.cantidad_tn),
           importe_total: Number(item.importe_total),
@@ -1198,7 +1193,6 @@ export default function OperacionesPage() {
         acuerdo_id: contratoData.acuerdo_id || null,
         numero_contrato:
           contratoData.numero_contrato || "",
-        tipo_contrato: "F1",
         estado:
           contratoData.estado || "BORRADOR",
         cantidad_tn:
@@ -1238,7 +1232,6 @@ export default function OperacionesPage() {
             /^OP-/,
             ""
           )}`,
-        tipo_contrato: "F1",
         estado: "BORRADOR",
         cantidad_tn: operacion.cantidad_tn,
         precio_tn: operacion.precio_tn,
@@ -1691,7 +1684,7 @@ export default function OperacionesPage() {
     vendedorId: string = vendedorSeleccionado,
     compradorId: string = compradorSeleccionado,
     numeroContrato: string = contrato.numero_contrato,
-    tipoContrato: "F1" = contrato.tipo_contrato || "F1"
+    tipoContrato: "F1" = "F1"
   ) {
     const vendedor = contactos.find((c) => c.id === vendedorId);
     const comprador = contactos.find((c) => c.id === compradorId);
@@ -1956,7 +1949,7 @@ Firma: ______________________________
             vendedorSeleccionado,
             compradorSeleccionado,
             contrato.numero_contrato,
-            contrato.tipo_contrato
+            "F1"
           );
         } catch (e) {
           setMensaje("");
@@ -1974,7 +1967,6 @@ Firma: ______________________________
         p_datos: {
           acuerdo_id: acuerdoDB.id,
           numero_contrato: contrato.numero_contrato,
-          tipo_contrato: "F1 - CONTRATO FORMAL DE COMPRAVENTA Y ABASTECIMIENTO",
           estado,
           cantidad_tn: operacion.cantidad_tn,
           precio_tn: operacion.precio_tn,
@@ -2611,7 +2603,6 @@ Firma: ______________________________
     const texto = `${operacion.codigo} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
     return (!filtroEstado || estadoVista === filtroEstado) &&
-      (!filtroTipo || filtroTipo === "F1") &&
       (!filtroProducto || texto.includes(filtroProducto.toLowerCase())) &&
       (!filtroOrigen || meta.origen.toLowerCase().includes(filtroOrigen.toLowerCase())) &&
       (!filtroDestino || meta.destino.toLowerCase().includes(filtroDestino.toLowerCase())) &&
@@ -2686,7 +2677,6 @@ Firma: ______________________________
           <div className="op-filter-title"><h2>Filtrar operaciones</h2><button onClick={limpiarFiltros}>Limpiar filtros</button></div>
           <Filter label="Producto"><input value={filtroProducto} onChange={e=>setFiltroProducto(e.target.value)} placeholder="Buscar producto" /></Filter>
           <Filter label="Estado"><select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}><option value="">Todos los estados</option>{["En negociación","En contrato","En logística","En liquidación","Finalizadas","Canceladas"].map(x=><option key={x}>{x}</option>)}</select></Filter>
-          <Filter label="Tipo de contrato"><select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}><option value="">Todos los tipos</option><option value="F1">F1</option><option value="F1">F1</option></select></Filter>
           <Filter label="País de origen"><input value={filtroOrigen} onChange={e=>setFiltroOrigen(e.target.value)} placeholder="Buscar origen" /></Filter>
           <Filter label="País de destino"><input value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)} placeholder="Buscar destino" /></Filter>
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
