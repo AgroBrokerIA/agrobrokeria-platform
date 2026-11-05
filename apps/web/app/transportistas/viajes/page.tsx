@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Viaje = { id: string; operacion_id: string; estado: string; origen: string | null; destino: string | null; origen_nombre: string | null; destino_nombre: string | null; patente_camion: string | null; patente_acoplado: string | null };
-type Evento = { id: string; estado: string; lugar: string | null; empresa_nombre: string | null; registrado_at: string; observaciones: string | null };
+type Evento = { id: string; viaje_id: string; estado: string; lugar: string | null; empresa_nombre: string | null; registrado_at: string; observaciones: string | null };
 type CPE = { id: string; numero_carta_porte: string; archivo_path: string; nombre_archivo: string; estado_verificacion: string; toneladas_declaradas: number | null };
 
 const etapas = [
@@ -27,7 +27,6 @@ const label = (s:string) => ({
 const fecha=(s:string)=>new Date(s).toLocaleString("es-AR");
 
 export default function MisViajesTransportistaPage(){
- const [uid,setUid]=useState("");
  const [viajes,setViajes]=useState<Viaje[]>([]);
  const [eventos,setEventos]=useState<Evento[]>([]);
  const [cartas,setCartas]=useState<CPE[]>([]);
@@ -40,7 +39,6 @@ export default function MisViajesTransportistaPage(){
   setLoading(true);setError("");
   const {data:auth}=await supabase.auth.getUser();
   if(!auth.user){setError("Iniciá sesión para consultar tus viajes.");setLoading(false);return;}
-  setUid(auth.user.id);
   const {data:v,error:ve}=await supabase.from("viajes").select("*").eq("transportista_profile_id",auth.user.id).order("creado_en",{ascending:false});
   if(ve){setError(ve.message);setLoading(false);return;}
   const rows=(v||[]) as Viaje[];setViajes(rows);
@@ -83,8 +81,8 @@ export default function MisViajesTransportistaPage(){
   {mensaje&&<div role="status" style={{background:"#ecfdf5",color:"#166534",padding:11,borderRadius:9}}>{mensaje}</div>}
   {!viajes.length&&<div style={{padding:18,border:"1px solid #dbe3ed",borderRadius:12,color:"#64748b"}}>Todavía no tenés viajes asignados.</div>}
   {viajes.map(v=>{
-   const ev=eventos.filter(x=>eventos.length&&x.id&&true).filter(x=>(x as any).viaje_id===v.id);
-   const cp=cartas.filter(x=>(x as any).viaje_id===v.id);
+   const ev=eventos.filter(x=>x.viaje_id===v.id);
+   const cp=cartas.filter(x=>x.viaje_id===v.id);
    const next=etapas.find(([s])=>!ev.some(x=>x.estado===s));
    return <section key={v.id} style={{border:"1px solid #dbe3ed",borderRadius:13,padding:16,background:"#fff",display:"grid",gap:12}}>
     <div style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
