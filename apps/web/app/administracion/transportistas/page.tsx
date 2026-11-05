@@ -26,7 +26,7 @@ export default function AdministracionTransportistasPage() {
 
   const cargar = useCallback(async () => {
     setLoading(true);
-    const { data, error: queryError } = await supabase.from("transportistas").select("*").order("creado_en", { ascending: false });
+    const { data, error: queryError } = await supabase.from("transportistas").select("*").not("profile_id", "is", null).order("creado_en", { ascending: false });
     if (queryError) setError(queryError.message);
     else setItems((data || []) as Solicitud[]);
     setLoading(false);
