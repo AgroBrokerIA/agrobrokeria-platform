@@ -1,0 +1,74 @@
+/* Mobile layout fixes for the app shell and public landing page. */
+.mobile-bottom-nav{display:none}
+@media(max-width:850px){
+  .app-body{display:block;min-height:calc(100vh - 64px);padding-bottom:calc(78px + env(safe-area-inset-bottom,0px))}
+  .app-body .app-sidebar{position:fixed;z-index:50;left:0;right:0;bottom:0;top:auto;width:100%;height:auto;min-height:0;max-height:none;padding:0;background:#fff;color:#20352a;border-top:1px solid #dce7df;box-shadow:0 -8px 24px #10251a18;flex:none;overflow:visible}
+  .app-sidebar>.sidebar-nav,.app-sidebar>.sidebar-status,.app-sidebar>.sidebar-help{display:none}
+  .mobile-bottom-nav{display:block;width:100%;overflow-x:auto;overflow-y:hidden;overscroll-behavior-x:contain;-webkit-overflow-scrolling:touch;scrollbar-width:thin;scrollbar-color:#b5d5c2 #f5f8f6;padding:7px 8px calc(7px + env(safe-area-inset-bottom,0px));touch-action:pan-x;white-space:nowrap}
+  .mobile-bottom-nav-track{display:flex;align-items:stretch;gap:4px;width:max-content;min-width:100%}
+  .mobile-bottom-nav a{display:flex;flex:0 0 78px;min-width:78px;min-height:56px;flex-direction:column;align-items:center;justify-content:center;gap:4px;padding:6px 4px;border-radius:12px;text-decoration:none;color:#5b6c61;white-space:normal;text-align:center}
+  .mobile-bottom-nav a span{font-size:19px;line-height:1.1}
+  .mobile-bottom-nav a small{font-size:10px;line-height:1.15;font-weight:700;max-width:100%;overflow-wrap:anywhere}
+  .mobile-bottom-nav a.active{background:#e5f7ed;color:#08794d}
+  .app-body .page-shell{width:100%;min-width:0;min-height:calc(100vh - 64px);padding-bottom:12px}
+  .app-header{height:64px;padding:0 12px;gap:8px}
+  .app-header .brand-mark{min-width:0;gap:7px;font-size:15px}
+  .app-header .brand-icon{width:34px;height:34px;flex:none}
+  .app-header-actions{min-width:0;gap:5px}
+}
+@media(max-width:520px){
+  .landing{overflow-x:clip}
+  .nav{height:64px;padding:0 14px;gap:8px}
+  .brand{min-width:0;flex:1;gap:8px}
+  .logo{width:34px;height:34px;flex:none}
+  .brandName{font-size:16px}
+  .tagline{font-size:7px}
+  .navRight{min-width:0;flex:none}
+  .register{height:36px;padding:0 12px;white-space:nowrap}
+  .hero{display:block;min-height:0;padding:30px 16px 0;background-position:center}
+  .heroCopy{margin:0;max-width:100%;padding-bottom:22px}
+  .heroTitle{font-size:clamp(30px,8.2vw,38px);line-height:1.08;letter-spacing:-1.25px;overflow-wrap:anywhere}
+  .heroCopy p{font-size:14px;line-height:1.5;margin-bottom:17px}
+  .checks{grid-template-columns:1fr;gap:9px}
+  .checks li{font-size:12px;line-height:1.35}
+  .heroActions{display:grid;grid-template-columns:1fr;gap:9px;margin-top:18px}
+  .primary,.secondary{min-width:0;width:100%;min-height:42px}
+  .quote{position:relative;inset:auto;width:100%;margin:8px 0 0;padding:13px;border-radius:14px}
+  .quoteHead{gap:8px;align-items:flex-start}
+  .quoteHead strong{font-size:13px;line-height:1.35}
+  .quoteHead a{font-size:10px;white-space:nowrap}
+  .quoteRow{grid-template-columns:32px minmax(0,1fr);gap:8px;padding:11px 0}
+  .quoteRow .quotePrice{grid-column:2;font-size:13px}
+  .quoteRow .up{grid-column:2;font-size:10px;line-height:1.3}
+  .qIcon{grid-row:span 3;width:30px;height:30px}
+  .quoteButton{min-height:42px}
+  .marketStrip{position:relative;left:auto;right:auto;bottom:auto;height:auto;margin:12px 0 0;padding:10px;grid-template-columns:1fr 1fr;gap:6px}
+  .stat{display:flex!important;padding:7px;gap:8px;min-width:0}
+  .stat:nth-child(n){display:flex}
+  .statIcon{width:29px;height:29px;flex:none}
+  .stat strong{font-size:13px;overflow-wrap:anywhere}
+  .stat small{font-size:9px;line-height:1.25}
+  .cardsSection{padding:28px 14px 30px}
+  .cardsGrid{grid-template-columns:1fr;gap:12px}
+  .cardImage{height:110px}
+  .cardBody{padding:16px 13px}
+  .card p{font-size:11px;min-height:0}
+  .sectionIntro h2,.sectionTitle h2{font-size:24px}
+  .sectionIntro p,.sectionTitle p{font-size:12px}
+  .publicSection{padding:38px 14px}
+  .publicGrid,.companyIntro,.priceBoard,.aiGrid,.resourcesGrid{grid-template-columns:1fr}
+  .panelTop{align-items:flex-start;flex-wrap:wrap}
+  .quoteMini{grid-template-columns:1fr}
+  .publicEmpty{padding:24px 14px}
+  .sourceNote{font-size:10px}
+  .footer{gap:15px;align-items:flex-start;flex-direction:column}
+  .footer>div:last-child{justify-content:flex-start!important}
+}
+@media(min-width:521px) and (max-width:850px){
+  .hero{min-height:0;padding:34px 24px 0;display:block}
+  .heroCopy{max-width:100%;padding-bottom:22px}
+  .heroTitle{font-size:clamp(34px,5.5vw,44px)}
+  .quote{position:relative;inset:auto;width:100%;margin:10px 0 0}
+  .marketStrip{position:relative;left:auto;right:auto;bottom:auto;margin-top:14px;height:auto}
+  .cardsSection{padding-top:30px}
+}
