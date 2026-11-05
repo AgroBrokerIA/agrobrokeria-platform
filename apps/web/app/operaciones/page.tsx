@@ -2466,7 +2466,6 @@ Firma: ______________________________
       setError("La operación debe estar en Logística / Entrega para gestionar la entrega.");
       return false;
     }
-    window.location.href = "/logistica";
     return true;
   }
 
@@ -2736,7 +2735,6 @@ Firma: ______________________________
             window.location.href = "/contratos?tab=firmas";
             return;
           } else if (ordenDetalle === 7) {
-            resultado = await iniciarLogistica(detalleOperacion.id);
             return;
           } else if (ordenDetalle === 8) {
             resultado = true;
@@ -2780,6 +2778,11 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
+            {ordenDetalle === 7 && <section style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
+              <h3 style={{marginTop:0}}>Logística y entrega de esta operación</h3>
+              <p style={{marginTop:0,color:"#475569"}}>Completá la Carta de Porte, transporte, carga y recepción desde aquí. Los datos se guardan en el registro oficial del módulo Logística.</p>
+              <LogisticaEntrega operacionId={detalleOperacion.id} onEntregaConfirmada={() => confirmarEntregaYAvanzar(detalleOperacion.id)} />
+            </section>}
             {ordenDetalle === 8 && <section style={{marginTop:18,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff"}}>
               <h3 style={{marginTop:0}}>Liquidación de la operación</h3>
               <Liquidacion operacionId={detalleOperacion.id} cantidadContractualTn={detalleOperacion.cantidad_tn} precioTn={detalleOperacion.precio_tn} onLiquidacionConfirmada={() => confirmarLiquidacionYAvanzar(detalleOperacion.id)} />
@@ -2823,7 +2826,7 @@ Firma: ______________________________
               </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle !== 8 && <button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Retención de comisión" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar al Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button>}</div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle !== 8 && ordenDetalle !== 7 && <button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Retención de comisión" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar al Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button>}</div>
           </section>
         </div>;
       })()}
