@@ -803,16 +803,33 @@ export default function OperacionesPage() {
       setError("La operación debe estar en Firmas para verificar la liberación operativa.");
       return false;
     }
-    const { data: control, error: controlError } = await supabase
-      .from("operacion_control_comercial")
-      .select("fondos_estado,comision_estado")
-      .eq("operacion_id", operacion.id).single();
+    const { data: estadoLiberacion, error: controlError } = await supabase.rpc(
+      "obtener_estado_liberacion_operacion",
+      { p_operacion_id: operacion.id }
+    );
     if (controlError) {
       setError("No se pudo verificar fondos y comisión: " + controlError.message);
       return false;
     }
-    if (control.fondos_estado !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(String(control.comision_estado || ""))) {
-      setError("Se requiere que Administración confirme Fondos LIBERADOS y comisión AgroBrokerIA RETENIDA.");
+    const control = estadoLiberacion as {
+      control_encontrado?: boolean;
+      fondos_estado?: string | null;
+      comision_estado?: string | null;
+    } | null;
+    if (!control?.control_encontrado) {
+      setError("No existe un control comercial registrado para esta operación. Administración debe inicializarlo antes de liberar.");
+      return false;
+    }
+    const estadoFondos = String(control.fondos_estado || "PENDIENTES").toUpperCase();
+    const estadoComision = String(control.comision_estado || "").toUpperCase();
+    if (estadoFondos !== "LIBERADOS" || !["RETENIDA","LIBERADA"].includes(estadoComision)) {
+      const detalleFondos = estadoFondos !== "LIBERADOS"
+        ? "Fondos: " + estadoFondos + "."
+        : "Fondos: LIBERADOS.";
+      const detalleComision = ["RETENIDA","LIBERADA"].includes(estadoComision)
+        ? "Comisión: " + estadoComision + "."
+        : "Comisión: " + (estadoComision || "SIN RETENCIÓN") + ".";
+      setError("No se puede pasar a Liberación operativa. " + detalleFondos + " " + detalleComision + " Administración debe registrar la liberación efectiva de los fondos; la comisión retenida se conserva.");
       return false;
     }
     const { data: contractRows, error: contractError } = await supabase
@@ -2755,28 +2772,30 @@ Firma: ______________________________
   async function verificarLiberacionOperativa(
     operacionId: string
   ) {
-    const { data: controlActual, error: errorControl } =
-      await supabase
-        .from("operacion_control_comercial")
-        .select(
-          "fondos_estado, comision_estado, no_elusion_aceptada, datos_operativos_estado"
-        )
-        .eq("operacion_id", operacionId)
-        .single();
+    const { data: controlActual, error: errorControl } = await supabase.rpc(
+      "obtener_estado_liberacion_operacion",
+      { p_operacion_id: operacionId }
+    );
 
     if (errorControl) {
       console.error(errorControl);
-      setError(
-        `No se pudo verificar la liberación operativa: ${errorControl.message}`
-      );
+      setError(`No se pudo verificar la liberación operativa: ${errorControl.message}`);
+      return false;
+    }
+    const estadoControl = controlActual as {
+      control_encontrado?: boolean;
+      fondos_estado?: string | null;
+      comision_estado?: string | null;
+      no_elusion_aceptada?: boolean | null;
+      datos_operativos_estado?: string | null;
+    } | null;
+    if (!estadoControl?.control_encontrado) {
+      setError("No existe un control comercial registrado para esta operación.");
       return false;
     }
 
-    const fondosLiberados =
-      controlActual.fondos_estado === "LIBERADOS";
-
-    const comisionRetenida =
-      ["RETENIDA","LIBERADA"].includes(controlActual.comision_estado);
+    const fondosLiberados = String(estadoControl.fondos_estado || "").toUpperCase() === "LIBERADOS";
+    const comisionRetenida = ["RETENIDA","LIBERADA"].includes(String(estadoControl.comision_estado || "").toUpperCase());
 
     if (
       !fondosLiberados ||
@@ -2816,7 +2835,7 @@ Firma: ______________________________
       ...actual,
       [operacionId]: {
         ...actual[operacionId],
-        ...controlActual,
+        ...estadoControl,
         datos_operativos_estado: "HABILITADOS",
         datos_operativos_liberados_at: ahora,
       },
