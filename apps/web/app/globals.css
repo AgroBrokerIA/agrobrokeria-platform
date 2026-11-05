@@ -1535,3 +1535,12 @@ body{background:var(--ab-bg)}
 .contract-cancel-request-row button{border:0;border-radius:6px;padding:8px 11px;background:#0b9662;color:#fff;font-size:10px;font-weight:800;cursor:pointer}
 .contract-cancel-request-row button+button{background:#b93636}
 .contract-cancel-request-row a{color:#1767bd;font-weight:700}
+
+.legal-site-footer{width:100%;background:#082f2b;color:#e7f4ef;padding:26px clamp(18px,4vw,54px);margin-top:28px;box-sizing:border-box}
+.legal-site-footer>div{max-width:1200px;margin:0 auto}
+.legal-site-footer strong{font-size:14px;letter-spacing:.02em}
+.legal-site-footer p{font-size:11px;line-height:1.6;color:#c1d7cf;max-width:980px;margin:8px 0}
+.legal-site-footer nav{display:flex;gap:18px;flex-wrap:wrap;margin:12px 0}
+.legal-site-footer a{font-size:11px;color:#fff;text-decoration:underline;text-underline-offset:3px}
+.legal-site-footer small{font-size:10px;color:#9fbeb3}
+.contract-template-single a{display:block;margin-top:8px;font-size:11px;color:#087c54;text-decoration:underline}
