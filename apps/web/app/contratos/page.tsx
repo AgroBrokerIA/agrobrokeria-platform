@@ -445,7 +445,7 @@ export default function ContratosPage(){
  function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
  
  return <main className="contract-builder-reference">
-  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Generá, personalizá y descargá documentos PDF a partir de los datos registrados de la operación.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
+  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Contratos Digitales Homologados: modelos F1 oficiales de referencia para compraventa y abastecimiento. Toda oferta aceptada debe generar un borrador para revisión de ambas partes; el borrador no equivale a un contrato firmado.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
   {error&&<div className="contract-builder-alert error">{error}</div>}{message&&<div className="contract-builder-alert">{message}</div>}
 
   <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
@@ -454,7 +454,7 @@ export default function ContratosPage(){
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
-        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Borrador formal único de compraventa y abastecimiento. La homologación y firma digital oficial requieren el modelo y proveedor habilitados.</span><a href="https://www.bcr.com.ar/es/servicios/servicios-digitales/confirma" target="_blank" rel="noreferrer">Consultar servicio digital Confirma de la Bolsa de Comercio de Rosario ↗</a></div>
+        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Modelos F1 de compraventa y abastecimiento basados en referencias oficiales de las Bolsas de Cereales. La firma disponible registra evidencia documental externa; la integración con un proveedor de firma digital requiere habilitación específica.</span><a href="https://www.bcr.com.ar/es/servicios/servicios-digitales/confirma" target="_blank" rel="noreferrer">Consultar servicio digital Confirma de la Bolsa de Comercio de Rosario ↗</a></div>
         <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
@@ -462,7 +462,7 @@ export default function ContratosPage(){
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1":"F1"}</span></div>
       <div className="contract-builder-fields">
        <label>Operación<select value={form.operacionId} onChange={e=>selectOperation(e.target.value)}><option value="">Seleccionar operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {o.publicacion_compra_id&&o.publicacion_venta_id?"Compra + Venta":o.publicacion_compra_id?"Compra":"Venta"} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.estado}</option>)}</select></label>
-       <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option><option value="F1">F1</option></select></label>
+       <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio (USD / TN)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
