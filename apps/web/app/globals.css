@@ -1499,3 +1499,17 @@ body{background:var(--ab-bg)}
 .auth-register .auth-register-card>form>.auth-field-row-three:has(input[type=file]){grid-template-columns:repeat(3,minmax(0,1fr))}
 .auth-register .auth-register-card>form>.auth-two-col:has(input[type=password]){grid-template-columns:repeat(2,minmax(0,1fr))}
 @media(max-width:620px){.auth-register .auth-register-card>form>.auth-two-col:has(input[type=password]),.auth-register .auth-register-card>form>.auth-field-row-three:has(input[type=file]){grid-template-columns:minmax(0,1fr)}}
+
+/* Afinado visual: tamaño intermedio y campos de empresa alineados */
+.auth-register .auth-register-card>form label{font-size:12px;line-height:1.3;gap:6px;font-weight:650}
+.auth-register .auth-register-card>form input:not([type=checkbox]):not([type=file]),
+.auth-register .auth-register-card>form select{min-height:42px;padding:9px 11px;font-size:13px;border-radius:8px}
+.auth-register .auth-register-card>form>h2{font-size:16px;line-height:1.3;margin-top:13px;padding-bottom:8px}
+.auth-register .auth-register-card>form>.auth-field-row{gap:12px 16px}
+.auth-register .auth-register-card>form>.auth-field-row-three{grid-template-columns:repeat(3,minmax(0,1fr))}
+.auth-register .auth-register-card>form>.auth-field-row-two{grid-template-columns:repeat(2,minmax(0,1fr))}
+.auth-register .auth-register-card>form>.auth-two-col{gap:12px 16px}
+.auth-register .auth-register-card>form>.auth-legal{font-size:12px!important;line-height:1.45!important}
+.auth-register .auth-register-card>form>.auth-declaration-row label{font-size:12px}
+@media(max-width:900px){.auth-register .auth-register-card>form>.auth-field-row-three{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:620px){.auth-register .auth-register-card>form label{font-size:12px}.auth-register .auth-register-card>form input:not([type=checkbox]):not([type=file]),.auth-register .auth-register-card>form select{font-size:13px;min-height:42px}}
