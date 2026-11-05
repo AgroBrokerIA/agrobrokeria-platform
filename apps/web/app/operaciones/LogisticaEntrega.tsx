@@ -221,443 +221,98 @@ export default function LogisticaEntrega({
     setGuardando(false);
   }
 
-  const campo = (
-    label: string,
-    nombre: keyof Logistica,
-    tipo = "text"
-  ) => (
-    <div>
-      <label
-        style={{
-          display: "block",
-          fontWeight: 700,
-          marginBottom: 6,
-        }}
-      >
-        {label}
-      </label>
-
+  const campo = (label: string, nombre: keyof Logistica, tipo = "text") => (
+    <label style={{display:"grid",gap:6,minWidth:0,color:"#334155",fontSize:13,fontWeight:700}}>
+      {label}
       <input
         type={tipo}
         value={String(datos[nombre] || "")}
         onChange={(e) => cambiar(nombre, e.target.value)}
-        style={{
-          width: "100%",
-          boxSizing: "border-box",
-          padding: 11,
-          borderRadius: 8,
-          border: "1px solid #cbd5e1",
-        }}
+        style={{width:"100%",minWidth:0,boxSizing:"border-box",height:42,padding:"9px 11px",borderRadius:9,border:"1px solid #cbd5e1",background:"#fff",color:"#0f172a",fontSize:14,fontWeight:500,outlineColor:"#0d9566"}}
       />
-    </div>
+    </label>
   );
 
   return (
-    <div
-      style={{
-        background: "white",
-        border: "2px solid #93c5fd",
-        borderRadius: 14,
-        padding: 25,
-        marginBottom: 30,
-      }}
-    >
-      <h3 style={{ marginTop: 0 }}>
-        🚚 Logística / Entrega
-      </h3>
-
-      <div
-        style={{
-          padding: 12,
-          borderRadius: 8,
-          background: "#eff6ff",
-          fontWeight: 700,
-          marginBottom: 20,
-        }}
-      >
-        Estado logístico: {datos.estado}
+    <div style={{display:"grid",gap:16,minWidth:0,color:"#0f172a"}}>
+      <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,flexWrap:"wrap",padding:"12px 15px",border:"1px solid #dbe7f2",borderRadius:12,background:"#f8fafc"}}>
+        <div><div style={{fontSize:15,fontWeight:800}}>🚚 Datos de transporte y entrega</div><div style={{fontSize:12,color:"#64748b",marginTop:3}}>Los cambios quedan asociados a esta operación.</div></div>
+        <span style={{padding:"6px 10px",borderRadius:999,background:datos.estado==="ENTREGADA"?"#dcfce7":"#eaf2ff",color:datos.estado==="ENTREGADA"?"#166534":"#1d4ed8",fontSize:12,fontWeight:800}}>{String(datos.estado).replaceAll("_"," ")}</span>
       </div>
 
-      <div
-        style={{
-          display: "grid",
-          gridTemplateColumns:
-            "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
-        }}
-      >
-        <div
-          style={{
-            gridColumn: "1 / -1",
-            border: "2px solid #cbd5e1",
-            borderRadius: 12,
-            padding: 16,
-            background: "#f8fafc",
-          }}
-        >
-          <div
-            style={{
-              fontWeight: 800,
-              fontSize: 17,
-              marginBottom: 8,
-            }}
-          >
-            🧾 Carta de Porte Electrónica ARCA
-          </div>
-
-          <div
-            style={{
-              padding: 10,
-              borderRadius: 8,
-              marginBottom: 12,
-              background:
-                datos.carta_porte_estado === "EMITIDA_ARCA"
-                  ? "#dcfce7"
-                  : "#fee2e2",
-              color:
-                datos.carta_porte_estado === "EMITIDA_ARCA"
-                  ? "#166534"
-                  : "#991b1b",
-              fontWeight: 800,
-            }}
-          >
-            {datos.carta_porte_estado === "EMITIDA_ARCA"
-              ? "🟢 CARTA DE PORTE EMITIDA EN ARCA"
-              : "🔴 CARTA DE PORTE PENDIENTE DE EMISIÓN EN ARCA"}
-          </div>
-
-          <p style={{ marginTop: 0 }}>
-            La Carta de Porte debe ser emitida mediante ARCA antes de
-            iniciar el traslado.
-          </p>
-
-          <div style={{ display: "flex", gap: 10, flexWrap: "wrap" }}>
-            <button
-              type="button"
-              onClick={abrirARCA}
-              disabled={guardando}
-              style={{
-                padding: "11px 16px",
-                border: 0,
-                borderRadius: 8,
-                background: "#2563eb",
-                color: "white",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              🧾 EMITIR CARTA DE PORTE EN ARCA
-            </button>
-
-            <button
-              type="button"
-              onClick={registrarCartaPorteARCA}
-              disabled={guardando}
-              style={{
-                padding: "11px 16px",
-                border: 0,
-                borderRadius: 8,
-                background: "#16a34a",
-                color: "white",
-                fontWeight: 800,
-                cursor: "pointer",
-              }}
-            >
-              ✅ REGISTRAR CPE EMITIDA
-            </button>
-          </div>
-
-          <div style={{ marginTop: 14 }}>
-            {campo(
-              "Número de Carta de Porte emitida por ARCA",
-              "carta_porte_numero"
-            )}
+      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
+        <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+          <div><h4 style={{margin:0,fontSize:15}}>🧾 Carta de Porte Electrónica (ARCA)</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Emitila en ARCA y registrá aquí el número oficial.</p></div>
+          <span style={{fontSize:11,fontWeight:800,padding:"6px 9px",borderRadius:999,background:datos.carta_porte_estado==="EMITIDA_ARCA"?"#dcfce7":"#fff1f2",color:datos.carta_porte_estado==="EMITIDA_ARCA"?"#166534":"#be123c"}}>{datos.carta_porte_estado==="EMITIDA_ARCA"?"EMITIDA":"PENDIENTE"}</span>
+        </div>
+        <div style={{display:"grid",gridTemplateColumns:"minmax(0,1fr) auto",gap:10,alignItems:"end"}}>
+          <div>{campo("Número de Carta de Porte emitida por ARCA","carta_porte_numero")}</div>
+          <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+            <button type="button" onClick={abrirARCA} disabled={guardando} style={{height:42,padding:"0 13px",border:0,borderRadius:9,background:"#2563eb",color:"#fff",fontWeight:700,cursor:"pointer"}}>Abrir ARCA ↗</button>
+            <button type="button" onClick={registrarCartaPorteARCA} disabled={guardando} style={{height:42,padding:"0 13px",border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:700,cursor:"pointer"}}>{guardando?"Guardando…":"Registrar CPE"}</button>
           </div>
         </div>
+      </section>
 
-        {campo("Transportista", "transportista")}
-        {campo("CUIT transportista", "transportista_cuit")}
-        {campo("Chofer", "chofer_nombre")}
-        {campo("Documento chofer", "chofer_documento")}
-        {campo("Patente camión", "patente_camion")}
-        {campo("Patente acoplado", "patente_acoplado")}
-        {campo("Fecha de carga", "fecha_carga", "date")}
-        {campo("Hora de carga", "hora_carga", "time")}
-        {campo(
-          "Fecha estimada de entrega",
-          "fecha_estimada_entrega",
-          "date"
-        )}
-        {campo("Destino", "destino")}
-        {campo("Número de turno", "numero_turno")}
-        {campo(
-          "Kilos entregados",
-          "kilos_entregados",
-          "number"
-        )}
-      </div>
+      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
+        <div><h4 style={{margin:0,fontSize:15}}>🚛 Transporte y carga</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Identificación del transportista, chofer y unidad.</p></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+          {campo("Transportista","transportista")}
+          {campo("CUIT del transportista","transportista_cuit")}
+          {campo("Nombre del chofer","chofer_nombre")}
+          {campo("Documento del chofer","chofer_documento")}
+          {campo("Patente del camión","patente_camion")}
+          {campo("Patente del acoplado","patente_acoplado")}
+          {campo("Fecha de carga","fecha_carga","date")}
+          {campo("Hora de carga","hora_carga","time")}
+        </div>
+      </section>
 
-      <div style={{ marginTop: 14 }}>
-        {campo(
-          "Fecha / hora de entrega",
-          "fecha_entrega",
-          "datetime-local"
-        )}
-      </div>
-
-      <div style={{ marginTop: 14 }}>
-        <label
-          style={{
-            display: "block",
-            fontWeight: 700,
-            marginBottom: 6,
-          }}
-        >
-          Observaciones de entrega
+      <section style={{display:"grid",gap:12,padding:16,border:"1px solid #dbe3ed",borderRadius:12,background:"#fff"}}>
+        <div><h4 style={{margin:0,fontSize:15}}>📍 Entrega y recepción</h4><p style={{margin:"4px 0 0",fontSize:12,color:"#64748b"}}>Registrá destino, turno, volumen recibido y observaciones.</p></div>
+        <div style={{display:"grid",gridTemplateColumns:"repeat(2,minmax(0,1fr))",gap:12}}>
+          {campo("Destino","destino")}
+          {campo("Número de turno","numero_turno")}
+          {campo("Fecha estimada de entrega","fecha_estimada_entrega","date")}
+          {campo("Kilos entregados","kilos_entregados","number")}
+          {campo("Fecha y hora efectiva de entrega","fecha_entrega","datetime-local")}
+        </div>
+        <label style={{display:"grid",gap:6,fontSize:13,fontWeight:700,color:"#334155"}}>Observaciones de entrega
+          <textarea value={datos.observaciones_entrega||""} onChange={e=>cambiar("observaciones_entrega",e.target.value)} rows={3} style={{width:"100%",boxSizing:"border-box",resize:"vertical",padding:11,borderRadius:9,border:"1px solid #cbd5e1",fontSize:14,color:"#0f172a"}}/>
         </label>
+      </section>
 
-        <textarea
-          value={datos.observaciones_entrega || ""}
-          onChange={(e) =>
-            cambiar("observaciones_entrega", e.target.value)
-          }
-          rows={4}
-          style={{
-            width: "100%",
-            boxSizing: "border-box",
-            padding: 11,
-            borderRadius: 8,
-            border: "1px solid #cbd5e1",
-          }}
-        />
+      {error&&<div role="alert" style={{padding:12,borderRadius:9,background:"#fff1f2",border:"1px solid #fecdd3",color:"#9f1239",fontSize:13,fontWeight:600}}>{error}</div>}
+      {mensaje&&<div role="status" style={{padding:12,borderRadius:9,background:"#ecfdf5",border:"1px solid #a7f3d0",color:"#166534",fontSize:13,fontWeight:600}}>{mensaje}</div>}
+
+      <div style={{position:"sticky",bottom:0,zIndex:2,display:"flex",justifyContent:"flex-end",gap:9,flexWrap:"wrap",padding:"12px 0 2px",background:"linear-gradient(180deg,rgba(255,255,255,0),#fff 22%)"}}>
+        <button type="button" disabled={guardando} onClick={()=>guardar()} style={{height:42,padding:"0 15px",border:"1px solid #cbd5e1",borderRadius:9,background:"#fff",color:"#334155",fontWeight:700,cursor:"pointer"}}>Guardar cambios</button>
+        <button type="button" disabled={guardando} onClick={()=>guardar("PROGRAMADA")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#2563eb",color:"#fff",fontWeight:700,cursor:"pointer"}}>Programar carga</button>
+        <button type="button" disabled={guardando||datos.carta_porte_estado!=="EMITIDA_ARCA"} onClick={()=>guardar("EN_TRANSITO")} style={{height:42,padding:"0 15px",border:0,borderRadius:9,background:"#d97706",color:"#fff",fontWeight:700,cursor:guardando?"wait":"pointer",opacity:datos.carta_porte_estado!=="EMITIDA_ARCA"?.55:1}}>Iniciar traslado</button>
+        <button type="button" disabled={guardando} onClick={async()=>{
+          const faltantes:string[]=[];
+          if(datos.carta_porte_estado!=="EMITIDA_ARCA"||!datos.carta_porte_numero.trim())faltantes.push("Carta de Porte emitida y registrada en ARCA");
+          if(!datos.transportista.trim())faltantes.push("Transportista");
+          if(!datos.chofer_nombre.trim())faltantes.push("Chofer");
+          if(!datos.patente_camion.trim())faltantes.push("Patente del camión");
+          if(!datos.fecha_carga)faltantes.push("Fecha de carga");
+          if(!datos.destino.trim())faltantes.push("Destino");
+          if(datos.kilos_entregados===""||Number(datos.kilos_entregados)<=0)faltantes.push("Kilos entregados");
+          if(faltantes.length){setError("No se puede confirmar la entrega. Completá: "+faltantes.join(", ")+".");setMensaje("");return;}
+          const ahora=new Date().toISOString();setGuardando(true);setError("");setMensaje("");
+          const payload={...datos,operacion_id:operacionId,estado:"ENTREGADA",kilos_entregados:Number(datos.kilos_entregados),fecha_entrega:datos.fecha_entrega||ahora,updated_at:ahora};
+          const resultado=await supabase.rpc("guardar_operacion_logistica",{p_operacion_id:operacionId,p_datos:{id:datos.id||null,...payload}});
+          if(resultado.error){setError("No se pudo confirmar la entrega: "+resultado.error.message);setGuardando(false);return;}
+          setDatos({...datos,...resultado.data,estado:"ENTREGADA",kilos_entregados:resultado.data.kilos_entregados!=null?String(resultado.data.kilos_entregados):datos.kilos_entregados});
+          setMensaje("Entrega confirmada correctamente.");setGuardando(false);
+          if(onEntregaConfirmada)await onEntregaConfirmada();
+        }} style={{height:42,padding:"0 16px",border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:800,cursor:"pointer"}}>{guardando?"Procesando…":"Confirmar entrega"}</button>
+        <button type="button" disabled={guardando} onClick={()=>guardar("OBSERVADA")} style={{height:42,padding:"0 14px",border:"1px solid #fecaca",borderRadius:9,background:"#fff7f7",color:"#b91c1c",fontWeight:700,cursor:"pointer"}}>Observar</button>
       </div>
-
-      {error && (
-        <div
-          style={{
-            marginTop: 15,
-            padding: 12,
-            borderRadius: 8,
-            background: "#fee2e2",
-            color: "#991b1b",
-            fontWeight: 700,
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {mensaje && (
-        <div
-          style={{
-            marginTop: 15,
-            padding: 12,
-            borderRadius: 8,
-            background: "#dcfce7",
-            color: "#166534",
-            fontWeight: 700,
-          }}
-        >
-          {mensaje}
-        </div>
-      )}
-
-      <div
-        style={{
-          display: "flex",
-          gap: 10,
-          flexWrap: "wrap",
-          marginTop: 20,
-        }}
-      >
-        <button
-          type="button"
-          disabled={guardando}
-          onClick={() => guardar("PROGRAMADA")}
-          style={{
-            padding: "11px 16px",
-            border: 0,
-            borderRadius: 8,
-            background: "#2563eb",
-            color: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          📅 PROGRAMAR
-        </button>
-
-        <button
-          type="button"
-          disabled={
-            guardando ||
-            datos.carta_porte_estado !== "EMITIDA_ARCA"
-          }
-          onClick={() => guardar("EN_TRANSITO")}
-          style={{
-            padding: "11px 16px",
-            border: 0,
-            borderRadius: 8,
-            background: "#f59e0b",
-            color: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          🚛 EN TRÁNSITO
-        </button>
-
-        <button
-          type="button"
-          disabled={guardando}
-          onClick={async () => {
-            const camposFaltantes: string[] = [];
-
-            if (
-              datos.carta_porte_estado !== "EMITIDA_ARCA" ||
-              !datos.carta_porte_numero.trim()
-            ) {
-              camposFaltantes.push(
-                "Carta de Porte Electrónica emitida por ARCA"
-              );
-            }
-
-            if (!datos.transportista.trim()) {
-              camposFaltantes.push("Transportista");
-            }
-
-            if (!datos.chofer_nombre.trim()) {
-              camposFaltantes.push("Chofer");
-            }
-
-            if (!datos.patente_camion.trim()) {
-              camposFaltantes.push("Patente del camión");
-            }
-
-            if (!datos.fecha_carga) {
-              camposFaltantes.push("Fecha de carga");
-            }
-
-            if (!datos.destino.trim()) {
-              camposFaltantes.push("Destino");
-            }
-
-            if (
-              datos.kilos_entregados === "" ||
-              Number(datos.kilos_entregados) <= 0
-            ) {
-              camposFaltantes.push("Kilos entregados");
-            }
-
-            if (camposFaltantes.length > 0) {
-              setError(
-                `⚠️ No se puede confirmar la entrega. Faltan: ${camposFaltantes.join(", ")}.`
-              );
-              setMensaje("");
-              return;
-            }
-
-            const ahora = new Date().toISOString();
-
-            const datosActualizados = {
-              ...datos,
-              fecha_entrega: ahora,
-            };
-
-            setDatos(datosActualizados);
-
-            setGuardando(true);
-            setMensaje("");
-            setError("");
-
-            const payload = {
-              ...datosActualizados,
-              operacion_id: operacionId,
-              estado: "ENTREGADA",
-              kilos_entregados:
-                datosActualizados.kilos_entregados === ""
-                  ? null
-                  : Number(datosActualizados.kilos_entregados),
-              fecha_entrega: ahora,
-              updated_at: ahora,
-            };
-
-            const resultado = await supabase.rpc("guardar_operacion_logistica", {
-              p_operacion_id: operacionId,
-              p_datos: { id: datosActualizados.id || null, ...payload },
-            });
-
-            if (resultado.error) {
-              setError(
-                `No se pudo confirmar la entrega: ${resultado.error.message}`
-              );
-              setGuardando(false);
-              return;
-            }
-
-            setDatos({
-              ...datosActualizados,
-              ...resultado.data,
-              estado: "ENTREGADA",
-              kilos_entregados:
-                resultado.data.kilos_entregados != null
-                  ? String(resultado.data.kilos_entregados)
-                  : "",
-            });
-
-            setMensaje("✅ Entrega confirmada correctamente.");
-            setGuardando(false);
-
-            if (onEntregaConfirmada) {
-              await onEntregaConfirmada();
-            }
-          }}
-          style={{
-            padding: "11px 16px",
-            border: 0,
-            borderRadius: 8,
-            background: "#16a34a",
-            color: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          ✅ CONFIRMAR ENTREGA
-        </button>
-
-        <button
-          type="button"
-          disabled={guardando}
-          onClick={() => guardar("OBSERVADA")}
-          style={{
-            padding: "11px 16px",
-            border: 0,
-            borderRadius: 8,
-            background: "#dc2626",
-            color: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          ⚠️ OBSERVAR ENTREGA
-        </button>
-
-        <button
-          type="button"
-          disabled={guardando}
-          onClick={() => guardar()}
-          style={{
-            padding: "11px 16px",
-            borderRadius: 8,
-            border: "1px solid #94a3b8",
-            background: "white",
-            fontWeight: 700,
-            cursor: "pointer",
-          }}
-        >
-          💾 GUARDAR
-        </button>
-      </div>
+      <style jsx>{`
+        @media(max-width:640px){
+          .unused{}
+        }
+      `}</style>
     </div>
-  );
-}
+  );}
