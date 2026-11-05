@@ -115,7 +115,7 @@ export default function RegistroTransportistaPage() {
             </label>
             <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>DNI — imagen o PDF
               <input type="file" accept="image/*,application/pdf" onChange={e => setDocumento(e.target.files?.[0] || null)} />
-              <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>Si lo adjuntás, el documento será privado: solo vos y Administración podrán abrir el archivo completo.</span>
+              <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>El documento será privado: solo vos y Administración podrán abrir el archivo completo.</span>
             </label>
             <div style={{ background: "#f8fafc", borderRadius: 9, padding: 12, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
               Los documentos se guardan en almacenamiento privado. Los vendedores, productores y compradores podrán comprobar tu fotografía y estado de verificación, pero no tendrán acceso a la imagen completa del DNI.
