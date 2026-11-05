@@ -1451,3 +1451,23 @@ body{background:var(--ab-bg)}
 @media(max-width:760px){
  .offers-sidebar{grid-template-columns:minmax(0,1fr)}
 }
+
+
+/* Registro: formulario ancho completo, con grilla para reducir desplazamiento vertical. */
+.auth-register{display:block;min-height:100vh;background:#f4f7f3}
+.auth-register .auth-art{display:none}
+.auth-register .auth-register-panel{display:block;width:100%;min-height:100vh;padding:clamp(16px,2.5vw,36px);box-sizing:border-box;background:#f4f7f3}
+.auth-register .auth-register-card{width:100%;max-width:1600px;margin:0 auto;padding:clamp(20px,2.6vw,38px);box-sizing:border-box}
+.auth-register .auth-register-card>form{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px 18px;align-items:end}
+.auth-register .auth-register-card>form>h2{grid-column:1/-1;margin:12px 0 0;padding-bottom:8px;border-bottom:1px solid #e7eee8;font-size:16px;color:#17452d}
+.auth-register .auth-register-card>form>label{min-width:0}
+.auth-register .auth-register-card>form>.auth-two-col{min-width:0;grid-column:span 2}
+.auth-register .auth-register-card>form>.auth-legal,
+.auth-register .auth-register-card>form>.auth-legal-check,
+.auth-register .auth-register-card>form>.auth-submit{grid-column:1/-1}
+.auth-register .auth-register-card>form>.auth-two-col:has(input[type=file]){grid-column:1/-1}
+.auth-register .auth-register-card>form>.auth-two-col:has(input[type=file]) label{padding:14px;border:1px dashed #b8cdbd;border-radius:10px;background:#f8fbf8}
+.auth-register .auth-register-card>form>.auth-submit{margin-top:8px}
+.auth-register .auth-register-card .auth-switch{margin-bottom:0!important}
+@media(max-width:1050px){.auth-register .auth-register-card>form{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-width:650px){.auth-register .auth-register-panel{padding:10px}.auth-register .auth-register-card{padding:18px}.auth-register .auth-register-card>form{grid-template-columns:minmax(0,1fr)}.auth-register .auth-register-card>form>h2,.auth-register .auth-register-card>form>.auth-two-col,.auth-register .auth-register-card>form>.auth-legal,.auth-register .auth-register-card>form>.auth-legal-check,.auth-register .auth-register-card>form>.auth-submit{grid-column:1/-1}.auth-register .auth-two-col{grid-template-columns:minmax(0,1fr)}}
