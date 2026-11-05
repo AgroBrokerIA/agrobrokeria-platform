@@ -11,11 +11,16 @@ type Company={id:string;razon_social:string;cuit:string;rol:string};
 export default function FacturasPage(){
  const [rows,setRows]=useState<Factura[]>([]),[ops,setOps]=useState<Op[]>([]),[companies,setCompanies]=useState<Company[]>([]),[currencies,setCurrencies]=useState<Record<string,string>>({}),[products,setProducts]=useState<Record<string,string>>({});
  const [opId,setOpId]=useState(""),[receiver,setReceiver]=useState(""),[tipo,setTipo]=useState(11),[pv,setPv]=useState(""),[net,setNet]=useState(""),[iva,setIva]=useState("0"),[alicuota,setAlicuota]=useState(""),[docTipo,setDocTipo]=useState(""),[cond,setCond]=useState("");
- const [loading,setLoading]=useState(true),[busy,setBusy]=useState(false),[arcaChecking,setArcaChecking]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
+ const [loading,setLoading]=useState(true),[denied,setDenied]=useState(false),[busy,setBusy]=useState(false),[arcaChecking,setArcaChecking]=useState(false),[msg,setMsg]=useState(""),[err,setErr]=useState("");
  const [tab,setTab]=useState(""),[fTipo,setFTipo]=useState(""),[fEstado,setFEstado]=useState(""),[fEmpresa,setFEmpresa]=useState(""),[fDesde,setFDesde]=useState(""),[fHasta,setFHasta]=useState(""),[fMin,setFMin]=useState(""),[fMax,setFMax]=useState(""),[fMoneda,setFMoneda]=useState(""),[page,setPage]=useState(1); const pageSize=8;
 
  async function load(){
    setLoading(true);setErr("");
+   const {data:{user}}=await supabase.auth.getUser();
+   if(!user){setDenied(true);setLoading(false);return;}
+   const {data:adminOk,error:adminError}=await supabase.rpc("es_administrador_plataforma");
+   if(adminError||adminOk!==true){setDenied(true);setLoading(false);return;}
+   setDenied(false);
    const [{data:f,error:fe},{data:o,error:oe},{data:m,error:me}]=await Promise.all([
      supabase.from("facturas").select("id,operacion_id,contrato_id,empresa_id,empresa_receptor_id,producto_id,cantidad_tn,doc_tipo_receptor,iva_alicuota,numero_factura,tipo_factura,tipo_comprobante_codigo,punto_venta,numero_comprobante,fecha_emision,cuit_emisor,cuit_receptor,razon_social_emisor,razon_social_receptor,importe_neto,importe_iva,importe_total,moneda_id,cae,caea,cae_vencimiento,estado,arca_mensaje,creada_en").order("creada_en",{ascending:false}),
      supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,importe_total,publicacion_compra_id,publicacion_venta_id").order("fecha_operacion",{ascending:false}),
@@ -35,6 +40,7 @@ export default function FacturasPage(){
  const isCreditDebit=(f:Factura)=>/nota\s+(de\s+)?(cr[eé]dito|d[eé]bito)/i.test(String(f.tipo_factura||""));
  const filtered=useMemo(()=>rows.filter((f)=>{const s=status(f),date=(f.fecha_emision||f.creada_en||"").slice(0,10),empresa=f.razon_social_receptor||f.razon_social_emisor||"Empresa comercial";return ((!tab)||(["Autorizada","Observada","Rechazada","Pendiente ARCA","Error integración"].includes(tab)?s===tab:tab==="Notas de crédito/débito"?isCreditDebit(f):false))&&(!fTipo||f.tipo_factura===fTipo)&&(!fEstado||s===fEstado)&&(!fEmpresa||empresa===fEmpresa)&&(!fDesde||date>=fDesde)&&(!fHasta||date<=fHasta)&&(!fMin||Number(f.importe_total||0)>=Number(fMin))&&(!fMax||Number(f.importe_total||0)<=Number(fMax))&&(!fMoneda||String(f.moneda_id||"")===fMoneda)}),[rows,tab,fTipo,fEstado,fEmpresa ,fDesde,fHasta,fMin,fMax,fMoneda]);
  useEffect(()=>{setPage(1)},[tab,fTipo,fEstado,fEmpresa,fDesde,fHasta,fMin,fMax,fMoneda]); const totalPages=Math.max(1,Math.ceil(filtered.length/pageSize)),safePage=Math.min(page,totalPages),visible=filtered.slice((safePage-1)*pageSize,safePage*pageSize); const clear=()=>{setTab("");setFTipo("");setFEstado("");setFEmpresa("");setFDesde("");setFHasta("");setFMin("");setFMax("");setFMoneda("");setPage(1)};
+ if(denied)return <main className="billing-reference"><section className="billing-alert error"><h1>Acceso restringido</h1><p>La facturación de comisiones de AgroBrokerIA es exclusiva de Administración.</p><Link href="/dashboard">Volver al inicio</Link></section></main>;
  const total=rows.reduce((a,f)=>a+Number(f.importe_total||0),0),autorizadas=rows.filter(f=>status(f)==="Autorizada").reduce((a,f)=>a+Number(f.importe_total||0),0),pendientes=rows.filter(f=>status(f)==="Pendiente ARCA").reduce((a,f)=>a+Number(f.importe_total||0),0),rechazadas=rows.filter(f=>status(f)==="Rechazada").reduce((a,f)=>a+Number(f.importe_total||0),0);
  const amountLabel=(value:number)=>{const codes=[...new Set(rows.filter(f=>Number(f.importe_total||0)!==0).map(f=>currencies[String(f.moneda_id||"")]||"Moneda"))];return value.toLocaleString("es-AR",{maximumFractionDigits:0})+(codes.length===1?" "+codes[0]:codes.length>1?" · Varias monedas":"");};
  return <main className="billing-reference">
