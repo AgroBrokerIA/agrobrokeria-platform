@@ -21,7 +21,7 @@ export default function RegistroTransportistaPage() {
     e.preventDefault();
     setError("");
     setOk(false);
-    if (!foto || !documento) {
+    if (!foto) {
       setError("Adjuntá una fotografía actual del conductor para la verificación de identidad.");
       return;
     }
@@ -50,12 +50,14 @@ export default function RegistroTransportistaPage() {
       setLoading(false);
       return;
     }
-    const dniUpload = await supabase.storage.from("agrobroker-private").upload(dniPath, documento, { contentType: documento.type, upsert: false });
-    if (dniUpload.error) {
-      await supabase.storage.from("agrobroker-private").remove([fotoPath]);
-      setError("No se pudo cargar el DNI: " + dniUpload.error.message);
-      setLoading(false);
-      return;
+    if (documento && dniPath) {
+      const dniUpload = await supabase.storage.from("agrobroker-private").upload(dniPath, documento, { contentType: documento.type, upsert: false });
+      if (dniUpload.error) {
+        await supabase.storage.from("agrobroker-private").remove([fotoPath]);
+        setError("No se pudo cargar el DNI: " + dniUpload.error.message);
+        setLoading(false);
+        return;
+      }
     }
     const { error: rpcError } = await supabase.rpc("registrar_transportista", {
       p_nombre: nombre,
