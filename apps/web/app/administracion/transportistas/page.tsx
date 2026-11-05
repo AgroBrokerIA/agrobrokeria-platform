@@ -12,6 +12,7 @@ type Solicitud = {
   empresa_transporte: string | null;
   telefono: string | null;
   dni_documento_path: string | null;
+  dni_dorso_documento_path: string | null;
   foto_perfil_path: string | null;
   verificacion_estado: string;
   observaciones_verificacion: string | null;
@@ -81,7 +82,8 @@ export default function AdministracionTransportistasPage() {
           {item.observaciones_verificacion && <div style={{ fontSize: 12, color: "#92400e" }}>Observaciones: {item.observaciones_verificacion}</div>}
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button type="button" onClick={() => void abrir(item.foto_perfil_path)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", background: "#fff", fontWeight: 700 }}>Ver fotografía</button>
-            <button type="button" onClick={() => void abrir(item.dni_documento_path)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", background: "#fff", fontWeight: 700 }}>Ver DNI privado</button>
+            <button type="button" onClick={() => void abrir(item.dni_documento_path)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", background: "#fff", fontWeight: 700 }}>Ver DNI frente (privado)</button>
+            <button type="button" onClick={() => void abrir(item.dni_dorso_documento_path)} style={{ border: "1px solid #cbd5e1", borderRadius: 8, padding: "8px 11px", background: "#fff", fontWeight: 700 }}>Ver DNI dorso (privado)</button>
             {item.verificacion_estado !== "VERIFICADO" && <button disabled={busy === (item.profile_id || item.id)} type="button" onClick={() => void verificar(item, "VERIFICADO")} style={{ border: 0, borderRadius: 8, padding: "8px 12px", background: "#078b58", color: "#fff", fontWeight: 800 }}>Verificar identidad</button>}
             {item.verificacion_estado !== "OBSERVADO" && <button disabled={busy === (item.profile_id || item.id)} type="button" onClick={() => void verificar(item, "OBSERVADO")} style={{ border: "1px solid #fecaca", borderRadius: 8, padding: "8px 12px", background: "#fff7f7", color: "#b91c1c", fontWeight: 800 }}>Observar solicitud</button>}
           </div>
