@@ -6,7 +6,7 @@ import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase/client";
 import "./reference.css";
 
-type C={id:string;operacion_id:string;numero_contrato:string;tipo_contrato:string|null;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
+type C={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
 
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
@@ -174,7 +174,7 @@ export default function ContratosPage(){
    if(sessionUser){const {data:adminRow}=await supabase.from("platform_admins").select("user_id").eq("user_id",sessionUser.id).maybeSingle();const admin=!!adminRow;setIsPlatformAdmin(admin);if(admin){const {data:requests,error:requestsError}=await supabase.from("cancelaciones_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,evidencia_url,estado_revision,created_at,observaciones_revision").order("created_at",{ascending:false});if(requestsError)setError(requestsError.message);setCancelRows(requests||[]);}else setCancelRows([]);}
    const selectedOperationId=selected?.operacion_id||form.operacionId||null;
    const [c,v,p,port,op,ext,conf]=await Promise.all([
-     supabase.from("contratos").select("id,operacion_id,numero_contrato,tipo_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
+     supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
@@ -191,7 +191,7 @@ export default function ContratosPage(){
      const contratoDestino=contratosCargados.find(x=>x.operacion_id===requestedOperation);
      if(contratoDestino){
        setSelected(contratoDestino);setTab(params.get("tab")==="firmas"?"firmas":"mis");
-       setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:String(contratoDestino.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F1"}));
+       setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:"F1"}));
        const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
        if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
        void loadSignedCopies(contratoDestino.id,contratoDestino.operacion_id);
@@ -395,7 +395,7 @@ export default function ContratosPage(){
    if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
    const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
    const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,tipo_contrato:form.tipo,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+   const payload={numero_contrato:numeroContrato,tipo_contrato:"F1",cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
@@ -488,7 +488,7 @@ export default function ContratosPage(){
     </div>
   </section>:null}
 
-  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:String(c.tipo_contrato||"").toUpperCase().includes("F1")?"F1":"F1"}));setMessage("Contrato seleccionado.");void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
+  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:"F1"}));setMessage("Contrato seleccionado.");void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
    {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2 style={{marginTop:18}}>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
     <label>Días adicionales solicitados<input type="number" min="1" max="30" value={extensionDays} onChange={e=>setExtensionDays(e.target.value)}/></label>
     <label>Motivo<textarea value={extensionReason} onChange={e=>setExtensionReason(e.target.value)} placeholder="Por qué no se puede cerrar todavía"/></label>
@@ -513,7 +513,7 @@ export default function ContratosPage(){
    {copyRows.length===0?<p>Todavía no se recibieron firmas.</p>:copyRows.map((r:any)=><article className="contract-sign-card" key={r.id}><div><strong>Firma {r.rol==="VENDEDOR"?"del vendedor":r.rol==="COMPRADOR"?"del comprador":r.rol} · versión {r.version_contrato}</strong><span>{r.estado==="APROBADA"?"Aceptada":r.estado==="RECHAZADA"?"Rechazada":"Pendiente de revisión"}</span><small>{r.nombre_archivo} · {new Date(r.subido_at).toLocaleString("es-AR")}</small>{r.observaciones&&<small>Observación: {r.observaciones}</small>}</div><div className="signature-review-actions"><button type="button" onClick={()=>void abrirCopiaFirmada(r.storage_path)}>Ver PDF</button>{isPlatformAdmin&&r.estado==="PENDIENTE"&&<><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"APROBADA")}>Aceptar</button><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"RECHAZADA")}>Rechazar</button></>}</div></article>)}
   </div>
  </div>}
-<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>{c.tipo_contrato||"Contrato"} · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id);setMessage("Contrato seleccionado.")}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
+<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id);setMessage("Contrato seleccionado.")}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
 
 {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
   <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
