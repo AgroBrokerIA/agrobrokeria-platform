@@ -80,8 +80,17 @@ export default function RegisterPage() {
           const {error:bankError}=await supabase.from("user_bank_accounts").insert({user_id:data.user.id,bank_name:form.bankName,account_type:form.accountTypeBank,currency:form.currency,account_holder:normalize(form.accountHolder),cbu_cvu:form.cbuCvu.replace(/\s/g,""),alias:form.alias.trim()||null});
           if(bankError) throw bankError;
         }
-        if(isTransportista && driverPhoto) await upload(data.user.id,driverPhoto,"FOTO_PERFIL_TRANSPORTISTA");
-        if(isTransportista && driverDni) await upload(data.user.id,driverDni,"DNI_TRANSPORTISTA");
+        if(isTransportista && driverPhoto && driverDni){
+          const stamp=Date.now();
+          const fotoPath=`transportistas/${data.user.id}/foto/${stamp}-foto.${driverPhoto.name.split(".").pop()||"jpg"}`;
+          const dniPath=`transportistas/${data.user.id}/dni/${stamp}-dni.${driverDni.name.split(".").pop()||"pdf"}`;
+          const fotoUpload=await supabase.storage.from("agrobroker-private").upload(fotoPath,driverPhoto,{contentType:driverPhoto.type,upsert:false});
+          if(fotoUpload.error) throw fotoUpload.error;
+          const dniUpload=await supabase.storage.from("agrobroker-private").upload(dniPath,driverDni,{contentType:driverDni.type,upsert:false});
+          if(dniUpload.error){await supabase.storage.from("agrobroker-private").remove([fotoPath]);throw dniUpload.error;}
+          const {error:transportistaError}=await supabase.rpc("registrar_transportista",{p_nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),p_dni:form.documentNumber.replace(/\\D/g,""),p_cuit:form.cuilCuit.replace(/\\D/g,"")||null,p_empresa:isCompany?normalize(form.legalName):null,p_telefono:form.phone.trim()||null,p_dni_path:dniPath,p_foto_path:fotoPath});
+          if(transportistaError){await supabase.storage.from("agrobroker-private").remove([fotoPath,dniPath]);throw transportistaError;}
+        }
         if(!isTransportista && dniFront) await upload(data.user.id,dniFront,"DNI_FRENTE");
         if(dniBack) await upload(data.user.id,dniBack,"DNI_DORSO");
         for(const file of companyDocs) await upload(data.user.id,file,"DOCUMENTACION_EMPRESA");
