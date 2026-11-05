@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
 import { supabase } from "../../lib/supabase";
 
 type Viaje = {
@@ -89,7 +89,7 @@ const estadoLabel = (estado: string) =>
 const fecha = (value?: string | null) =>
   value ? new Date(value).toLocaleString("es-AR") : "—";
 
-const panel: React.CSSProperties = {
+const panel: CSSProperties = {
   border: "1px solid #dbe3ed",
   borderRadius: 13,
   background: "#fff",
