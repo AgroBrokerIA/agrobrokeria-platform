@@ -726,15 +726,15 @@ export default function OperacionesPage() {
   async function avanzarAFondos(operacion: Operacion) {
     setError(""); setMensaje("");
     const control = await cargarControlComercial(operacion);
-    if (!visadoAprobado(control)) { setError("El Visado de mercadería debe estar APROBADO antes de pasar a Fondos."); return false; }
+    if (!visadoAprobado(control)) { setError("El Visado de mercadería debe estar APROBADO antes de pasar a Retención de comisión AgroBrokerIA."); return false; }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 3) { setError("La operación debe estar en Visado de mercadería."); return false; }
     const { data: etapa, error } = await supabase.from("workflow_etapas").select("id")
       .eq("workflow_id", workflow.workflow_id).eq("orden", 4).maybeSingle();
-    if (error || !etapa) { setError("No se encontró la etapa Fondos."); return false; }
+    if (error || !etapa) { setError("No se encontró la etapa Retención de comisión AgroBrokerIA."); return false; }
     const { error: advanceError } = await avanzarWorkflowSeguro(workflow.id, etapa.id);
     if (advanceError) { setError(advanceError.message); return false; }
-    setMensaje("Visado aprobado. La operación pasó a Fondos: la comisión AgroBrokerIA debe abonarse y quedar RETENIDA antes del Contrato Definitivo.");
+    setMensaje("Visado aprobado. La operación pasó a Retención de comisión AgroBrokerIA. La comisión debe quedar RETENIDA antes del Contrato Definitivo.");
     await cargarOperaciones(); return true;
   }
 
@@ -772,7 +772,7 @@ export default function OperacionesPage() {
     }
     const workflow = obtenerWorkflow(operacion.id);
     if (!workflow || workflow.orden !== 4) {
-      setError("La operación debe estar en Fondos para pasar al Contrato Definitivo.");
+      setError("La operación debe estar en Retención de comisión AgroBrokerIA para pasar al Contrato Definitivo.");
       return false;
     }
     const { data: etapa, error: etapaError } = await supabase
@@ -839,7 +839,7 @@ export default function OperacionesPage() {
         p_comprobante_url: uploadedPath,
       });
       if (submitError) throw submitError;
-      setMensaje("Comprobante bancario cargado y enviado. AgroBrokerIA verificará la transferencia. La operación permanecerá en Fondos hasta que Administración confirme la comisión como RETENIDA.");
+      setMensaje("Comprobante bancario cargado y enviado. AgroBrokerIA verificará la transferencia. La operación permanecerá en Retención de comisión AgroBrokerIA hasta que Administración confirme la retención.");
       setComisionReferenciaTransferencia("");
       setComisionComprobanteFile(null);
       await cargarOperaciones();
@@ -2451,14 +2451,14 @@ Firma: ______________________________
 
         if (errorEtapaFondos) {
           setError(
-            `Las firmas fueron registradas, pero no se pudo localizar la etapa Fondos: ${errorEtapaFondos.message}`
+            `Las firmas fueron registradas, pero no se pudo localizar la etapa Firmas: ${errorEtapaFondos.message}`
           );
           return false;
         }
 
         if (!etapaFondos) {
           setError(
-            "Las firmas fueron registradas, pero no existe la etapa 6 (Fondos)."
+            "Las firmas fueron registradas, pero no existe la etapa 6 (Firmas)."
           );
           return false;
         }
@@ -2467,14 +2467,14 @@ Firma: ______________________________
 
         if (errorAvanceFondos) {
           setError(
-            `Las firmas fueron registradas, pero no se pudo avanzar a Fondos: ${errorAvanceFondos.message}`
+            `Las firmas fueron registradas, pero no se pudo avanzar a Firmas: ${errorAvanceFondos.message}`
           );
           return false;
         }
 
         setError("");
         setMensaje(
-          "✅ Todas las firmas requeridas fueron completadas. La operación pasó a Fondos."
+          "✅ Todas las firmas requeridas fueron completadas. La operación pasó a Firmas."
         );
 
         await cargarOperaciones();
@@ -2766,7 +2766,7 @@ Firma: ______________________________
             await abrirContrato(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 6) {
-            setError("Esperá a que vendedor y comprador completen las firmas. Al completarse, la operación pasa automáticamente a Logística / Entrega.");
+            window.location.href = "/contratos?tab=firmas";
             return;
           } else if (ordenDetalle === 7) {
             resultado = await iniciarLogistica(detalleOperacion.id);
