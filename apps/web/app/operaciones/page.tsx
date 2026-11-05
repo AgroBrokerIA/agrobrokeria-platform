@@ -769,7 +769,7 @@ export default function OperacionesPage() {
       setError("No se pudo verificar la retención de la comisión: " + retencionError.message);
       return false;
     }
-    const estadoComision = String(retencion?.estado || control?.comision_estado || "").toUpperCase();
+    const estadoComision = String(retencion?.estado || "").toUpperCase();
     if (!["RETENIDA", "LIBERADA"].includes(estadoComision)) {
       setError("El Contrato Definitivo se habilita únicamente cuando Administración confirma la retención de la comisión AgroBrokerIA.");
       return false;
