@@ -56,6 +56,7 @@ type Contrato = {
   operacion_id: string;
   acuerdo_id?: string | null;
   numero_contrato: string;
+  tipo_contrato: "F1" | "F2";
   estado: string;
 
   cantidad_tn?: number;
@@ -323,6 +324,7 @@ export default function OperacionesPage() {
     operacion_id: "",
     acuerdo_id: "",
     numero_contrato: "",
+    tipo_contrato: "F2",
     estado: "BORRADOR",
     contenido: "",
   });
@@ -1196,6 +1198,7 @@ export default function OperacionesPage() {
         acuerdo_id: contratoData.acuerdo_id || null,
         numero_contrato:
           contratoData.numero_contrato || "",
+        tipo_contrato: String(contratoData.tipo_contrato || operacion.tipo_operacion || "F2").toUpperCase().startsWith("F1") ? "F1" : "F2",
         estado:
           contratoData.estado || "BORRADOR",
         cantidad_tn:
@@ -1235,6 +1238,7 @@ export default function OperacionesPage() {
             /^OP-/,
             ""
           )}`,
+        tipo_contrato: String(operacion.tipo_operacion || "F2").toUpperCase().startsWith("F1") ? "F1" : "F2",
         estado: "BORRADOR",
         cantidad_tn: operacion.cantidad_tn,
         precio_tn: operacion.precio_tn,
@@ -1327,7 +1331,7 @@ export default function OperacionesPage() {
           "",
           `N.º ${numeroContratoInicial}`,
           `OPERACIÓN: ${operacion.codigo}`,
-          `MODELO: ${operacion.tipo_operacion === "F1" ? "F1" : "F2"}`,
+          `MODELO: ${contrato.tipo_contrato === "F1" ? "F1" : "F2"}`,
           `CANTIDAD: ${formatoNumero(operacion.cantidad_tn)} TN`,
           `PRECIO POR TN: ${monedaOperacion(operacion)} ${formatoNumero(operacion.precio_tn)}`,
           `IMPORTE TOTAL: ${monedaOperacion(operacion)} ${formatoNumero(operacion.importe_total)}`,
@@ -1686,7 +1690,8 @@ export default function OperacionesPage() {
     acuerdoDatos: Acuerdo,
     vendedorId: string = vendedorSeleccionado,
     compradorId: string = compradorSeleccionado,
-    numeroContrato: string = contrato.numero_contrato
+    numeroContrato: string = contrato.numero_contrato,
+    tipoContrato: "F1" | "F2" = contrato.tipo_contrato || "F2"
   ) {
     const vendedor = contactos.find((c) => c.id === vendedorId);
     const comprador = contactos.find((c) => c.id === compradorId);
@@ -1950,7 +1955,8 @@ Firma: ______________________________
             acuerdoReal,
             vendedorSeleccionado,
             compradorSeleccionado,
-            contrato.numero_contrato
+            contrato.numero_contrato,
+            contrato.tipo_contrato
           );
         } catch (e) {
           setMensaje("");
@@ -1968,7 +1974,7 @@ Firma: ______________________________
         p_datos: {
           acuerdo_id: acuerdoDB.id,
           numero_contrato: contrato.numero_contrato,
-          tipo_contrato: operacion.tipo_operacion === "F1" ? "F1" : "F2 - ABASTECIMIENTO DE GRANOS",
+          tipo_contrato: contrato.tipo_contrato === "F1" ? "F1" : "F2 - ABASTECIMIENTO DE GRANOS",
           estado,
           cantidad_tn: operacion.cantidad_tn,
           precio_tn: operacion.precio_tn,
@@ -2843,7 +2849,7 @@ Firma: ______________________________
             </header>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:18}}>
               <label>Número de contrato<input style={inputContrato} value={contrato.numero_contrato} onChange={e=>setContrato(v=>({...v,numero_contrato:e.target.value}))}/></label>
-              <label>Modelo contractual<input style={inputContrato} value={operacionContrato.tipo_operacion==="F1"?"F1":"F2"} readOnly/></label>
+              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F2";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal / blanco</option><option value="F2">F2 · Privado</option></select></label>
               <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
               <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
             </div>
