@@ -376,8 +376,8 @@ export default function ContratosPage(){
  function download(tipo:"F1"){
   if(!form.operacionId||!form.producto){setMessage("Seleccioná una operación y producto antes de generar el PDF.");return;}
   try{
-   const next={...effectiveForm,tipo,moneda:"USD"};
-   setForm(x=>({...x,tipo,moneda:"USD"}));
+   const next={...effectiveForm,tipo};
+   setForm(x=>({...x,tipo}));
    savePdfFile(buildPdf(next),`AgroBrokerIA-Borrador-Comercial-${tipo}.pdf`);
    setError("");
    setMessage(`Borrador comercial ${tipo} descargado correctamente.`);
