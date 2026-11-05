@@ -2776,12 +2776,8 @@ Firma: ______________________________
           } else if (ordenDetalle === 0 || !workflowDetalle) {
             setError("Esta operación todavía no tiene un flujo de etapas asociado. No se puede avanzar hasta inicializar su workflow.");
             return;
-          } else if (ordenDetalle === 8) {
-            window.location.href = "/logistica";
-            return;
-            return;
           } else if (ordenDetalle >= 9) {
-            setError("La operación ya está en Liquidación o finalizada. La acción correspondiente se gestiona desde el módulo Liquidación.");
+            setError("La operación ya está cerrada o finalizada.");
             return;
           } else {
             setError("No hay una acción disponible para esta etapa. Podés continuar la negociación desde Mensajes.");
@@ -2860,7 +2856,7 @@ Firma: ______________________________
               </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 8 ? "Gestionar liquidación y comisión AgroBrokerIA" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle !== 8 && <button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Retención de comisión" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar al Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button>}</div>
           </section>
         </div>;
       })()}
