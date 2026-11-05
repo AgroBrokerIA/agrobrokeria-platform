@@ -2618,7 +2618,7 @@ Firma: ______________________________
   const enContrato = operaciones.filter(o=>estadoVistaOperacion(o)==="En contrato").length;
   const enLogistica = operaciones.filter(o=>estadoVistaOperacion(o)==="En logística").length;
   const enLiquidacion = operaciones.filter(o=>estadoVistaOperacion(o)==="En liquidación").length;
-  const limpiarFiltros=()=>{setFiltroEstado("");setFiltroTipo("");setFiltroOrigen("");setFiltroDestino("");setFiltroProducto("");setFiltroMinVol("");setFiltroMaxVol("");setFiltroMinPrecio("");setFiltroMaxPrecio("");setFiltroDesde("");setFiltroHasta("")};
+  const limpiarFiltros=()=>{setFiltroEstado("");setFiltroOrigen("");setFiltroDestino("");setFiltroProducto("");setFiltroMinVol("");setFiltroMaxVol("");setFiltroMinPrecio("");setFiltroMaxPrecio("");setFiltroDesde("");setFiltroHasta("")};
 
   return (
     <main className="operations-reference">
