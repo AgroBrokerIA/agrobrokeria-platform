@@ -61,7 +61,7 @@ export default function RegisterPage() {
     try {
       const {data,error:authError}=await supabase.auth.signUp({
         email:form.email.trim(),password:form.password,
-        options:{data:{nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),empresa:isCompany?normalize(form.legalName):"",cuit:isCompany?form.companyCuit.replace(/\D/g,""):form.cuilCuit.replace(/\D/g,""),tipo_usuario:form.role,account_type:form.accountType,legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:"",representative_cuil:form.representativeCuil.replace(/\\D/g,"")}}
+        options:{data:{nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),empresa:isCompany?normalize(form.legalName):"",cuit:isCompany?form.companyCuit.replace(/\D/g,""):form.cuilCuit.replace(/\D/g,""),tipo_usuario:form.role,account_type:form.accountType,legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:"",representative_cuil:form.representativeCuil.replace(/\D/g,"")}}
       });
       if(authError) throw authError;
       if(!data.user) throw new Error("No se pudo crear el usuario.");
