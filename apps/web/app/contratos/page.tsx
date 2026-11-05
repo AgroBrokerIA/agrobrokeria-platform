@@ -395,7 +395,7 @@ export default function ContratosPage(){
    if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
    const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
    const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,tipo_contrato:"F1",cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
+   const payload={numero_contrato:numeroContrato,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:"USD",condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form)};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
