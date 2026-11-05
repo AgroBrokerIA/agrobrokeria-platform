@@ -67,7 +67,7 @@ export default function MercadoPage(){
    const p=String(q.price_type||"").toUpperCase();
    if(marketTab==="Futuros")return p.includes("FUT");
    if(["FOB","FAS","CIF"].includes(marketTab))return p.startsWith(marketTab);
-   if(marketTab==="Mercados internacionales")return ["CHICAGO","MATBA_ROFEX","EURONEXT","BRASIL","PARIS"].includes(String(q.market||"").toUpperCase());
+   if(marketTab==="Mercados internacionales")return ["CHICAGO","EURONEXT","BRASIL","PARIS"].includes(String(q.market||"").toUpperCase());
    if(marketTab==="Aceites")return categoryFor(q).includes("aceite");
    if(marketTab==="Harinas")return categoryFor(q).includes("harina");
    if(marketTab==="Subproductos")return categoryFor(q).includes("subproducto");
