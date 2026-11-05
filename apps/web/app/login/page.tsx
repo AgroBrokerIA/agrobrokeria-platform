@@ -48,6 +48,8 @@ export default function LoginPage() {
   }
 
   async function completarIngreso(userId:string) {
+    const { error: auditError } = await supabase.rpc("registrar_evento_acceso");
+    if (auditError) console.warn("No se pudo registrar el evento de acceso", auditError.message);
     const [{ data: legal, error: legalError }, { data: accepted, error: acceptedError }] = await Promise.all([
       supabase.from("documentos_legales").select("id,version").eq("estado","VIGENTE"),
       supabase.from("aceptaciones_legales").select("documento_legal_id,version").eq("profile_id",userId),
