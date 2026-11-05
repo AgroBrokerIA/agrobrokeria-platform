@@ -1,9 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useState, type FormEvent, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
-const field: React.CSSProperties = { width: "100%", height: 44, border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
+const field: CSSProperties = { width: "100%", height: 44, border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
 
 export default function RegistroTransportistaPage() {
   const [nombre, setNombre] = useState("");
@@ -17,7 +17,7 @@ export default function RegistroTransportistaPage() {
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
 
-  async function enviar(e: React.FormEvent) {
+  async function enviar(e: FormEvent) {
     e.preventDefault();
     setError("");
     setOk(false);
