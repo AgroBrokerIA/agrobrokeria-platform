@@ -56,7 +56,7 @@ type Contrato = {
   operacion_id: string;
   acuerdo_id?: string | null;
   numero_contrato: string;
-  tipo_contrato: "F1" | "F2";
+  tipo_contrato: "F1";
   estado: string;
 
   cantidad_tn?: number;
@@ -324,7 +324,7 @@ export default function OperacionesPage() {
     operacion_id: "",
     acuerdo_id: "",
     numero_contrato: "",
-    tipo_contrato: "F2",
+    tipo_contrato: "F1",
     estado: "BORRADOR",
     contenido: "",
   });
@@ -523,7 +523,7 @@ export default function OperacionesPage() {
           id: item.id,
           codigo: item.codigo,
           estado: item.estado,
-          tipo_operacion: item.tipo_operacion || "F2",
+          tipo_operacion: item.tipo_operacion || "F1",
           precio_tn: Number(item.precio_tn),
           cantidad_tn: Number(item.cantidad_tn),
           importe_total: Number(item.importe_total),
@@ -1198,7 +1198,7 @@ export default function OperacionesPage() {
         acuerdo_id: contratoData.acuerdo_id || null,
         numero_contrato:
           contratoData.numero_contrato || "",
-        tipo_contrato: String(contratoData.tipo_contrato || operacion.tipo_operacion || "F2").toUpperCase().startsWith("F1") ? "F1" : "F2",
+        tipo_contrato: "F1",
         estado:
           contratoData.estado || "BORRADOR",
         cantidad_tn:
@@ -1238,7 +1238,7 @@ export default function OperacionesPage() {
             /^OP-/,
             ""
           )}`,
-        tipo_contrato: String(operacion.tipo_operacion || "F2").toUpperCase().startsWith("F1") ? "F1" : "F2",
+        tipo_contrato: "F1",
         estado: "BORRADOR",
         cantidad_tn: operacion.cantidad_tn,
         precio_tn: operacion.precio_tn,
@@ -1318,7 +1318,7 @@ export default function OperacionesPage() {
     let contenidoInicial = contratoData?.contenido || "";
     if (!contenidoInicial.trim()) {
       try {
-        contenidoInicial = generarContenidoContratoF2(
+        contenidoInicial = generarContenidoContratoF1(
           operacion,
           acuerdoContrato,
           vendedor?.contacto_id || "",
@@ -1331,7 +1331,7 @@ export default function OperacionesPage() {
           "",
           `N.º ${numeroContratoInicial}`,
           `OPERACIÓN: ${operacion.codigo}`,
-          `MODELO: ${contrato.tipo_contrato === "F1" ? "F1" : "F2"}`,
+          "MODELO: F1",
           `CANTIDAD: ${formatoNumero(operacion.cantidad_tn)} TN`,
           `PRECIO POR TN: ${monedaOperacion(operacion)} ${formatoNumero(operacion.precio_tn)}`,
           `IMPORTE TOTAL: ${monedaOperacion(operacion)} ${formatoNumero(operacion.importe_total)}`,
@@ -1351,7 +1351,7 @@ export default function OperacionesPage() {
         contenidoInicial.includes("CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.") ||
         (contenidoInicial.includes("TERCERA: PLAZO DE ENTREGA") && contenidoInicial.includes("de 2027"))) {
       try {
-        contenidoInicial = generarContenidoContratoF2(
+        contenidoInicial = generarContenidoContratoF1(
           operacion,
           acuerdoContrato,
           vendedorSeleccionado,
@@ -1685,13 +1685,13 @@ export default function OperacionesPage() {
     );
   }
 
-  function generarContenidoContratoF2(
+  function generarContenidoContratoF1(
     operacion: Operacion,
     acuerdoDatos: Acuerdo,
     vendedorId: string = vendedorSeleccionado,
     compradorId: string = compradorSeleccionado,
     numeroContrato: string = contrato.numero_contrato,
-    tipoContrato: "F1" | "F2" = contrato.tipo_contrato || "F2"
+    tipoContrato: "F1" = contrato.tipo_contrato || "F1"
   ) {
     const vendedor = contactos.find((c) => c.id === vendedorId);
     const comprador = contactos.find((c) => c.id === compradorId);
@@ -1950,7 +1950,7 @@ Firma: ______________________________
 
       if (!contenidoContrato.trim()) {
         try {
-          contenidoContrato = generarContenidoContratoF2(
+          contenidoContrato = generarContenidoContratoF1(
             operacion,
             acuerdoReal,
             vendedorSeleccionado,
@@ -1963,7 +1963,7 @@ Firma: ______________________________
           setError(
             e instanceof Error
               ? e.message
-              : "No se pudo generar el contrato F2."
+              : "No se pudo generar el contrato F1."
           );
           return;
         }
@@ -1974,7 +1974,7 @@ Firma: ______________________________
         p_datos: {
           acuerdo_id: acuerdoDB.id,
           numero_contrato: contrato.numero_contrato,
-          tipo_contrato: contrato.tipo_contrato === "F1" ? "F1" : "F2 - ABASTECIMIENTO DE GRANOS",
+          tipo_contrato: "F1 - CONTRATO FORMAL DE COMPRAVENTA Y ABASTECIMIENTO",
           estado,
           cantidad_tn: operacion.cantidad_tn,
           precio_tn: operacion.precio_tn,
@@ -2686,7 +2686,7 @@ Firma: ______________________________
           <div className="op-filter-title"><h2>Filtrar operaciones</h2><button onClick={limpiarFiltros}>Limpiar filtros</button></div>
           <Filter label="Producto"><input value={filtroProducto} onChange={e=>setFiltroProducto(e.target.value)} placeholder="Buscar producto" /></Filter>
           <Filter label="Estado"><select value={filtroEstado} onChange={e=>setFiltroEstado(e.target.value)}><option value="">Todos los estados</option>{["En negociación","En contrato","En logística","En liquidación","Finalizadas","Canceladas"].map(x=><option key={x}>{x}</option>)}</select></Filter>
-          <Filter label="Tipo de contrato"><select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}><option value="">Todos los tipos</option><option value="F1">F1</option><option value="F2">F2</option></select></Filter>
+          <Filter label="Tipo de contrato"><select value={filtroTipo} onChange={e=>setFiltroTipo(e.target.value)}><option value="">Todos los tipos</option><option value="F1">F1</option><option value="F1">F1</option></select></Filter>
           <Filter label="País de origen"><input value={filtroOrigen} onChange={e=>setFiltroOrigen(e.target.value)} placeholder="Buscar origen" /></Filter>
           <Filter label="País de destino"><input value={filtroDestino} onChange={e=>setFiltroDestino(e.target.value)} placeholder="Buscar destino" /></Filter>
           <Filter label="Rango de fecha"><div className="op-two"><input type="date" value={filtroDesde} onChange={e=>setFiltroDesde(e.target.value)}/><input type="date" value={filtroHasta} onChange={e=>setFiltroHasta(e.target.value)}/></div></Filter>
@@ -2849,7 +2849,7 @@ Firma: ______________________________
             </header>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:12,marginTop:18}}>
               <label>Número de contrato<input style={inputContrato} value={contrato.numero_contrato} onChange={e=>setContrato(v=>({...v,numero_contrato:e.target.value}))}/></label>
-              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F2";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal / blanco</option><option value="F2">F2 · Privado</option></select></label>
+              <label>Modelo contractual<select style={inputContrato} value={contrato.tipo_contrato} onChange={e=>{const tipo=e.target.value as "F1"|"F1";setContrato(v=>({...v,tipo_contrato:tipo,contenido:""}));}}><option value="F1">F1 · Formal / blanco</option><option value="F1">F1 · Privado</option></select></label>
               <label>Cantidad (TN)<input style={inputContrato} value={formatoNumero(operacionContrato.cantidad_tn)} readOnly/></label>
               <label>Precio por TN<input style={inputContrato} value={formatoNumero(operacionContrato.precio_tn)} readOnly/></label>
             </div>
@@ -2863,7 +2863,7 @@ Firma: ______________________________
                     const compradorId = compradorSeleccionado;
                     if (compradorId) {
                       try {
-                        const texto = generarContenidoContratoF2(operacionContrato, acuerdo, id, compradorId, contrato.numero_contrato);
+                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, id, compradorId, contrato.numero_contrato);
                         setContrato(actual => ({ ...actual, contenido: texto }));
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
@@ -2884,7 +2884,7 @@ Firma: ______________________________
                     const vendedorId = vendedorSeleccionado;
                     if (vendedorId) {
                       try {
-                        const texto = generarContenidoContratoF2(operacionContrato, acuerdo, vendedorId, id, contrato.numero_contrato);
+                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, vendedorId, id, contrato.numero_contrato);
                         setContrato(actual => ({ ...actual, contenido: texto }));
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
@@ -3000,7 +3000,7 @@ Firma: ______________________________
       <section className="operations-bottom">
         <Bottom title="Resumen por estado"><div className="op-legend"><p>🔵 En negociación <b>{enNegociacion}</b></p><p>🟡 En contrato <b>{enContrato}</b></p><p>🟣 En logística <b>{enLogistica}</b></p><p>🟠 En liquidación <b>{enLiquidacion}</b></p><p>🟢 Finalizadas <b>{operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===9 || /CERR|FINAL/i.test(o.estado)).length}</b></p><p>🔴 Canceladas <b>{operaciones.filter(o=>/CANCEL/i.test(o.estado)).length}</b></p></div></Bottom>
         <Bottom title="Volumen total registrado"><div className="op-volume-summary"><strong>{formatoNumero(totalVolumen)} TN</strong><span>Calculado sobre las operaciones cargadas</span></div></Bottom>
-        <Bottom title="Tipos de contrato"><Bars items={[["F1",String(operaciones.filter(o=>o.tipo_operacion==="F1").length)],["F2",String(operaciones.filter(o=>o.tipo_operacion==="F2").length)]]}/></Bottom>
+        <Bottom title="Contratos formales"><Bars items={[["F1",String(operaciones.length)]]}/></Bottom>
         <Bottom title="Evolución de operaciones"><div className="op-legend"><p>Datos históricos disponibles según fecha de operación.</p><p><b>{operaciones.length}</b> operaciones cargadas en la vista actual.</p></div></Bottom>
       </section>
     </main>
