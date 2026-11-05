@@ -162,7 +162,7 @@ function buildConfidentialityPdf(f:FormState){
 
 export default function ContratosPage(){
  const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
- const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false);
+ const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false),[cancelReason,setCancelReason]=useState(""),[cancelJustification,setCancelJustification]=useState(""),[cancelEvidence,setCancelEvidence]=useState(""),[cancelBusy,setCancelBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[externalDocs,setExternalDocs]=useState<ExternalDoc[]>([]),[externalDocId,setExternalDocId]=useState(""),[externalSha,setExternalSha]=useState(""),[externalBusy,setExternalBusy]=useState(false);
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[vendorFile,setVendorFile]=useState<File|null>(null),[buyerFile,setBuyerFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState<"VENDEDOR"|"COMPRADOR"|null>(null),[isPlatformAdmin,setIsPlatformAdmin]=useState(false),[allowedCopyRoles,setAllowedCopyRoles]=useState<string[]>([]);
  const [form,setForm]=useState<FormState>(initial);
@@ -205,6 +205,20 @@ export default function ContratosPage(){
    setLoading(false);
  }
  useEffect(()=>{void load(); const requested=new URLSearchParams(window.location.search).get("tab"); if(requested==="firmas")setTab("firmas"); else if(requested==="mis")setTab("mis");},[]);
+ async function solicitarCancelacion(){
+   if(!selected?.operacion_id){setError("Seleccioná primero un contrato.");return;}
+   if(cancelReason.trim().length<3){setError("Indicá el motivo de cancelación.");return;}
+   if(cancelJustification.trim().length<10){setError("El justificativo debe tener al menos 10 caracteres.");return;}
+   setCancelBusy(true);setError("");setMessage("");
+   try{
+     const {data,error}=await supabase.rpc("solicitar_cancelacion_contrato",{p_operacion_id:selected.operacion_id,p_motivo:cancelReason.trim(),p_justificativo:cancelJustification.trim(),p_evidencia_url:cancelEvidence.trim()||null});
+     if(error)throw error;
+     setMessage("Solicitud de cancelación registrada y enviada a revisión. El contrato sigue vigente hasta que se apruebe.");
+     setCancelReason("");setCancelJustification("");setCancelEvidence("");
+     await load();
+   }catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar la cancelación.");}
+   finally{setCancelBusy(false);}
+ }
  async function solicitarExtension(){
    if(!selected?.operacion_id){setMessage("Seleccioná primero un contrato en Mis contratos.");return;}
    const days=Number(extensionDays);
@@ -474,7 +488,7 @@ export default function ContratosPage(){
     <label>Justificativo detallado<textarea value={extensionJustification} onChange={e=>setExtensionJustification(e.target.value)} placeholder="Todos los datos necesarios: qué falta, dependencias, fechas, responsables y por qué necesitás ese plazo."/></label>
     <label>Evidencia / comprobante (opcional)<input value={extensionEvidence} onChange={e=>setExtensionEvidence(e.target.value)} placeholder="URL o referencia del respaldo"/></label>
     <label>Datos adicionales para auditoría (opcional)<textarea value={extensionDetails} onChange={e=>setExtensionDetails(e.target.value)} placeholder="Documentación pendiente, fecha estimada, proveedor, entidad financiera u otros datos."/></label>
-   </div><button className="contract-generate" disabled={extensionBusy} onClick={()=>void solicitarExtension()}>{extensionBusy?"Enviando…":"Solicitar prórroga para cerrar el contrato →"}</button></div>}
+   </div><button className="contract-generate" disabled={extensionBusy} onClick={()=>void solicitarExtension()}>{extensionBusy?"Enviando…":"Solicitar prórroga para cerrar el contrato →"}</button><div className="contract-cancel-panel"><h3>Solicitar cancelación del contrato</h3><p>La solicitud queda registrada y auditada. El contrato no se cancela hasta que la revisión administrativa la apruebe.</p><div className="contract-builder-fields"><label>Motivo de cancelación<input value={cancelReason} onChange={e=>setCancelReason(e.target.value)} placeholder="Ej. Las partes decidieron no continuar"/></label><label>Justificativo detallado<textarea value={cancelJustification} onChange={e=>setCancelJustification(e.target.value)} placeholder="Explicá por qué no desean continuar con la operación."/></label><label>Evidencia o respaldo (opcional)<input value={cancelEvidence} onChange={e=>setCancelEvidence(e.target.value)} placeholder="URL o referencia del respaldo"/></label></div><button type="button" className="contract-cancel-request" disabled={cancelBusy||selected.estado==="CANCELADO"} onClick={()=>void solicitarCancelacion()}>{cancelBusy?"Enviando solicitud…":selected.estado==="CANCELADO"?"Contrato cancelado":"Solicitar cancelación →"}</button></div></div>}
    <section className="contract-info-panel" style={{marginTop:16}}><h2>Historial de prórrogas auditadas</h2>{extensions.filter(x=>!selected||x.contrato_id===selected.id).length===0?<p>No hay solicitudes de prórroga para este contrato.</p>:extensions.filter(x=>!selected||x.contrato_id===selected.id).map(x=><article key={x.id}><b>{x.estado_revision} · {x.dias_solicitados} día(s) solicitados</b><span>{new Date(x.created_at).toLocaleString("es-AR")} · solicitado hasta {new Date(x.vencimiento_solicitado_at).toLocaleString("es-AR")}</span><span>{x.motivo}</span><small>{x.justificativo}</small>{x.dias_aprobados&&<span>Aprobados: {x.dias_aprobados} día(s) · nuevo vencimiento: {x.vencimiento_aprobado_at?new Date(x.vencimiento_aprobado_at).toLocaleString("es-AR"):"-"}</span>}{x.observaciones_revision&&<small>Auditoría: {x.observaciones_revision}</small>}</article>)}</section>
   </section>}
 
