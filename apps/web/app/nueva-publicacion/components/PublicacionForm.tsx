@@ -34,6 +34,7 @@ type Incoterm = {
 
 type Formulario = {
   tipo: string;
+  tipo_contrato: "F1" | "F2";
   producto_id: number;
   cantidad_tn: string;
   precio_tn: string;
@@ -131,6 +132,7 @@ export default function PublicationForm(props: any) {
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
+    tipo_contrato: "F1",
     producto_id: 1,
     cantidad_tn: "",
     precio_tn: "",
@@ -320,6 +322,7 @@ export default function PublicationForm(props: any) {
         empresa_id: empresaId,
 
         tipo: form.tipo as "VENTA" | "COMPRA",
+        tipo_contrato: form.tipo_contrato,
 
         producto_id: form.producto_id,
 
@@ -401,6 +404,7 @@ export default function PublicationForm(props: any) {
 
       setForm({
         tipo: "VENTA",
+        tipo_contrato: "F1",
 
         producto_id:
           productos.find(
@@ -555,6 +559,15 @@ export default function PublicationForm(props: any) {
             <option value="COMPRA">
               COMPRA
             </option>
+          </select>
+        </div>
+
+        {/* TIPO DE CONTRATO */}
+        <div>
+          <label>Condición contractual</label>
+          <select value={form.tipo_contrato} onChange={e=>actualizarCampo("tipo_contrato",e.target.value)} style={inputStyle}>
+            <option value="F1">F1 · Contrato formal</option>
+            <option value="F2">F2 · Contrato privado</option>
           </select>
         </div>
 
