@@ -391,10 +391,10 @@ export default function ContratosPage(){
    setMessage(hasIntermediary?"Borrador de confidencialidad, no circunvención y comisiones descargado; requiere revisión legal.":"Borrador de confidencialidad de la operación descargado; requiere revisión legal.");
   }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
  }
- function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
+ function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa del borrador ${tipo} seleccionada.`)}
  function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
- function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
- function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
+ function emailPdf(){const subject=encodeURIComponent(`Borrador comercial ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el borrador de condiciones comerciales generado por AgroBrokerIA.")}`}
+ function sharePdf(){if(navigator.share){void navigator.share({title:`Borrador comercial ${form.tipo} AgroBrokerIA`,text:"Borrador de condiciones comerciales generado por AgroBrokerIA; no es un contrato oficial firmado ni registrado."})}else{download(form.tipo)}}
  
  return <main className="contract-builder-reference">
   <header className="contract-builder-head"><div><h1>Contratos</h1><p>Contratos Digitales · Borradores F1 de referencia para compraventa y abastecimiento. Toda oferta aceptada genera un borrador de condiciones comerciales para revisión de ambas partes. Hasta incorporar el formulario oficial vigente de la Bolsa, el PDF de AgroBrokerIA no se presenta como modelo homologado ni como contrato firmado o registrado.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
