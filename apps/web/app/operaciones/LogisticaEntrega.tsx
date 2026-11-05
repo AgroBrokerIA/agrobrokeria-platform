@@ -402,7 +402,7 @@ export default function LogisticaEntrega({
         </div>
       </section>
 
-      <section style={panel}>
+      {!esTransportista && <section style={panel}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800 }}>Asignar un camión</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Solo aparecen transportistas registrados y verificados por AgroBrokerIA.</div>
@@ -434,7 +434,7 @@ export default function LogisticaEntrega({
           </label>
         </div>
         <div><button type="button" style={primary} disabled={guardando} onClick={() => void crearViaje()}>{guardando ? "Guardando…" : "Crear viaje y asignar transportista"}</button></div>
-      </section>
+      </section>}
 
       {error && <div role="alert" style={{ padding: 11, borderRadius: 9, border: "1px solid #fecaca", background: "#fff1f2", color: "#9f1239", fontSize: 13 }}>{error}</div>}
       {mensaje && <div role="status" style={{ padding: 11, borderRadius: 9, border: "1px solid #a7f3d0", background: "#ecfdf5", color: "#166534", fontSize: 13 }}>{mensaje}</div>}
