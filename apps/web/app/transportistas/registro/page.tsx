@@ -114,7 +114,7 @@ export default function RegistroTransportistaPage() {
               <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>La fotografía podrá ser consultada por los participantes autorizados de los viajes que te asignen.</span>
             </label>
             <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>DNI — imagen o PDF
-              <input required type="file" accept="image/*,application/pdf" onChange={e => setDocumento(e.target.files?.[0] || null)} />
+              <input type="file" accept="image/*,application/pdf" onChange={e => setDocumento(e.target.files?.[0] || null)} />
               <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>Si lo adjuntás, el documento será privado: solo vos y Administración podrán abrir el archivo completo.</span>
             </label>
             <div style={{ background: "#f8fafc", borderRadius: 9, padding: 12, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
