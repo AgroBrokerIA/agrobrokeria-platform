@@ -83,6 +83,7 @@ function buildConfidentialityPdf(f:FormState){
  pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.text(hasIntermediary?"CONTRATO DE CONFIDENCIALIDAD, NO CIRCUNVENCIÓN Y":"CONTRATO DE CONFIDENCIALIDAD DE LA OPERACIÓN",W/2,32,{align:"center"});
  if(hasIntermediary) pdf.text("RECONOCIMIENTO DE COMISIONES",W/2,48,{align:"center"});
  y=hasIntermediary?72:55;
+ lines("BORRADOR PARTICULAR PARA REVISIÓN LEGAL. No es un modelo oficial de la Bolsa ni asesoramiento jurídico. Las cláusulas de confidencialidad, no circunvención, comisiones, penalidades y jurisdicción deben ser revisadas y aceptadas expresamente por las partes antes de cualquier firma o uso.",8);
  if(hasIntermediary){
   lines('Conste por el presente documento el Contrato de Confidencialidad, No Circunvención y Pago de Comisiones (en adelante, el "Contrato"), que se celebra y entra en vigor en la fecha de su aceptación registrada en AgroBrokerIA (en adelante, la "Fecha de Entrada en Vigor"), entre las partes abajo firmantes:');
   bold("POR UNA PARTE:");lines('La empresa comercializadora, productora o persona humana / jurídica identificada en el cuadro de firmas, en adelante denominada la "Parte Contratante".');
@@ -384,10 +385,10 @@ export default function ContratosPage(){
  }
  function downloadConfidentiality(){
   try{
-   const name=hasIntermediary?"AgroBrokerIA-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Confidencialidad-Operacion.pdf";
+   const name=hasIntermediary?"AgroBrokerIA-Borrador-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Borrador-Confidencialidad-Operacion.pdf";
    savePdfFile(buildConfidentialityPdf(effectiveForm),name);
    setError("");
-   setMessage(hasIntermediary?"Contrato de confidencialidad, no circunvención y comisiones descargado correctamente.":"Contrato de confidencialidad de la operación descargado correctamente.");
+   setMessage(hasIntermediary?"Borrador de confidencialidad, no circunvención y comisiones descargado; requiere revisión legal.":"Borrador de confidencialidad de la operación descargado; requiere revisión legal.");
   }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
  }
  function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
