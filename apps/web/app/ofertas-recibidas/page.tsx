@@ -477,7 +477,7 @@ export default function OfertasRecibidasPage() {
   async function cambiarEstado(oferta: Oferta, nuevoEstado: string) {
     const mensaje =
       nuevoEstado === "ACEPTADA"
-        ? "¿Querés aceptar esta oferta?"
+        ? "¿Querés aceptar esta oferta? Se creará automáticamente la operación y un borrador contractual formal F1. Solo se admiten operaciones reales y declaradas."
         : "¿Querés rechazar esta oferta?";
     if (!window.confirm(mensaje)) return;
 
