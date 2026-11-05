@@ -1513,3 +1513,19 @@ body{background:var(--ab-bg)}
 .auth-register .auth-register-card>form>.auth-declaration-row label{font-size:12px}
 @media(max-width:900px){.auth-register .auth-register-card>form>.auth-field-row-three{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:620px){.auth-register .auth-register-card>form label{font-size:12px}.auth-register .auth-register-card>form input:not([type=checkbox]):not([type=file]),.auth-register .auth-register-card>form select{font-size:13px;min-height:42px}}
+
+/* Contratos: aprovechar el ancho de trabajo y evitar desbordes laterales. */
+.contract-builder-reference{width:100%;max-width:none;box-sizing:border-box;overflow-x:hidden;padding:18px clamp(14px,2vw,28px) 34px}
+.contract-builder-grid{grid-template-columns:minmax(0,0.92fr) minmax(0,1.08fr);width:100%;min-width:0}
+.contract-builder-form,.contract-preview-card,.contract-list-panel,.contract-info-panel{min-width:0;max-width:100%;box-sizing:border-box}
+.contract-builder-fields{grid-template-columns:repeat(2,minmax(0,1fr))}
+.contract-builder-fields label{font-size:10px}
+.contract-builder-fields input,.contract-builder-fields select,.contract-builder-observation textarea{font-size:11px;min-width:0}
+.contract-builder-tabs{width:100%;overflow-x:auto;white-space:nowrap}
+.contract-cancel-panel{margin-top:18px;padding:14px;border:1px solid #f0caca;border-radius:10px;background:#fffafa}
+.contract-cancel-panel h3{margin:0 0 6px;font-size:14px;color:#8f2424}
+.contract-cancel-panel p{font-size:11px;color:#5b6472;line-height:1.5}
+.contract-cancel-request{margin-top:10px;border:0;border-radius:7px;background:#b93636;color:white;padding:10px 14px;font-size:11px;font-weight:800;cursor:pointer}
+.contract-cancel-request:disabled{opacity:.55;cursor:not-allowed}
+@media(max-width:1050px){.contract-builder-grid{grid-template-columns:minmax(0,1fr)}.contract-previews{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}}
+@media(max-width:650px){.contract-builder-fields,.contract-previews{grid-template-columns:minmax(0,1fr)}.contract-builder-head{align-items:flex-start;flex-direction:column}.contract-builder-actions{flex-wrap:wrap}.contract-builder-tabs{overflow-x:auto}}
