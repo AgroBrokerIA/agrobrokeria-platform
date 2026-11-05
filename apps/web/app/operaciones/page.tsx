@@ -215,7 +215,7 @@ const ETAPAS = [
   "Oferta aceptada",
   "Acuerdo Comercial / Reserva",
   "Visado de mercadería",
-  "Fondos y retención de comisión AgroBrokerIA",
+  "Retención de comisión AgroBrokerIA",
   "Contrato Definitivo",
   "Firmas del vendedor y comprador",
   "Liberación operativa",
