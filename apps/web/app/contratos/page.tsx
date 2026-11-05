@@ -454,8 +454,8 @@ export default function ContratosPage(){
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
-        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Ruta contractual formal única.</span></div>
-        <button className={form.tipo==="F1"?"selected f2":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
+        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Borrador formal único de compraventa y abastecimiento. La homologación y firma digital oficial requieren el modelo y proveedor habilitados.</span><a href="https://www.bcr.com.ar/es/servicios/servicios-digitales/confirma" target="_blank" rel="noreferrer">Consultar servicio digital Confirma de la Bolsa de Comercio de Rosario ↗</a></div>
+        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
       <div className="contract-commodity-picks">{productos.slice(0,4).map((p,i)=><button type="button" key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻"][i]}</b><span>{p}</span></button>)}<button type="button" className="more-commodity" onClick={()=>document.getElementById("commodity-select")?.focus()}><b>•••</b><span>Otros</span></button></div>
