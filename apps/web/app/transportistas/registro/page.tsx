@@ -22,14 +22,14 @@ export default function RegistroTransportistaPage() {
     setError("");
     setOk(false);
     if (!foto || !documento) {
-      setError("Adjuntá una fotografía actual del conductor y una imagen o PDF del DNI para la verificación de identidad.");
+      setError("Adjuntá una fotografía actual del conductor para la verificación de identidad.");
       return;
     }
     if (!["image/jpeg", "image/png", "image/webp"].includes(foto.type)) {
       setError("La fotografía debe estar en formato JPG, PNG o WEBP.");
       return;
     }
-    if (documento.type !== "application/pdf" && !documento.type.startsWith("image/")) {
+    if (documento && documento.type !== "application/pdf" && !documento.type.startsWith("image/")) {
       setError("El DNI debe adjuntarse como imagen o PDF.");
       return;
     }
@@ -43,7 +43,7 @@ export default function RegistroTransportistaPage() {
     const uid = userData.user.id;
     const stamp = Date.now();
     const fotoPath = `transportistas/${uid}/foto/${stamp}-foto.${foto.name.split(".").pop() || "jpg"}`;
-    const dniPath = `transportistas/${uid}/dni/${stamp}-dni.${documento.name.split(".").pop() || "pdf"}`;
+    const dniPath = documento ? `transportistas/${uid}/dni/${stamp}-dni.${documento.name.split(".").pop() || "pdf"}` : null;
     const fotoUpload = await supabase.storage.from("agrobroker-private").upload(fotoPath, foto, { contentType: foto.type, upsert: false });
     if (fotoUpload.error) {
       setError("No se pudo cargar la fotografía: " + fotoUpload.error.message);
@@ -67,7 +67,7 @@ export default function RegistroTransportistaPage() {
       p_foto_path: fotoPath,
     });
     if (rpcError) {
-      await supabase.storage.from("agrobroker-private").remove([fotoPath, dniPath]);
+      await supabase.storage.from("agrobroker-private").remove(dniPath ? [fotoPath, dniPath] : [fotoPath]);
       setError("No se pudo registrar el perfil: " + rpcError.message);
     } else {
       setOk(true);
@@ -113,7 +113,7 @@ export default function RegistroTransportistaPage() {
             </label>
             <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>DNI — imagen o PDF
               <input required type="file" accept="image/*,application/pdf" onChange={e => setDocumento(e.target.files?.[0] || null)} />
-              <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>Documento privado: solo vos y Administración podrán abrir el archivo completo.</span>
+              <span style={{ color: "#64748b", fontSize: 11, fontWeight: 400 }}>Si lo adjuntás, el documento será privado: solo vos y Administración podrán abrir el archivo completo.</span>
             </label>
             <div style={{ background: "#f8fafc", borderRadius: 9, padding: 12, fontSize: 12, color: "#475569", lineHeight: 1.5 }}>
               Los documentos se guardan en almacenamiento privado. Los vendedores, productores y compradores podrán comprobar tu fotografía y estado de verificación, pero no tendrán acceso a la imagen completa del DNI.
