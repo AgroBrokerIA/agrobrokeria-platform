@@ -400,7 +400,7 @@ export default function ContratosPage(){
   <header className="contract-builder-head"><div><h1>Contratos</h1><p>Contratos Digitales · Borradores F1 de referencia para compraventa y abastecimiento. Toda oferta aceptada genera un borrador de condiciones comerciales para revisión de ambas partes. Hasta incorporar el formulario oficial vigente de la Bolsa, el PDF de AgroBrokerIA no se presenta como modelo homologado ni como contrato firmado o registrado.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
   {error&&<div className="contract-builder-alert error">{error}</div>}{message&&<div className="contract-builder-alert">{message}</div>}
 
-  <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+  <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Puntos a revisar"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
   {tab==="tipos"?<section className="contract-builder-grid">
     <div className="contract-builder-form">
