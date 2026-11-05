@@ -477,7 +477,7 @@ export default function OperacionesPage() {
       } = await supabase
         .from("operaciones")
         .select(
-          "id, codigo, estado, tipo_operacion, precio_tn, cantidad_tn, importe_total, moneda_id, fecha_operacion, publicacion_compra_id, publicacion_venta_id"
+          "id, codigo, estado, precio_tn, cantidad_tn, importe_total, moneda_id, fecha_operacion, publicacion_compra_id, publicacion_venta_id"
         )
         .order("fecha_operacion", {
           ascending: false,
@@ -2608,7 +2608,7 @@ Firma: ______________________________
     const etapa = workflow?.etapa_actual || "";
     const estadoVista = estadoVistaOperacion(operacion);
     const meta = operacionMeta[operacion.id] || { producto: "", origen: "", destino: "", contraparte: "" };
-    const texto = `${operacion.codigo} F1 ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
+    const texto = `${operacion.codigo} ${etapa} ${meta.producto} ${meta.origen} ${meta.destino}`.toLowerCase();
     const fecha = operacion.fecha_operacion?.slice(0,10) || "";
     return (!filtroEstado || estadoVista === filtroEstado) &&
       (!filtroTipo || filtroTipo === "F1") &&
