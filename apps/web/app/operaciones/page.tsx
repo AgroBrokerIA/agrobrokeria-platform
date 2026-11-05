@@ -2835,7 +2835,6 @@ Firma: ______________________________
       ...actual,
       [operacionId]: {
         ...actual[operacionId],
-        ...estadoControl,
         datos_operativos_estado: "HABILITADOS",
         datos_operativos_liberados_at: ahora,
       },
