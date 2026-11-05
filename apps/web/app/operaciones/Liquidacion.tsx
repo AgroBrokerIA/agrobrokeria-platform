@@ -473,9 +473,7 @@ export default function Liquidacion({
         <strong>AgroBrokerIA — liquidación y comisión:</strong>{" "}
         USD {(calculos.entregadaTn || 0).toFixed(2)}
         <br />
-        La plataforma la calcula automáticamente como USD 1 por cada tonelada
-        efectivamente entregada y la descuenta del importe neto en el cálculo
-        financiero server-side.
+        Comisión propia de AgroBrokerIA: USD 1 por tonelada efectivamente entregada. Los pagos entre vendedor, comprador y demás intermediarios se acuerdan y realizan fuera de la plataforma.
       </div>
 
       {mensaje && (
