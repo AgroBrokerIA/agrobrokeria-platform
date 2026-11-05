@@ -49,7 +49,7 @@ export default function RegisterPage() {
     e.preventDefault(); setError(""); setMessage("");
     if(!accepted){setError("Aceptá los Términos y Condiciones para continuar.");return;}
     if(form.password.length<8||form.password!==form.confirmPassword){setError("Revisá la contraseña: debe tener 8 caracteres como mínimo y coincidir.");return;}
-    if(!form.documentNumber.trim()||!form.cuilCuit.trim()||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
+    if(!form.documentNumber.trim()||(!isCompany&&!form.cuilCuit.trim())||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
     if(isTransportista && (!driverPhoto || !driverDniFront || !driverDniBack)){setError("Para registrarte como transportista, la foto de perfil y el DNI frente y dorso son obligatorios.");return;}
     if(isTransportista && driverPhoto && !["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
     if(isTransportista && [driverDniFront,driverDniBack].some(file=>file && file.type !== "application/pdf" && !file.type.startsWith("image/"))){setError("El frente y dorso del DNI deben adjuntarse como imagen o PDF.");return;}
