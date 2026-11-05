@@ -33,7 +33,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  const wrap=(t:string,x:number,y:number,w:number,size=9,gap=11)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const ls=pdf.splitTextToSize(t,w);pdf.text(ls,x,y);return y+ls.length*gap};
  const title=(t:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);pdf.text(t,W/2,42,{align:"center"});};
  title("CONTRATO DE COMPRAVENTA DE GRANOS · MODELO F1");
- pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento un contrato formal de compraventa de granos F1, ", celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
+ pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento un contrato formal de compraventa de granos F1, celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
  let y=98;
  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
  y=wrap("EL VENDEDOR: "+field(f.vendedor)+" con CUIT/RUT/RUC __________________ y domicilio en ______________________________.",m,y,W-2*m);
