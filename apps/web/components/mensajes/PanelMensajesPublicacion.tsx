@@ -94,7 +94,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   <div style={{flex:"0 0 auto",padding:"12px 16px",borderBottom:"1px solid #e5e7eb",fontWeight:700,color:"#14532d"}}>Publicación: {productoTitulo}</div>
   <section style={{padding:"12px 16px",borderBottom:"1px solid #e5e7eb",background:"#f8fafc",flex:"0 1 auto",minHeight:0,maxHeight:"48%",overflowY:"auto",overscrollBehavior:"contain"}}>
    <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
-    <strong style={{color:"#0f172a"}}>Negociación comercial</strong>
+    <div><strong style={{color:"#0f172a"}}>Negociación comercial</strong><p style={{margin:"4px 0 0",fontSize:11,color:"#64748b"}}>Toda oferta aceptada crea un borrador formal F1. No se procesan ni almacenan intenciones de operaciones marginales o no declaradas.</p></div>
     <button type="button" onClick={()=>{setMostrarOferta(v=>!v);setContraoferta(false);}} style={{border:0,borderRadius:8,padding:"9px 13px",background:"#07864b",color:"#fff",fontWeight:700}}>＋ Hacer una oferta</button>
    </div>
    {propuestas.length===0&&<p style={{margin:"8px 0 0",fontSize:13,color:"#64748b"}}>Todavía no hay ofertas. Podés iniciar la negociación desde acá, sin crear una operación.</p>}
