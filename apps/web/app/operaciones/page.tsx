@@ -3,7 +3,6 @@
 import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
-import ControlComercial from "./ControlComercial";
 import LogisticaEntrega from "./LogisticaEntrega";
 import Liquidacion from "./Liquidacion";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
@@ -218,7 +217,6 @@ const ETAPAS = [
   "Retención de comisión AgroBrokerIA",
   "Contrato Definitivo",
   "Firmas del vendedor y comprador",
-  "Liberación operativa",
   "Logística / Entrega",
   "Liquidación",
   "Cerrada",
@@ -660,12 +658,10 @@ export default function OperacionesPage() {
       }
 
       // =========================================================
-      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS → LIBERACIÓN OPERATIVA
+      // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS → LOGÍSTICA / ENTREGA
       // =========================================================
-      // Si una operación está en etapa 6 (Firmas) y ambas
-      // firmas requeridas están completas, avanzamos a etapa 7.
-      // Esto también corrige operaciones cuyas firmas ya estaban
-      // registradas antes de ejecutar esta lógica.
+      // Si una operación está en etapa 6 (Firmas) y ambas firmas
+      // están completas, avanza directamente a Logística / Entrega (etapa 7).
       // =========================================================
 
       for (const workflow of workflowsNormalizados) {
@@ -673,7 +669,7 @@ export default function OperacionesPage() {
 
         // La misma fuente de verdad que valida avanzar_operacion_workflow:
         // contratos confirmados + contrato_firmantes. La etapa siguiente es
-        // Liberación operativa; no se retrocede ni se vuelve a Fondos.
+        // Las firmas completas habilitan directamente Logística / Entrega.
         const { data: contratosFirmados, error: contratosError } = await supabase
           .from("contratos")
           .select("id")
@@ -711,22 +707,22 @@ export default function OperacionesPage() {
           .maybeSingle();
 
         if (errorEtapaFondos || !etapaFondos) {
-          console.error("No se pudo localizar la etapa Liberación operativa:", errorEtapaFondos);
+          console.error("No se pudo localizar la etapa Logística / Entrega:", errorEtapaFondos);
           continue;
         }
 
         const { error: errorAvanceFondos } = await avanzarWorkflowSeguro(workflow.id, etapaFondos.id);
         if (errorAvanceFondos) {
-          console.error("No se pudo avanzar la operación a Liberación operativa:", errorAvanceFondos);
+          console.error("No se pudo avanzar la operación a Logística / Entrega:", errorAvanceFondos);
           continue;
         }
 
         try {
           await notificarParticipantesOperacion({
             operacionId: workflow.operacion_id,
-            titulo: "Liberación operativa",
-            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a Liberación operativa.`,
-            tipo: "LIBERACION_OPERATIVA",
+            titulo: "Logística / Entrega",
+            mensaje: `La operación ${workflow.operacion_id} completó las firmas requeridas y pasó a Logística / Entrega.`,
+            tipo: "LOGISTICA_ENTREGA",
           });
         } catch (errorNotificacion) {
           console.error("ERROR NOTIFICACIÓN FIRMAS → FONDOS:", errorNotificacion);
@@ -2613,79 +2609,12 @@ Firma: ______________________________
   }
 
   async function iniciarLogistica(operacionId: string) {
-    setError("");
-    setMensaje("");
-
-    const control = controlesComerciales[operacionId];
-
-    if (!control) {
-      setError(
-        "No se puede iniciar la logística porque no existe el control comercial de la operación."
-      );
-      return false;
-    }
-
-    if (control.datos_operativos_estado !== "HABILITADOS") {
-      setError(
-        "🔒 No se puede iniciar la logística: los datos operativos todavía están protegidos."
-      );
-      return false;
-    }
-
     const workflow = obtenerWorkflow(operacionId);
-
-    if (!workflow) {
-      setError(
-        "La operación no tiene un workflow asociado."
-      );
+    if (!workflow || workflow.orden !== 7) {
+      setError("La operación debe estar en Logística / Entrega para gestionar la entrega.");
       return false;
     }
-
-    if (workflow.orden !== 7) {
-      setError(
-        `No se puede iniciar la logística desde la etapa actual (${workflow.etapa_actual}).`
-      );
-      return false;
-    }
-
-    const { data: etapaLogistica, error: errorEtapaLogistica } =
-      await supabase
-        .from("workflow_etapas")
-        .select("id, nombre, orden")
-        .eq("workflow_id", workflow.workflow_id)
-        .eq("orden", 8)
-        .maybeSingle();
-
-    if (errorEtapaLogistica) {
-      setError(
-        `No se pudo localizar la etapa Logística / Entrega: ${errorEtapaLogistica.message}`
-      );
-      return false;
-    }
-
-    if (!etapaLogistica) {
-      setError(
-        "No existe la etapa 8 (Logística / Entrega) en este workflow."
-      );
-      return false;
-    }
-
-    const { error: errorAvance } = await avanzarWorkflowSeguro(workflow.id, etapaLogistica.id);
-
-    if (errorAvance) {
-      setError(
-        `No se pudo iniciar la logística: ${errorAvance.message}`
-      );
-      return false;
-    }
-
-    setError("");
-    setMensaje(
-      "🚚 Logística / Entrega iniciada. Los datos operativos continúan habilitados."
-    );
-
-    await cargarOperaciones();
-
+    window.location.href = "/logistica";
     return true;
   }
 
@@ -2704,7 +2633,7 @@ Firma: ______________________________
       return false;
     }
 
-    if (workflow.orden !== 8) {
+    if (workflow.orden !== 7) {
       setError(
         `La entrega no puede avanzar porque la operación está en la etapa ${workflow.etapa_actual}.`
       );
@@ -2716,7 +2645,7 @@ Firma: ______________________________
         .from("workflow_etapas")
         .select("id, nombre, orden")
         .eq("workflow_id", workflow.workflow_id)
-        .eq("orden", 9)
+        .eq("orden", 8)
         .maybeSingle();
 
     if (errorEtapaLiquidacion) {
@@ -2728,7 +2657,7 @@ Firma: ______________________________
 
     if (!etapaLiquidacion) {
       setError(
-        "La entrega fue registrada, pero no existe la etapa 9 (Liquidación) en este workflow."
+        "La entrega fue registrada, pero no existe la etapa 8 (Liquidación) en este workflow."
       );
       return false;
     }
@@ -2767,7 +2696,7 @@ Firma: ______________________________
       return false;
     }
 
-    if (workflow.orden !== 9) {
+    if (workflow.orden !== 8) {
       setError(
         `No se puede cerrar la operación porque está en la etapa ${workflow.etapa_actual}.`
       );
@@ -2890,7 +2819,7 @@ Firma: ______________________________
     if (orden >= 1 && orden <= 3) return "En negociación";
     if (orden >= 4 && orden <= 6) return "En contrato";
     if (orden >= 7 && orden <= 8) return "En logística";
-    if (orden === 9) return "En liquidación";
+    if (orden === 8) return "En liquidación";
     const estado = (operacion.estado || "").toUpperCase();
     if (["NEGOCIACION", "EN_NEGOCIACION", "PENDIENTE_NEGOCIACION"].includes(estado)) return "En negociación";
     if (["EN_CONTRATO", "CONTRATO"].includes(estado)) return "En contrato";
@@ -3034,10 +2963,13 @@ Firma: ______________________________
             await abrirContrato(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 6) {
-            resultado = await avanzarALiberacionOperativa(detalleOperacion);
+            setError("Esperá a que vendedor y comprador completen las firmas. Al completarse, la operación pasa automáticamente a Logística / Entrega.");
+            return;
           } else if (ordenDetalle === 7) {
-            const estadoOperativo = String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase();
-            resultado = estadoOperativo === "HABILITADOS" ? await iniciarLogistica(detalleOperacion.id) : await verificarLiberacionOperativa(detalleOperacion.id);
+            resultado = await iniciarLogistica(detalleOperacion.id);
+            return;
+          } else if (ordenDetalle === 8) {
+            resultado = true;
           } else if (ordenDetalle === 0 || !workflowDetalle) {
             setError("Esta operación todavía no tiene un flujo de etapas asociado. No se puede avanzar hasta inicializar su workflow.");
             return;
@@ -3082,14 +3014,9 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===10&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
-            {ordenDetalle === 6 && <section style={{marginTop:18,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#f8fafc",display:"grid",gap:10}}>
-              <h3 style={{margin:0}}>Verificación de fondos de la operación</h3>
-              <p style={{margin:0}}>Fondos: <strong>{String(controlesComerciales[detalleOperacion.id]?.fondos_estado || "PENDIENTES").toUpperCase()}</strong> · Comisión AgroBrokerIA: <strong>{String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "PENDIENTE").toUpperCase()}</strong></p>
-              {controlesComerciales[detalleOperacion.id]?.fondos_estado === "LIBERADOS" ? <p style={{margin:0,color:"#166534"}}>Liberación registrada. Referencia: {controlesComerciales[detalleOperacion.id]?.fondos_referencia || "No informada"}.</p> : esAdminPlataforma ? <div style={{display:"grid",gap:8}}>
-                <p style={{margin:0,fontSize:13,color:"#475569"}}>Cuando hayas comprobado el ingreso efectivo de los fondos en la cuenta correspondiente, registrá aquí la referencia bancaria. Este registro no realiza una transferencia: deja constancia de la verificación administrativa.</p>
-                <button type="button" disabled={registrandoLiberacionFondos || !["RETENIDA","LIBERADA"].includes(String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase())} onClick={()=>void registrarLiberacionFondos(detalleOperacion.id)} style={{justifySelf:"start",padding:"10px 14px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{registrandoLiberacionFondos?"Registrando…":"Registrar fondos verificados y liberados"}</button>
-                {!["RETENIDA","LIBERADA"].includes(String(retencionesComision[detalleOperacion.id]?.estado || retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) && <small style={{color:"#92400e"}}>Primero debe estar verificada y retenida la comisión AgroBrokerIA.</small>}
-              </div> : <p style={{margin:0,fontSize:13,color:"#475569"}}>Los fondos continúan pendientes. Administración debe verificar el ingreso y registrar la referencia bancaria desde esta misma operación.</p>}
+            {ordenDetalle === 8 && <section style={{marginTop:18,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff"}}>
+              <h3 style={{marginTop:0}}>Liquidación de la operación</h3>
+              <Liquidacion operacionId={detalleOperacion.id} cantidadContractualTn={detalleOperacion.cantidad_tn} precioTn={detalleOperacion.precio_tn} onLiquidacionConfirmada={() => confirmarLiquidacionYAvanzar(detalleOperacion.id)} />
             </section>}
             {ordenDetalle === 4 && <section style={{marginTop:18,padding:16,border:"1px solid #86efac",borderRadius:12,background:"#f0fdf4"}}>
               <h3 style={{margin:"0 0 8px",color:"#166534"}}>Comisión AgroBrokerIA</h3>
@@ -3130,7 +3057,7 @@ Firma: ______________________________
               </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Revisar firmas y pasar a Liberación operativa" : ordenDetalle === 7 ? (String(controlesComerciales[detalleOperacion.id]?.datos_operativos_estado||"").toUpperCase()==="HABILITADOS" ? "Iniciar logística" : "Verificar fondos y habilitar datos operativos") : ordenDetalle === 8 ? "Gestionar entrega" : ordenDetalle === 9 ? "Confirmar liquidación" : ordenDetalle === 10 ? "Operación cerrada" : "Revisar workflow"}</button></div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button><button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Fondos" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar a Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 8 ? "Gestionar liquidación y comisión AgroBrokerIA" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button></div>
           </section>
         </div>;
       })()}
@@ -3296,7 +3223,7 @@ Firma: ______________________________
       })()}
 
       <section className="operations-bottom">
-        <Bottom title="Resumen por estado"><div className="op-legend"><p>🔵 En negociación <b>{enNegociacion}</b></p><p>🟡 En contrato <b>{enContrato}</b></p><p>🟣 En logística <b>{enLogistica}</b></p><p>🟠 En liquidación <b>{enLiquidacion}</b></p><p>🟢 Finalizadas <b>{operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===10 || /CERR|FINAL/i.test(o.estado)).length}</b></p><p>🔴 Canceladas <b>{operaciones.filter(o=>/CANCEL/i.test(o.estado)).length}</b></p></div></Bottom>
+        <Bottom title="Resumen por estado"><div className="op-legend"><p>🔵 En negociación <b>{enNegociacion}</b></p><p>🟡 En contrato <b>{enContrato}</b></p><p>🟣 En logística <b>{enLogistica}</b></p><p>🟠 En liquidación <b>{enLiquidacion}</b></p><p>🟢 Finalizadas <b>{operaciones.filter(o=>obtenerWorkflow(o.id)?.orden===9 || /CERR|FINAL/i.test(o.estado)).length}</b></p><p>🔴 Canceladas <b>{operaciones.filter(o=>/CANCEL/i.test(o.estado)).length}</b></p></div></Bottom>
         <Bottom title="Volumen total registrado"><div className="op-volume-summary"><strong>{formatoNumero(totalVolumen)} TN</strong><span>Calculado sobre las operaciones cargadas</span></div></Bottom>
         <Bottom title="Tipos de contrato"><Bars items={[["F1",String(operaciones.filter(o=>o.tipo_operacion==="F1").length)],["F2",String(operaciones.filter(o=>o.tipo_operacion==="F2").length)]]}/></Bottom>
         <Bottom title="Evolución de operaciones"><div className="op-legend"><p>Datos históricos disponibles según fecha de operación.</p><p><b>{operaciones.length}</b> operaciones cargadas en la vista actual.</p></div></Bottom>
