@@ -31,7 +31,8 @@ export default function RegisterPage() {
   const [driverPhoto,setDriverPhoto] = useState<File|null>(null);
   const [driverDniFront,setDriverDniFront] = useState<File|null>(null);
   const [driverDniBack,setDriverDniBack] = useState<File|null>(null);
-  const [companyDocs,setCompanyDocs] = useState<File[]>([]);\n  const [sisaProof,setSisaProof] = useState<File|null>(null);
+  const [companyDocs,setCompanyDocs] = useState<File[]>([]);
+  const [sisaProof,setSisaProof] = useState<File|null>(null);
   const isBankRole = bankRoles.includes(form.role);
   const isCompany = form.accountType === "EMPRESA";
   const isTransportista = form.role === "transportista";
@@ -53,19 +54,20 @@ export default function RegisterPage() {
     if(isTransportista && (!driverPhoto || !driverDniFront || !driverDniBack)){setError("Para registrarte como transportista, la foto de perfil y el DNI frente y dorso son obligatorios.");return;}
     if(isTransportista && driverPhoto && !["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
     if(isTransportista && [driverDniFront,driverDniBack].some(file=>file && file.type !== "application/pdf" && !file.type.startsWith("image/"))){setError("El frente y dorso del DNI deben adjuntarse como imagen o PDF.");return;}
-    if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\\D/g,"").length!==11)){setError("Para registrar una empresa se requiere razón social y CUIT válido de 11 dígitos.");return;}\n    if(isCompany && (!sisaProof || (sisaProof.type!=="application/pdf" && !sisaProof.type.startsWith("image/")))){setError("Para registrar una empresa, adjuntá la constancia o consulta vigente de SISA en PDF o imagen. La operación quedará pendiente de validación administrativa.");return;}
+    if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\D/g,"").length!==11)){setError("Para registrar una empresa se requiere razón social y CUIT válido de 11 dígitos.");return;}
+    if(isCompany && (!sisaProof || (sisaProof.type!=="application/pdf" && !sisaProof.type.startsWith("image/")))){setError("Para registrar una empresa, adjuntá la constancia o consulta vigente de SISA en PDF o imagen. La operación quedará pendiente de validación administrativa.");return;}
     if(isBankRole && (!form.bankName||!form.accountHolder.trim()||!form.cbuCvu.trim())){setError("Para corredores, intermediarios y comisionistas, completá los datos bancarios para cobrar comisiones.");return;}
     setLoading(true);
     try {
       const {data,error:authError}=await supabase.auth.signUp({
         email:form.email.trim(),password:form.password,
-        options:{data:{nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),empresa:isCompany?normalize(form.legalName):"",cuit:isCompany?form.companyCuit.replace(/\\D/g,""):form.cuilCuit.replace(/\\D/g,""),tipo_usuario:form.role,account_type:form.accountType,legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:""}}
+        options:{data:{nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),empresa:isCompany?normalize(form.legalName):"",cuit:isCompany?form.companyCuit.replace(/\D/g,""):form.cuilCuit.replace(/\D/g,""),tipo_usuario:form.role,account_type:form.accountType,legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:""}}
       });
       if(authError) throw authError;
       if(!data.user) throw new Error("No se pudo crear el usuario.");
       const draft:Record<string,unknown> = {
         user_id:data.user.id,account_type:form.accountType,role:form.role,document_type:form.documentType,document_number:form.documentNumber.replace(/\D/g,""),
-        cuil_cuit:form.cuilCuit.replace(/\D/g,""),first_name:normalize(form.firstName),middle_name:normalize(form.middleName),last_name:normalize(form.lastName),
+        cuil_cuit:(isCompany?form.companyCuit:form.cuilCuit).replace(/\D/g,""),representative_cuil:form.representativeCuil.replace(/\D/g,"")||null,first_name:normalize(form.firstName),middle_name:normalize(form.middleName),last_name:normalize(form.lastName),
         birth_date:form.birthDate||null,gender:form.gender||null,nationality:form.nationality,country_of_birth:form.countryOfBirth,marital_status:form.maritalStatus||null,
         legal_name:isCompany?normalize(form.legalName):null,trade_name:normalize(form.tradeName)||null,ruca_number:form.rucaNumber.trim()||null,
         email:form.email.trim().toLowerCase(),phone:form.phone.trim(),phone_alt:form.phoneAlt.trim()||null,country:form.country,province:normalize(form.province),city:normalize(form.city),
@@ -90,12 +92,13 @@ export default function RegisterPage() {
           const bucket=supabase.storage.from("agrobroker-private");
           const uploaded:string[]=[];
           for(const [path,file] of [[fotoPath,driverPhoto],[dniFrontPath,driverDniFront],[dniBackPath,driverDniBack]] as [string,File][]){const result=await bucket.upload(path,file,{contentType:file.type,upsert:false});if(result.error){await bucket.remove(uploaded);throw result.error;}uploaded.push(path);}
-          const {error:transportistaError}=await supabase.rpc("registrar_transportista",{p_nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),p_dni:form.documentNumber.replace(/\\D/g,""),p_cuit:form.cuilCuit.replace(/\\D/g,"")||null,p_empresa:isCompany?normalize(form.legalName):null,p_telefono:form.phone.trim()||null,p_dni_path:dniFrontPath,p_dni_dorso_path:dniBackPath,p_foto_path:fotoPath});
+          const {error:transportistaError}=await supabase.rpc("registrar_transportista",{p_nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),p_dni:form.documentNumber.replace(/\D/g,""),p_cuit:form.cuilCuit.replace(/\D/g,"")||null,p_empresa:isCompany?normalize(form.legalName):null,p_telefono:form.phone.trim()||null,p_dni_path:dniFrontPath,p_dni_dorso_path:dniBackPath,p_foto_path:fotoPath});
           if(transportistaError){await bucket.remove(uploaded);throw transportistaError;}
         }
         if(!isTransportista && dniFront) await upload(data.user.id,dniFront,"DNI_FRENTE");
         if(dniBack) await upload(data.user.id,dniBack,"DNI_DORSO");
-        for(const file of companyDocs) await upload(data.user.id,file,"DOCUMENTACION_EMPRESA");\n        if(isCompany && sisaProof) await upload(data.user.id,sisaProof,"SISA_CONSTANCIA");
+        for(const file of companyDocs) await upload(data.user.id,file,"DOCUMENTACION_EMPRESA");
+        if(isCompany && sisaProof) await upload(data.user.id,sisaProof,"SISA_CONSTANCIA");
         router.replace("/dashboard"); router.refresh(); return;
       }
       setMessage("La cuenta fue creada. Confirmá tu correo e ingresá para continuar. La documentación es opcional y no bloquea el acceso. Si tu proveedor exige confirmar el correo, los datos detallados deberán completarse en tu perfil al ingresar.");
