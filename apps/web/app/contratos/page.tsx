@@ -223,6 +223,15 @@ export default function ContratosPage(){
  async function loadSignedCopies(contractId:string,operationId?:string){
    const {data,error}=await supabase.from("contrato_copias_firmadas").select("id,rol,empresa_id,version_contrato,nombre_archivo,storage_path,sha256,estado,observaciones,subido_at,revisado_at").eq("contrato_id",contractId).order("subido_at",{ascending:true});
    if(error){setError(error.message);setCopyRows([]);return;} setCopyRows(data||[]);
+   // La aprobación de ambas copias debe llevar automáticamente la operación a Logística.
+   const latestVersion=Math.max(0,...(data||[]).map((x:any)=>Number(x.version_contrato||0)));
+   const latestCopies=(data||[]).filter((x:any)=>Number(x.version_contrato||0)===latestVersion);
+   const bothApproved=["VENDEDOR","COMPRADOR"].every((role)=>latestCopies.some((x:any)=>String(x.rol).toUpperCase()===role&&String(x.estado).toUpperCase()==="APROBADA"));
+   if(bothApproved){
+     const {data:syncResult,error:syncError}=await supabase.rpc("sincronizar_workflow_firmas_contrato",{p_contrato_id:contractId});
+     if(syncError){console.error("No se pudo avanzar automáticamente a Logística / Entrega:",syncError);setError("Las dos firmas están aprobadas, pero no se pudo avanzar la operación: "+syncError.message);}
+     else if(syncResult?.avanzada){setMessage("Las dos firmas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega.");}
+   }
    const {data:{user}}=await supabase.auth.getUser();
    if(user){
      const {data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
@@ -259,7 +268,7 @@ export default function ContratosPage(){
    setError("");setMessage("");
    const {error}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:id,p_resultado:result,p_observaciones:reason});
    if(error){setError(error.message);return;}
-   setMessage(result==="APROBADA"?"Firma aprobada. Si ambas partes están aprobadas, la operación avanza a Fondos.":"Firma rechazada. El motivo queda registrado para que la parte corrija y vuelva a cargar el PDF.");
+   setMessage(result==="APROBADA"?"Firma aprobada. Se verificará automáticamente la segunda firma para avanzar a Logística / Entrega.":"Firma rechazada. El motivo queda registrado para que la parte corrija y vuelva a cargar el PDF.");
    if(selected?.id)await loadSignedCopies(selected.id);
    await load();
  }
