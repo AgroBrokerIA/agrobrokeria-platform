@@ -5,7 +5,7 @@ import { supabase } from "@/lib/supabase/client";
 
 type Viaje = { id: string; operacion_id: string; estado: string; origen: string | null; destino: string | null; origen_nombre: string | null; destino_nombre: string | null; patente_camion: string | null; patente_acoplado: string | null };
 type Evento = { id: string; viaje_id: string; estado: string; lugar: string | null; empresa_nombre: string | null; registrado_at: string; observaciones: string | null };
-type CPE = { id: string; numero_carta_porte: string; archivo_path: string; nombre_archivo: string; estado_verificacion: string; toneladas_declaradas: number | null };
+type CPE = { id: string; viaje_id: string; numero_carta_porte: string; archivo_path: string; nombre_archivo: string; estado_verificacion: string; toneladas_declaradas: number | null };
 
 const etapas = [
  ["ARRIBO_ORIGEN","Llegué a la planta de origen"],
