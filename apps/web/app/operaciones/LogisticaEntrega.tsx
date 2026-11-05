@@ -477,8 +477,8 @@ export default function LogisticaEntrega({
               {!esTransportista && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 750, color: "#0f766e" }}>
                 <input type="file" accept="application/pdf,.pdf" multiple disabled={guardando || viaje.estado === "ENTREGADO_CONFIRMADO"} onChange={(e) => { void subirCartas(viaje, e.target.files); e.currentTarget.value = ""; }} />
                 Cargar uno o varios PDF de Cartas de Porte
-              </label>
-              <div style={{ fontSize: 11, color: "#64748b" }}>El número y los kilos se ingresan según cada PDF. La cantidad queda pendiente hasta que un participante autorizado revise el documento.</div>
+              </label>}
+              {!esTransportista && <div style={{ fontSize: 11, color: "#64748b" }}>El número y los kilos se ingresan según cada PDF. La cantidad queda pendiente hasta que un participante autorizado revise el documento.</div>}
             </div>
 
             <div style={{ display: "grid", gap: 9 }}>
