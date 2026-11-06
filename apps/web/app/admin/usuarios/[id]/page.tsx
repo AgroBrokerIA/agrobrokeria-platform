@@ -66,7 +66,13 @@ export default function AdminUserDetailPage(){
    const {error:pe}=await supabase.from("profiles").update({verification_status:status,is_verified:verified,verification_notes:notes||null,verified_at:verified?now:null,verified_by:verified?user.id:null}).eq("id",id);if(pe)throw pe;
    if(onboarding){const {error:oe}=await supabase.from("account_onboarding").update({review_status:status,is_verified:verified,sisa_status:sisaStatus,sisa_categoria:sisaCategoria,actividad_agro_validada:actividadAgroValidada,review_notes:notes||null,reviewed_by:user.id,reviewed_at:now,updated_at:now}).eq("user_id",id);if(oe)throw oe;}
    for(const company of companies){const {error:ce}=await supabase.from("companies").update({estado:verified?"verificada":"pendiente"}).eq("id",company.id);if(ce)throw ce;}
-   if(legacyCompany){const {error:le}=await supabase.from("empresas").update({verificada:verified,activa:true}).eq("id",legacyCompany.id);if(le)throw le;}
+   if(legacyCompany){
+    const {error:le}=await supabase.from("empresas").update({verificada:verified,activa:true}).eq("id",legacyCompany.id);if(le)throw le;
+    if(onboarding?.account_type==="EMPRESA"){
+     const {error:mapError}=await supabase.rpc("admin_actualizar_mapa_verificacion_empresa",{p_empresa_id:legacyCompany.id,p_verificada:verified});
+     if(mapError)throw mapError;
+    }
+   }
    setNotice("Revisión guardada. "+(verified?"Se otorgó la insignia de verificado.":"La cuenta conserva el acceso al sistema sin insignia de verificado."));await load();
   }catch(e){setError(e instanceof Error?e.message:"No se pudo guardar la revisión.");}finally{setSaving(false);}
  }
