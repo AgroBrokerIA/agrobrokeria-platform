@@ -414,10 +414,34 @@ export default function LogisticaEntrega({
       p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
       p_confirmar: aceptar, p_observaciones: observaciones || null
     });
-    if (rpcError) setError("No se pudo registrar la recepción: " + rpcError.message);
-    else setMensaje(aceptar
-      ? "Recepción confirmada por el productor. La comisión permanece retenida hasta la conciliación y el cierre."
-      : "Incidencia registrada. La operación y la comisión permanecen bloqueadas hasta su resolución.");
+    if (rpcError) {
+      setError("No se pudo registrar la recepción: " + rpcError.message);
+    } else if (!aceptar) {
+      setMensaje("Incidencia registrada. La operación y la comisión permanecen bloqueadas hasta su resolución.");
+    } else {
+      const { data: confirmaciones, error: consultaError } = await supabase
+        .from("viajes")
+        .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
+        .eq("operacion_id", operacionId);
+      if (consultaError) {
+        setError("Recepción guardada, pero no se pudo comprobar el cierre de todos los viajes: " + consultaError.message);
+      } else {
+        const todosConfirmados = Boolean(confirmaciones?.length) && confirmaciones!.every((item: any) =>
+          item.transportista_entrega_confirmada_at &&
+          item.productor_recepcion_confirmada_at &&
+          item.estado === "ENTREGADO_CONFIRMADO" &&
+          !item.productor_recepcion_observada_at
+        );
+        if (todosConfirmados && onEntregaConfirmada) {
+          const avanzada = await onEntregaConfirmada();
+          setMensaje(avanzada
+            ? "Doble conformidad de todos los viajes confirmada. La operación pasó a Liquidación; la comisión se libera solo si la transferencia ya fue validada."
+            : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
+        } else {
+          setMensaje("Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la operación no avanzó de etapa.");
+        }
+      }
+    }
     await cargar(); setGuardando(false);
   }
 
