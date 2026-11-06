@@ -93,18 +93,32 @@ Deno.serve(async req=>{
     const {data:participant}=await db.from("operacion_participantes").select("id").eq("operacion_id",operationId).eq("empresa_id",companyId).limit(1);
     if(!participant?.length)return json({error:"FORBIDDEN_OPERATION"},403);
 
+    const {data:platformAdmin,error:adminError}=await db.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
+    if(adminError)return json({error:"ADMIN_LOOKUP_FAILED"},500);
+    const {data:memberships,error:membershipError}=await db.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true).eq("rol","administrador");
+    if(membershipError)return json({error:"COMPANY_MEMBERSHIP_LOOKUP_FAILED"},500);
+    const companyIds=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
+    let companyAdmin=companyIds.includes(String(companyId));
+    if(!companyAdmin&&companyIds.length){
+      const {data:maps,error:mapError}=await db.from("company_empresa_map").select("empresa_id").in("company_id",companyIds);
+      if(mapError)return json({error:"COMPANY_MAPPING_LOOKUP_FAILED"},500);
+      companyAdmin=(maps||[]).some((m:any)=>String(m.empresa_id)===String(companyId));
+    }
+    const {data:brokerAuthorization,error:authorizationError}=await db.from("operacion_carta_porte_autorizaciones")
+      .select("id").eq("operacion_id",operationId).eq("corredor_profile_id",user.id).is("revocado_at",null).maybeSingle();
+    if(authorizationError)return json({error:"BROKER_AUTHORIZATION_LOOKUP_FAILED"},500);
+    if(!platformAdmin&&!companyAdmin&&!brokerAuthorization)return json({error:"COMPANY_ADMIN_OR_AUTHORIZED_BROKER_REQUIRED"},403);
+
     const {data:company}=await db.from("empresas").select("id,cuit").eq("id",companyId).maybeSingle();
     if(!company?.cuit)return json({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"},409);
     const {data:cfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cuit_secret_name").eq("company_id",companyId).maybeSingle();
-    const configured=!!cfg?.enabled;
-    const environment=(cfg?.environment||Deno.env.get("ARCA_WSCPE_ENVIRONMENT")||"production")==="production"?"production":"homologacion";
-    const cuit=(cfg?.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||Deno.env.get("ARCA_WSCPE_CUIT")||company.cuit;
-    const cert=envPem(cfg?.cert_secret_name||"ARCA_WSCPE_CERT_PEM","ARCA_WSCPE_CERTIFICATE_BASE64")||envPem("ARCA_CERT_PEM","ARCA_CERTIFICATE_BASE64");
-    const key=envPem(cfg?.private_key_secret_name||"ARCA_WSCPE_PRIVATE_KEY_PEM","ARCA_WSCPE_PRIVATE_KEY_BASE64")||envPem("ARCA_PRIVATE_KEY_PEM","ARCA_PRIVATE_KEY_BASE64");
-    if(!configured && (!Deno.env.get("ARCA_WSCPE_CUIT") && !Deno.env.get("ARCA_CUIT")))return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
+    if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
+    const environment=cfg.environment==="production"?"production":"homologacion";
+    const cuit=(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit;
+    const cert=envPem(cfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"), key=envPem(cfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64");
     if(!cert||!key)return json({error:"ARCA_WSCPE_CREDENTIALS_NOT_CONFIGURED"},409);
 
-    const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg?.punto_venta||Deno.env.get("ARCA_WSCPE_PUNTO_VENTA")||1);
+    const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg.punto_venta);
     if(!Number.isInteger(sucursal)||sucursal<1)throw new Error("WSCPE_INVALID_SUCURSAL");
     const cuitSolicitante=requiredString(b.cuit_solicitante,cuit);
     const tipoGrano=requiredString(b.cod_grano,"COD_GRANO");
