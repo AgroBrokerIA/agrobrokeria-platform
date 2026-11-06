@@ -135,7 +135,7 @@ export default function ControlComercial({
         <div style={{marginTop:12,padding:12,borderRadius:8,background:comisionEstado==="RETENIDA"?"#fef3c7":"#f1f5f9",color:"#334155",fontWeight:700}}>
           {estadoVisual(comisionEstado)} Estado: {comisionEstado}
         </div>
-        <p style={{fontSize:14,color:"#64748b",marginTop:12}}>El comprobante será revisado por AgroBrokerIA. Una vez verificado, el pago queda RETENIDO y no se libera hasta que la operación y el contrato estén cerrados. No se permite marcar el pago como retenido o liberado desde el control de la empresa participante.</p>
+        <p style={{fontSize:14,color:"#64748b",marginTop:12}}>El comprobante será revisado por Administración. Una vez validada la transferencia, la comisión queda RETENIDA hasta que el transportista y el productor confirmen la entrega sin incidencias. No se permite marcar el pago como retenido o liberado desde el control de la empresa participante.</p>
       </div>
 
       {/* =====================================================
