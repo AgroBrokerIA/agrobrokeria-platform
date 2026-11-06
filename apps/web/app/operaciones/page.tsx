@@ -2473,6 +2473,25 @@ Firma: ______________________________
     setError("");
     setMensaje("");
 
+    const { data: viajesConfirmacion, error: errorViajes } = await supabase
+      .from("viajes")
+      .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
+      .eq("operacion_id", operacionId);
+    if (errorViajes) {
+      setError("No se pudo verificar la doble conformidad de los viajes: " + errorViajes.message);
+      return false;
+    }
+    const todosConfirmados = Boolean(viajesConfirmacion?.length) && viajesConfirmacion!.every((viaje: any) =>
+      viaje.transportista_entrega_confirmada_at &&
+      viaje.productor_recepcion_confirmada_at &&
+      viaje.estado === "ENTREGADO_CONFIRMADO" &&
+      !viaje.productor_recepcion_observada_at
+    );
+    if (!todosConfirmados) {
+      setError("La operación no puede avanzar: cada viaje debe tener confirmación del transportista y recepción conforme del productor.");
+      return false;
+    }
+
     const workflow = obtenerWorkflow(operacionId);
 
     if (!workflow) {
