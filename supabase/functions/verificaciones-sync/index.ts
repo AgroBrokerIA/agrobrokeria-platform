@@ -135,9 +135,19 @@ Deno.serve(async(req:Request)=>{
       const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return json({error:"AUTH_REQUIRED"},401);
       const userClient=createClient(url,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
       const {data:{user},error:userError}=await userClient.auth.getUser(token);if(userError||!user)return json({error:"INVALID_SESSION"},401);
-      const {data:profile}=await sb.from("profiles").select("active_company_id,tipo_usuario").eq("id",user.id).maybeSingle();
-      isAdmin=/ADMIN|ADMINISTRADOR|SUPERADMIN/i.test(String(profile?.tipo_usuario||""));
-      if(!isAdmin&&profile?.active_company_id){const {data:maps}=await sb.from("company_empresa_map").select("empresa_id").eq("company_id",profile.active_company_id);ownCompanyIds=(maps||[]).map((m:any)=>String(m.empresa_id));}
+      const {data:platformAdmin,error:adminLookupError}=await sb.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
+      if(adminLookupError)throw adminLookupError;
+      isAdmin=!!platformAdmin;
+
+      const {data:memberships,error:membershipError}=await sb.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true);
+      if(membershipError)throw membershipError;
+      const companyIds=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
+      ownCompanyIds=[...companyIds];
+      if(companyIds.length){
+        const {data:maps,error:mapError}=await sb.from("company_empresa_map").select("empresa_id").in("company_id",companyIds);
+        if(mapError)throw mapError;
+        ownCompanyIds=[...new Set([...ownCompanyIds,...(maps||[]).map((m:any)=>String(m.empresa_id))])];
+      }
       if(!isAdmin&&ownCompanyIds.length===0)return json({error:"COMPANY_OWNERSHIP_NOT_CONFIRMED"},403);
       if(!body?.verification_id)return json({error:"VERIFICATION_ID_REQUIRED"},400);
     }
