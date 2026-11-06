@@ -29,7 +29,7 @@ jobs:
       - name: Apply compatible transitive security fixes
         working-directory: apps/web
         continue-on-error: true
-        run: npm audit fix --package-lock-only --ignore-scripts
+        run: npm audit fix --package-lock-only --ignore-scripts || true
 
       - name: Verify clean locked install
         working-directory: apps/web
@@ -59,6 +59,7 @@ jobs:
             }));
           }
           NODE
+          node -e "const a=require('./npm-audit.json'); const v=a.metadata?.vulnerabilities||{}; if((v.high||0)+(v.critical||0)>0) process.exit(1);"
 
       - name: Commit refreshed lockfile
         shell: bash
@@ -71,4 +72,4 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add apps/web/package-lock.json
           git commit -m "security: refresh dependency lockfile with patched packages"
-          git push
+          git push origin HEAD:${GITHUB_HEAD_REF:-${GITHUB_REF_NAME}}
