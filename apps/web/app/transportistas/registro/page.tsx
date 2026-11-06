@@ -2,6 +2,7 @@
 
 import { useState, type FormEvent, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
+import "./registro.css";
 
 const field: CSSProperties = { width: "100%", height: 44, border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
 
