@@ -79,8 +79,8 @@ export default function RegistroTransportistaPage() {
   }
 
   return (
-    <main style={{ maxWidth: 760, margin: "30px auto", padding: 20, color: "#0f172a" }}>
-      <div style={{ border: "1px solid #dbe3ed", borderRadius: 16, padding: 24, background: "#fff", display: "grid", gap: 16 }}>
+    <main className="transporter-registration-page">
+      <div className="transporter-registration-card">
         <div>
           <div style={{ fontSize: 22, fontWeight: 850 }}>Registro de transportista</div>
           <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.55 }}>Creá tu perfil para recibir asignaciones de viajes y actualizar el seguimiento de tus camiones en AgroBrokerIA.</p>
