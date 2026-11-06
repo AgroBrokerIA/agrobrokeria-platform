@@ -7,6 +7,7 @@ import jsPDF from "jspdf";
 type Copy = {
   id: string;
   rol: "VENDEDOR" | "COMPRADOR";
+  version_contrato: number;
   estado: string;
   nombre_archivo: string;
   storage_path: string;
@@ -70,7 +71,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
       setRoles([...new Set(allowed)]);
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
-        .select("id,rol,estado,nombre_archivo,storage_path,subido_at,observaciones")
+        .select("id,rol,version_contrato,estado,nombre_archivo,storage_path,subido_at,observaciones")
         .eq("contrato_id", contract.id).order("subido_at", { ascending: true });
       if (copyError) throw copyError;
       setCopies((copyRows || []) as Copy[]);
@@ -149,8 +150,32 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
     const { error: rpcError } = await supabase.rpc("revisar_copia_firmada_contrato", {
       p_copia_id: copy.id, p_resultado: result, p_observaciones: observations
     });
-    if (rpcError) setError("No se pudo revisar la copia: " + rpcError.message);
-    else { setMessage(result === "APROBADA" ? "Copia validada por Administración." : "Copia rechazada; la parte deberá cargar una nueva versión."); await load(); }
+    if (rpcError) {
+      setError("No se pudo revisar la copia: " + rpcError.message);
+    } else if (result === "RECHAZADA") {
+      setMessage("Copia rechazada; la parte deberá cargar una nueva versión.");
+      await load();
+    } else {
+      const { data: versionCopies, error: copiesError } = await supabase.from("contrato_copias_firmadas")
+        .select("rol,estado").eq("contrato_id", contractId).eq("version_contrato", copy.version_contrato);
+      if (copiesError) {
+        setMessage("Copia validada. No se pudo comprobar si ambas partes ya completaron la revisión.");
+      } else {
+        const sellerApproved = (versionCopies || []).some((item:any)=>item.rol==="VENDEDOR" && item.estado==="APROBADA");
+        const buyerApproved = (versionCopies || []).some((item:any)=>item.rol==="COMPRADOR" && item.estado==="APROBADA");
+        if (sellerApproved && buyerApproved) {
+          const { data: syncResult, error: syncError } = await supabase.rpc("sincronizar_workflow_firmas_contrato", { p_contrato_id: contractId });
+          setMessage(syncError
+            ? "Las dos copias están aprobadas, pero no se pudo avanzar el workflow: " + syncError.message
+            : syncResult?.avanzada
+              ? "Las dos copias firmadas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega."
+              : "Las dos copias están aprobadas. El workflow verificó las condiciones y permanece pendiente de otro requisito.");
+        } else {
+          setMessage("Copia validada por Administración. Falta aprobar la copia de la otra parte.");
+        }
+      }
+      await load();
+    }
     setReviewing(null);
   }
 
