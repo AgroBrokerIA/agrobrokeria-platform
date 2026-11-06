@@ -8,6 +8,7 @@ type Copy = {
   rol: "VENDEDOR" | "COMPRADOR";
   estado: string;
   nombre_archivo: string;
+  storage_path: string;
   subido_at: string;
   observaciones: string | null;
 };
@@ -64,7 +65,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
       setRoles([...new Set(allowed)]);
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
-        .select("id,rol,estado,nombre_archivo,subido_at,observaciones")
+        .select("id,rol,estado,nombre_archivo,storage_path,subido_at,observaciones")
         .eq("contrato_id", contract.id).order("subido_at", { ascending: true });
       if (copyError) throw copyError;
       setCopies((copyRows || []) as Copy[]);
@@ -110,6 +111,13 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
     } finally { setUploading(null); }
   }
 
+  async function openCopy(copy: Copy) {
+    if (!isAdmin) { setError("Solo Administración puede abrir las copias para revisión."); return; }
+    const { data, error: urlError } = await supabase.storage.from("documentos-operacion").createSignedUrl(copy.storage_path, 300);
+    if (urlError || !data?.signedUrl) { setError(urlError?.message || "No se pudo abrir el PDF."); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
   async function review(copy: Copy, result: "APROBADA" | "RECHAZADA") {
     let observations: string | null = null;
     if (result === "RECHAZADA") {
@@ -149,6 +157,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
           <button type="button" disabled={uploading!==null || !files[role]} onClick={()=>void upload(role)} style={{justifySelf:"start",padding:"9px 13px",border:0,borderRadius:8,background:"#0f766e",color:"#fff",fontWeight:700}}>{uploading===role?"Cargando…":"Cargar copia firmada del "+(role==="VENDEDOR"?"vendedor":"comprador")}</button>
         </div>}
         {roles.includes(role) && copy?.estado==="PENDIENTE" && <p style={{margin:0,fontSize:12,color:"#92400e"}}>Archivo recibido. Esperando revisión de Administración.</p>}
+        {isAdmin && copy && <button type="button" onClick={()=>void openCopy(copy)} style={{justifySelf:"start",padding:"8px 12px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff"}}>Abrir PDF para revisar</button>}
         {isAdmin && copy?.estado==="PENDIENTE" && <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
           <button type="button" disabled={reviewing!==null} onClick={()=>void review(copy,"APROBADA")} style={{padding:"8px 12px",border:0,borderRadius:8,background:"#047857",color:"#fff"}}>{reviewing===copy.id?"Procesando…":"Aprobar copia"}</button>
           <button type="button" disabled={reviewing!==null} onClick={()=>void review(copy,"RECHAZADA")} style={{padding:"8px 12px",border:"1px solid #b91c1c",borderRadius:8,background:"#fff",color:"#b91c1c"}}>Rechazar copia</button>
