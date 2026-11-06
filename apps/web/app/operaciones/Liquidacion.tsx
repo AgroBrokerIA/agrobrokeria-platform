@@ -283,10 +283,8 @@ export default function Liquidacion({
   }
 
   async function confirmar() {
-    if (datos.estado !== "PRELIQUIDADA") {
-      setError(
-        "⚠️ Primero debe guardarse la preliquidación."
-      );
+    if (!["PRELIQUIDADA","CONFIRMADA"].includes(String(datos.estado || "").toUpperCase())) {
+      setError("Primero debe guardarse la preliquidación.");
       return;
     }
 
