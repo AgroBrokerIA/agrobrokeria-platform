@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "../../lib/supabase";
 
 type Viaje = {
@@ -165,6 +165,7 @@ export default function LogisticaEntrega({
   const [esTransportista, setEsTransportista] = useState(false);
   const [esProductor, setEsProductor] = useState(false);
   const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
+  const evidenceCounter = useRef(0);
   const [profileId, setProfileId] = useState("");
   const [evidenciasTransportista, setEvidenciasTransportista] = useState<Record<string, File | null>>({});
   const [evidenciasProductor, setEvidenciasProductor] = useState<Record<string, File | null>>({});
@@ -311,7 +312,7 @@ export default function LogisticaEntrega({
         continue;
       }
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = "cpe/" + operacionId + "/" + viaje.id + "/" + Date.now() + "-" + safeName;
+      const path = "cpe/" + operacionId + "/" + viaje.id + "/" + file.lastModified + "-" + file.size + "-" + (++evidenceCounter.current) + "-" + safeName;
       const upload = await supabase.storage.from("agrobroker-private").upload(path, file, {
         contentType: "application/pdf",
         upsert: false,
@@ -425,7 +426,7 @@ export default function LogisticaEntrega({
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Iniciá sesión nuevamente.");
       const safeName = evidencia.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
-      evidencePath = `${operacionId}/logistica/${viaje.id}/entrega/${auth.user.id}-${Date.now()}-${safeName}`;
+      evidencePath = `${operacionId}/logistica/${viaje.id}/entrega/${auth.user.id}-${evidencia.lastModified}-${evidencia.size}-${++evidenceCounter.current}-${safeName}`;
       const { error: uploadError } = await supabase.storage.from("documentos-operacion")
         .upload(evidencePath,evidencia,{contentType:evidencia.type,upsert:false});
       if (uploadError) throw uploadError;
