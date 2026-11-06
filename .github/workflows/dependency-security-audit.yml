@@ -1,0 +1,52 @@
+name: Dependency Security Audit
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  npm-audit:
+    name: npm dependency audit
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Install locked dependencies
+        working-directory: apps/web
+        run: npm ci --ignore-scripts
+
+      - name: Generate audit report
+        working-directory: apps/web
+        shell: bash
+        run: npm audit --json > npm-audit.json || true
+
+      - name: Print vulnerability details
+        working-directory: apps/web
+        shell: bash
+        run: |
+          node <<'NODE'
+          const report = require('./npm-audit.json');
+          console.log('VULNERABILITY SUMMARY');
+          console.log(JSON.stringify(report.metadata?.vulnerabilities ?? {}, null, 2));
+          for (const [name, item] of Object.entries(report.vulnerabilities ?? {})) {
+            console.log(JSON.stringify({
+              package: name,
+              severity: item.severity,
+              direct: item.isDirect,
+              range: item.range,
+              fixAvailable: item.fixAvailable,
+              via: item.via
+            }));
+          }
+          NODE
