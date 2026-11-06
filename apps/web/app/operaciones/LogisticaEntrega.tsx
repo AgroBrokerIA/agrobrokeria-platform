@@ -17,6 +17,14 @@ type Viaje = {
   kilos_cargados: number | null;
   kilos_entregados: number | null;
   entregado_confirmado_at: string | null;
+  transportista_entrega_confirmada_por?: string | null;
+  transportista_entrega_confirmada_at?: string | null;
+  transportista_kilos_entregados?: number | null;
+  productor_recepcion_confirmada_por?: string | null;
+  productor_recepcion_confirmada_at?: string | null;
+  productor_kilos_recibidos?: number | null;
+  productor_recepcion_observaciones?: string | null;
+  productor_recepcion_observada_at?: string | null;
 };
 
 type Transportista = {
@@ -83,9 +91,12 @@ const estadoLabel = (estado: string) =>
     ARRIBO_DESTINO: "Arribo a destino",
     INICIO_DESCARGA: "Inicio de descarga",
     DESCARGA_FINALIZADA: "Descarga finalizada",
-    ENTREGADO_CONFIRMADO: "Entrega confirmada",
+    ESPERANDO_RECEPCION_PRODUCTOR: "Pendiente de recepción del productor",
+    ENTREGADO_CONFIRMADO: "Recepción confirmada por productor",
     ENTREGA_CONFIRMADA: "Entrega confirmada",
-    OBSERVADO: "Observado",
+    ENTREGA_TRANSPORTISTA_CONFIRMADA: "Entrega confirmada por transportista",
+    RECEPCION_PRODUCTOR_CONFIRMADA: "Recepción confirmada por productor",
+    OBSERVADO: "Incidencia de recepción",
   })[estado] || estado.replaceAll("_", " ");
 
 const fecha = (value?: string | null) =>
@@ -150,6 +161,8 @@ export default function LogisticaEntrega({
   const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
   const [loading, setLoading] = useState(true);
   const [esTransportista, setEsTransportista] = useState(false);
+  const [esProductor, setEsProductor] = useState(false);
+  const [profileId, setProfileId] = useState("");
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -193,8 +206,13 @@ export default function LogisticaEntrega({
     void (async () => {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
-      const { data } = await supabase.from("profiles").select("tipo_usuario").eq("id", auth.user.id).maybeSingle();
+      setProfileId(auth.user.id);
+      const { data } = await supabase.from("profiles").select("tipo_usuario,active_company_id").eq("id", auth.user.id).maybeSingle();
       setEsTransportista(String(data?.tipo_usuario || "").toLowerCase().includes("transportista"));
+      if (data?.active_company_id) {
+        const { data: participant } = await supabase.from("operacion_participantes").select("rol").eq("operacion_id", operacionId).eq("empresa_id", data.active_company_id);
+        setEsProductor((participant || []).some((p: any) => ["vendedor", "productor", "seller"].includes(String(p.rol || "").toLowerCase())));
+      }
     })();
   }, [cargar]);
 
@@ -357,31 +375,50 @@ export default function LogisticaEntrega({
     setGuardando(false);
   }
 
-  async function confirmarEntrega(viaje: Viaje) {
+  async function confirmarEntregaTransportista(viaje: Viaje) {
     const cartaValidada = cartas.find((c) => c.viaje_id === viaje.id && c.estado_verificacion === "VALIDADA");
-    if (!cartaValidada) {
-      setError("Primero debe validarse la Carta de Porte de este camión.");
-      return;
-    }
-    const kilos = window.prompt("Ingresá los kilos efectivamente recibidos y confirmados por el comprador:", String(cartaValidada.kilos_declarados || ""));
+    if (!cartaValidada) { setError("Primero debe validarse la Carta de Porte de este camión."); return; }
+    const kilos = window.prompt("Ingresá los kilos que descargaste y entregaste en destino:", String(cartaValidada.kilos_declarados || ""));
     if (!kilos || !Number.isFinite(Number(kilos)) || Number(kilos) <= 0) return;
-    if (Number(kilos) > Number(cartaValidada.kilos_declarados)) {
-      setError("La cantidad entregada no puede superar los kilos validados en la Carta de Porte.");
+    if (Number(kilos) > Number(cartaValidada.kilos_declarados)) { setError("Los kilos entregados no pueden superar los validados en la Carta de Porte."); return; }
+    if (!window.confirm("¿Confirmás que entregaste " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? El productor deberá confirmar la recepción.")) return;
+    setGuardando(true); setError(""); setMensaje("");
+    const { error: rpcError } = await supabase.rpc("confirmar_entrega_transportista", {
+      p_viaje_id: viaje.id, p_kilos_entregados: Number(kilos),
+      p_observaciones: "Entrega declarada por el transportista."
+    });
+    if (rpcError) setError("No se pudo registrar la entrega del transportista: " + rpcError.message);
+    else setMensaje("Entrega registrada. Queda pendiente la confirmación del productor; no se liberó ninguna comisión.");
+    await cargar(); setGuardando(false);
+  }
+
+  async function confirmarRecepcionProductor(viaje: Viaje, aceptar: boolean) {
+    const kilosReferencia = Number(viaje.transportista_kilos_entregados || 0);
+    const kilos = window.prompt(
+      aceptar ? "Confirmá los kilos efectivamente recibidos:" : "Ingresá los kilos que recibiste para registrar la diferencia:",
+      String(kilosReferencia || "")
+    );
+    if (!kilos || !Number.isFinite(Number(kilos)) || Number(kilos) <= 0) return;
+    let observaciones = "";
+    if (!aceptar) {
+      observaciones = window.prompt("Describí la diferencia, faltante, daño o motivo de observación:") || "";
+      if (!observaciones.trim()) { setError("Para reportar una incidencia es obligatorio describirla."); return; }
+    }
+    if (aceptar && Number(kilos) !== kilosReferencia) {
+      setError("Los kilos recibidos no coinciden con los informados por el transportista. Usá «Reportar diferencia o incidencia» para dejar constancia y mantener la operación bloqueada.");
       return;
     }
-    if (!window.confirm("¿Confirmás que el comprador recibió " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? Se liberará automáticamente USD " + (Number(kilos) / 1000).toLocaleString("es-AR") + " de comisión AgroBrokerIA.")) return;
-    setGuardando(true);
-    const { data, error: rpcError } = await supabase.rpc("confirmar_entrega_viaje_y_liberar_comision", {
-      p_viaje_id: viaje.id,
-      p_kilos_entregados: Number(kilos),
+    if (aceptar && !window.confirm("¿Confirmás la recepción conforme de " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? La comisión seguirá sujeta a conciliación y cierre.")) return;
+    setGuardando(true); setError(""); setMensaje("");
+    const { error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
+      p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
+      p_confirmar: aceptar, p_observaciones: observaciones || null
     });
-    if (rpcError) setError("No se pudo confirmar la entrega: " + rpcError.message);
-    else {
-      setMensaje("Entrega confirmada. Comisión liberada: USD " + Number(data?.comision_liberada || 0).toLocaleString("es-AR") + ".");
-      if (onEntregaConfirmada) await onEntregaConfirmada();
-    }
-    await cargar();
-    setGuardando(false);
+    if (rpcError) setError("No se pudo registrar la recepción: " + rpcError.message);
+    else setMensaje(aceptar
+      ? "Recepción confirmada por el productor. La comisión permanece retenida hasta la conciliación y el cierre."
+      : "Incidencia registrada. La operación y la comisión permanecen bloqueadas hasta su resolución.");
+    await cargar(); setGuardando(false);
   }
 
   if (loading) return <div style={{ padding: 18, color: "#64748b" }}>Cargando viajes, cartas de porte y seguimiento…</div>;
@@ -534,18 +571,26 @@ export default function LogisticaEntrega({
               )}
             </div>
 
-            {viaje.estado !== "ENTREGADO_CONFIRMADO" ? (
-              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "flex", justifyContent: "space-between", gap: 10, alignItems: "center", flexWrap: "wrap" }}>
-                <div style={{ fontSize: 12, color: "#64748b" }}>La comisión se libera únicamente después de validar la CPE, finalizar la descarga y confirmar la recepción el comprador.</div>
-                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA") || !eventosViaje.some((e) => e.estado === "DESCARGA_FINALIZADA")} onClick={() => void confirmarEntrega(viaje)}>Confirmar entrega y liberar comisión</button>
+            <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "grid", gap: 10 }}>
+              <div style={{ fontSize: 12, color: "#64748b" }}>
+                Transportista: {viaje.transportista_entrega_confirmada_at ? "confirmado el " + fecha(viaje.transportista_entrega_confirmada_at) : "pendiente"} · Productor: {viaje.productor_recepcion_confirmada_at ? "recepción confirmada el " + fecha(viaje.productor_recepcion_confirmada_at) : viaje.productor_recepcion_observada_at ? "incidencia registrada" : "pendiente"}.
+                La comisión no se libera con estas confirmaciones: queda sujeta a conciliación y cierre.
               </div>
-            ) : (
-              <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, background: "#f0fdf4", borderRadius: 9, padding: 12 }}>
-                <div style={{ fontWeight: 850, color: "#166534", fontSize: 13 }}>Entrega confirmada · {viaje.kilos_entregados ? (Number(viaje.kilos_entregados) / 1000).toLocaleString("es-AR") + " TN" : ""}</div>
-                <div style={{ color: "#166534", fontSize: 12, marginTop: 3 }}>Comisión AgroBrokerIA liberada: USD {Number(comisionViaje?.importe_liberado || 0).toLocaleString("es-AR")}.</div>
-                <div style={{ color: "#64748b", fontSize: 11, marginTop: 3 }}>Confirmado: {fecha(viaje.entregado_confirmado_at)}</div>
-              </div>
-            )}
+              {esTransportista && viaje.transportista_profile_id === profileId && !viaje.transportista_entrega_confirmada_at && viaje.estado !== "OBSERVADO" && (
+                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA") || !eventosViaje.some((e) => e.estado === "DESCARGA_FINALIZADA")} onClick={() => void confirmarEntregaTransportista(viaje)}>
+                  Confirmar mercadería entregada
+                </button>
+              )}
+              {esProductor && viaje.transportista_entrega_confirmada_at && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
+                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+                  <button type="button" style={primary} disabled={guardando} onClick={() => void confirmarRecepcionProductor(viaje, true)}>Confirmar recepción conforme</button>
+                  <button type="button" style={secondary} disabled={guardando} onClick={() => void confirmarRecepcionProductor(viaje, false)}>Reportar diferencia o incidencia</button>
+                </div>
+              )}
+              {viaje.productor_recepcion_observaciones && <div style={{ color: "#b45309", fontSize: 12 }}>Observación del productor: {viaje.productor_recepcion_observaciones}</div>}
+              {viaje.productor_recepcion_confirmada_at && <div style={{ color: "#166534", fontSize: 12, fontWeight: 800 }}>Doble confirmación completa · {Number(viaje.productor_kilos_recibidos || 0).toLocaleString("es-AR")} kg · {fecha(viaje.productor_recepcion_confirmada_at)}</div>}
+              {viaje.estado === "OBSERVADO" && <div style={{ color: "#b45309", fontSize: 12, fontWeight: 800 }}>Operación observada: requiere resolución administrativa antes de continuar.</div>}
+            </div>
           </section>
         );
       })}
