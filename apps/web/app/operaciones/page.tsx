@@ -2798,7 +2798,7 @@ Firma: ______________________________
             </section>
             {ordenDetalle === 6 && <section style={{marginTop:18,padding:16,border:"1px solid #bfdbfe",borderRadius:12,background:"#eff6ff"}}>
               <h3 style={{marginTop:0}}>Firmas del contrato definitivo</h3>
-              <FirmasContratoOperacion operacionId={detalleOperacion.id} />
+              <FirmasContratoOperacion operacionId={detalleOperacion.id} onWorkflowAdvanced={cargarOperaciones} />
             </section>}
             {ordenDetalle === 7 && <section style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
               <h3 style={{marginTop:0}}>Logística y entrega de esta operación</h3>
