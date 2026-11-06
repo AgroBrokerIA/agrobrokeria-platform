@@ -219,7 +219,7 @@ export default function LogisticaEntrega({
       setEsTransportista(String(data?.tipo_usuario || "").toLowerCase().includes("transportista"));
       if (data?.active_company_id) {
         const { data: mappedCompanies } = await supabase.from("company_empresa_map")
-          .select("empresa_id").eq("company_id", data.active_company_id);
+          .select("empresa_id").eq("company_id", data.active_company_id).eq("verified", true);
         const empresaIds = [...new Set([data.active_company_id, ...(mappedCompanies || []).map((item: any) => item.empresa_id)])];
         const { data: participant } = await supabase.from("operacion_participantes")
           .select("rol").eq("operacion_id", operacionId).in("empresa_id", empresaIds);
