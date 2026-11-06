@@ -472,7 +472,7 @@ export default function LogisticaEntrega({
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Iniciá sesión nuevamente.");
       const safeName = evidencia.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
-      evidencePath = `${operacionId}/logistica/${viaje.id}/recepcion/${auth.user.id}-${Date.now()}-${safeName}`;
+      evidencePath = `${operacionId}/logistica/${viaje.id}/recepcion/${auth.user.id}-${evidencia.lastModified}-${evidencia.size}-${++evidenceCounter.current}-${safeName}`;
       const { error: uploadError } = await supabase.storage.from("documentos-operacion")
         .upload(evidencePath,evidencia,{contentType:evidencia.type,upsert:false});
       if (uploadError) throw uploadError;
