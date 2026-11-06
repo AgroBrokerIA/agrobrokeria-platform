@@ -67,7 +67,7 @@ export default function ComisionesPage(){
   return list;
  },[rows,tab,estado,pago,producto,intermediario,fromDate,toDate,minVol,maxVol,minRate,maxRate,opMap]);
  const totals=useMemo(()=>({total:filtered.reduce((a,x)=>a+n(x.total),0),pending:filtered.reduce((a,x)=>a+n(x.saldo_pendiente),0),paid:filtered.reduce((a,x)=>a+n(x.saldo_pagado),0),intermediaries:new Set(filtered.map(x=>x.empresa_id||x.profile_id).filter(Boolean)).size}),[filtered]);
- const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario??0,[rows]);
+ const fixed=useMemo(()=>rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.valor_unitario??1,[rows]);
  const statusCounts=useMemo(()=>({paid:filtered.filter(x=>String(x.estado).toUpperCase()==="ABONADA").length,pending:filtered.filter(x=>["PENDIENTE","A_PAGAR"].includes(String(x.estado).toUpperCase())).length,process:filtered.filter(x=>!["ABONADA","PENDIENTE","A_PAGAR","ANULADA"].includes(String(x.estado).toUpperCase())).length,cancelled:filtered.filter(x=>String(x.estado).toUpperCase()==="ANULADA").length}),[filtered]);
  const productSummary=useMemo(()=>Object.entries(filtered.reduce<Record<string,number>>((a,x)=>{const k=x.concepto||"Sin producto";a[k]=(a[k]||0)+n(x.total);return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,6),[filtered]);
  async function pay(){
@@ -78,14 +78,15 @@ export default function ComisionesPage(){
  function clearFilters(){setEstado("");setPago("");setProducto("");setIntermediario("");setMonedaFiltro("");setFromDate("");setToDate("");setMinVol("");setMaxVol("");setMinRate("");setMaxRate("")}
  const tabs=[["TODAS","Todas las comisiones"],["PENDIENTES","Pendientes de pago"],["RETENIDAS","Retenidas"],["PAGADAS","Pagadas"],["INTERMEDIARIO","Por intermediario"],["OPERACION","Por operación"],["PRODUCTO","Por producto"],["HISTORICO","Histórico"]];
  return <main className="commission-reference">
-  <header className="commission-ref-head"><div><h1>Comisiones</h1><p>Gestiona las comisiones de tus operaciones, intermediarios y pagos</p></div><div className="commission-ref-actions"><Link href="/configuracion" className="commission-action-link">⚙ Configuración de comisiones</Link><button onClick={()=>{setTab("PENDIENTES");document.getElementById("commission-table")?.scrollIntoView({behavior:"smooth"})}}>▣ Liquidar comisiones</button><Link href="/operaciones" className="commission-ref-new">↗ Ver operaciones</Link></div></header>
+  <header className="commission-ref-head"><div><h1>Comisiones</h1><p>Comisión por Servicio Tecnológico de Intermediación y Corretaje Digital. Seguimiento de importes, liquidaciones y conciliación por operación.</p></div><div className="commission-ref-actions"><Link href="/configuracion" className="commission-action-link">⚙ Configuración de comisiones</Link><button onClick={()=>{setTab("PENDIENTES");document.getElementById("commission-table")?.scrollIntoView({behavior:"smooth"})}}>▣ Liquidar comisiones</button><Link href="/operaciones" className="commission-ref-new">↗ Ver operaciones</Link></div></header>
+  <aside className="commission-legal-note" style={{margin:"0 0 18px",padding:"14px 16px",border:"1px solid #d7e2e8",borderRadius:12,background:"#f8fafb"}}><strong>Transparencia, bancarización y respaldo fiscal</strong><p style={{margin:"6px 0 0"}}>La comisión automática de AgroBrokerIA corresponde al servicio tecnológico de intermediación y se fija en USD 1 por tonelada contractual. El importe se retiene después de verificar la transferencia y se libera únicamente al cierre de la liquidación contractual, no por cada camión entregado. Las comisiones de intermediarios se registran por separado y se acuerdan manualmente. Los pagos se realizan mediante transferencia bancaria desde una cuenta de titularidad de la parte obligada y se concilian contra su comprobante; no se realizan débitos automáticos ni se admiten pagos informales en efectivo o a cuentas de terceros. La factura electrónica solo se considera emitida cuando existe un comprobante fiscal válido registrado.</p></aside>
   {error&&<div className="commission-ref-alert">{error}</div>}
   <section className="commission-ref-kpis">
    <Kpi icon="▤" value={money(totals.total)} label="Comisiones totales" trend="Datos registrados" tone="green"/>
    <Kpi icon="◷" value={money(totals.pending)} label="Pendientes de pago" trend={`${filtered.filter(x=>n(x.saldo_pendiente)>0).length} registros`} tone="blue"/>
    <Kpi icon="✓" value={money(totals.paid)} label="Pagadas" trend={`${statusCounts.paid} registros abonados`} tone="purple"/>
    <Kpi icon="♟" value={String(totals.intermediaries)} label="Intermediarios con comisión" trend="Según registros" tone="yellow"/>
-   <Kpi icon="▥" value={fixed?money(fixed,monedas[rows.find(r=>r.origen_comision==="AGROBROKER_IA")?.moneda_id||0]||""):"No registrada"} label="Comisión AgroBrokerIA" trend={fixed?"Valor registrado por TN":"Sin comisión automática registrada"} tone="red"/>
+   <Kpi icon="▥" value={money(fixed,"USD")} label="Comisión AgroBrokerIA" trend="Tarifa automática fija por tonelada" tone="red"/>
   </section>
   <nav className="commission-ref-tabs">{tabs.map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
   <section className="commission-ref-layout">

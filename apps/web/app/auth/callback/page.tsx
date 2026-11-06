@@ -61,6 +61,8 @@ export default function AuthCallbackPage() {
   }, [router]);
 
   async function finalizarAcceso(userId:string) {
+      const { error: auditError } = await supabase.rpc("registrar_evento_acceso");
+      if (auditError) console.warn("No se pudo registrar el evento de acceso", auditError.message);
       const [{ data: legal, error: legalError }, { data: accepted, error: acceptedError }] =
         await Promise.all([
           supabase

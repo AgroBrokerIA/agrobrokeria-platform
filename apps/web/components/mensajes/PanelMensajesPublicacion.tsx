@@ -1,4 +1,5 @@
 "use client";
+import Link from "next/link";
 import { containsContactData, redactContactData } from "@/lib/mensajes/privacy";
 import {useCallback,useEffect,useRef,useState} from "react";
 import {supabase} from "@/lib/supabase/client";
@@ -108,7 +109,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
      <button type="button" disabled={accionando} onClick={()=>void responder(p.id,"RECHAZAR")} style={{border:0,borderRadius:7,padding:"8px 12px",background:"#b91c1c",color:"#fff",fontWeight:700}}>Rechazar</button>
      <button type="button" disabled={accionando} onClick={()=>{setPrecio(String(p.precio_tn));setCantidad(String(p.cantidad_tn));setMonedaId(p.moneda_id?String(p.moneda_id):"");setContraoferta(true);setMostrarOferta(true);}} style={{border:"1px solid #0f766e",borderRadius:7,padding:"8px 12px",background:"#fff",color:"#0f766e",fontWeight:700}}>Contraofertar</button>
     </div>}
-    {p.estado==="ACEPTADA"&&p.operacion_id&&<a href="/operaciones" style={{display:"inline-block",marginTop:9,color:"#047857",fontWeight:700}}>Ver operación creada →</a>}
+    {p.estado==="ACEPTADA"&&p.operacion_id&&<Link href="/operaciones" style={{display:"inline-block",marginTop:9,color:"#047857",fontWeight:700}}>Ver operación creada →</Link>}
    </div>)}
    {mostrarOferta&&<div style={{marginTop:12,padding:12,border:"1px solid #86b7a1",borderRadius:10,background:"#fff"}}>
     <strong>{contraoferta?"Enviar contraoferta":"Nueva oferta comercial"}</strong>

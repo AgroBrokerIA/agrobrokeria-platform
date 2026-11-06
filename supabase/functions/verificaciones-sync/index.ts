@@ -20,11 +20,11 @@ function getPem(key:string):string {
 }
 function createTRA():string {
   const now=new Date(), expires=new Date(now.getTime()+10*60*1000);
-  const dest=environment()==="PRODUCCION"?"cn=wsaa,o=afip,c=ar,serialNumber=CUIT 33693450239":"cn=wsaahomo,o=afip,c=ar,serialNumber=CUIT 33693450239";
+  // WSAA source/destination are optional; omit them to avoid stale DN values.
   const cuit=Deno.env.get("ARCA_CUIT")||"";
   if(!/^\d{11}$/.test(cuit))throw new Error("ARCA_CUIT_NO_CONFIGURADO");
   return `<?xml version="1.0" encoding="UTF-8"?>
-<loginTicketRequest version="1.0"><header><destination>${escapeXml(dest)}</destination><uniqueId>${Math.floor(Date.now()/1000)%4294967295}</uniqueId><generationTime>${now.toISOString()}</generationTime><expirationTime>${expires.toISOString()}</expirationTime></header><service>${PADRON_SERVICE}</service></loginTicketRequest>`;
+<loginTicketRequest version="1.0"><header><uniqueId>${Math.floor(Date.now()/1000)%4294967295}</uniqueId><generationTime>${now.toISOString()}</generationTime><expirationTime>${expires.toISOString()}</expirationTime></header><service>${PADRON_SERVICE}</service></loginTicketRequest>`;
 }
 function signTRA(tra:string,certPem:string,keyPem:string):string {
   const cert=forge.pki.certificateFromPem(certPem),key=forge.pki.privateKeyFromPem(keyPem);
@@ -39,7 +39,7 @@ function signTRA(tra:string,certPem:string,keyPem:string):string {
 }
 async function obtainTicket(cert:string,key:string) {
   const prod=environment()==="PRODUCCION";
-  const wsaa=prod?"https://wsaa.afip.gov.ar/ws/services/LoginCms":"https://wsaahomo.afip.gov.ar/ws/services/LoginCms";
+  const wsaa=prod?"https://wsaa.arca.gov.ar/ws/services/LoginCms":"https://wsaa.homo.arca.gov.ar/ws/services/LoginCms";
   const cms=signTRA(createTRA(),cert,key);
   const envelope=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>${cms}</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>`;
@@ -68,8 +68,8 @@ async function queryOfficialPadron(cuit:string,verificationId:string,actorToken:
   }
   const ticket=await obtainTicket(cert,key);
   const endpoint=environment()==="PRODUCCION"
-    ?"https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.arca.gov.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.arca.gov.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="${SOAP_NS}"><soapenv:Header/><soapenv:Body><a5:getPersona_v2><token>${escapeXml(ticket.token)}</token><sign>${escapeXml(ticket.sign)}</sign><cuitRepresentada>${escapeXml(Deno.env.get("ARCA_CUIT")||"")}</cuitRepresentada><idPersona>${cuit}</idPersona></a5:getPersona_v2></soapenv:Body></soapenv:Envelope>`;
   const response=await fetch(endpoint,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8",accept:"text/xml"},body:soap,signal:AbortSignal.timeout(25000)});
@@ -135,9 +135,19 @@ Deno.serve(async(req:Request)=>{
       const token=authorization.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return json({error:"AUTH_REQUIRED"},401);
       const userClient=createClient(url,anonKey,{global:{headers:{Authorization:`Bearer ${token}`}}});
       const {data:{user},error:userError}=await userClient.auth.getUser(token);if(userError||!user)return json({error:"INVALID_SESSION"},401);
-      const {data:profile}=await sb.from("profiles").select("active_company_id,tipo_usuario").eq("id",user.id).maybeSingle();
-      isAdmin=/ADMIN|ADMINISTRADOR|SUPERADMIN/i.test(String(profile?.tipo_usuario||""));
-      if(!isAdmin&&profile?.active_company_id){const {data:maps}=await sb.from("company_empresa_map").select("empresa_id").eq("company_id",profile.active_company_id);ownCompanyIds=(maps||[]).map((m:any)=>String(m.empresa_id));}
+      const {data:platformAdmin,error:adminLookupError}=await sb.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
+      if(adminLookupError)throw adminLookupError;
+      isAdmin=!!platformAdmin;
+
+      const {data:memberships,error:membershipError}=await sb.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true).eq("rol","administrador");
+      if(membershipError)throw membershipError;
+      const companyIds=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
+      ownCompanyIds=[...companyIds];
+      if(companyIds.length){
+        const {data:maps,error:mapError}=await sb.from("company_empresa_map").select("empresa_id").in("company_id",companyIds);
+        if(mapError)throw mapError;
+        ownCompanyIds=[...new Set([...ownCompanyIds,...(maps||[]).map((m:any)=>String(m.empresa_id))])];
+      }
       if(!isAdmin&&ownCompanyIds.length===0)return json({error:"COMPANY_OWNERSHIP_NOT_CONFIRMED"},403);
       if(!body?.verification_id)return json({error:"VERIFICATION_ID_REQUIRED"},400);
     }

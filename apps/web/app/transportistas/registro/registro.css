@@ -1,0 +1,23 @@
+.transporter-registration-page{width:100%;max-width:1120px!important;margin:0 auto;padding:34px clamp(14px,3vw,38px) 64px!important;min-height:calc(100vh - 72px);background:#f4f7f6}
+.transporter-registration-card{width:100%;max-width:900px;margin:0 auto;padding:30px 34px;background:#fff;border:1px solid #e0e9e5;border-radius:18px;box-shadow:0 12px 34px rgba(16,45,35,.07);display:grid;gap:22px}
+.transporter-registration-card>div:first-child{padding-bottom:17px;border-bottom:1px solid #edf2ef}
+.transporter-registration-card>div:first-child>div{display:flex;align-items:center;gap:11px;color:#123b2b;font-size:25px!important;line-height:1.2;letter-spacing:-.55px}
+.transporter-registration-card>div:first-child>div:before{content:"🚚";display:grid;place-items:center;width:42px;height:42px;flex:0 0 42px;border-radius:12px;background:#e8f6ed;font-size:21px}
+.transporter-registration-card>div:first-child p{margin:8px 0 0!important;max-width:690px;font-size:13px!important;line-height:1.65!important;color:#64766d!important}
+.transporter-registration-card form{gap:17px!important}
+.transporter-registration-card form>label,.transporter-registration-card form>div:not([role=alert]){min-width:0}
+.transporter-registration-card form label{color:#234336;font-size:12px!important;line-height:1.45}
+.transporter-registration-card form input:not([type=file]){width:100%;height:44px!important;border:1px solid #d5e1da!important;border-radius:9px!important;padding:10px 12px!important;background:#fff!important;color:#173629!important;font-size:13px!important;outline:none;transition:border-color .15s,box-shadow .15s}
+.transporter-registration-card form input:focus{border-color:#15945a!important;box-shadow:0 0 0 3px rgba(21,148,90,.12)}
+.transporter-registration-card form>div[style*="grid-template-columns"]{gap:14px!important}
+.transporter-registration-card form label:has(input[type=file]){padding:15px 16px;border:1px solid #e1ebe5;border-radius:12px;background:#fbfdfb;gap:9px!important}
+.transporter-registration-card form input[type=file]{display:block;width:100%;min-width:0;box-sizing:border-box;padding:11px;border:1px dashed #b9cec0;border-radius:9px;background:#fff;color:#52695c;font-size:12px;cursor:pointer}
+.transporter-registration-card form input[type=file]::file-selector-button{margin-right:12px;padding:8px 11px;border:0;border-radius:7px;background:#e8f5ed;color:#12633e;font-size:11px;font-weight:800;cursor:pointer}
+.transporter-registration-card form label span{font-size:11px!important;line-height:1.5;color:#708278!important}
+.transporter-registration-card form>div[style*="background: rgb(248, 250, 252)"]{padding:14px 16px!important;border:1px solid #dcebe1;background:#f3faf5!important;border-radius:11px!important;color:#486254!important;font-size:12px!important;line-height:1.6!important}
+.transporter-registration-card form button[type=submit]{height:48px!important;border-radius:10px!important;background:#078d58!important;box-shadow:0 7px 16px rgba(7,141,88,.16);font-size:13px!important;transition:transform .15s,background .15s}
+.transporter-registration-card form button[type=submit]:hover{background:#06764b!important;transform:translateY(-1px)}
+.transporter-registration-card form button[type=submit]:disabled{opacity:.65;cursor:wait;transform:none}
+.transporter-registration-card [role=alert]{padding:12px 14px;border:1px solid #fecaca;border-radius:9px;background:#fff5f5;color:#a52828!important;line-height:1.5}
+.transporter-registration-card [role=status]{padding:18px!important;border-radius:12px!important;font-size:13px;line-height:1.6}
+@media(max-width:700px){.transporter-registration-page{padding:18px 12px 36px!important}.transporter-registration-card{padding:20px 16px;border-radius:14px;gap:18px}.transporter-registration-card>div:first-child>div{font-size:21px!important}.transporter-registration-card form>div[style*="grid-template-columns"]{grid-template-columns:minmax(0,1fr)!important}.transporter-registration-card form{gap:14px!important}}

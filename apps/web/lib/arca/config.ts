@@ -24,8 +24,8 @@ export const arcaConfig = {
   privateKeyBase64: process.env.ARCA_PRIVATE_KEY_BASE64 ?? null,
 
   wsaaUrl: isProduction
-    ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
-    : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+    ? "https://wsaa.arca.gov.ar/ws/services/LoginCms"
+    : "https://wsaa.homo.arca.gov.ar/ws/services/LoginCms",
 
   wscpeUrl: isProduction
     ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"

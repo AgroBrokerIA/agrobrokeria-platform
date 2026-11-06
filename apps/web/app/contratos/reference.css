@@ -70,3 +70,66 @@
 .signature-review-actions button{min-height:35px;border-radius:8px}
 .contract-builder-alert.error{border:1px solid #fecaca;background:#fff5f5;color:#a52828;border-radius:10px;padding:11px 14px;font-size:12px;line-height:1.5;overflow-wrap:anywhere}
 @media(max-width:760px){.signature-workflow{padding:15px}.signature-upload-card{min-height:0}.signature-upload-card p{min-height:0}}
+
+
+/* Ajuste de composición: selección F1 legible y vista previa amplia */
+.contract-builder-reference{padding:24px clamp(16px,2.4vw,34px) 48px;background:#f4f7f6;color:#153047}
+.contract-builder-head{align-items:center;gap:24px;margin-bottom:18px}
+.contract-builder-head>div:first-child{min-width:0;max-width:920px}
+.contract-builder-head h1{font-size:clamp(27px,2.3vw,34px);line-height:1.15;letter-spacing:-.8px;color:#12334b}
+.contract-builder-head p{max-width:880px;font-size:13px;line-height:1.65;color:#607487;margin-top:8px}
+.contract-builder-actions{flex-shrink:0;gap:8px}
+.contract-builder-actions button{font-size:12px;padding:10px 12px}
+.contract-builder-actions .contract-new{padding:12px 17px;border-radius:9px}
+.contract-builder-tabs{width:100%;max-width:100%;flex-wrap:wrap;gap:4px;margin:0 0 16px;padding:5px}
+.contract-builder-tabs button{font-size:11px;padding:10px 14px}
+.contract-builder-grid{grid-template-columns:minmax(340px,.92fr) minmax(0,1.18fr);gap:18px;align-items:start}
+.contract-builder-form,.contract-preview-card,.contract-list-panel,.contract-info-panel{border-radius:14px;box-shadow:0 8px 24px rgba(16,45,62,.055)}
+.contract-builder-form{padding:20px}
+.contract-builder-form>h2{font-size:15px;line-height:1.35;margin:0 0 12px;color:#173c55}
+.contract-type-picks{grid-template-columns:minmax(0,1fr);gap:10px;margin-bottom:18px}
+.contract-template-single{min-width:0;border:1px solid #dbe7e9;border-radius:12px;background:#f8fbfa;padding:15px 16px;display:grid;gap:8px;color:#24465b}
+.contract-template-single>b{font-size:15px;line-height:1.35;color:#0d6747}
+.contract-template-single>span{font-size:12px;line-height:1.65;color:#526b7b}
+.contract-template-single>a{font-size:12px;line-height:1.5;color:#087b56;font-weight:750;text-decoration:none;overflow-wrap:anywhere}
+.contract-template-single>a:hover{text-decoration:underline}
+.contract-type-picks button{width:100%;min-width:0;min-height:66px;padding:12px 15px;gap:12px}
+.contract-type-picks button>b{flex:0 0 36px;width:36px;height:36px}
+.contract-type-picks button>span{min-width:0}
+.contract-type-picks strong{font-size:14px}
+.contract-type-picks small{font-size:11px;line-height:1.4}
+.contract-commodity-picks{grid-template-columns:repeat(4,minmax(0,1fr));gap:8px}
+.contract-commodity-picks button{min-width:0;min-height:68px;padding:8px 5px}
+.contract-commodity-picks span{font-size:10px;line-height:1.3;overflow-wrap:anywhere}
+.contract-builder-section-title{margin-top:18px}
+.contract-builder-section-title h2{font-size:15px}
+.contract-builder-section-title span{font-size:10px}
+.contract-builder-fields{gap:12px}
+.contract-builder-fields label,.contract-builder-observation{font-size:11px;line-height:1.4;gap:6px}
+.contract-builder-fields input,.contract-builder-fields select,.contract-builder-observation textarea{height:40px;padding:9px 10px;font-size:12px;border-radius:8px}
+.contract-builder-fields label small{font-size:10px;line-height:1.4;color:#738596}
+.contract-builder-observation textarea{height:82px;min-height:82px}
+.contract-generate{font-size:12px;padding:12px;border-radius:9px}
+.contract-output-actions{gap:7px}
+.contract-output-actions button{font-size:10px;padding:9px 5px;border-radius:8px}
+.contract-previews{display:grid;grid-template-columns:minmax(0,1fr);gap:14px;min-width:0}
+.contract-preview-card{min-width:0;padding:22px;background:#fff;border:1px solid #d8e5e8;overflow:hidden}
+.contract-preview-card .paper-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 0 14px;border-bottom:1px solid #e5edf0;color:#0e5e45}
+.contract-preview-card .paper-header span{font-size:11px;font-weight:850;letter-spacing:.45px}
+.contract-preview-card .paper-header b{display:inline-grid;place-items:center;min-width:38px;min-height:30px;padding:4px 9px;border-radius:7px;background:#e8f7ef;color:#087a50;font-size:13px}
+.contract-preview-card h3{margin:20px 0 10px;color:#173c55;font-size:19px;line-height:1.35;letter-spacing:-.3px}
+.contract-preview-card>p{font-size:12px!important;line-height:1.6;margin:7px 0}
+.contract-preview-card .paper-clauses{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:0 18px;margin:18px 0}
+.contract-preview-card .paper-clause{display:grid;grid-template-columns:minmax(90px,.7fr) minmax(0,1.3fr);gap:8px;padding:10px 0;margin:0;border-bottom:1px solid #edf1f3;font-size:11px;line-height:1.45;min-width:0}
+.contract-preview-card .paper-clause b{font-size:11px;color:#456174}
+.contract-preview-card .paper-clause span{font-size:11px;color:#19384e;overflow-wrap:anywhere}
+.contract-preview-card .paper-signatures{display:grid;grid-template-columns:1fr;gap:0;margin:18px 0 0;padding:13px 15px;border:1px solid #e1ece7;border-radius:10px;background:#f7fbf9}
+.contract-preview-card .paper-signatures p{margin:0;padding:7px 0;color:#536b7a;font-size:11px;line-height:1.55;border-bottom:1px solid #e4eeea}
+.contract-preview-card .paper-signatures p:last-child{border-bottom:0}
+.contract-preview-card>button{width:100%;margin-top:16px;border:0;border-radius:9px;background:#078d5b;color:#fff;padding:12px 16px;font-size:12px;font-weight:850;cursor:pointer}
+.contract-preview-card>button:hover{background:#06754d}
+.contract-language-bar{margin-top:18px;padding:12px;border-radius:10px}
+.contract-language-bar span{font-size:11px}
+.contract-language-bar button{font-size:10px;padding:7px 9px;border-radius:7px}
+@media(max-width:1150px){.contract-builder-grid{grid-template-columns:minmax(0,1fr)}.contract-previews{grid-template-columns:minmax(0,1fr)}.contract-builder-head{align-items:flex-start;flex-direction:column}.contract-builder-actions{width:100%;flex-wrap:wrap}}
+@media(max-width:700px){.contract-builder-reference{padding:18px 12px 32px}.contract-builder-tabs{overflow:visible}.contract-builder-tabs button{flex:1 1 auto}.contract-builder-form{padding:15px}.contract-builder-fields{grid-template-columns:1fr}.contract-commodity-picks{grid-template-columns:repeat(2,minmax(0,1fr))}.contract-preview-card{padding:15px}.contract-preview-card .paper-clauses{grid-template-columns:1fr}.contract-preview-card .paper-clause{grid-template-columns:minmax(95px,.75fr) minmax(0,1.25fr)}.contract-output-actions{grid-template-columns:1fr 1fr}}

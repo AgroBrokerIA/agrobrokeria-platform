@@ -26,101 +26,52 @@ function drawWrapped(pdf:jsPDF,text:string,x:number,y:number,maxWidth:number,fon
  pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);const lines=pdf.splitTextToSize(text,maxWidth);pdf.text(lines,x,y);return y+lines.length*lineGap;
 }
 
-function buildPdfWithoutIntermediary(f:FormState){
- const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- const W=pdf.internal.pageSize.getWidth();const m=42;const blue=[35,68,110] as const;
- const field=(v:string)=>v||"_______________________________";
- const wrap=(t:string,x:number,y:number,w:number,size=9,gap=11)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const ls=pdf.splitTextToSize(t,w);pdf.text(ls,x,y);return y+ls.length*gap};
- const title=(t:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);pdf.text(t,W/2,42,{align:"center"});};
- title("CONTRATO DE COMPRAVENTA DE GRANOS · MODELO F1");
- pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento un contrato formal de compraventa de granos F1, celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
- let y=98;
- pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
- y=wrap("EL VENDEDOR: "+field(f.vendedor)+" con CUIT/RUT/RUC __________________ y domicilio en ______________________________.",m,y,W-2*m);
- y=wrap("EL COMPRADOR: "+field(f.comprador)+" con CUIT/RUT/RUC __________________ y domicilio en ______________________________.",m,y+4,W-2*m);
- y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("2. CONDICIONES PARTICULARES",m,y);y+=16;
- const rows=[
-  ["Grano / Producto",field(f.producto)],["Cosecha / Campaña",field(f.campania)],
-  ["Tipo de operación",f.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],
-  ["Cantidad",f.cantidad?money(f.cantidad)+" Toneladas Métricas (Tolerancia: +/- 5%)":"________________ Toneladas Métricas"],
-  ["Precio Pactado",f.precio?"USD "+money(f.precio)+" por Tonelada Métrica":"________________ por Tonelada Métrica"],
-  ["Base de Entrega",f.condicion||"________________"],["Procedencia",field(f.procedencia)],
-  ["Destino / Entrega",f.puerto||"________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"],
-  ["Forma de Pago",f.pago||"________________"],["Observaciones",f.observaciones||"________________"]
- ];
- const c1=145,c2=W-2*m-c1;
- for(const [a,b] of rows){const h=27;pdf.setDrawColor(175,190,205);pdf.rect(m,y,c1,h);pdf.rect(m+c1,y,c2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(b,c2-12),m+c1+6,y+11);y+=h;}
- y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. CLÁUSULAS CONTRACTUALES",m,y);y+=17;
- const clauses=[
-  ["PRIMERA: OBJETO","El Vendedor se obliga a vender y el Comprador a comprar el producto, cantidad y campaña indicados en las Condiciones Particulares."],
-  ["SEGUNDA: CANTIDAD","La cantidad contractual será la indicada en las Condiciones Particulares, expresada en toneladas métricas, con la tolerancia que allí se establezca."],
-  ["TERCERA: CALIDAD","La mercadería deberá cumplir las normas de calidad comercial aplicables al producto y las condiciones pactadas entre las partes."],
-  ["CUARTA: PRECIO","El precio pactado será USD "+(f.precio?money(f.precio):"________")+" por tonelada métrica, salvo la fórmula o condición expresamente indicada en las Condiciones Particulares."],
-  ["QUINTA: CONDICIÓN DE PRECIO","La condición comercial será la indicada en las Condiciones Particulares (por ejemplo, FAS, FOB o CIF), sin alterar los demás términos del contrato."],
-  ["SEXTA: LUGAR DE ENTREGA","El lugar, puerto o destino de entrega será el consignado en las Condiciones Particulares y en los documentos operativos de la operación."],
-  ["SÉPTIMA: PLAZO DE ENTREGA","La entrega se realizará dentro del período indicado en las Condiciones Particulares, sujeto a la coordinación logística correspondiente."],
-  ["OCTAVA: FORMA DE PAGO","El medio, plazo y condiciones de pago serán los indicados en las Condiciones Particulares y documentación comercial asociada."],
-  ["NOVENA: DOCUMENTACIÓN","Las partes deberán entregar la factura comercial, Carta de Porte, certificados de calidad y demás documentación que resulte aplicable a la operación."],
-  ["DÉCIMA: LEGISLACIÓN APLICABLE","La ley y jurisdicción aplicables serán las consignadas en el contrato y deberán quedar definidas antes de la firma definitiva."]
- ];
- for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
- y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("En prueba de conformidad, se firma el presente contrato por las partes intervinientes.",m,y);y+=42;
- const sigs=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
- sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+180,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
- return pdf;
-}
-
 function buildPdf(f:FormState){
- if(!f.intermediario.trim()) return buildPdfWithoutIntermediary(f);
  const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- const W=pdf.internal.pageSize.getWidth();const H=pdf.internal.pageSize.getHeight();const m=42;const green=[41,105,72] as const;const blue=[35,68,110] as const;
- const field=(label:string,value:string)=>value||"_______________________________";
- const party=(role:string,value:string)=>`• EL ${role}: ${field(role,value)}`;
- const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
- const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Conste por el presente documento que se celebra el ${dateText}, bajo las condiciones que se detallan a continuación.`,m,76);};
- if(f.tipo==="F1"){
-   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS");
-   header(new Date().toLocaleDateString("es-AR"));
-   let y=100;
-   pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
-   y=drawWrapped(pdf,party("VENDEDOR",f.vendedor)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________, representado por ____________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("COMPRADOR",f.comprador)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________, representado por ____________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("INTERMEDIARIO (BRÓKER)",f.intermediario)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________.`,m,y,W-2*m,9);
-   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. CONDICIONES PARTICULARES DE LA MERCADERÍA",m,y);y+=14;
-   const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas (Tolerancia: +/- 5%)":"________________ Toneladas Métricas (Tolerancia: +/- 5%)"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
-   const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const h=28;pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);const ls=pdf.splitTextToSize(b,m+col1+6?col2-12:col2-12);pdf.text(ls,m+col1+6,y+12);y+=h;}
-   y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. CLÁUSULAS CONTRACTUALES",m,y);y+=18;
-   const clauses=[
-    ["PRIMERA: OBJETO",`El Vendedor se obliga a transferir la propiedad y a entregar la cantidad de granos especificada en las Condiciones Particulares, y el Comprador se obliga a recibirla y a pagar el precio estipulado conforme a las modalidades comerciales acordadas.`],
-    ["SEGUNDA: CALIDAD, MERMAS Y ACONDICIONAMIENTO",`La mercadería deberá cumplir con los estándares de calidad comercial vigentes para el tipo de grano en la región de entrega. Las determinaciones de calidad, peso, humedad y materias extrañas se realizarán en el punto de destino. Cualquier exceso sobre las bases de tolerancia autorizadas sufrirá las mermas y rebajas de precio correspondientes bajo las tablas oficiales del sector.`]
-   ];
-   for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=drawWrapped(pdf,t,m,y+12,W-2*m,8.5,10);y+=8;}
-   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.setTextColor(25,25,25);pdf.text("TERCERA: INTERMEDIACIÓN Y PAGO DE COMISIONES",m,y);y=drawWrapped(pdf,`Las partes reconocen expresamente que la presente operación de compraventa ha sido gestionada, coordinada y concretada mediante la gestión del Intermediario.`,m,y+14,W-2*m,9,11);y+=7;
-   y=drawWrapped(pdf,`1. Comisión: Se establece una comisión de ${f.comision||"_______________________"} sobre el valor total de la operación.`,m,y,W-2*m,9,11);
-   y=drawWrapped(pdf,`2. Responsable del Pago: El pago de la comisión estará a cargo de ( ) El Vendedor / ( ) El Comprador / ( ) Ambas partes por partes iguales.`,m,y+3,W-2*m,9,11);
-   y=drawWrapped(pdf,`3. Plazo de Pago: Dicha comisión deberá ser liquidada y abonada al Intermediario dentro de los ______ días hábiles posteriores a la liquidación parcial o total de cada entrega/embarque de los granos.`,m,y+3,W-2*m,9,11);
-   y+=8;pdf.setFont("helvetica","bold");pdf.text("CUARTA: NO CIRCUNVENCIÓN",m,y);y=drawWrapped(pdf,"El Comprador y el Vendedor se comprometen a no realizar operaciones comerciales directas entre sí que eludan, omitan o salteen la participación del Intermediario respecto a este lote, su extensión, o contratos sucesivos derivados de este negocio durante un plazo de 3 (tres) años. El incumplimiento de esta cláusula penalizará a la parte infractora con el cobro del doble de las comisiones devengadas.",m,y+14,W-2*m,9,11);
-   y+=8;pdf.setFont("helvetica","bold");pdf.text("QUINTA: JURISDICCIÓN Y SOLUCIÓN DE DISPUTAS",m,y);y=drawWrapped(pdf,`Para cualquier controversia que se suscite con motivo de la interpretación, cumplimiento o rescisión de este contrato, las partes se someten voluntariamente al arbitraje y jurisdicción de la Cámara Arbitral de Cereales de la ciudad de ${f.ciudadArbitral||"______________________"}, renunciando expresamente a cualquier otro fuero o jurisdicción.`,m,y+14,W-2*m,9,11);
-   y+=20;pdf.setFont("helvetica","normal");pdf.text("En prueba de conformidad, se firman 3 (tres) ejemplares de un mismo tenor y a un solo efecto.",m,y);y+=38;
-   const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"],["Por el Intermediario",f.intermediario||"____________________________"]];
-   sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
- } else {
-   pageTitle("CONTRATO DE ABASTECIMIENTO DE GRANOS","CONTRATO MARCO REGENERATIVO");
-   header(new Date().toLocaleDateString("es-AR"));
-   let y=100;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
-   y=drawWrapped(pdf,`EL VENDEDOR (PROVEEDOR): ${field("",f.vendedor)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y,W-2*m,9);
-   y=drawWrapped(pdf,`EL COMPRADOR (RECEPTOR): ${field("",f.comprador)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
-   y=drawWrapped(pdf,`EL INTERMEDIARIO (BRÓKER): ${field("",f.intermediario)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
-   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. ESPECIFICACIONES DE LOGÍSTICA Y ABASTECIMIENTO (F1)",m,y);y+=15;
-   const rows=[["Especie / Grano",field("",f.producto),"Campaña Agrícola",f.campania||"2025 / 2026"],["Volumen Total Comprometido",f.cantidad?money(f.cantidad)+" Tons.":"____________ Tons.","Tolerancia Contractual","+/- 5 %"],["Esquema de Entregas / Cupos","Mensual [ ] Quincenal [ ] Según Plan de Cargas [ ]","Frecuencia de Carga","Programada F1"],["Precio Base / Fórmula",f.precio?"USD "+money(f.precio)+" por Tonelada":"USD ________ por Tonelada","Fijación de Precio","Pizarra [ ] Mercado [ ] Fijo [ ]"],["Procedencia de la Carga",f.procedencia||"________________________","Condición de Entrega",f.condicion||"Puesta en Destino / FAS / FOB"],["Destino Final / Puerto",f.puerto||"________________________","Plazo del Acuerdo","Hasta completar volumen"]];
-   const c1=120,c2=175,c3=115,c4=W-2*m-c1-c2-c3;for(const r of rows){const h=30;let x=m;[c1,c2,c3,c4].forEach(w=>{pdf.setDrawColor(175,190,205);pdf.rect(x,y,w,h);x+=w});pdf.setFont("helvetica","bold");pdf.setFontSize(7.2);pdf.setTextColor(...green);pdf.text(r[0],m+4,y+11);pdf.text(r[2],m+c1+c2+4,y+11);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(r[1],c2-8),m+c1+4,y+11);pdf.text(pdf.splitTextToSize(r[3],c4-8),m+c1+c2+c3+4,y+11);y+=h;}
-   y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. CLÁUSULAS GENERALES",m,y);y+=18;
-   y=drawWrapped(pdf,"PRIMERA: NATURALEZA DEL F1: El presente acuerdo rige bajo la modalidad F1 de abastecimiento programado. El Vendedor se obliga a asegurar la disponibilidad de los cupos y camiones/vagones de acuerdo al cronograma logístico pactado, garantizando un flujo continuo de mercadería hacia el destino fijado por el Comprador.",m,y,W-2*m,8.5,10);y+=8;
-   y=drawWrapped(pdf,"SEGUNDA: CALIDAD Y TOLERANCIAS: Todos los embarques deberán cumplir estrictamente con el estándar de comercialización oficial. Las determinaciones de calidad (humedad, materias extrañas, daño por insectos o factores climáticos) se realizarán en la balanza de destino, aplicándose las mermas y rebajas correspondientes de acuerdo a las tablas vigentes del sector agrícola.",m,y,W-2*m,8.5,10);y+=8;
-   y=drawWrapped(pdf,`TERCERA: COMISIONES DE INTERMEDIACIÓN: Las partes operativas (Vendedor y Comprador) reconocen de manera irrevocable la intervención directa del Intermediario en la estructuración de este canal de abastecimiento. Se fija una comisión de ${f.comision||"____________________"} (porcentaje o monto fijo por tonelada), que se devengará y liquidará automáticamente sobre cada entrega efectiva y parcial de granos, debiendo acreditarse al Intermediario dentro de los cinco (5) días hábiles posteriores a cada cobro.`,m,y,W-2*m,8.5,10);
-   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.text("CUARTA: NO CIRCUNVENCIÓN Y EXCLUSIVIDAD",m,y);y=drawWrapped(pdf,"El Comprador y el Vendedor se obligan mutuamente a no entablar negociaciones de suministro directo, contratos laterales ni extensiones de cupos que eludan o excluyan la participación y el cobro de comisiones del Intermediario respecto de las partes o de la procedencia aquí descrita, por un plazo de tres (3) años contados desde la firma de este documento.",m,y+14,W-2*m,9,11);y+=10;pdf.setFont("helvetica","bold");pdf.text("QUINTA: JURISDICCIÓN ARBITRAL",m,y);y=drawWrapped(pdf,`Ante cualquier discrepancia en la interpretación de los rendimientos, mermas o ejecución comercial de este contrato marco F1, las partes se someten de común acuerdo a la competencia exclusiva de la Cámara Arbitral de Cereales de la jurisdicción aplicable, renunciando expresamente a la vía judicial ordinaria.`,m,y+14,W-2*m,9,11);y+=30;
-   const sigs=[["POR EL VENDEDOR",f.vendedor],["POR EL COMPRADOR",f.comprador],["POR EL INTERMEDIARIO",f.intermediario]];sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Aclaración: "+(b||"________________"),x,y+26);});
+ const W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),m=42;
+ const blue=[35,68,110] as const;
+ const wrap=(value:string,x:number,y:number,width:number,size=8.5,gap=10)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const lines=pdf.splitTextToSize(value,width);pdf.text(lines,x,y);return y+lines.length*gap;};
+ pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);
+ pdf.text("BORRADOR DE CONDICIONES COMERCIALES · REFERENCIA F1",W/2,42,{align:"center"});
+ pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(160,45,35);
+ pdf.text("BORRADOR · NO FIRMADO · NO REGISTRADO",W/2,58,{align:"center"});
+ let y=80;
+ y=wrap("Documento preliminar generado por AgroBrokerIA a partir de los datos comerciales cargados. No es un formulario oficial homologado, no constituye por sí solo un contrato firmado y no sustituye el modelo vigente de la Bolsa ni la revisión de las partes.",m,y,W-2*m,8,10)+8;
+ pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(...blue);pdf.text("1. PARTES Y REFERENCIAS",m,y);y+=16;
+ const rows=[
+  ["Vendedor",f.vendedor||"Pendiente de completar"],
+  ["Comprador",f.comprador||"Pendiente de completar"],
+  ["Intermediario",f.intermediario||"No indicado"],
+  ["Tipo de operación",f.tipoOperacion||"Compraventa"],
+  ["Producto / grano",f.producto||"Pendiente de completar"],
+  ["Campaña",f.campania||"Pendiente de completar"],
+  ["Cantidad",f.cantidad?money(f.cantidad)+" toneladas métricas":"Pendiente de completar"],
+  ["Precio y moneda",f.precio?money(f.precio)+" "+(f.moneda||"")+"/ tonelada":"Pendiente de completar"],
+  ["Condición comercial",f.condicion||"Pendiente de completar"],
+  ["Procedencia",f.procedencia||"Pendiente de completar"],
+  ["Destino / puerto",f.puerto||"Pendiente de completar"],
+  ["Período de entrega",f.entrega||"Pendiente de completar"],
+  ["Forma y plazo de pago",f.pago||"Pendiente de completar"],
+  ["Observaciones de calidad",f.observaciones||"Pendiente de especificación"]
+ ];
+ const labelWidth=135,valueWidth=W-2*m-labelWidth;
+ for(const [label,value] of rows){
+  const left=pdf.splitTextToSize(label,labelWidth-12),right=pdf.splitTextToSize(value,valueWidth-12);
+  const height=Math.max(left.length,right.length)*10+9;
+  if(y+height>H-112){pdf.addPage();y=48;}
+  pdf.setDrawColor(185,197,208);pdf.rect(m,y,labelWidth,height);pdf.rect(m+labelWidth,y,valueWidth,height);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(left,m+6,y+13);
+  pdf.setFont("helvetica","normal");pdf.setTextColor(35,35,35);pdf.text(right,m+labelWidth+6,y+13);
+  y+=height;
  }
+ y+=18;
+ if(y>H-105){pdf.addPage();y=48;}
+ pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.setTextColor(...blue);pdf.text("2. PUNTOS PENDIENTES DE CONFIRMACIÓN",m,y);y+=16;
+ y=wrap("Antes de formalizar: confirmar especificaciones de calidad y tolerancias, punto exacto de entrega, período/cupos, fórmula o referencia de precio, moneda, impuestos, documentación exigible, forma y plazo de pago y jurisdicción aplicable.",m,y,W-2*m,8.5,11)+10;
+ y=wrap("La comisión por el servicio tecnológico de intermediación se gestiona y documenta en el módulo de Comisiones de AgroBrokerIA; no se incorpora aquí como cláusula contractual del modelo F1.",m,y,W-2*m,8.5,11)+10;
+ y=wrap("Formalización: incorporar el formulario oficial vigente que corresponda y completar firma y registración por el canal institucional habilitado. La Bolsa de Comercio de Rosario ofrece el servicio Confirma para instrumentar, firmar y registrar contratos de compraventa de granos.",m,y,W-2*m,8.5,11)+12;
+ pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(160,45,35);
+ pdf.text("Este archivo es únicamente un borrador de trabajo. No debe utilizarse como contrato oficial ni como constancia de registración.",m,y);
  return pdf;
 }
 
@@ -132,8 +83,9 @@ function buildConfidentialityPdf(f:FormState){
  pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.text(hasIntermediary?"CONTRATO DE CONFIDENCIALIDAD, NO CIRCUNVENCIÓN Y":"CONTRATO DE CONFIDENCIALIDAD DE LA OPERACIÓN",W/2,32,{align:"center"});
  if(hasIntermediary) pdf.text("RECONOCIMIENTO DE COMISIONES",W/2,48,{align:"center"});
  y=hasIntermediary?72:55;
+ lines("BORRADOR PARTICULAR PARA REVISIÓN LEGAL. No es un modelo oficial de la Bolsa ni asesoramiento jurídico. Las cláusulas de confidencialidad, no circunvención, comisiones, penalidades y jurisdicción deben ser revisadas y aceptadas expresamente por las partes antes de cualquier firma o uso.",8);
  if(hasIntermediary){
-  lines('Conste por el presente documento el Contrato de Confidencialidad, No Circunvención y Pago de Comisiones (en adelante, el "Contrato"), que se celebra y entra en vigor en la fecha de su aceptación registrada en AgroBrokerIA (en adelante, la "Fecha de Entrada en Vigor"), entre las partes abajo firmantes:');
+  lines('Este borrador particular se entrega para revisión de las partes. La aceptación operativa registrada en AgroBrokerIA no constituye firma digital certificada ni reemplaza la firma formal del documento por los medios legalmente habilitados. Las partes deben revisar y aprobar expresamente sus cláusulas antes de utilizarlo.');lines('Conste por el presente documento el borrador de confidencialidad, no circunvención y reconocimiento de comisiones, propuesto entre las partes abajo firmantes:');
   bold("POR UNA PARTE:");lines('La empresa comercializadora, productora o persona humana / jurídica identificada en el cuadro de firmas, en adelante denominada la "Parte Contratante".');
   bold("Y POR LA OTRA PARTE:");lines('La empresa o persona humana / jurídica dedicada al corretaje e intermediación comercial identificada en el cuadro de firmas, en adelante denominado el "Intermediario".');
   bold("DECLARACIONES");lines("I. El Intermediario posee contactos comerciales estratégicos, bases de datos de productores, compradores, vendedores, acopiadores y fuentes de suministro dentro del sector de granos y oleaginosas.");lines('II. La Parte Contratante desea acceder de manera legítima a dichos contactos e información comercial exclusiva con el objeto y fin de evaluar, negociar y concretar operaciones de compraventa de granos (en adelante, el "Propósito").');lines("III. Ambas Partes acuerdan expresamente que el Intermediario facilita estas conexiones bajo la condición estricta de proteger su propiedad intelectual comercial, resguardar el secreto de su cartera y asegurar la retribución económica correspondiente por sus gestiones de corretaje.");
@@ -145,7 +97,7 @@ function buildConfidentialityPdf(f:FormState){
   bold("SEXTA: LEY APLICABLE Y JURISDICCIÓN");lines("Este Contrato se regirá e interpretará de conformidad con las leyes vigentes de "+(f.jurisdiccion||"__________________________")+". Para cualquier controversia derivada del presente acuerdo, las Partes se someten expresamente a los tribunales ordinarios de la Ciudad de "+(f.ciudadArbitral||"__________________________")+", renunciando a cualquier otro fuero o jurisdicción que pudiera corresponderles.");
   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text("POR LA PARTE CONTRATANTE",m,y);pdf.text("POR EL INTERMEDIARIO",W/2+10,y);y+=30;pdf.line(m,y,m+170,y);pdf.line(W/2+10,y,W-42,y);y+=14;pdf.setFont("helvetica","normal");pdf.text("Nombre: "+(f.comprador||f.vendedor||""),m,y);pdf.text("Nombre: "+(f.intermediario||""),W/2+10,y);y+=14;pdf.text("DNI/Pasaporte: __________________",m,y);pdf.text("DNI/Pasaporte: __________________",W/2+10,y);y+=14;pdf.text("Empresa: "+(f.comprador||f.vendedor||""),m,y);pdf.text("Empresa: "+(f.intermediario||""),W/2+10,y);
  } else {
-  lines('Conste por el presente documento el Contrato de Confidencialidad de la Operación (en adelante, el "Contrato"), que se celebra entre las partes identificadas en el cuadro de firmas respecto de la operación comercial registrada en AgroBrokerIA.');
+  lines('Este borrador particular se entrega para revisión de las partes. La aceptación operativa registrada en AgroBrokerIA no constituye firma digital certificada ni reemplaza la firma formal del documento por los medios legalmente habilitados. Las partes deben revisar y aprobar expresamente sus cláusulas antes de utilizarlo.');lines('Conste por el presente documento el borrador de confidencialidad de la operación, propuesto entre las partes identificadas en el cuadro de firmas respecto de la operación comercial registrada en AgroBrokerIA.');
   bold("PARTES");lines("EL VENDEDOR: "+(f.vendedor||"_______________________________")+".");lines("EL COMPRADOR: "+(f.comprador||"_______________________________")+".");
   bold("DECLARACIONES");lines("I. Las partes intercambiarán información comercial, económica, técnica, operativa y logística necesaria para evaluar, negociar, documentar, ejecutar y liquidar la operación.");lines("II. Las partes reconocen que determinada información de la operación puede no ser pública y que su divulgación o uso fuera del propósito de la operación puede perjudicar a la parte que la proporciona.");
   bold("CLÁUSULAS");bold("PRIMERA: OBJETO Y CONFIDENCIALIDAD");lines("Las partes se obligan a mantener estricta reserva sobre la información no pública relacionada con la operación, incluyendo identidades, datos de contacto, cantidades, precios, condiciones comerciales, formas de pago, documentación, especificaciones técnicas y logísticas, datos de origen y destino y cualquier otra información intercambiada con motivo de la operación. La información no podrá divulgarse ni utilizarse para un fin ajeno a la operación sin autorización previa de la parte que la proporcionó, salvo obligación legal o requerimiento de autoridad competente.");
@@ -383,7 +335,7 @@ export default function ContratosPage(){
      const ip=null;
      const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip,p_user_agent:ua});
      if(error)throw error;
-     setMessage("Confidencialidad aceptada y registrada para "+rol+". Esta aceptación queda auditada y es obligatoria para cerrar la operación.");
+     setMessage("Conformidad operativa de confidencialidad registrada para "+rol+". El evento queda auditado, pero no equivale a firma digital certificada ni sustituye la firma formal del acuerdo.");
      await cargarConfidencialidad(form.operacionId);
    }catch(e){setError(e instanceof Error?e.message:"No se pudo registrar la aceptación.");}
    finally{setConfidentialityBusy(false);}
@@ -424,45 +376,45 @@ export default function ContratosPage(){
  function download(tipo:"F1"){
   if(!form.operacionId||!form.producto){setMessage("Seleccioná una operación y producto antes de generar el PDF.");return;}
   try{
-   const next={...effectiveForm,tipo,moneda:"USD"};
-   setForm(x=>({...x,tipo,moneda:"USD"}));
-   savePdfFile(buildPdf(next),`AgroBrokerIA-Contrato-${tipo}.pdf`);
+   const next={...effectiveForm,tipo};
+   setForm(x=>({...x,tipo}));
+   savePdfFile(buildPdf(next),`AgroBrokerIA-Borrador-Comercial-${tipo}.pdf`);
    setError("");
-   setMessage(`PDF ${tipo} descargado correctamente.`);
+   setMessage(`Borrador comercial ${tipo} descargado correctamente.`);
   }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
  }
  function downloadConfidentiality(){
   try{
-   const name=hasIntermediary?"AgroBrokerIA-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Confidencialidad-Operacion.pdf";
+   const name=hasIntermediary?"AgroBrokerIA-Borrador-Confidencialidad-No-Circunvencion-Comisiones.pdf":"AgroBrokerIA-Borrador-Confidencialidad-Operacion.pdf";
    savePdfFile(buildConfidentialityPdf(effectiveForm),name);
    setError("");
-   setMessage(hasIntermediary?"Contrato de confidencialidad, no circunvención y comisiones descargado correctamente.":"Contrato de confidencialidad de la operación descargado correctamente.");
+   setMessage(hasIntermediary?"Borrador de confidencialidad, no circunvención y comisiones descargado; requiere revisión legal.":"Borrador de confidencialidad de la operación descargado; requiere revisión legal.");
   }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
  }
- function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
+ function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa del borrador ${tipo} seleccionada.`)}
  function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
- function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
- function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
+ function emailPdf(){const subject=encodeURIComponent(`Borrador comercial ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el borrador de condiciones comerciales generado por AgroBrokerIA.")}`}
+ function sharePdf(){if(navigator.share){void navigator.share({title:`Borrador comercial ${form.tipo} AgroBrokerIA`,text:"Borrador de condiciones comerciales generado por AgroBrokerIA; no es un contrato oficial firmado ni registrado."})}else{download(form.tipo)}}
  
  return <main className="contract-builder-reference">
-  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Generá, personalizá y descargá documentos PDF a partir de los datos registrados de la operación.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
+  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Contratos Digitales · Borradores F1 de referencia para compraventa y abastecimiento. Toda oferta aceptada genera un borrador de condiciones comerciales para revisión de ambas partes. Hasta incorporar el formulario oficial vigente de la Bolsa, el PDF de AgroBrokerIA no se presenta como modelo homologado ni como contrato firmado o registrado.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
   {error&&<div className="contract-builder-alert error">{error}</div>}{message&&<div className="contract-builder-alert">{message}</div>}
 
-  <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
+  <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Puntos a revisar"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
 
   {tab==="tipos"?<section className="contract-builder-grid">
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
-        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Borrador formal único de compraventa y abastecimiento. La homologación y firma digital oficial requieren el modelo y proveedor habilitados.</span><a href="https://www.bcr.com.ar/es/servicios/servicios-digitales/confirma" target="_blank" rel="noreferrer">Consultar servicio digital Confirma de la Bolsa de Comercio de Rosario ↗</a></div>
-        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
+        <div className="contract-template-single"><b>Contratos Digitales · Modelo F1</b><span>Borrador de condiciones comerciales estructurado bajo esquema F1. No sustituye el formulario oficial vigente de la Bolsa. La firma digital integrada dentro de AgroBrokerIA está próximamente; la instrumentación, firma y registración institucional pueden realizarse mediante Confirma de la BCR, sujeto a sus requisitos.</span><a href="https://www.bcr.com.ar/es/servicios/servicios-digitales/confirma" target="_blank" rel="noreferrer">Consultar servicio digital Confirma de la Bolsa de Comercio de Rosario ↗</a></div>
+        <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Borrador F1 de referencia</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
       <div className="contract-commodity-picks">{productos.slice(0,4).map((p,i)=><button type="button" key={p} className={form.producto===p?"selected":""} onClick={()=>update("producto",p)}><b>{["🫘","🌽","🌾","🌻"][i]}</b><span>{p}</span></button>)}<button type="button" className="more-commodity" onClick={()=>document.getElementById("commodity-select")?.focus()}><b>•••</b><span>Otros</span></button></div>
       <div className="contract-builder-section-title"><h2>Datos del contrato</h2><span>{form.tipo==="F1"?"F1":"F1"}</span></div>
       <div className="contract-builder-fields">
        <label>Operación<select value={form.operacionId} onChange={e=>selectOperation(e.target.value)}><option value="">Seleccionar operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {o.publicacion_compra_id&&o.publicacion_venta_id?"Compra + Venta":o.publicacion_compra_id?"Compra":"Venta"} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.estado}</option>)}</select></label>
-       <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option><option value="F1">F1</option></select></label>
+       <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio (USD / TN)<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
@@ -488,7 +440,7 @@ export default function ContratosPage(){
     </div>
   </section>:null}
 
-  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:"F1"}));setMessage("Contrato seleccionado.");void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
+  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:"F1"}));setMessage("Contrato seleccionado.");void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>Borrador F1 · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
    {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2 style={{marginTop:18}}>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
     <label>Días adicionales solicitados<input type="number" min="1" max="30" value={extensionDays} onChange={e=>setExtensionDays(e.target.value)}/></label>
     <label>Motivo<textarea value={extensionReason} onChange={e=>setExtensionReason(e.target.value)} placeholder="Por qué no se puede cerrar todavía"/></label>
@@ -499,9 +451,9 @@ export default function ContratosPage(){
    <section className="contract-info-panel" style={{marginTop:16}}><h2>Solicitudes de cancelación · Administración</h2>{!isPlatformAdmin?<p>La revisión está reservada a Administración.</p>:cancelRows.length===0?<p>No hay solicitudes de cancelación registradas.</p>:cancelRows.map((x:any)=><article key={x.id} className="contract-cancel-request-row"><b>{x.estado_revision} · Operación {x.operacion_id}</b><span>{x.motivo}</span><small>{x.justificativo}</small>{x.evidencia_url&&<a href={x.evidencia_url} target="_blank" rel="noreferrer">Ver evidencia</a>}{x.estado_revision==="PENDIENTE"&&<div><button type="button" onClick={()=>void revisarCancelacion(x.id,"APROBADA")}>Aprobar cancelación</button><button type="button" onClick={()=>void revisarCancelacion(x.id,"RECHAZADA")}>Rechazar solicitud</button></div>}</article>)}</section><section className="contract-info-panel" style={{marginTop:16}}><h2>Historial de prórrogas auditadas</h2>{extensions.filter(x=>!selected||x.contrato_id===selected.id).length===0?<p>No hay solicitudes de prórroga para este contrato.</p>:extensions.filter(x=>!selected||x.contrato_id===selected.id).map(x=><article key={x.id}><b>{x.estado_revision} · {x.dias_solicitados} día(s) solicitados</b><span>{new Date(x.created_at).toLocaleString("es-AR")} · solicitado hasta {new Date(x.vencimiento_solicitado_at).toLocaleString("es-AR")}</span><span>{x.motivo}</span><small>{x.justificativo}</small>{x.dias_aprobados&&<span>Aprobados: {x.dias_aprobados} día(s) · nuevo vencimiento: {x.vencimiento_aprobado_at?new Date(x.vencimiento_aprobado_at).toLocaleString("es-AR"):"-"}</span>}{x.observaciones_revision&&<small>Auditoría: {x.observaciones_revision}</small>}</article>)}</section>
   </section>}
 
-  {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Blanco</b><span>Modelo F1 para la operación seleccionada.</span></button></div></section>}
+  {tab==="plantillas"&&<section className="contract-info-panel"><h2>Plantillas</h2><div className="contract-template-grid"><button type="button" onClick={()=>{setForm(x=>({...x,tipo:"F1",condicion:"FAS"}));setMessage("Plantilla F1 cargada.")}}><b>F1 · Referencia</b><span>Borrador comercial F1; pendiente de incorporar el formulario oficial vigente de la Bolsa.</span></button></div></section>}
 
-  {tab==="clausulas"&&<section className="contract-info-panel"><h2>Cláusulas estándar</h2>{["Objeto y alcance","Cantidad y calidad","Precio y condición","Lugar y plazo de entrega","Forma de pago","Documentación","Confidencialidad","Legislación aplicable","Solución de controversias"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\n"+line):line}));setMessage("Cláusula incorporada: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar al contrato</span></button>)}</section>}
+  {tab==="clausulas"&&<section className="contract-info-panel"><h2>Puntos comerciales a revisar</h2>{["Producto y variedad","Cantidad y tolerancias","Calidad y humedad","Precio y moneda","Condición comercial","Lugar y plazo de entrega","Flete y logística","Forma y plazo de pago","Documentación fiscal","Impuestos y retenciones"].map((x,i)=><button className="contract-clause-button" type="button" key={x} onClick={()=>{const line=(i+1)+". "+x;setForm(f=>({...f,observaciones:f.observaciones?(f.observaciones+"\\n"+line):line}));setMessage("Punto de revisión agregado: "+x+".")}}><b>{i+1}. {x}</b><span>Agregar punto a revisar</span></button>)}</section>}
 
   {tab==="firmas"&&<section className="contract-info-panel"><h2>Firmas</h2>{selected&&<div className="contract-info-panel signature-workflow" style={{marginTop:16}}>
   <h3>Firmas del contrato</h3><p>Solo se requieren dos copias del mismo contrato: una firmada por el vendedor y otra por el comprador. Administración revisa cada PDF y acepta o rechaza la evidencia.</p>
@@ -513,17 +465,11 @@ export default function ContratosPage(){
    {copyRows.length===0?<p>Todavía no se recibieron firmas.</p>:copyRows.map((r:any)=><article className="contract-sign-card" key={r.id}><div><strong>Firma {r.rol==="VENDEDOR"?"del vendedor":r.rol==="COMPRADOR"?"del comprador":r.rol} · versión {r.version_contrato}</strong><span>{r.estado==="APROBADA"?"Aceptada":r.estado==="RECHAZADA"?"Rechazada":"Pendiente de revisión"}</span><small>{r.nombre_archivo} · {new Date(r.subido_at).toLocaleString("es-AR")}</small>{r.observaciones&&<small>Observación: {r.observaciones}</small>}</div><div className="signature-review-actions"><button type="button" onClick={()=>void abrirCopiaFirmada(r.storage_path)}>Ver PDF</button>{isPlatformAdmin&&r.estado==="PENDIENTE"&&<><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"APROBADA")}>Aceptar</button><button type="button" onClick={()=>void revisarCopiaFirmada(r.id,"RECHAZADA")}>Rechazar</button></>}</div></article>)}
   </div>
  </div>}
-<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id);setMessage("Contrato seleccionado.")}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
+<div className="contract-sign-list">{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados para firmar.</p>:rows.map(c=><article className={"contract-sign-card "+(selected?.id===c.id?"selected":"")} key={c.id}><div><strong>{c.numero_contrato}</strong><span>Borrador F1 · {c.estado}</span><small>{c.cantidad_tn?Number(c.cantidad_tn).toLocaleString("es-AR")+" TN":"Cantidad no indicada"} · {c.fecha_firma?"Firmado":"Pendiente de firma"}</small></div><button type="button" onClick={()=>{setSelected(c);setTab("firmas");void cargarDocumentosFirma(c.operacion_id);void loadSignedCopies(c.id);setMessage("Contrato seleccionado.")}}>Seleccionar</button></article>)}</div><Link className="contract-route-button" href="/documentos">Ir a Documentos →</Link></section>}
 
 {tab==="historial"&&<section className="contract-info-panel"><h2>Historial de versiones</h2>{versions.length===0?<p>No hay versiones registradas.</p>:versions.map(v=><article key={v.id}><b>Versión {v.version}</b><span>{v.estado} · {v.motivo||"Sin motivo"} · {new Date(v.creado_en).toLocaleString("es-AR")}</span></article>)}</section>}
   <div className="contract-language-bar"><span>Idioma del documento</span>{IDIOMAS.map(([code,name])=><button key={code} className={idioma===code?"active":""} onClick={()=>{setIdioma(code);setMessage(`Idioma seleccionado: ${name}.`)}}>{name}</button>)}</div>
  </main>
 }
 
-function PreviewCard({type,form,onDownload,active}:{type:"F1";form:FormState;onDownload:(type:"F1")=>void;active:boolean}){
- return <article className={"contract-preview-card "+(active?"active":"")}>
-   <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Documento F1 generado a partir de los datos registrados.":"Documento F1 generado a partir de los datos registrados."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
-   <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS":"CONTRATO DE ABASTECIMIENTO DE GRANOS"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],["2. OBJETO",form.producto||"No especificado"],["3. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas.":"No especificada"],["4. CALIDAD",form.observaciones||"No especificada"],["5. PRECIO","USD "+(form.precio?money(form.precio):"________")+" por tonelada métrica."],["6. CONDICIÓN DE PRECIO",form.condicion||"No especificada"],["7. LUGAR DE ENTREGA",form.puerto||"No especificado"],["8. PLAZO DE ENTREGA",form.entrega||"No especificado"],["9. FORMA DE PAGO",form.pago||"No especificada"],["10. DOCUMENTACIÓN","Factura comercial, Carta de Porte, Certificado de Calidad y documentación aplicable."],["11. LEGISLACIÓN APLICABLE","Se completará según la operación y jurisdicción pactada."],["12. OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
- </article>
-}
-
+function PreviewCard({type,form,onDownload,active}:{type:"F1";form:FormState;onDownload:(type:"F1")=>void;active:boolean}){const items:[string,string][]=[["Vendedor",form.vendedor],["Comprador",form.comprador],["Intermediario",form.intermediario],["Producto",form.producto],["Campaña",form.campania],["Cantidad",form.cantidad?money(form.cantidad)+" toneladas métricas":""],["Precio",form.precio?money(form.precio)+" "+form.moneda+"/ tonelada":""],["Condición",form.condicion],["Procedencia",form.procedencia],["Destino / puerto",form.puerto],["Entrega",form.entrega],["Pago",form.pago],["Calidad / observaciones",form.observaciones]];return <article className={"contract-preview-card "+(active?"active":"")}><div className="paper-header"><span>AGROBROKERIA · BORRADOR</span><b>{type}</b></div><h3>Borrador de condiciones comerciales</h3><p style={{fontSize:11,color:"#9b2c2c",fontWeight:700}}>REFERENCIA F1 · NO FIRMADO · NO REGISTRADO</p><p style={{fontSize:11,color:"#475569"}}>Este documento es un borrador de trabajo. No es el formulario oficial homologado de la Bolsa y no sustituye su revisión ni registración institucional.</p><div className="paper-clauses">{items.map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t||"Pendiente de completar"}</span></div>)}</div><div className="paper-signatures"><p>Antes de formalizar, confirmar calidad, tolerancias, entrega, precio, moneda, impuestos y condiciones de pago.</p><p>La comisión por servicio tecnológico se gestiona en el módulo de Comisiones y no se incorpora como cláusula de este borrador.</p><p>Firma y registración: utilizar el formulario oficial vigente y el canal institucional correspondiente, como Confirma de la BCR.</p></div><button type="button" onClick={()=>onDownload(type)}>Descargar borrador PDF</button></article>}

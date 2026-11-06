@@ -264,11 +264,12 @@ export default function LogisticaEntrega({
     setGuardando(false);
   }
 
-  async function subirCartas(viaje: Viaje, files: FileList | null) {
+  async function subirCartas(viaje: Viaje, files: FileList | null, batchId: number) {
     if (!files?.length) return;
     setGuardando(true);
     setError("");
     setMensaje("");
+    let fileIndex = 0;
     for (const file of Array.from(files)) {
       if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
         setError("Solo se permiten archivos PDF de Cartas de Porte.");
@@ -282,7 +283,7 @@ export default function LogisticaEntrega({
         continue;
       }
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_");
-      const path = "cpe/" + operacionId + "/" + viaje.id + "/" + Date.now() + "-" + safeName;
+      const path = "cpe/" + operacionId + "/" + viaje.id + "/" + batchId + "-" + fileIndex++ + "-" + safeName;
       const upload = await supabase.storage.from("agrobroker-private").upload(path, file, {
         contentType: "application/pdf",
         upsert: false,
@@ -505,7 +506,7 @@ export default function LogisticaEntrega({
                 </div>
               ))}
               {!esTransportista && <label style={{ display: "inline-flex", alignItems: "center", gap: 8, flexWrap: "wrap", fontSize: 12, fontWeight: 750, color: "#0f766e" }}>
-                <input type="file" accept="application/pdf,.pdf" multiple disabled={guardando || viaje.estado === "ENTREGADO_CONFIRMADO"} onChange={(e) => { void subirCartas(viaje, e.target.files); e.currentTarget.value = ""; }} />
+                <input type="file" accept="application/pdf,.pdf" multiple disabled={guardando || viaje.estado === "ENTREGADO_CONFIRMADO"} onChange={(e) => { const files = e.target.files; void subirCartas(viaje, files, Date.now()); e.currentTarget.value = ""; }} />
                 Cargar uno o varios PDF de Cartas de Porte
               </label>}
               {!esTransportista && <div style={{ fontSize: 11, color: "#64748b" }}>El número y los kilos se ingresan según cada PDF. La cantidad queda pendiente hasta que un participante autorizado revise el documento.</div>}
