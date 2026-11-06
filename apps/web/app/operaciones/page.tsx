@@ -4,6 +4,7 @@ import { useEffect, useState, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 import LogisticaEntrega from "./LogisticaEntrega";
+import FirmasContratoOperacion from "./FirmasContratoOperacion";
 import Liquidacion from "./Liquidacion";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
 import { notificarParticipantesOperacion } from "@/lib/notificaciones/notificarParticipantesOperacion";
@@ -2749,7 +2750,7 @@ Firma: ______________________________
             await abrirContrato(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 6) {
-            window.location.href = "/contratos?tab=firmas";
+            setMensaje("Cargá las copias PDF firmadas por vendedor y comprador en el panel de esta operación. Administración las revisará desde aquí.");
             return;
           } else if (ordenDetalle === 7) {
             return;
@@ -2795,6 +2796,10 @@ Firma: ______________________________
               {ordenDetalle>0&&ordenDetalle<9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#334155"}}><strong>Siguiente paso:</strong> {ETAPAS[ordenDetalle]}</p>}
               {ordenDetalle===9&&<p style={{margin:"12px 0 0",fontSize:13,color:"#166534",fontWeight:700}}>Operación completada.</p>}
             </section>
+            {ordenDetalle === 6 && <section style={{marginTop:18,padding:16,border:"1px solid #bfdbfe",borderRadius:12,background:"#eff6ff"}}>
+              <h3 style={{marginTop:0}}>Firmas del contrato definitivo</h3>
+              <FirmasContratoOperacion operacionId={detalleOperacion.id} />
+            </section>}
             {ordenDetalle === 7 && <section style={{marginTop:18,padding:16,border:"1px solid #93c5fd",borderRadius:12,background:"#eff6ff"}}>
               <h3 style={{marginTop:0}}>Logística y entrega de esta operación</h3>
               <p style={{marginTop:0,color:"#475569"}}>Completá la Carta de Porte, transporte, carga y recepción desde aquí. Los datos se guardan en el registro oficial del módulo Logística.</p>
@@ -2807,7 +2812,7 @@ Firma: ______________________________
             {ordenDetalle === 4 && <section style={{marginTop:18,padding:16,border:"1px solid #86efac",borderRadius:12,background:"#f0fdf4"}}>
               <h3 style={{margin:"0 0 8px",color:"#166534"}}>Comisión AgroBrokerIA</h3>
               <p style={{margin:"0 0 8px",color:"#14532d"}}>La comisión de plataforma se gestiona después del visado y antes del Contrato Definitivo. Importe de referencia: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por TN).</p>
-              <strong style={{display:"inline-flex",padding:"6px 10px",borderRadius:999,background:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#dcfce7":"#fef3c7"),color:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#166534":"#92400e")}}>Comisión AgroBrokerIA: {["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "PENDIENTE DE VERIFICACIÓN").replaceAll("_"," ")}</strong>
+              <strong style={{display:"inline-flex",padding:"6px 10px",borderRadius:999,background:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#dcfce7":"#fef3c7"),color:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#166534":"#92400e")}}>Comisión AgroBrokerIA: {String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "PENDIENTE DE VERIFICACIÓN").replaceAll("_"," ")}</strong>
               <p style={{margin:"8px 0 0",fontSize:12,color:"#475569"}}>La comisión solo se mostrará como RETENIDA cuando el sistema registre la retención confirmada por Administración.</p>
             </section>}
             {ordenDetalle === 4 && retencionComision && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff",display:"grid",gap:10}}>
