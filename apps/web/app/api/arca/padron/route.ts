@@ -28,18 +28,25 @@ export async function POST(request:NextRequest){
     let allowedCompanyIds:string[]=[];
     let isAdmin=false;
     if(!isServiceCall){
-      const authClient=createClient(url,anon,{auth:{autoRefreshToken:false,persistSession:false}});
+      const authClient=createClient(url,anon,{global:{headers:{Authorization:`Bearer ${token}`}},auth:{autoRefreshToken:false,persistSession:false}});
       const {data:{user},error:userError}=await authClient.auth.getUser(token);
       if(userError||!user)return responseError("INVALID_SESSION",401);
-      const {data:profile,error:profileError}=await admin.from("profiles").select("active_company_id,tipo_usuario").eq("id",user.id).maybeSingle();
-      if(profileError)return responseError("PROFILE_LOOKUP_FAILED",500);
-      isAdmin=/ADMIN|ADMINISTRADOR|SUPERADMIN/i.test(String(profile?.tipo_usuario||""));
-      if(!isAdmin&&profile?.active_company_id){
-        const {data:maps,error:mapError}=await admin.from("company_empresa_map").select("empresa_id").eq("company_id",profile.active_company_id);
-        if(mapError)return responseError("COMPANY_MEMBERSHIP_LOOKUP_FAILED",500);
-        allowedCompanyIds=(maps||[]).map((m:any)=>String(m.empresa_id));
+
+      const {data:platformAdmin,error:adminError}=await admin.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
+      if(adminError)return responseError("ADMIN_LOOKUP_FAILED",500);
+      isAdmin=!!platformAdmin;
+
+      const {data:memberships,error:membershipError}=await admin.from("company_users")
+        .select("company_id").eq("profile_id",user.id).eq("activo",true).eq("rol","administrador");
+      if(membershipError)return responseError("COMPANY_MEMBERSHIP_LOOKUP_FAILED",500);
+      const companyIds=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
+      allowedCompanyIds=[...companyIds];
+      if(companyIds.length){
+        const {data:maps,error:mapError}=await admin.from("company_empresa_map").select("empresa_id").in("company_id",companyIds);
+        if(mapError)return responseError("COMPANY_MAPPING_LOOKUP_FAILED",500);
+        allowedCompanyIds=[...new Set([...allowedCompanyIds,...(maps||[]).map((m:any)=>String(m.empresa_id))])];
       }
-      if(!isAdmin&&allowedCompanyIds.length===0)return responseError("COMPANY_OWNERSHIP_NOT_CONFIRMED",403);
+      if(!isAdmin&&allowedCompanyIds.length===0)return responseError("COMPANY_ADMIN_REQUIRED",403);
     }
 
     const {data:verification,error:verificationError}=await admin.from("empresas_verificaciones")
