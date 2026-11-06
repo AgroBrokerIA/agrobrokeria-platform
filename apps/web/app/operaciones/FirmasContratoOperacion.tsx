@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { supabase } from "../../lib/supabase";
+import jsPDF from "jspdf";
 
 type Copy = {
   id: string;
@@ -15,6 +16,8 @@ type Copy = {
 
 export default function FirmasContratoOperacion({ operacionId }: { operacionId: string }) {
   const [contractId, setContractId] = useState("");
+  const [contractNumber, setContractNumber] = useState("");
+  const [contractContent, setContractContent] = useState("");
   const [roles, setRoles] = useState<string[]>([]);
   const [copies, setCopies] = useState<Copy[]>([]);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -36,11 +39,13 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
       ]);
       setIsAdmin(Boolean(admin));
       const { data: contract, error: contractError } = await supabase
-        .from("contratos").select("id").eq("operacion_id", operacionId)
+        .from("contratos").select("id,numero_contrato,contenido").eq("operacion_id", operacionId)
         .eq("estado", "CONFIRMADO").order("confirmado_at", { ascending: false }).limit(1).maybeSingle();
       if (contractError) throw contractError;
       if (!contract?.id) throw new Error("Todavía no existe un contrato definitivo confirmado para esta operación.");
       setContractId(contract.id);
+      setContractNumber(String(contract.numero_contrato || "Contrato"));
+      setContractContent(String(contract.contenido || ""));
 
       let companyIds: string[] = [];
       if (profile?.active_company_id) {
@@ -75,6 +80,21 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
   }, [operacionId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  function downloadContract() {
+    if (!contractContent.trim()) { setError("El contrato confirmado no tiene contenido disponible para descargar."); return; }
+    const pdf = new jsPDF({ unit: "mm", format: "a4" });
+    pdf.setFont("helvetica", "normal");
+    pdf.setFontSize(10);
+    const lines = pdf.splitTextToSize(contractContent, 180);
+    let y = 18;
+    for (const line of lines) {
+      if (y > 278) { pdf.addPage(); y = 18; }
+      pdf.text(line, 15, y);
+      y += 5;
+    }
+    pdf.save(`${contractNumber.replace(/[^a-zA-Z0-9_-]/g, "_")}-para-firma-externa.pdf`);
+  }
 
   async function upload(role: "VENDEDOR" | "COMPRADOR") {
     const file = files[role];
@@ -139,6 +159,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
   return <section style={{display:"grid",gap:14,padding:18,border:"1px solid #bfdbfe",borderRadius:12,background:"#fff"}}>
     <div>
       <h3 style={{margin:"0 0 6px"}}>Firma digital: próximamente</h3>
+      <button type="button" onClick={downloadContract} style={{marginTop:8,padding:"9px 13px",border:0,borderRadius:8,background:"#1d4ed8",color:"#fff",fontWeight:700}}>Descargar contrato para firma externa</button>
       <p style={{margin:0,color:"#475569",fontSize:13}}>El contrato se firma fuera de AgroBrokerIA. Cada parte carga aquí su copia PDF firmada. Administración revisa la autenticidad documental y aprueba o rechaza cada archivo. Esta carga no constituye firma digital.</p>
     </div>
     {(["VENDEDOR","COMPRADOR"] as const).map((role) => {
