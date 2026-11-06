@@ -2588,11 +2588,11 @@ Firma: ______________________________
       return false;
     }
 
-    // El RPC de cierre confirma la liquidación, registra la comisión de plataforma
-    // y cierra atómicamente la operación y su workflow. No debe intentarse un
-    // segundo avance secuencial hacia la etapa 10.
+    // El RPC de cierre solo cierra la operación si la comisión ya fue liberada
+    // por el control independiente de pago bancario + doble conformidad de entrega.
+    // No libera fondos ni debe intentarse un segundo avance secuencial.
     setMensaje(
-      "✅ Liquidación confirmada. Comisión AgroBrokerIA liberada y operación cerrada."
+      "✅ Liquidación confirmada. Comisión AgroBrokerIA previamente liberada contablemente y operación cerrada."
     );
 
     await cargarOperaciones();
