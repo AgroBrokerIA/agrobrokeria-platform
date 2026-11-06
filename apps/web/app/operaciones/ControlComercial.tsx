@@ -407,7 +407,7 @@ export default function ControlComercial({
             fontSize: 18,
           }}
         >
-          ✍️ Firmas del contrato definitivo
+          ✍️ Firma digital: próximamente · Copias firmadas externamente
         </h4>
 
         <p
@@ -480,31 +480,11 @@ export default function ControlComercial({
                 </div>
               </div>
 
-              {firma.estado === "PENDIENTE" &&
-                firma.requerido && (
-                  <button
-                    type="button"
-                    onClick={() =>
-                      onActualizarControl({
-                        [firma.campo]:
-                          "FIRMADO",
-                        [firma.fecha]:
-                          new Date().toISOString(),
-                      })
-                    }
-                    style={{
-                      padding: "10px 15px",
-                      border: 0,
-                      borderRadius: 8,
-                      background: "#16a34a",
-                      color: "white",
-                      fontWeight: 700,
-                      cursor: "pointer",
-                    }}
-                  >
-                    ✓ MARCAR FIRMADO
-                  </button>
-                )}
+              {firma.estado === "PENDIENTE" && firma.requerido && (
+                <span style={{ color: "#92400e", fontWeight: 700, fontSize: 13 }}>
+                  Pendiente de cargar y validar copia PDF firmada externamente
+                </span>
+              )}
 
               {firma.estado === "NO_CORRESPONDE" && (
                 <span
