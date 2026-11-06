@@ -1,0 +1,57 @@
+name: Refresh patched dependency lockfile
+
+on:
+  push:
+    branches:
+      - feat/kyc-legal-institutional-docs
+    paths:
+      - apps/web/package.json
+      - .github/workflows/refresh-lockfile-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  refresh-lockfile:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: true
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: apps/web/package-lock.json
+
+      - name: Regenerate lockfile
+        working-directory: apps/web
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Apply compatible security fixes
+        working-directory: apps/web
+        run: npm audit fix --package-lock-only --ignore-scripts
+
+      - name: Verify clean install
+        working-directory: apps/web
+        run: npm ci --ignore-scripts
+
+      - name: Verify audit
+        working-directory: apps/web
+        run: npm audit --audit-level=high
+
+      - name: Commit lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- apps/web/package-lock.json; then
+            echo "Lockfile is already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/package-lock.json
+          git commit -m "security: refresh dependency lockfile with patched packages"
+          git push
