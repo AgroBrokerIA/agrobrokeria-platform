@@ -555,7 +555,7 @@ export default function Liquidacion({
                 : "not-allowed",
           }}
         >
-          Liberar comisión AgroBrokerIA
+          Confirmar liquidación
         </button>
       </div>
     </div>
