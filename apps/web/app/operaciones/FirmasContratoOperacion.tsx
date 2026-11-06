@@ -15,7 +15,7 @@ type Copy = {
   observaciones: string | null;
 };
 
-export default function FirmasContratoOperacion({ operacionId }: { operacionId: string }) {
+export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvanced }: { operacionId: string; onWorkflowAdvanced?: () => Promise<void> }) {
   const uploadCounter = useRef(0);
   const [contractId, setContractId] = useState("");
   const [contractNumber, setContractNumber] = useState("");
@@ -171,6 +171,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
             : syncResult?.avanzada
               ? "Las dos copias firmadas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega."
               : "Las dos copias están aprobadas. El workflow verificó las condiciones y permanece pendiente de otro requisito.");
+          if (!syncError && syncResult?.avanzada && onWorkflowAdvanced) await onWorkflowAdvanced();
         } else {
           setMessage("Copia validada por Administración. Falta aprobar la copia de la otra parte.");
         }
