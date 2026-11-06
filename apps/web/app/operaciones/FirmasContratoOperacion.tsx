@@ -52,7 +52,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
       let companyIds: string[] = [];
       if (profile?.active_company_id) {
         const { data: mapped } = await supabase.from("company_empresa_map")
-          .select("empresa_id").eq("company_id", profile.active_company_id);
+          .select("empresa_id").eq("company_id", profile.active_company_id).eq("verified", true);
         companyIds = (mapped || []).map((x: any) => x.empresa_id);
         companyIds.push(profile.active_company_id);
       }
