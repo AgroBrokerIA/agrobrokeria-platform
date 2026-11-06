@@ -1,4 +1,11 @@
 -- Logical removal of a bank collection method. Keep payment and withdrawal references intact.
+-- Add an explicit terminal state for removed payment methods without reusing INACTIVO.
+ALTER TABLE public.medios_cobro
+  DROP CONSTRAINT IF EXISTS medios_cobro_estado_check;
+ALTER TABLE public.medios_cobro
+  ADD CONSTRAINT medios_cobro_estado_check
+  CHECK (estado = ANY (ARRAY['PENDIENTE','VALIDADO','RECHAZADO','INACTIVO','ELIMINADA']::text[]));
+
 CREATE OR REPLACE FUNCTION public.eliminar_medio_cobro(p_medio_id uuid)
 RETURNS void
 LANGUAGE plpgsql
