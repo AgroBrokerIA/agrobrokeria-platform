@@ -266,7 +266,7 @@ export default function Liquidacion({
     }
 
     setMensaje(
-      "✅ Comisión AgroBrokerIA liberada. La operación pasó a Cerrada."
+      "✅ Liquidación confirmada. La comisión queda sujeta a la conciliación y liberación administrativa correspondiente."
     );
     setGuardando(false);
   }
