@@ -148,7 +148,7 @@ BEGIN
         nullif(trim(coalesce(v_onboarding.vat_status, '')), ''),
         v_country, v_province, v_city, v_address,
         nullif(trim(coalesce(v_onboarding.postal_code, '')), ''),
-        nullif(trim(coalesce(v_onboarding.website, '')), ''),
+        NULL,
         false, true
       )
       RETURNING id INTO v_legacy_id;
@@ -253,4 +253,4 @@ $function$;
 REVOKE EXECUTE ON FUNCTION public.sincronizar_empresa_desde_onboarding()
   FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.sincronizar_empresa_desde_onboarding()
-  TO authenticated, service_role;
+  TO authenticated;
