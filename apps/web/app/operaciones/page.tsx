@@ -382,12 +382,14 @@ export default function OperacionesPage() {
     }
     setRevisandoRetencionComision(true); setError(""); setMensaje("");
     try {
-      const { error } = resultado === "RETENIDA"
+      const { data: resultadoRevision, error } = resultado === "RETENIDA"
         ? await supabase.rpc("confirmar_retencion_comision_plataforma", { p_retencion_id: retencionId, p_observaciones: observaciones })
         : await supabase.rpc("rechazar_comprobante_comision_plataforma", { p_retencion_id: retencionId, p_motivo: observaciones });
       if (error) throw error;
       setMensaje(resultado === "RETENIDA"
-        ? "Transferencia verificada. La comisión AgroBrokerIA quedó RETENIDA y ya se puede avanzar al Contrato Definitivo."
+        ? (resultadoRevision?.estado === "LIBERADA"
+          ? "Transferencia verificada. Como ya estaban confirmadas todas las entregas por transportista y productor, la comisión quedó liberada contablemente."
+          : "Transferencia verificada. La comisión AgroBrokerIA quedó RETENIDA; seguirá así hasta la doble conformidad de todos los viajes.")
         : "Comprobante rechazado. El motivo quedó registrado y la empresa pagadora puede volver a cargarlo desde Operaciones.");
       await cargarOperaciones();
     } catch (e) {
@@ -2805,7 +2807,7 @@ Firma: ______________________________
             {ordenDetalle === 4 && <section style={{marginTop:18,padding:16,border:"1px solid #86efac",borderRadius:12,background:"#f0fdf4"}}>
               <h3 style={{margin:"0 0 8px",color:"#166534"}}>Comisión AgroBrokerIA</h3>
               <p style={{margin:"0 0 8px",color:"#14532d"}}>La comisión de plataforma se gestiona después del visado y antes del Contrato Definitivo. Importe de referencia: USD {Number(detalleOperacion.cantidad_tn || 0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})} (USD 1 por TN).</p>
-              <strong style={{display:"inline-flex",padding:"6px 10px",borderRadius:999,background:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#dcfce7":"#fef3c7"),color:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#166534":"#92400e")}}>Comisión AgroBrokerIA: {["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"RETENIDA":"PENDIENTE DE VERIFICACIÓN"}</strong>
+              <strong style={{display:"inline-flex",padding:"6px 10px",borderRadius:999,background:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#dcfce7":"#fef3c7"),color:(["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())?"#166534":"#92400e")}}>Comisión AgroBrokerIA: {["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado||"").toUpperCase())String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "PENDIENTE DE VERIFICACIÓN").replaceAll("_"," ")}</strong>
               <p style={{margin:"8px 0 0",fontSize:12,color:"#475569"}}>La comisión solo se mostrará como RETENIDA cuando el sistema registre la retención confirmada por Administración.</p>
             </section>}
             {ordenDetalle === 4 && retencionComision && <section style={{marginTop:16,padding:16,border:"1px solid #cbd5e1",borderRadius:12,background:"#fff",display:"grid",gap:10}}>
