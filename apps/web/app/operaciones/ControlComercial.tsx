@@ -79,8 +79,7 @@ export default function ControlComercial({
       ? Number(control.comision_monto)
       : 0;
 
-  const fondosEstado =
-    control?.fondos_estado || "PENDIENTES";
+
 
   const visadoEstado =
     control?.visado_estado || "PENDIENTE";
@@ -351,7 +350,7 @@ export default function ControlComercial({
         }}
       >
         {[
-          ["🏦 Fondos", fondosEstado],
+          ["🏦 Pagos comerciales", "Externos a la plataforma"],
           ["🔎 Visado", visadoEstado],
           ["✍️ Vendedor", vendedorFirma],
           ["✍️ Comprador", compradorFirma],
