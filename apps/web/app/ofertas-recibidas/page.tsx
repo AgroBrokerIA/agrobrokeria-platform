@@ -1,5 +1,7 @@
 "use client";
 
+import Link from "next/link";
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import { getCompanyBadge } from "@/lib/company-badges";
@@ -869,7 +871,7 @@ export default function OfertasRecibidasPage() {
                   <section style={{marginTop:22,padding:18,border:"1px solid #86efac",borderRadius:12,background:"#f0fdf4"}}>
                     <strong style={{display:"block",color:"#166534",marginBottom:6}}>✓ Oferta aceptada</strong>
                     <p style={{margin:"0 0 12px",color:"#14532d"}}>La aceptación genera o vincula la operación comercial. Para continuar con el acuerdo, visado, contrato, firmas, fondos y entrega, ingresá al módulo Operaciones.</p>
-                    <a href="/operaciones" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"11px 16px",borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700,textDecoration:"none"}}>Continuar con la operación →</a>
+                    <Link href="/operaciones" style={{display:"inline-flex",alignItems:"center",justifyContent:"center",padding:"11px 16px",borderRadius:8,background:"#078b58",color:"#fff",fontWeight:700,textDecoration:"none"}}>Continuar con la operación →</Link>
                   </section>
                 )}
                 {oferta.estado ===
