@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { supabase } from "../../lib/supabase";
 import jsPDF from "jspdf";
 
@@ -16,6 +16,7 @@ type Copy = {
 };
 
 export default function FirmasContratoOperacion({ operacionId }: { operacionId: string }) {
+  const uploadCounter = useRef(0);
   const [contractId, setContractId] = useState("");
   const [contractNumber, setContractNumber] = useState("");
   const [contractContent, setContractContent] = useState("");
@@ -114,7 +115,7 @@ export default function FirmasContratoOperacion({ operacionId }: { operacionId: 
       const digest = await crypto.subtle.digest("SHA-256", await file.arrayBuffer());
       const hash = Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
       const safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, "_").slice(-100);
-      path = `${operacionId}/contratos/${contractId}/${role}/${auth.user.id}-${Date.now()}-${safeName}`;
+      path = `${operacionId}/contratos/${contractId}/${role}/${auth.user.id}-${file.lastModified}-${file.size}-${++uploadCounter.current}-${safeName}`;
       const { error: storageError } = await supabase.storage.from("documentos-operacion")
         .upload(path, file, { contentType: "application/pdf", upsert: false });
       if (storageError) throw storageError;
