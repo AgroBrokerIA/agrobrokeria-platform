@@ -410,7 +410,7 @@ export default function LogisticaEntrega({
     }
     if (aceptar && !window.confirm("¿Confirmás la recepción conforme de " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? La comisión seguirá sujeta a conciliación y cierre.")) return;
     setGuardando(true); setError(""); setMensaje("");
-    const { error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
+    const { data: resultadoRecepcion, error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
       p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
       p_confirmar: aceptar, p_observaciones: observaciones || null
     });
@@ -435,10 +435,14 @@ export default function LogisticaEntrega({
         if (todosConfirmados && onEntregaConfirmada) {
           const avanzada = await onEntregaConfirmada();
           setMensaje(avanzada
-            ? "Doble conformidad de todos los viajes confirmada. La operación pasó a Liquidación; la comisión se libera solo si la transferencia ya fue validada."
+            ? (resultadoRecepcion?.comision_liberada
+              ? "Doble conformidad completa. La operación pasó a Liquidación y la comisión quedó liberada contablemente."
+              : "Doble conformidad completa. La operación pasó a Liquidación; la comisión permanece retenida hasta verificar la transferencia.")
             : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
         } else {
-          setMensaje("Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la operación no avanzó de etapa.");
+          setMensaje(resultadoRecepcion?.comision_liberada
+            ? "Recepción confirmada. La comisión quedó liberada contablemente."
+            : "Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la comisión permanece retenida.");
         }
       }
     }
