@@ -1,0 +1,1 @@
+-- Migration file name aligned with the applied Supabase migration version.
