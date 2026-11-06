@@ -95,6 +95,10 @@ export default function RegisterPage() {
       if(data.session){
         const {error:saveError}=await supabase.from("account_onboarding").upsert(draft);
         if(saveError) throw saveError;
+        if(isCompany){
+          const {error:companySyncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
+          if(companySyncError) throw new Error("El legajo se guardó, pero no se pudo vincular la ficha empresarial: "+companySyncError.message);
+        }
         if(isBankRole){
           const {error:bankError}=await supabase.from("user_bank_accounts").insert({user_id:data.user.id,bank_name:form.bankName,account_type:form.accountTypeBank,currency:form.currency,account_holder:normalize(form.accountHolder),cbu_cvu:form.cbuCvu.replace(/\s/g,""),alias:form.alias.trim()||null});
           if(bankError) throw bankError;
