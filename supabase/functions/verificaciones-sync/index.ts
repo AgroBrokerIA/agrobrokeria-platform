@@ -139,7 +139,7 @@ Deno.serve(async(req:Request)=>{
       if(adminLookupError)throw adminLookupError;
       isAdmin=!!platformAdmin;
 
-      const {data:memberships,error:membershipError}=await sb.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true);
+      const {data:memberships,error:membershipError}=await sb.from("company_users").select("company_id").eq("profile_id",user.id).eq("activo",true).eq("rol","administrador");
       if(membershipError)throw membershipError;
       const companyIds=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
       ownCompanyIds=[...companyIds];
