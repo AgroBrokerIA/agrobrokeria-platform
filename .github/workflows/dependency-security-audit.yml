@@ -5,7 +5,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   npm-audit:
@@ -22,7 +22,16 @@ jobs:
           cache: npm
           cache-dependency-path: apps/web/package-lock.json
 
-      - name: Install locked dependencies
+      - name: Regenerate lockfile for patched direct dependencies
+        working-directory: apps/web
+        run: npm install --package-lock-only --ignore-scripts
+
+      - name: Apply compatible transitive security fixes
+        working-directory: apps/web
+        continue-on-error: true
+        run: npm audit fix --package-lock-only --ignore-scripts
+
+      - name: Verify clean locked install
         working-directory: apps/web
         run: npm ci --ignore-scripts
 
@@ -50,3 +59,16 @@ jobs:
             }));
           }
           NODE
+
+      - name: Commit refreshed lockfile
+        shell: bash
+        run: |
+          if git diff --quiet -- apps/web/package-lock.json; then
+            echo "Lockfile already current."
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add apps/web/package-lock.json
+          git commit -m "security: refresh dependency lockfile with patched packages"
+          git push
