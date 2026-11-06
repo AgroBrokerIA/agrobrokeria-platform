@@ -25,6 +25,8 @@ type Viaje = {
   productor_kilos_recibidos?: number | null;
   productor_recepcion_observaciones?: string | null;
   productor_recepcion_observada_at?: string | null;
+  transportista_entrega_evidencia_path?: string | null;
+  productor_recepcion_evidencia_path?: string | null;
 };
 
 type Transportista = {
@@ -162,6 +164,7 @@ export default function LogisticaEntrega({
   const [loading, setLoading] = useState(true);
   const [esTransportista, setEsTransportista] = useState(false);
   const [esProductor, setEsProductor] = useState(false);
+  const [esAdminPlataforma, setEsAdminPlataforma] = useState(false);
   const [profileId, setProfileId] = useState("");
   const [evidenciasTransportista, setEvidenciasTransportista] = useState<Record<string, File | null>>({});
   const [evidenciasProductor, setEvidenciasProductor] = useState<Record<string, File | null>>({});
@@ -209,6 +212,8 @@ export default function LogisticaEntrega({
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) return;
       setProfileId(auth.user.id);
+      const { data: admin } = await supabase.from("platform_admins").select("user_id").eq("user_id", auth.user.id).maybeSingle();
+      setEsAdminPlataforma(Boolean(admin));
       const { data } = await supabase.from("profiles").select("tipo_usuario,active_company_id").eq("id", auth.user.id).maybeSingle();
       setEsTransportista(String(data?.tipo_usuario || "").toLowerCase().includes("transportista"));
       if (data?.active_company_id) {
@@ -379,6 +384,27 @@ export default function LogisticaEntrega({
     else setMensaje("Seguimiento actualizado: " + estadoLabel(estado));
     await cargar();
     setGuardando(false);
+  }
+
+  async function abrirEvidenciaEntrega(path?: string | null) {
+    if (!esAdminPlataforma) { setError("Solo Administración puede abrir evidencias de entrega."); return; }
+    if (!path) return;
+    const { data, error: urlError } = await supabase.storage.from("documentos-operacion").createSignedUrl(path, 300);
+    if (urlError || !data?.signedUrl) { setError(urlError?.message || "No se pudo abrir la evidencia."); return; }
+    window.open(data.signedUrl, "_blank", "noopener,noreferrer");
+  }
+
+  async function resolverIncidenciaRecepcion(viaje: Viaje) {
+    if (!esAdminPlataforma) { setError("Solo Administración puede resolver incidencias."); return; }
+    const motivo = window.prompt("Describí la resolución administrativa y el motivo para reabrir la confirmación del productor:")?.trim();
+    if (!motivo) return;
+    setGuardando(true); setError(""); setMensaje("");
+    const { error: rpcError } = await supabase.rpc("resolver_incidencia_recepcion_viaje", {
+      p_viaje_id: viaje.id, p_observaciones: motivo
+    });
+    if (rpcError) setError("No se pudo resolver la incidencia: " + rpcError.message);
+    else setMensaje("Incidencia revisada por Administración. Se reabrió la recepción; el productor debe confirmar nuevamente con evidencia.");
+    await cargar(); setGuardando(false);
   }
 
   async function confirmarEntregaTransportista(viaje: Viaje) {
@@ -666,7 +692,10 @@ export default function LogisticaEntrega({
                   </div>
                 </div>
               )}
+              {esAdminPlataforma && viaje.transportista_entrega_evidencia_path && <button type="button" style={secondary} onClick={()=>void abrirEvidenciaEntrega(viaje.transportista_entrega_evidencia_path)}>Ver evidencia del transportista</button>}
+              {esAdminPlataforma && viaje.productor_recepcion_evidencia_path && <button type="button" style={secondary} onClick={()=>void abrirEvidenciaEntrega(viaje.productor_recepcion_evidencia_path)}>Ver evidencia del productor</button>}
               {viaje.productor_recepcion_observaciones && <div style={{ color: "#b45309", fontSize: 12 }}>Observación del productor: {viaje.productor_recepcion_observaciones}</div>}
+              {esAdminPlataforma && viaje.estado === "OBSERVADO" && <button type="button" style={primary} disabled={guardando} onClick={()=>void resolverIncidenciaRecepcion(viaje)}>Resolver incidencia y solicitar nueva confirmación</button>}
               {viaje.productor_recepcion_confirmada_at && <div style={{ color: "#166534", fontSize: 12, fontWeight: 800 }}>Doble confirmación completa · {Number(viaje.productor_kilos_recibidos || 0).toLocaleString("es-AR")} kg · {fecha(viaje.productor_recepcion_confirmada_at)}</div>}
               {viaje.estado === "OBSERVADO" && <div style={{ color: "#b45309", fontSize: 12, fontWeight: 800 }}>Operación observada: requiere resolución administrativa antes de continuar.</div>}
             </div>
