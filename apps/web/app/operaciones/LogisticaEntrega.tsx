@@ -163,6 +163,8 @@ export default function LogisticaEntrega({
   const [esTransportista, setEsTransportista] = useState(false);
   const [esProductor, setEsProductor] = useState(false);
   const [profileId, setProfileId] = useState("");
+  const [evidenciasTransportista, setEvidenciasTransportista] = useState<Record<string, File | null>>({});
+  const [evidenciasProductor, setEvidenciasProductor] = useState<Record<string, File | null>>({});
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
@@ -386,13 +388,32 @@ export default function LogisticaEntrega({
     if (!kilos || !Number.isFinite(Number(kilos)) || Number(kilos) <= 0) return;
     if (Number(kilos) > Number(cartaValidada.kilos_declarados)) { setError("Los kilos entregados no pueden superar los validados en la Carta de Porte."); return; }
     if (!window.confirm("¿Confirmás que entregaste " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? El productor deberá confirmar la recepción.")) return;
+    const evidencia = evidenciasTransportista[viaje.id];
+    if (!evidencia) { setError("Adjuntá evidencia de entrega (PDF, JPG o PNG) antes de confirmar."); return; }
+    if (!["application/pdf","image/jpeg","image/png"].includes(evidencia.type) || evidencia.size<=0 || evidencia.size>10*1024*1024) {
+      setError("La evidencia debe ser PDF, JPG o PNG y no superar 10 MB."); return;
+    }
     setGuardando(true); setError(""); setMensaje("");
-    const { error: rpcError } = await supabase.rpc("confirmar_entrega_transportista", {
-      p_viaje_id: viaje.id, p_kilos_entregados: Number(kilos),
-      p_observaciones: "Entrega declarada por el transportista."
-    });
-    if (rpcError) setError("No se pudo registrar la entrega del transportista: " + rpcError.message);
-    else setMensaje("Entrega registrada. Queda pendiente la confirmación del productor; no se liberó ninguna comisión.");
+    let evidencePath: string | null = null;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Iniciá sesión nuevamente.");
+      const safeName = evidencia.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
+      evidencePath = `${operacionId}/logistica/${viaje.id}/entrega/${auth.user.id}-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("documentos-operacion")
+        .upload(evidencePath,evidencia,{contentType:evidencia.type,upsert:false});
+      if (uploadError) throw uploadError;
+      const { error: rpcError } = await supabase.rpc("confirmar_entrega_transportista", {
+        p_viaje_id: viaje.id, p_kilos_entregados: Number(kilos),
+        p_observaciones: "Entrega declarada por el transportista.", p_evidencia_path: evidencePath
+      });
+      if (rpcError) throw rpcError;
+      setEvidenciasTransportista((current)=>({...current,[viaje.id]:null}));
+      setMensaje("Entrega registrada con evidencia. Queda pendiente la confirmación del productor; la comisión sigue retenida.");
+    } catch (e) {
+      if (evidencePath) await supabase.storage.from("documentos-operacion").remove([evidencePath]);
+      setError(e instanceof Error ? e.message : "No se pudo registrar la entrega del transportista.");
+    }
     await cargar(); setGuardando(false);
   }
 
@@ -413,42 +434,58 @@ export default function LogisticaEntrega({
       return;
     }
     if (aceptar && !window.confirm("¿Confirmás la recepción conforme de " + (Number(kilos) / 1000).toLocaleString("es-AR") + " toneladas? La comisión seguirá sujeta a conciliación y cierre.")) return;
+    const evidencia = evidenciasProductor[viaje.id];
+    if (!evidencia) { setError("Adjuntá evidencia de recepción o de la incidencia (PDF, JPG o PNG)."); return; }
+    if (!["application/pdf","image/jpeg","image/png"].includes(evidencia.type) || evidencia.size<=0 || evidencia.size>10*1024*1024) {
+      setError("La evidencia debe ser PDF, JPG o PNG y no superar 10 MB."); return;
+    }
     setGuardando(true); setError(""); setMensaje("");
-    const { data: resultadoRecepcion, error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
-      p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
-      p_confirmar: aceptar, p_observaciones: observaciones || null
-    });
-    if (rpcError) {
-      setError("No se pudo registrar la recepción: " + rpcError.message);
-    } else if (!aceptar) {
-      setMensaje("Incidencia registrada. La operación y la comisión permanecen bloqueadas hasta su resolución.");
-    } else {
-      const { data: confirmaciones, error: consultaError } = await supabase
-        .from("viajes")
-        .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
-        .eq("operacion_id", operacionId);
-      if (consultaError) {
-        setError("Recepción guardada, pero no se pudo comprobar el cierre de todos los viajes: " + consultaError.message);
+    let evidencePath: string | null = null;
+    try {
+      const { data: auth } = await supabase.auth.getUser();
+      if (!auth.user) throw new Error("Iniciá sesión nuevamente.");
+      const safeName = evidencia.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-100);
+      evidencePath = `${operacionId}/logistica/${viaje.id}/recepcion/${auth.user.id}-${Date.now()}-${safeName}`;
+      const { error: uploadError } = await supabase.storage.from("documentos-operacion")
+        .upload(evidencePath,evidencia,{contentType:evidencia.type,upsert:false});
+      if (uploadError) throw uploadError;
+      const { data: resultadoRecepcion, error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
+        p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
+        p_confirmar: aceptar, p_observaciones: observaciones || null, p_evidencia_path: evidencePath
+      });
+      if (rpcError) throw rpcError;
+      setEvidenciasProductor((current)=>({...current,[viaje.id]:null}));
+      if (!aceptar) {
+        setMensaje("Incidencia registrada con evidencia. La operación y la comisión permanecen bloqueadas hasta su resolución.");
       } else {
-        const todosConfirmados = Boolean(confirmaciones?.length) && confirmaciones!.every((item: any) =>
-          item.transportista_entrega_confirmada_at &&
-          item.productor_recepcion_confirmada_at &&
-          item.estado === "ENTREGADO_CONFIRMADO" &&
-          !item.productor_recepcion_observada_at
-        );
-        if (todosConfirmados && onEntregaConfirmada) {
-          const avanzada = await onEntregaConfirmada();
-          setMensaje(avanzada
-            ? (resultadoRecepcion?.comision_liberada
-              ? "Doble conformidad completa. La operación pasó a Liquidación y la comisión quedó liberada contablemente."
-              : "Doble conformidad completa. La operación pasó a Liquidación; la comisión permanece retenida hasta verificar la transferencia.")
-            : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
+        const { data: confirmaciones, error: consultaError } = await supabase
+          .from("viajes")
+          .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
+          .eq("operacion_id", operacionId);
+        if (consultaError) {
+          setError("Recepción guardada, pero no se pudo comprobar el cierre de todos los viajes: " + consultaError.message);
         } else {
-          setMensaje(resultadoRecepcion?.comision_liberada
-            ? "Recepción confirmada. La comisión quedó liberada contablemente."
-            : "Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la comisión permanece retenida.");
+          const todosConfirmados = Boolean(confirmaciones?.length) && confirmaciones!.every((item: any) =>
+            item.transportista_entrega_confirmada_at && item.productor_recepcion_confirmada_at &&
+            item.estado === "ENTREGADO_CONFIRMADO" && !item.productor_recepcion_observada_at
+          );
+          if (todosConfirmados && onEntregaConfirmada) {
+            const avanzada = await onEntregaConfirmada();
+            setMensaje(avanzada
+              ? (resultadoRecepcion?.comision_liberada
+                ? "Doble conformidad completa. La operación pasó a Liquidación y la comisión quedó liberada contablemente."
+                : "Doble conformidad completa. La operación pasó a Liquidación; la comisión permanece retenida hasta verificar la transferencia.")
+              : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
+          } else {
+            setMensaje(resultadoRecepcion?.comision_liberada
+              ? "Recepción confirmada. La comisión quedó liberada contablemente."
+              : "Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la comisión permanece retenida.");
+          }
         }
       }
+    } catch (e) {
+      if (evidencePath) await supabase.storage.from("documentos-operacion").remove([evidencePath]);
+      setError(e instanceof Error ? e.message : "No se pudo registrar la recepción.");
     }
     await cargar(); setGuardando(false);
   }
@@ -609,14 +646,24 @@ export default function LogisticaEntrega({
                 La comisión no se libera con estas confirmaciones: queda sujeta a conciliación y cierre.
               </div>
               {esTransportista && viaje.transportista_profile_id === profileId && !viaje.transportista_entrega_confirmada_at && viaje.estado !== "OBSERVADO" && (
-                <button type="button" style={primary} disabled={guardando || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA") || !eventosViaje.some((e) => e.estado === "DESCARGA_FINALIZADA")} onClick={() => void confirmarEntregaTransportista(viaje)}>
-                  Confirmar mercadería entregada
-                </button>
+                <div style={{display:"grid",gap:8}}>
+                  <label style={{fontSize:12,fontWeight:700}}>Evidencia de entrega (PDF, JPG o PNG; máximo 10 MB)
+                    <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e)=>setEvidenciasTransportista((current)=>({...current,[viaje.id]:e.target.files?.[0]||null}))} />
+                  </label>
+                  <button type="button" style={primary} disabled={guardando || !evidenciasTransportista[viaje.id] || !cartasViaje.some((c) => c.estado_verificacion === "VALIDADA") || !eventosViaje.some((e) => e.estado === "DESCARGA_FINALIZADA")} onClick={() => void confirmarEntregaTransportista(viaje)}>
+                    Confirmar mercadería entregada
+                  </button>
+                </div>
               )}
               {esProductor && viaje.transportista_entrega_confirmada_at && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                  <button type="button" style={primary} disabled={guardando} onClick={() => void confirmarRecepcionProductor(viaje, true)}>Confirmar recepción conforme</button>
-                  <button type="button" style={secondary} disabled={guardando} onClick={() => void confirmarRecepcionProductor(viaje, false)}>Reportar diferencia o incidencia</button>
+                <div style={{display:"grid",gap:8}}>
+                  <label style={{fontSize:12,fontWeight:700}}>Evidencia de recepción (PDF, JPG o PNG; máximo 10 MB)
+                    <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e)=>setEvidenciasProductor((current)=>({...current,[viaje.id]:e.target.files?.[0]||null}))} />
+                  </label>
+                  <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
+                    <button type="button" style={primary} disabled={guardando || !evidenciasProductor[viaje.id]} onClick={() => void confirmarRecepcionProductor(viaje, true)}>Confirmar recepción conforme</button>
+                    <button type="button" style={secondary} disabled={guardando || !evidenciasProductor[viaje.id]} onClick={() => void confirmarRecepcionProductor(viaje, false)}>Reportar diferencia o incidencia</button>
+                  </div>
                 </div>
               )}
               {viaje.productor_recepcion_observaciones && <div style={{ color: "#b45309", fontSize: 12 }}>Observación del productor: {viaje.productor_recepcion_observaciones}</div>}
