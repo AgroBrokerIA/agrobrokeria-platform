@@ -1544,3 +1544,19 @@ body{background:var(--ab-bg)}
 .legal-site-footer a{font-size:11px;color:#fff;text-decoration:underline;text-underline-offset:3px}
 .legal-site-footer small{font-size:10px;color:#9fbeb3}
 .contract-template-single a{display:block;margin-top:8px;font-size:11px;color:#087c54;text-decoration:underline}
+
+/* Registro de transportista: campos y adjuntos alineados en una tarjeta legible. */
+.transporter-registration-page{width:min(100%,960px)!important;max-width:960px!important;margin:24px auto!important;padding:16px!important;box-sizing:border-box!important;color:#10243b!important}
+.transporter-registration-card{width:100%;box-sizing:border-box;background:#fff;border:1px solid #dbe3ed;border-radius:16px;padding:clamp(18px,3vw,30px);display:grid;gap:18px;box-shadow:0 8px 28px rgba(16,36,59,.06)}
+.transporter-registration-card>div:first-child>div{font-size:25px!important;line-height:1.2!important;letter-spacing:-.4px}
+.transporter-registration-card>div:first-child p{font-size:14px!important;line-height:1.55!important;color:#64748b!important;margin:8px 0 0!important}
+.transporter-registration-card form{display:grid;grid-template-columns:minmax(0,1fr);gap:16px;min-width:0}
+.transporter-registration-page form>label,.transporter-registration-page form>div>label{display:grid!important;grid-template-columns:minmax(0,1fr)!important;align-content:start!important;gap:7px!important;min-width:0!important;width:100%!important;box-sizing:border-box!important;color:#233b53!important;font-size:13px!important;line-height:1.4!important;font-weight:700!important}
+.transporter-registration-page form>div{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:14px 18px!important;min-width:0!important}
+.transporter-registration-page form input:not([type=file]){width:100%!important;min-width:0!important;height:44px!important;box-sizing:border-box!important;border:1px solid #cbd5e1!important;border-radius:9px!important;padding:10px 12px!important;background:#fff!important;color:#0f172a!important;font-size:14px!important}
+.transporter-registration-page form input[type=file]{display:block!important;width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important;padding:12px!important;border:1px dashed #b7c9d8!important;border-radius:9px!important;background:#f8fafc!important;font-size:13px!important}
+.transporter-registration-page form label span{font-size:12px!important;line-height:1.5!important;font-weight:400!important;color:#64748b!important}
+.transporter-registration-page form>div[role=alert],.transporter-registration-page form>div[role=status]{min-width:0}
+.transporter-registration-page form>button[type=submit]{width:100%;min-height:48px;border:0;border-radius:9px;background:#078b58;color:#fff;font-size:14px;font-weight:800;cursor:pointer}
+.transporter-registration-page form>button[type=submit]:disabled{opacity:.65;cursor:wait}
+@media(max-width:640px){.transporter-registration-page{padding:10px!important;margin:12px auto!important}.transporter-registration-card{padding:17px!important}.transporter-registration-card>div:first-child>div{font-size:21px!important}.transporter-registration-page form>div{grid-template-columns:minmax(0,1fr)!important}}
