@@ -57,29 +57,49 @@ export default function AdminUserDetailPage(){
   if(e){setError(e.message);return;}setNotice("Documento empresarial actualizado.");await load();
  }
  async function saveReview(){
-  if(!profile)return;setSaving(true);setError("");setNotice("");
+  if(!profile)return;
+  setSaving(true);setError("");setNotice("");
   try{
-   if(status==="VERIFICADO"&&!required.ready)throw new Error("No se puede otorgar la insignia: faltan documentos obligatorios o hay documentos sin aprobar. Revisá DNI, estatuto/contrato social, poder o acta de autoridades, constancia ARCA y SISA, además de las facultades del representante.");
-   const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sesión no disponible.");
-   const verified=status==="VERIFICADO",now=new Date().toISOString();
-   const {error:pe}=await supabase.from("profiles").update({verification_status:status,is_verified:verified,verification_notes:notes||null,verified_at:verified?now:null,verified_by:verified?user.id:null}).eq("id",id);if(pe)throw pe;
-   if(onboarding){const {error:oe}=await supabase.from("account_onboarding").update({review_status:status,is_verified:verified,review_notes:notes||null,reviewed_by:user.id,reviewed_at:now,updated_at:now}).eq("user_id",id);if(oe)throw oe;}
-   for(const company of companies){const {error:ce}=await supabase.from("companies").update({estado:verified?"verificada":"pendiente"}).eq("id",company.id);if(ce)throw ce;}
-   if(legacyCompany){const {error:le}=await supabase.from("empresas").update({verificada:verified,activa:true}).eq("id",legacyCompany.id);if(le)throw le;}
-   if(onboarding?.account_type==="EMPRESA"){
-     const expiry=arcaVencimiento?new Date(arcaVencimiento+"T23:59:59-03:00").toISOString():null;
-     const {data:compliance,error:complianceError}=await supabase.rpc("admin_registrar_revision_fiscal_empresa",{
-       p_user_id:id,p_sisa_status:sisaStatus,p_sisa_categoria:sisaCategoria||null,
-       p_actividad_agro_validada:actividadAgroValidada,
-       p_arca_verificada:verified&&arcaVerificada,
-       p_arca_vencimiento:verified&&arcaVerificada?expiry:null,
-       p_observaciones:arcaObservaciones.trim()||notes.trim()||null
-     });
-     if(complianceError)throw complianceError;
-     if(verified&&compliance?.mapa_verificado!==true)throw new Error("La revisión documental se guardó, pero no se pudo activar el vínculo empresarial verificado.");
-   }
-   setNotice("Revisión guardada. "+(verified?"Se completó la revisión documental y fiscal; la empresa quedó habilitada como verificada.":"La cuenta conserva el acceso al sistema sin insignia de verificado."));await load();
-  }catch(e){setError(e instanceof Error?e.message:"No se pudo guardar la revisión.");}finally{setSaving(false);}
+    if(status==="VERIFICADO"&&!required.ready)throw new Error("No se puede otorgar la insignia: faltan documentos obligatorios o hay documentos sin aprobar. Revisá DNI, estatuto/contrato social, poder o acta de autoridades, constancia ARCA y SISA, además de las facultades del representante.");
+    const {data:{user}}=await supabase.auth.getUser();
+    if(!user)throw new Error("Sesión no disponible.");
+    const verified=status==="VERIFICADO";
+    if(onboarding?.account_type==="EMPRESA"){
+      const expiry=arcaVencimiento?new Date(arcaVencimiento+"T23:59:59-03:00").toISOString():null;
+      const {data:result,error:reviewError}=await supabase.rpc("admin_aprobar_empresa_compliance",{
+        p_user_id:id,p_review_status:status,p_review_notes:notes||null,
+        p_sisa_status:sisaStatus,p_sisa_categoria:sisaCategoria||null,
+        p_actividad_agro_validada:actividadAgroValidada,
+        p_arca_verificada:verified&&arcaVerificada,
+        p_arca_vencimiento:verified&&arcaVerificada?expiry:null,
+        p_arca_observaciones:arcaObservaciones.trim()||notes.trim()||null
+      });
+      if(reviewError)throw reviewError;
+      if(verified&&result?.mapa_verificado!==true)throw new Error("La revisión se guardó, pero no se pudo activar el vínculo empresarial verificado.");
+      setNotice(verified?"Revisión documental y fiscal aprobada. La empresa quedó vinculada y verificada.":"Revisión empresarial guardada. La cuenta conserva acceso, pero la empresa no está habilitada como verificada.");
+      await load();
+      return;
+    }
+    const now=new Date().toISOString();
+    const {error:pe}=await supabase.from("profiles").update({
+      verification_status:status,is_verified:verified,verification_notes:notes||null,
+      verified_at:verified?now:null,verified_by:verified?user.id:null
+    }).eq("id",id);
+    if(pe)throw pe;
+    if(onboarding){
+      const {error:oe}=await supabase.from("account_onboarding").update({
+        review_status:status,is_verified:verified,review_notes:notes||null,
+        reviewed_by:user.id,reviewed_at:now,updated_at:now
+      }).eq("user_id",id);
+      if(oe)throw oe;
+    }
+    setNotice("Revisión personal guardada. "+(verified?"Se otorgó la insignia de verificado.":"La cuenta conserva el acceso al sistema sin insignia de verificado."));
+    await load();
+  }catch(e){
+    setError(e instanceof Error?e.message:"No se pudo guardar la revisión.");
+  }finally{
+    setSaving(false);
+  }
  }
  if(loading)return <main style={{padding:30}}>Cargando ficha del usuario…</main>;
  if(!profile)return <main style={{padding:30}}><p>{error||"Usuario no encontrado."}</p><Link href="/admin/usuarios">Volver a usuarios</Link></main>;
