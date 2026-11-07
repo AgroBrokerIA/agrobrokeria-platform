@@ -328,22 +328,15 @@ export default function ContratosPage(){
  }
  async function cargarPartesOperacion(operationId:string){
    const [{data:participantes,error:participantesError},{data:partes}]=await Promise.all([
-     supabase.from("operacion_participantes").select("rol,empresa_id").eq("operacion_id",operationId),
+     supabase.rpc("datos_partes_contrato_operacion",{p_operacion_id:operationId}),
      supabase.from("partes_operacion").select("rol,nombre_razon_social,cuit").eq("operacion_id",operationId)
    ]);
    if(participantesError){setError("No se pudieron cargar las empresas participantes: "+participantesError.message);return;}
-   const ids=[...new Set((participantes||[]).map((p:any)=>p.empresa_id).filter(Boolean))];
-   if(!ids.length){setCompanyOptions([]);setForm(x=>({...x,vendedor:partes?.find((p:any)=>String(p.rol).toUpperCase()==="VENDEDOR")?.nombre_razon_social||"",comprador:partes?.find((p:any)=>String(p.rol).toUpperCase()==="COMPRADOR")?.nombre_razon_social||"",intermediario:partes?.find((p:any)=>String(p.rol).toUpperCase()==="INTERMEDIARIO")?.nombre_razon_social||"",vendedorCuit:partes?.find((p:any)=>String(p.rol).toUpperCase()==="VENDEDOR")?.cuit||"",compradorCuit:partes?.find((p:any)=>String(p.rol).toUpperCase()==="COMPRADOR")?.cuit||""}));return;}
-   const {data:empresas,error:empresasError}=await supabase.from("empresas").select("id,razon_social,nombre_comercial,cuit,cuenta_id,verificada").in("id",ids);
-   if(empresasError){setError("No se pudieron cargar los datos empresariales: "+empresasError.message);return;}
-   const userIds=[...new Set((empresas||[]).map((e:any)=>e.cuenta_id).filter(Boolean))];
-   let onboarding:any[]=[];
-   if(userIds.length){const {data}=await supabase.from("account_onboarding").select("user_id,sisa_categoria,sisa_status").in("user_id",userIds);onboarding=data||[];}
-   const options:CompanyOption[]=(participantes||[]).flatMap((p:any)=>{
-     const e=(empresas||[]).find((item:any)=>item.id===p.empresa_id);if(!e)return[];
-     const sisa=onboarding.find((item:any)=>item.user_id===e.cuenta_id);
-     return [{id:e.id,rol:String(p.rol).toUpperCase(),razon_social:e.razon_social||e.nombre_comercial||"Empresa sin razón social",cuit:e.cuit||"",sisa_categoria:sisa?.sisa_categoria||"",sisa_status:sisa?.sisa_status||"",verificada:Boolean(e.verificada)}];
-   });
+   const options:CompanyOption[]=(participantes||[]).map((p:any)=>({
+     id:String(p.empresa_id),rol:String(p.rol).toUpperCase(),razon_social:p.razon_social||"Empresa sin razón social",
+     cuit:p.cuit||"",sisa_categoria:[p.sisa_categoria,p.sisa_status].filter(Boolean).join(" · "),
+     sisa_status:p.sisa_status||"",verificada:Boolean(p.verificada)
+   }));
    setCompanyOptions(options);
    const find=(role:string)=>options.find(x=>x.rol===role);
    const part=(role:string)=>partes?.find((x:any)=>String(x.rol).toUpperCase()===role);
