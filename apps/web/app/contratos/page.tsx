@@ -373,6 +373,8 @@ export default function ContratosPage(){
  }
  async function saveDraft(){
    if(!form.operacionId){setError("Seleccioná una operación.");return;}
+   if(!form.vendedor.trim()||!form.comprador.trim()){setError("Completá la razón social del vendedor y del comprador.");return;}
+   if(!form.puerto.trim()){setError("Seleccioná una terminal activa o ingresá el lugar de entrega específico.");return;}
    if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("El CUIT del vendedor y del comprador debe contener exactamente 11 dígitos.");return;}
    if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
    if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
@@ -410,6 +412,8 @@ export default function ContratosPage(){
  }
  function download(tipo:"F1"){
   if(!form.operacionId||!form.producto){setError("Seleccioná una operación y producto antes de generar el PDF.");return;}
+  if(!form.vendedor.trim()||!form.comprador.trim()){setError("Completá la razón social del vendedor y del comprador.");return;}
+  if(!form.puerto.trim()){setError("Seleccioná una terminal activa o ingresá el lugar de entrega específico.");return;}
   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
   if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
   if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
@@ -437,7 +441,7 @@ export default function ContratosPage(){
  function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
  
  return <main className="contract-builder-reference">
-  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Generá, personalizá y descargá documentos PDF a partir de los datos registrados de la operación.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
+  <header className="contract-builder-head"><div><h1>Contratos</h1><p>Generá, personalizá y descargá documentos PDF a partir de los datos registrados de la operación.</p></div><div className="contract-builder-actions"><button onClick={()=>setTab("plantillas")}>▣ Plantillas</button><button onClick={()=>setTab("firmas")}>⌁ Firmas</button><button className="contract-new" onClick={()=>{setTab("tipos");setSelected(null);setForm(initial);setCompanyOptions([]);setMessage("Nuevo contrato listo para completar.")}}>＋ Nuevo contrato</button></div></header>
   {error&&<div className="contract-builder-alert error">{error}</div>}{message&&<div className="contract-builder-alert">{message}</div>}
 
   <nav className="contract-builder-tabs">{[["tipos","Tipos de contratos"],["mis","Mis contratos"],["plantillas","Plantillas"],["clausulas","Cláusulas"],["firmas","Firmas"],["historial","Historial"]].map(([k,l])=><button key={k} className={tab===k?"active":""} onClick={()=>setTab(k)}>{l}</button>)}</nav>
@@ -460,7 +464,7 @@ export default function ContratosPage(){
        <label>Precio por TN (obligatorio)<input type="number" min="0.01" step="0.01" required value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal" placeholder="Precio acordado por tonelada"/></label>
        <label>Moneda de la operación<input value={form.moneda || "Sin moneda registrada"} readOnly/></label>
        <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}><option value="">Seleccionar condición</option>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
-       <label>Terminal portuaria autorizada<select value={form.terminalId} onChange={e=>{const t=terminales.find(x=>x.id===e.target.value);setForm(x=>({...x,terminalId:t?.id||"",puerto:t?[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · "):x.puerto}));}}><option value="">Seleccionar terminal activa</option>{terminales.map(t=><option key={t.id} value={t.id}>{[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · ")}</option>)}</select></label>
+       <label>Terminal portuaria autorizada<select value={form.terminalId} onChange={e=>{const t=terminales.find(x=>x.id===e.target.value);setForm(x=>({...x,terminalId:t?.id||"",puerto:t?[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · "):x.puerto}));}}><option value="">Seleccionar terminal activa</option>{terminales.map(t=><option key={t.id} value={t.id}>{[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · ")}</option>)}</select><small>{terminales.length?"Solo se muestran terminales activas cargadas por Administración.":"No hay terminales activas registradas; ingresá el lugar específico debajo."}</small></label>
        <label>Lugar de entrega específico<input value={form.puerto} onChange={e=>update("puerto",e.target.value)} placeholder="Terminal, planta, localidad o destino exacto" required/></label>
        <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
        <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Completar según la operación"/></label>
