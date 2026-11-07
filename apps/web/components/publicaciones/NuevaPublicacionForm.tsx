@@ -279,7 +279,7 @@ export default function NuevaPublicacionForm() {
 
       const { data: publicacion, error: errorPublicacion } = await supabase
         .from("publicaciones")
-        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones")
+        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones,representado_razon_social,representado_cuit,representado_sisa_categoria")
         .eq("id", id)
         .single();
 
