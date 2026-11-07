@@ -1595,3 +1595,83 @@ td{font-size:13px}
  .app-header-actions{min-width:0;gap:5px}
  table{display:block;max-width:100%;overflow-x:auto}
 }
+
+
+/* ─────────────────────────────────────────────────────────────────────────
+   AGROBROKERIA · DESIGN SYSTEM GLOBAL FINAL
+   Una sola escala tipográfica y de componentes para todos los módulos internos.
+   Mantiene excepciones de documentos legales y cifras/KPI cuando corresponda.
+   ───────────────────────────────────────────────────────────────────────── */
+:root{
+  --ab-font-xs:10px;
+  --ab-font-sm:11px;
+  --ab-font-base:13px;
+  --ab-font-md:14px;
+  --ab-font-lg:16px;
+  --ab-font-xl:20px;
+  --ab-ink:#17221b;
+  --ab-muted:#6b776f;
+  --ab-line:#e1e8e2;
+  --ab-green:#167a45;
+  --ab-green-dark:#0e5b33;
+  --ab-surface:#fff;
+}
+.app-body .page-shell{background:var(--bg,#f4f7f3);color:var(--ab-ink);font-size:var(--ab-font-base);line-height:1.5}
+.app-body .page-shell>main{width:100%;max-width:1600px;margin-inline:auto}
+.app-body .page-shell main :where(h1){font-size:26px!important;line-height:1.22!important;letter-spacing:-.55px!important;font-weight:750!important;color:var(--ab-ink)}
+.app-body .page-shell main :where(h2){font-size:17px!important;line-height:1.3!important;letter-spacing:-.2px!important;font-weight:700!important;color:var(--ab-ink)}
+.app-body .page-shell main :where(h3){font-size:14px!important;line-height:1.35!important;font-weight:700!important;color:var(--ab-ink)}
+.app-body .page-shell main :where(h4,h5){font-size:12px!important;line-height:1.4!important;font-weight:700!important}
+.app-body .page-shell main :where(p){font-size:12px;line-height:1.55;color:inherit}
+.app-body .page-shell main :where(label){font-size:11px!important;line-height:1.4!important;font-weight:650}
+.app-body .page-shell main :where(small){font-size:10px!important;line-height:1.4!important}
+.app-body .page-shell main :where(button,.button,a[role=button]){font-size:11px;line-height:1.35}
+.app-body .page-shell main :where(input,select,textarea){font-size:12px!important;line-height:1.4!important;min-height:34px;border-radius:8px}
+.app-body .page-shell main :where(input[type=checkbox],input[type=radio]){min-height:0}
+.app-body .page-shell main :where(th){font-size:10px!important;line-height:1.35!important;font-weight:750}
+.app-body .page-shell main :where(td){font-size:11px!important;line-height:1.45!important}
+.app-body .page-shell main :where(.module-hero h1,.dashboard-hero h1){font-size:27px!important;line-height:1.2!important}
+.app-body .page-shell main :where(.module-hero p,.dashboard-hero p){font-size:12px!important;line-height:1.5!important;color:var(--ab-muted)}
+.app-body .page-shell main :where(.module-pill,.eyebrow){font-size:10px!important;line-height:1.35!important}
+.app-body .page-shell main :where(.stat-card strong,.dashboard-stat strong,.kpi-value,.metric-value){font-size:20px!important;line-height:1.2!important}
+.app-body .page-shell main :where(.stat-card span,.stat-card small){font-size:10px!important}
+.app-body .page-shell main :where(.module-alert){font-size:11px!important;line-height:1.5!important;padding:10px 12px!important;border-radius:9px}
+.app-body .page-shell main :where(.module-empty,.empty-module){padding:32px 20px!important;border-radius:12px}
+.app-body .page-shell main :where(.module-empty-icon,.empty-module-icon){font-size:30px!important}
+.app-body .page-shell main :where(.dashboard-panel,.stat-card,.company-card,.publication-form-shell,.profile-card,.log-panel,.security-panel,.reports-panel,.messages-list-panel,.meet-provider-panel,.commission-panel,.arca-card,.billing-table-card,.docs-table-card,.companies-table-card,.companies-bottom-card,.board-table-card,.board-chart-card,.market-quote-card,.market-side-card,.market-chart-card,.market-table-card,.ai-table-card,.ai-bottom-card,.operations-main-card,.operations-bottom-card,.vt-table-card){border-radius:12px}
+.app-body .page-shell main :where(.dashboard-panel,.stat-card,.company-card,.publication-form-shell,.profile-card,.log-panel,.security-panel,.reports-panel,.messages-list-panel,.meet-provider-panel,.commission-panel,.arca-card,.billing-table-card,.docs-table-card,.companies-table-card,.companies-bottom-card,.board-table-card,.board-chart-card,.market-quote-card,.market-side-card,.market-chart-card,.market-table-card,.ai-table-card,.ai-bottom-card,.operations-main-card,.operations-bottom-card,.vt-table-card){box-shadow:0 5px 16px #10251a08}
+.app-body .page-shell main :where(.module-page,.dashboard-page,.security-reference,.reports-reference,.messages-reference,.meet-reference,.offers-reference,.contract-builder-reference){box-sizing:border-box;min-width:0}
+.app-body .page-shell main :where(.module-page){padding:26px 30px 48px}
+.app-body .page-shell main :where(.dashboard-page){padding:28px 30px 48px}
+.app-body .page-shell main :where(.module-hero){margin-bottom:16px;gap:14px}
+.app-body .page-shell main :where(.module-hero h1,.module-title){font-size:26px!important}
+.app-body .page-shell main :where(.module-hero p){margin-top:5px}
+.app-body .page-shell main :where(.publication-form-shell,.dashboard-panel,.company-card,.profile-card,.log-panel,.security-panel,.reports-panel,.messages-list-panel,.meet-provider-panel,.commission-panel){padding:16px}
+.app-body .page-shell main :where(.sidebar-link){font-size:12px}
+.app-body .page-shell main :where(.quick-card strong,.company-card h2){font-size:12px}
+.app-body .page-shell main :where(.quick-card span,.company-card-head p,.company-details strong){font-size:10px}
+.app-body .page-shell main :where(.quick-card){padding:11px;border-radius:9px}
+.app-body .page-shell main :where(.quick-card b){width:32px;height:32px;font-size:15px}
+.app-body .page-shell main :where(.form-grid,.publication-form-grid,.settings-grid){gap:12px}
+.app-body .page-shell main :where(.primary-action,.secondary-action){font-size:11px;padding:9px 13px;border-radius:8px}
+.app-body .page-shell main :where(.module-page button,.dashboard-page button){border-radius:8px}
+.app-body .page-shell main :where(.module-page input,.module-page select,.module-page textarea,.dashboard-page input,.dashboard-page select,.dashboard-page textarea){border-color:var(--ab-line);border-radius:8px}
+.app-body .page-shell main :where(.module-page input:focus,.module-page select:focus,.module-page textarea:focus,.dashboard-page input:focus,.dashboard-page select:focus,.dashboard-page textarea:focus){border-color:var(--ab-green);box-shadow:0 0 0 2px #167a4518;outline:0}
+.app-body .page-shell main :where(.module-page table,.dashboard-page table){border-color:var(--ab-line)}
+.app-body .page-shell main :where(.module-page th,.dashboard-page th){padding:9px 10px;background:#f5f8f6;color:#536158}
+.app-body .page-shell main :where(.module-page td,.dashboard-page td){padding:9px 10px;border-top:1px solid var(--ab-line)}
+/* The contracts PDF remains a document preview, not app-body display text. */
+.app-body .page-shell main .contract-paper :where(h3){font-size:13px!important}
+.app-body .page-shell main .contract-paper :where(p){font-size:10px!important}
+.app-body .page-shell main .contract-paper :where(span,td){font-size:9px!important}
+@media(max-width:1100px){
+ .app-body .page-shell main :where(.module-page,.dashboard-page){padding:22px 20px 40px}
+}
+@media(max-width:760px){
+ .app-body .page-shell main :where(.module-page,.dashboard-page,.security-reference,.reports-reference,.messages-reference,.meet-reference){padding:16px 12px 32px}
+ .app-body .page-shell main :where(h1,.module-hero h1,.module-title){font-size:23px!important}
+ .app-body .page-shell main :where(h2){font-size:16px!important}
+ .app-body .page-shell main :where(.dashboard-panel,.stat-card,.company-card,.publication-form-shell,.profile-card,.log-panel,.security-panel,.reports-panel,.messages-list-panel,.meet-provider-panel,.commission-panel){padding:13px}
+ .app-body .page-shell main :where(.module-hero,.dashboard-hero){align-items:flex-start;flex-wrap:wrap}
+ .app-body .page-shell main :where(table){display:block;max-width:100%;overflow-x:auto}
+}
