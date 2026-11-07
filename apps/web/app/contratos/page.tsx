@@ -417,7 +417,7 @@ export default function ContratosPage(){
     <div className="contract-builder-form">
       <h2>Seleccionar tipo de contrato</h2>
       <div className="contract-type-picks">
-        <div className="contract-template-single"><b>Contratos Digitales Homologados · Modelos F1 oficiales</b><span>El sistema prepara el borrador con los datos reales de la operación. Las partes descargan el PDF, lo firman externamente y cargan las copias firmadas para su revisión y trazabilidad. No se ofrece firma digital integrada.</span></div>
+        <div className="contract-template-single"><b>Contratos F1 · Borrador comercial y carga de PDF firmado</b><span>AgroBrokerIA prepara el resumen comercial con datos reales de la operación. La plantilla oficial vigente de la Bolsa correspondiente debe incorporarse para generar el instrumento homologado. Las partes descargan el documento, lo firman externamente y cargan las copias PDF firmadas para su revisión y trazabilidad. No hay firma digital integrada.</span></div>
         <button className={form.tipo==="F1"?"selected f1":""} onClick={()=>preview("F1")}><b>▤</b><span><strong>F1</strong><small>Contrato F1</small></span><i>✓</i></button>
       </div>
       <h2>Seleccionar commodity</h2>
