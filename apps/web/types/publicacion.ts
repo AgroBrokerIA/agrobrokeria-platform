@@ -9,6 +9,22 @@ export interface Publicacion {
   representado_cuit?: string | null;
   representado_sisa_categoria?: string | null;
 
+  /** Condiciones internacionales y especificaciones de calidad de la publicación. */
+  base_precio_cbot?: boolean;
+  premium_cbot?: number | null;
+  humedad_maxima?: number | null;
+  materia_extrana_maxima?: number | null;
+  aflatoxinas_max_ppb?: number | null;
+  proteina_minima?: number | null;
+  granos_danados_maximos?: number | null;
+  granos_quebrados_maximos?: number | null;
+  instrumentos_pago_internacional?: string[];
+  tipo_buque?: string | null;
+  cantidad_envios?: number | null;
+  toneladas_por_envio?: number | null;
+  puerto_origen_destino?: string | null;
+  pais_destino?: string | null;
+
   tipo: "COMPRA" | "VENTA";
 
   tipo_contrato?: "F1" | null;
