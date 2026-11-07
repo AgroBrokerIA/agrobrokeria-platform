@@ -31,7 +31,6 @@ const menu: MenuItem[] = [
   { icon: "📁", key: "nav.documentos", fallback: "Documentación", ruta: "/documentos" },
   { icon: "🚢", key: "nav.logistica", fallback: "Logística", ruta: "/logistica" },
   { icon: "🧮", key: "nav.utilidades", fallback: "Utilidades Agro", ruta: "/utilidades" },
-  { icon: "💼", key: "nav.comisiones", fallback: "Comisiones", ruta: "/comisiones" },
   { icon: "🏢", key: "nav.empresas", fallback: "Empresas", ruta: "/empresas" },
   { icon: "🔐", key: "nav.verificaciones", fallback: "Verificaciones", ruta: "/verificaciones" },
   { icon: "📊", key: "nav.reportes", fallback: "Reportes", ruta: "/reportes" },
