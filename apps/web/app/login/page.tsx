@@ -56,6 +56,14 @@ export default function LoginPage() {
     const ok=(legal||[]).every((d:any)=> (accepted||[]).some((a:any)=>a.documento_legal_id===d.id&&a.version===d.version));
     const next = new URLSearchParams(window.location.search).get("next") || "/dashboard";
     const safeNext = next.startsWith("/") && !next.startsWith("//") ? next : "/dashboard";
+    if(ok){
+      const {data:onboarding,error:onboardingError}=await supabase.from("account_onboarding").select("account_type").eq("user_id",userId).maybeSingle();
+      if(onboardingError){setError("No se pudo comprobar el registro empresarial: "+onboardingError.message);return;}
+      if(onboarding?.account_type==="EMPRESA"){
+        const {error:syncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
+        if(syncError){router.replace("/perfil?empresa=pendiente");router.refresh();return;}
+      }
+    }
     router.push(ok ? safeNext : "/legal/aceptar"); router.refresh();
   }
 
