@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd apps/web && npm ci",
+  "installCommand": "cd apps/web && npm install --package-lock-only --ignore-scripts && npm ci",
   "buildCommand": "cd apps/web && npm run build",
   "devCommand": "cd apps/web && npm run dev",
   "crons": [
