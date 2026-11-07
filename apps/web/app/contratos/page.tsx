@@ -42,7 +42,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  const rows=[
   ["Grano / Producto",field(f.producto)],["Cosecha / Campaña",field(f.campania)],
   ["Tipo de operación",f.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],
-  ["Cantidad",f.cantidad?money(f.cantidad)+" Toneladas Métricas (Tolerancia: +/- 5%)":"________________ Toneladas Métricas"],
+  ["Cantidad",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],
   ["Precio Pactado",f.precio?money(f.precio)+" "+(f.moneda||"SIN MONEDA")+" por Tonelada Métrica":"________________ por Tonelada Métrica"],
   ["Base de Entrega",f.condicion||"________________"],["Procedencia",field(f.procedencia)],
   ["Destino / Entrega",f.puerto||"________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"],
@@ -53,7 +53,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=17;y=wrap("Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
  const clauses: [string, string][] = [];
  for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
- y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("En prueba de conformidad, se firma el presente contrato por las partes intervinientes.",m,y);y+=42;
+ y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Espacios reservados para la firma externa de las partes. Las copias PDF firmadas deben cargarse en la operación.",m,y);y+=42;
  const sigs=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
  sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+180,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
  return pdf;
@@ -66,7 +66,7 @@ function buildPdf(f:FormState){
  const field=(label:string,value:string)=>value||"_______________________________";
  const party=(role:string,value:string)=>`• EL ${role}: ${field(role,value)}`;
  const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
- const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Conste por el presente documento que se celebra el ${dateText}, bajo las condiciones que se detallan a continuación.`,m,76);};
+ const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Borrador generado el ${dateText}. Este documento resume datos comerciales y no sustituye el modelo oficial F1 vigente.`,m,76);};
  if(f.tipo==="F1"){
    pageTitle("BORRADOR DE CONDICIONES COMERCIALES · F1");
    header(new Date().toLocaleDateString("es-AR"));
@@ -79,31 +79,9 @@ function buildPdf(f:FormState){
    const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
    const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const h=28;pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);const ls=pdf.splitTextToSize(b,m+col1+6?col2-12:col2-12);pdf.text(ls,m+col1+6,y+12);y+=h;}
    y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=18;y=drawWrapped(pdf,"Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
-   const clauses: [string, string][] = [];
-   for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=drawWrapped(pdf,t,m,y+12,W-2*m,8.5,10);y+=8;}
-   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.setTextColor(25,25,25);pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.setTextColor(25,25,25);pdf.text("TERCERA: INTERMEDIACIÓN EXTERNA Y HONORARIOS PRIVADOS",m,y);
-   y=drawWrapped(pdf,"Las partes dejan constancia de la intervención del intermediario identificado en este contrato. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación de terceros se pactan, documentan, facturan y abonan de forma privada y externa entre quienes los hayan acordado. AgroBrokerIA no los calcula, retiene, administra ni cobra, y no interviene en sus controversias.",m,y+14,W-2*m,9,11);y+=8;
-   pdf.setFont("helvetica","bold");pdf.text("CUARTA: JURISDICCIÓN Y SOLUCIÓN DE DISPUTAS",m,y);y=drawWrapped(pdf,`Para cualquier controversia que se suscite con motivo de la interpretación, cumplimiento o rescisión de este contrato, las partes se someten voluntariamente al arbitraje y jurisdicción de la Cámara Arbitral de Cereales de la ciudad de ${f.ciudadArbitral||"______________________"}, renunciando expresamente a cualquier otro fuero o jurisdicción.`,m,y+14,W-2*m,9,11);
-   y+=20;pdf.setFont("helvetica","normal");pdf.text("En prueba de conformidad, se firman 3 (tres) ejemplares de un mismo tenor y a un solo efecto.",m,y);y+=38;
+   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=22;pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=48;
    const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"]];
    sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
- } else {
-   pageTitle("CONTRATO DE ABASTECIMIENTO DE GRANOS","CONTRATO MARCO REGENERATIVO");
-   header(new Date().toLocaleDateString("es-AR"));
-   let y=100;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
-   y=drawWrapped(pdf,`EL VENDEDOR (PROVEEDOR): ${field("",f.vendedor)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y,W-2*m,9);
-   y=drawWrapped(pdf,`EL COMPRADOR (RECEPTOR): ${field("",f.comprador)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
-   y=drawWrapped(pdf,`EL INTERMEDIARIO (BRÓKER): ${field("",f.intermediario)}   CUIT/RUT: ____________________   Domicilio: _______________________________ `,m,y+4,W-2*m,9);
-   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. ESPECIFICACIONES DE LOGÍSTICA Y ABASTECIMIENTO (F1)",m,y);y+=15;
-   const rows=[["Especie / Grano",field("",f.producto),"Campaña Agrícola",f.campania||"Sin especificar"],["Volumen Total Comprometido",f.cantidad?money(f.cantidad)+" Tons.":"____________ Tons.","Tolerancia Contractual","Según modelo oficial aplicable"],["Esquema de Entregas / Cupos","Mensual [ ] Quincenal [ ] Según Plan de Cargas [ ]","Frecuencia de Carga","Programada F1"],["Precio Base / Fórmula",f.precio?"USD "+money(f.precio)+" por Tonelada":"USD ________ por Tonelada","Fijación de Precio","Pizarra [ ] Mercado [ ] Fijo [ ]"],["Procedencia de la Carga",f.procedencia||"________________________","Condición de Entrega",f.condicion||"Puesta en Destino / FAS / FOB"],["Destino Final / Puerto",f.puerto||"________________________","Plazo del Acuerdo","Hasta completar volumen"]];
-   const c1=120,c2=175,c3=115,c4=W-2*m-c1-c2-c3;for(const r of rows){const h=30;let x=m;[c1,c2,c3,c4].forEach(w=>{pdf.setDrawColor(175,190,205);pdf.rect(x,y,w,h);x+=w});pdf.setFont("helvetica","bold");pdf.setFontSize(7.2);pdf.setTextColor(...green);pdf.text(r[0],m+4,y+11);pdf.text(r[2],m+c1+c2+4,y+11);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(r[1],c2-8),m+c1+4,y+11);pdf.text(pdf.splitTextToSize(r[3],c4-8),m+c1+c2+c3+4,y+11);y+=h;}
-   y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. CLÁUSULAS GENERALES",m,y);y+=18;
-   y=drawWrapped(pdf,"PRIMERA: NATURALEZA DEL F1: El presente acuerdo rige bajo la modalidad F1 de abastecimiento programado. El Vendedor se obliga a asegurar la disponibilidad de los cupos y camiones/vagones de acuerdo al cronograma logístico pactado, garantizando un flujo continuo de mercadería hacia el destino fijado por el Comprador.",m,y,W-2*m,8.5,10);y+=8;
-   y=drawWrapped(pdf,"SEGUNDA: CALIDAD Y TOLERANCIAS: Todos los embarques deberán cumplir estrictamente con el estándar de comercialización oficial. Las determinaciones de calidad (humedad, materias extrañas, daño por insectos o factores climáticos) se realizarán en la balanza de destino, aplicándose las mermas y rebajas correspondientes de acuerdo a las tablas vigentes del sector agrícola.",m,y,W-2*m,8.5,10);y+=8;
-   y=drawWrapped(pdf,"TERCERA: INTERMEDIACIÓN EXTERNA Y HONORARIOS PRIVADOS: Las partes dejan constancia de la intervención del intermediario identificado. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación de terceros se pactan, documentan, facturan y abonan de forma privada y externa entre quienes los hayan acordado. AgroBrokerIA no los calcula, retiene, administra ni cobra, ni interviene en controversias sobre esos honorarios.",m,y,W-2*m,8.5,10);
-   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.text("CUARTA: JURISDICCIÓN ARBITRAL",m,y);y=drawWrapped(pdf,`Ante cualquier discrepancia en la interpretación de los rendimientos, mermas o ejecución comercial de este contrato marco F1, las partes se someten de común acuerdo a la competencia exclusiva de la Cámara Arbitral de Cereales de la jurisdicción aplicable, renunciando expresamente a la vía judicial ordinaria.`,m,y+14,W-2*m,9,11);y+=30;
-   const sigs=[["POR EL VENDEDOR",f.vendedor],["POR EL COMPRADOR",f.comprador]];sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Aclaración: "+(b||"________________"),x,y+26);});
- }
  return pdf;
 }
 
