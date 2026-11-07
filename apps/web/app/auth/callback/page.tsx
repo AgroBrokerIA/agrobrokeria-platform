@@ -88,6 +88,14 @@ export default function AuthCallbackPage() {
         ),
       );
 
+      if(allCurrentLegalAccepted){
+        const {data:onboarding,error:onboardingError}=await supabase.from("account_onboarding").select("account_type").eq("user_id",userId).maybeSingle();
+        if(onboardingError){setError("No se pudo comprobar el registro empresarial: "+onboardingError.message);return;}
+        if(onboarding?.account_type==="EMPRESA"){
+          const {error:syncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
+          if(syncError){router.replace("/perfil?empresa=pendiente");router.refresh();return;}
+        }
+      }
       router.replace(allCurrentLegalAccepted ? "/dashboard" : "/legal/aceptar");
       router.refresh();
   }
