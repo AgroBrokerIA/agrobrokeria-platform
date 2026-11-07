@@ -2359,11 +2359,23 @@ Firma: ______________________________
     // =========================================================
 
     if (cambios.visado_resultado === "APROBADO") {
-      setVisadoAbierto(null);
       setError("");
-      setMensaje(
-        "✅ Visado de mercadería APROBADO. Antes de preparar el contrato definitivo, corresponde abonar y verificar la comisión de AgroBrokerIA, que quedará retenida hasta el cierre."
+      // El visado aprobado debe mover el workflow de forma inmediata a la retención.
+      const { data: avance, error: avanceError } = await supabase.rpc(
+        "avanzar_visado_aprobado_a_retencion",
+        { p_operacion_id: operacionId }
       );
+      if (avanceError) {
+        console.error("Visado aprobado pero no se pudo avanzar el workflow:", avanceError);
+        setMensaje("Visado APROBADO. No se perdió la aprobación; el avance a Retención quedó pendiente.");
+        setError("El visado se guardó como APROBADO, pero no se pudo avanzar a Retención de comisión: " + avanceError.message);
+        await cargarOperaciones();
+        return false;
+      }
+      setVisadoAbierto(null);
+      setMensaje(avance?.ya_estaba_avanzada
+        ? "Visado APROBADO. La operación ya estaba en Retención de comisión AgroBrokerIA."
+        : "Visado APROBADO. La operación avanzó automáticamente a Retención de comisión AgroBrokerIA. Ahora corresponde cargar y verificar el comprobante bancario.");
       await cargarOperaciones();
       return true;
     }
