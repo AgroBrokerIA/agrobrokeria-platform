@@ -217,6 +217,7 @@ async function obtenerDocumentacion(
     .from("empresas_verificaciones")
     .select("id")
     .eq("empresa_id", empresaId)
+    .eq("estado", "ARCA_VERIFICADA")
     .limit(1);
 
   if (error) return 0;
