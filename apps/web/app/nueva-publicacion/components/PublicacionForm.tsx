@@ -46,79 +46,58 @@ type Formulario = {
   humedad: string;
   proteina: string;
   observaciones: string;
+  representado_razon_social: string;
+  representado_cuit: string;
+  representado_sisa_categoria: string;
 };
 
-async function obtenerEmpresaDelUsuario() {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
+async function obtenerContextoDelUsuario() {
+  const { data: { user }, error: userError } = await supabase.auth.getUser();
+  if (userError || !user) throw new Error("No hay un usuario autenticado.");
 
-  if (userError || !user) {
-    throw new Error("No hay un usuario autenticado.");
+  const { data: profile, error: profileError } = await supabase
+    .from("profiles").select("active_company_id,tipo_usuario").eq("id", user.id).single();
+  if (profileError || !profile) throw new Error("No se pudo determinar el perfil del usuario.");
+
+  const role = String(profile.tipo_usuario || "").toLowerCase();
+  const roleIntermediary = ["intermediario","comisionista","corredor"].some(x => role.includes(x));
+
+  if (!profile.active_company_id) {
+    if (roleIntermediary) return { empresaId: null, intermediarioEmpresaId: null, isIntermediary: true };
+    throw new Error("Tu usuario no tiene una empresa vinculada.");
   }
 
-  const { data: companyUser, error: companyUserError } =
-    await supabase
-      .from("company_users")
-      .select("company_id")
-      .eq("profile_id", user.id)
-      .eq("activo", true)
-      .limit(1)
-      .maybeSingle();
+  const { data: membership, error: membershipError } = await supabase
+    .from("company_users").select("company_id").eq("company_id", profile.active_company_id)
+    .eq("profile_id", user.id).eq("activo", true).maybeSingle();
+  if (membershipError || !membership) throw new Error("No se verificó tu vínculo activo con la empresa.");
 
-  if (companyUserError) {
-    throw new Error(
-      `No se pudo obtener la empresa del usuario: ${companyUserError.message}`
-    );
+  const { data: mapping, error: mappingError } = await supabase
+    .from("company_empresa_map").select("empresa_id,verified")
+    .eq("company_id", profile.active_company_id).eq("verified", true).maybeSingle();
+  if (mappingError) throw new Error("No se pudo validar el legajo empresarial.");
+  if (!mapping?.empresa_id) {
+    if (roleIntermediary) return { empresaId: null, intermediarioEmpresaId: null, isIntermediary: true };
+    throw new Error("La empresa todavía no tiene una vinculación operativa verificada.");
   }
 
-  if (!companyUser?.company_id) {
-    throw new Error(
-      "Tu usuario no tiene una empresa vinculada."
-    );
+  const { data: empresa, error: empresaError } = await supabase
+    .from("empresas").select("id,tipo_empresa,tipo_operador,activa")
+    .eq("id", mapping.empresa_id).maybeSingle();
+  if (empresaError || !empresa || !empresa.activa) throw new Error("El legajo empresarial no está activo.");
+
+  const operatorType = String(empresa.tipo_operador || empresa.tipo_empresa || "").toLowerCase();
+  const isIntermediary = roleIntermediary ||
+    ["broker","intermediario","comisionista_intermediario","corredor_oficial"].some(x => operatorType.includes(x));
+
+  if (isIntermediary) {
+    if (!["broker","intermediario","comisionista_intermediario","corredor_oficial"].some(x => operatorType.includes(x))) {
+      throw new Error("El legajo de tu empresa no está catalogado como corredor o intermediario.");
+    }
+    return { empresaId: null, intermediarioEmpresaId: empresa.id, isIntermediary: true };
   }
 
-  const { data: company, error: companyError } =
-    await supabase
-      .from("companies")
-      .select("id, cuit")
-      .eq("id", companyUser.company_id)
-      .single();
-
-  if (companyError) {
-    throw new Error(
-      `No se pudo obtener la empresa: ${companyError.message}`
-    );
-  }
-
-  if (!company?.cuit) {
-    throw new Error(
-      "La empresa del usuario no tiene CUIT registrado."
-    );
-  }
-
-  const { data: empresa, error: empresaError } =
-    await supabase
-      .from("empresas")
-      .select("id, nombre_comercial, razon_social, cuit")
-      .eq("cuit", company.cuit)
-      .eq("activa", true)
-      .single();
-
-  if (empresaError) {
-    throw new Error(
-      `No se pudo encontrar la empresa operativa: ${empresaError.message}`
-    );
-  }
-
-  if (!empresa?.id) {
-    throw new Error(
-      "No se encontró una empresa operativa asociada al CUIT del usuario."
-    );
-  }
-
-  return empresa.id;
+  return { empresaId: empresa.id, intermediarioEmpresaId: null, isIntermediary: false };
 }
 
 export default function PublicationForm(props: any) {
@@ -131,11 +110,11 @@ export default function PublicationForm(props: any) {
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
-    producto_id: 1,
+    producto_id: 0,
     cantidad_tn: "",
     precio_tn: "",
-    moneda_id: 2,
-    incoterm_id: 1,
+    moneda_id: 0,
+    incoterm_id: 0,
     provincia: "",
     localidad: "",
     puerto: "",
@@ -143,12 +122,17 @@ export default function PublicationForm(props: any) {
     humedad: "",
     proteina: "",
     observaciones: "",
+    representado_razon_social: "",
+    representado_cuit: "",
+    representado_sisa_categoria: "",
   });
 
   const [cargando, setCargando] = useState(true);
   const [guardando, setGuardando] = useState(false);
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
+  const [isIntermediary, setIsIntermediary] = useState(false);
+  const [intermediarioEmpresaId, setIntermediarioEmpresaId] = useState<string | null>(null);
 
   useEffect(() => {
     cargarDatos();
@@ -190,44 +174,9 @@ export default function PublicationForm(props: any) {
       setProvincias((provData||[]) as {id:number;nombre:string;codigo:string}[]);
       setPuertos((portData||[]) as {id:number;nombre:string;codigo:string}[]);
 
-      /*
-       * VALORES PREDETERMINADOS
-       *
-       * Producto: MAÍZ
-       * Moneda: USD
-       * Incoterm: FOB
-       */
-
-      const maiz = productosData.find(
-        (producto: Producto) =>
-          producto.codigo === "MAIZ"
-      );
-
-      const usd = monedasData.find(
-        (moneda: Moneda) =>
-          moneda.codigo === "USD"
-      );
-
-      const fob = incotermsData.find(
-        (incoterm: Incoterm) =>
-          incoterm.codigo === "FOB"
-      );
-
-      setForm((anterior) => ({
-        ...anterior,
-
-        producto_id:
-          maiz?.id ??
-          anterior.producto_id,
-
-        moneda_id:
-          usd?.id ??
-          anterior.moneda_id,
-
-        incoterm_id:
-          fob?.id ??
-          anterior.incoterm_id,
-      }));
+      const contexto = await obtenerContextoDelUsuario();
+      setIsIntermediary(contexto.isIntermediary);
+      setIntermediarioEmpresaId(contexto.intermediarioEmpresaId);
     } catch (e) {
       console.error(e);
 
@@ -287,6 +236,15 @@ export default function PublicationForm(props: any) {
       return;
     }
 
+    if (!form.moneda_id) { setError("Seleccioná la moneda real de la publicación."); return; }
+    if (!form.incoterm_id) { setError("Seleccioná la condición comercial."); return; }
+
+    if (isIntermediary) {
+      if (!intermediarioEmpresaId) { setError("Tu legajo de corredor/comisionista debe estar vinculado y verificado antes de publicar en representación de un cliente."); return; }
+      if (!form.representado_razon_social.trim()) { setError("Ingresá la razón social del productor o cliente representado."); return; }
+      if (!/^\\d{11}$/.test(form.representado_cuit.replace(/\\D/g, ""))) { setError("Ingresá un CUIT válido de 11 dígitos del cliente representado."); return; }
+    }
+
     if (!form.provincia.trim()) {
       setError("Ingresá la provincia.");
       return;
@@ -309,15 +267,23 @@ export default function PublicationForm(props: any) {
        * OBTENER EMPRESA REAL DEL USUARIO
        */
 
-      const empresaId =
-        await obtenerEmpresaDelUsuario();
+      const contexto = await obtenerContextoDelUsuario();
+      setIsIntermediary(contexto.isIntermediary);
+      setIntermediarioEmpresaId(contexto.intermediarioEmpresaId);
+      if (contexto.isIntermediary && !contexto.intermediarioEmpresaId) {
+        throw new Error("El legajo del intermediario debe estar verificado antes de representar a un cliente.");
+      }
 
       /*
        * DATOS QUE SE VAN A GUARDAR
        */
 
       const nuevaPublicacion: Publicacion = {
-        empresa_id: empresaId,
+        empresa_id: contexto.empresaId,
+        intermediario_empresa_id: contexto.intermediarioEmpresaId,
+        representado_razon_social: contexto.isIntermediary ? form.representado_razon_social.trim() : null,
+        representado_cuit: contexto.isIntermediary ? form.representado_cuit.replace(/\\D/g, "") : null,
+        representado_sisa_categoria: contexto.isIntermediary ? (form.representado_sisa_categoria.trim() || null) : null,
 
         tipo: form.tipo as "VENTA" | "COMPRA",
 
@@ -402,24 +368,15 @@ export default function PublicationForm(props: any) {
       setForm({
         tipo: "VENTA",
 
-        producto_id:
-          productos.find(
-            (p) => p.codigo === "MAIZ"
-          )?.id || 1,
+        producto_id: 0,
 
         cantidad_tn: "",
 
         precio_tn: "",
 
-        moneda_id:
-          monedas.find(
-            (m) => m.codigo === "USD"
-          )?.id || 2,
+        moneda_id: 0,
 
-        incoterm_id:
-          incoterms.find(
-            (i) => i.codigo === "FOB"
-          )?.id || 1,
+        incoterm_id: 0,
 
         provincia: "",
 
@@ -434,6 +391,9 @@ export default function PublicationForm(props: any) {
         proteina: "",
 
         observaciones: "",
+        representado_razon_social: "",
+        representado_cuit: "",
+        representado_sisa_categoria: "",
       });
 
       if (props?.onSuccess) {
@@ -581,6 +541,7 @@ export default function PublicationForm(props: any) {
             }
             style={inputStyle}
           >
+            <option value={0}>Seleccioná un producto</option>
             {productos.map(
               (producto) => (
                 <option
@@ -611,6 +572,7 @@ export default function PublicationForm(props: any) {
             }
             style={inputStyle}
           >
+            <option value={0}>Seleccioná una moneda</option>
             {monedas.map(
               (moneda) => (
                 <option
@@ -641,6 +603,7 @@ export default function PublicationForm(props: any) {
             }
             style={inputStyle}
           >
+            <option value={0}>Seleccioná una condición</option>
             {incoterms.map(
               (incoterm) => (
                 <option
@@ -796,6 +759,25 @@ export default function PublicationForm(props: any) {
             style={inputStyle}
           />
         </div>
+        {isIntermediary && (
+          <>
+            <div style={{gridColumn:"1 / -1",background:"#eff6ff",border:"1px solid #bfdbfe",padding:14,borderRadius:8,color:"#1e3a8a"}}>
+              Publicás como intermediario verificado. La publicación no te identifica como titular del grano: el productor/cliente representado queda individualizado en el registro.
+            </div>
+            <div>
+              <label>Razón social del cliente representado</label>
+              <input value={form.representado_razon_social} onChange={e=>actualizarCampo("representado_razon_social",e.target.value)} style={inputStyle} placeholder="Razón social real del productor o cliente"/>
+            </div>
+            <div>
+              <label>CUIT del cliente representado</label>
+              <input value={form.representado_cuit} onChange={e=>actualizarCampo("representado_cuit",e.target.value)} style={inputStyle} placeholder="11 dígitos"/>
+            </div>
+            <div>
+              <label>Categoría SISA (si corresponde)</label>
+              <input value={form.representado_sisa_categoria} onChange={e=>actualizarCampo("representado_sisa_categoria",e.target.value)} style={inputStyle} placeholder="Categoría declarada / constancia"/>
+            </div>
+          </>
+        )}
       </div>
 
       {/* OBSERVACIONES */}
