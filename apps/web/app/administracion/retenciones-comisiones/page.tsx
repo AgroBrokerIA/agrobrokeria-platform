@@ -18,11 +18,20 @@ export default function RetencionesComisionesPage(){
  },[]);
  useEffect(()=>{void load()},[load]);
  async function verify(row:Retencion){
-  const ok=window.confirm("Confirmaste en la cuenta bancaria que el dinero ingresó efectivamente y que referencia e importe coinciden?");
+  const bankReference=window.prompt("Ingresá el número de operación bancaria que figura en el home banking. No uses el código de operación de AgroBrokerIA ni la referencia interna del comprobante:");
+  if(bankReference===null)return;
+  const normalizedReference=bankReference.trim();
+  if(!normalizedReference){setError("El número de operación bancaria es obligatorio.");return;}
+  if(normalizedReference.length>80){setError("El número de operación bancaria no puede superar 80 caracteres.");return;}
+  const ok=window.confirm("Confirmás que verificaste en el home banking el ingreso efectivo, el importe y la referencia? Esta acción registrará la validación bancaria y retendrá la comisión.");
   if(!ok)return;
   setBusy(row.id);setError("");setMessage("");
-  const {error:e}=await supabase.rpc("confirmar_retencion_comision_plataforma",{p_retencion_id:row.id,p_observaciones:"Ingreso bancario verificado por administración."});
-  if(e)setError(e.message);else{setMessage("Transferencia verificada. La comisión quedó RETENIDA; se liberará al cierre de la operación.");await load();}
+  const {error:e}=await supabase.rpc("validar_comprobante_comision_bancaria",{p_retencion_id:row.id,p_numero_operacion_bancaria:normalizedReference,p_observaciones:"Ingreso bancario verificado manualmente por administración."});
+  if(e){
+   const details=e.message||"";
+   const friendly=details.includes("MANUAL_BANK_VALIDATION_REQUIRED")?"Falta registrar la validación bancaria.":details.includes("FUNDS_STAGE_REQUIRED")?"La operación todavía no está en la etapa habilitada para retener la comisión.":details.includes("APPROVED_MERCHANDISE_INSPECTION_REQUIRED")?"La mercadería todavía no tiene el visado aprobado.":details.includes("INVALID_RETENTION_STATE")?"El comprobante ya no está pendiente de validación.":details.includes("PLATFORM_ADMIN_REQUIRED")?"Tu sesión no tiene permisos de administración.":details;
+   setError("No se pudo aprobar la retención: "+friendly);
+  }else{setMessage("Validación bancaria registrada. La comisión quedó RETENIDA y se liberará únicamente al cierre de la operación.");await load();}
   setBusy("");
  }
  async function reject(row:Retencion){
