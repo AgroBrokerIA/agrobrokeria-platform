@@ -55,9 +55,12 @@ function buildPdfWithoutIntermediary(f:FormState){
  y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=17;y=wrap("Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
  const clauses: [string, string][] = [];
  for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
- y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Espacios reservados para la firma externa de las partes. Las copias PDF firmadas deben cargarse en la operación.",m,y);y+=42;
+ y+=12;
+ if(y+92>pdf.internal.pageSize.getHeight()-40){pdf.addPage();y=48;}
+ pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=16;
+ pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=30;
  const sigs=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
- sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+180,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
+ sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+170,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+12);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+pdf.splitTextToSize(b,165)[0],x,y+24);pdf.text("DNI/Pasaporte: __________________",x,y+36);});
  return pdf;
 }
 
@@ -81,9 +84,13 @@ function buildPdf(f:FormState){
    const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
    const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const ls=pdf.splitTextToSize(b,col2-12);const h=Math.max(28,ls.length*10+14);if(y+h>H-64){pdf.addPage();y=48;}pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(30,30,30);pdf.text(ls,m+col1+6,y+12);y+=h;}
    y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=18;y=drawWrapped(pdf,"Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
-   pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=22;pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=48;
+   // Las firmas se ubican al pie de la primera página cuando hay espacio.
+   // Solo se abre otra página si el contenido real no deja margen suficiente.
+   if(y+112>H-42){pdf.addPage();y=48;}else{y+=14;}
+   pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=18;
+   pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=34;
    const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"]];
-   sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
+   sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+170,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+12);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+pdf.splitTextToSize(b,165)[0],x,y+24);pdf.text("DNI/Pasaporte: __________________",x,y+36);});
   }
  return pdf;
 }
