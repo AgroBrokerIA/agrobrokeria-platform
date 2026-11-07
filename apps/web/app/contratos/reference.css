@@ -336,3 +336,32 @@
 .contract-language-bar span,.contract-language-bar button{font-size:9px}
 @media(max-width:1100px){.contract-builder-reference{padding:24px 22px 40px}.contract-builder-grid{grid-template-columns:minmax(0,1fr)}.contract-previews{grid-template-columns:minmax(0,1fr)!important}}
 @media(max-width:760px){.contract-builder-reference{padding:18px 12px 34px}.contract-builder-head{align-items:flex-start;flex-direction:column}.contract-builder-actions{width:100%;flex-wrap:wrap}.contract-builder-tabs{width:100%;overflow-x:auto;flex-wrap:nowrap;white-space:nowrap}.contract-builder-fields{grid-template-columns:minmax(0,1fr)}.contract-preview-card>header{grid-template-columns:30px minmax(0,1fr)}.contract-preview-card>header button{grid-column:1/-1;width:100%}.contract-paper{width:calc(100% - 12px);padding:14px 12px;margin:7px auto 10px}.paper-parties>div{grid-template-columns:1fr;gap:2px}.paper-parties>div>b{grid-row:auto}.paper-clauses .paper-clause{grid-template-columns:1fr;gap:3px}}
+
+
+/* Same compact scale in contract list, history and external-signature tabs */
+.contract-builder-reference .contract-list-panel>h2,
+.contract-builder-reference .contract-info-panel>h2{font-size:13px;line-height:1.4;font-weight:700;color:var(--ink,#17221b);margin:0 0 10px}
+.contract-builder-reference .contract-info-panel>p,
+.contract-builder-reference .contract-list-panel>p{font-size:11px;line-height:1.5;color:var(--muted,#6b776f)}
+.contract-builder-reference .signature-workflow{padding:15px;border:1px solid var(--line,#e1e8e2);border-radius:12px;box-shadow:0 4px 14px #10251a08}
+.contract-builder-reference .signature-workflow>h3{font-size:14px;line-height:1.4;font-weight:700;color:var(--ink,#17221b);margin:0 0 6px}
+.contract-builder-reference .signature-workflow>p{font-size:11px;line-height:1.55;color:var(--muted,#6b776f);margin:0 0 13px}
+.contract-builder-reference .signature-upload-grid{gap:10px}
+.contract-builder-reference .signature-upload-card{min-height:0;padding:12px;gap:8px;border:1px solid var(--line,#e1e8e2);border-radius:10px;background:#f8faf8;box-shadow:none}
+.contract-builder-reference .signature-upload-card h4{font-size:11px;line-height:1.4;font-weight:700;color:var(--ink,#17221b)}
+.contract-builder-reference .signature-upload-card p{font-size:10px;line-height:1.45;min-height:0;color:var(--muted,#6b776f)}
+.contract-builder-reference .signature-upload-card input[type=file]{padding:7px;border:1px dashed #cbd8ce;border-radius:7px;font-size:10px}
+.contract-builder-reference .signature-upload-card .contract-generate{min-height:34px;font-size:10px}
+.contract-builder-reference .signature-review-list{margin-top:15px;padding-top:12px;border-color:var(--line,#e1e8e2)}
+.contract-builder-reference .signature-review-list>h4{font-size:12px;line-height:1.4;font-weight:700;color:var(--ink,#17221b);margin:0 0 8px}
+.contract-builder-reference .signature-review-list>p{font-size:10px;line-height:1.45;color:var(--muted,#6b776f)}
+.contract-builder-reference .contract-sign-list{gap:8px;margin-top:12px}
+.contract-builder-reference .contract-sign-card{gap:12px;padding:11px 12px;border:1px solid var(--line,#e1e8e2);border-radius:10px;box-shadow:none}
+.contract-builder-reference .contract-sign-card strong{font-size:11px;line-height:1.4;color:var(--ink,#17221b)}
+.contract-builder-reference .contract-sign-card span,
+.contract-builder-reference .contract-sign-card small{font-size:10px;line-height:1.4;color:var(--muted,#6b776f)}
+.contract-builder-reference .contract-sign-actions{gap:6px}
+.contract-builder-reference .contract-sign-actions button,
+.contract-builder-reference .signature-review-actions button{padding:7px 9px;border:1px solid var(--line,#e1e8e2);border-radius:7px;font-size:10px;line-height:1.35}
+.contract-builder-reference .signature-review-actions button:nth-child(2){background:var(--green,#167a45);border-color:var(--green,#167a45)}
+.contract-builder-reference .contract-route-button{padding:8px 11px;border-radius:8px;background:var(--green,#167a45);font-size:10px}
