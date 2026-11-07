@@ -36,6 +36,20 @@ type Formulario = {
   representado_razon_social: string;
   representado_cuit: string;
   representado_sisa_categoria: string;
+  base_precio_cbot: boolean;
+  premium_cbot: string;
+  humedad_maxima: string;
+  materia_extrana_maxima: string;
+  aflatoxinas_max_ppb: string;
+  proteina_minima: string;
+  granos_danados_maximos: string;
+  granos_quebrados_maximos: string;
+  instrumentos_pago_internacional: string[];
+  tipo_buque: string;
+  cantidad_envios: string;
+  toneladas_por_envio: string;
+  puerto_origen_destino: string;
+  pais_destino: string;
 };
 
 type Puerto = {
@@ -169,6 +183,20 @@ export default function NuevaPublicacionForm() {
     representado_razon_social: "",
     representado_cuit: "",
     representado_sisa_categoria: "",
+    base_precio_cbot: false,
+    premium_cbot: "",
+    humedad_maxima: "",
+    materia_extrana_maxima: "",
+    aflatoxinas_max_ppb: "",
+    proteina_minima: "",
+    granos_danados_maximos: "",
+    granos_quebrados_maximos: "",
+    instrumentos_pago_internacional: [],
+    tipo_buque: "",
+    cantidad_envios: "",
+    toneladas_por_envio: "",
+    puerto_origen_destino: "",
+    pais_destino: "",
   });
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
@@ -279,7 +307,7 @@ export default function NuevaPublicacionForm() {
 
       const { data: publicacion, error: errorPublicacion } = await supabase
         .from("publicaciones")
-        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones,representado_razon_social,representado_cuit,representado_sisa_categoria")
+        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones,representado_razon_social,representado_cuit,representado_sisa_categoria,base_precio_cbot,premium_cbot,humedad_maxima,materia_extrana_maxima,aflatoxinas_max_ppb,proteina_minima,granos_danados_maximos,granos_quebrados_maximos,instrumentos_pago_internacional,tipo_buque,cantidad_envios,toneladas_por_envio,puerto_origen_destino,pais_destino")
         .eq("id", id)
         .single();
 
@@ -319,6 +347,20 @@ export default function NuevaPublicacionForm() {
         representado_razon_social: (publicacion as any).representado_razon_social ?? "",
         representado_cuit: (publicacion as any).representado_cuit ?? "",
         representado_sisa_categoria: (publicacion as any).representado_sisa_categoria ?? "",
+        base_precio_cbot: Boolean((publicacion as any).base_precio_cbot),
+        premium_cbot: (publicacion as any).premium_cbot != null ? String((publicacion as any).premium_cbot) : "",
+        humedad_maxima: (publicacion as any).humedad_maxima != null ? String((publicacion as any).humedad_maxima) : "",
+        materia_extrana_maxima: (publicacion as any).materia_extrana_maxima != null ? String((publicacion as any).materia_extrana_maxima) : "",
+        aflatoxinas_max_ppb: (publicacion as any).aflatoxinas_max_ppb != null ? String((publicacion as any).aflatoxinas_max_ppb) : "",
+        proteina_minima: (publicacion as any).proteina_minima != null ? String((publicacion as any).proteina_minima) : "",
+        granos_danados_maximos: (publicacion as any).granos_danados_maximos != null ? String((publicacion as any).granos_danados_maximos) : "",
+        granos_quebrados_maximos: (publicacion as any).granos_quebrados_maximos != null ? String((publicacion as any).granos_quebrados_maximos) : "",
+        instrumentos_pago_internacional: Array.isArray((publicacion as any).instrumentos_pago_internacional) ? (publicacion as any).instrumentos_pago_internacional : [],
+        tipo_buque: (publicacion as any).tipo_buque ?? "",
+        cantidad_envios: (publicacion as any).cantidad_envios != null ? String((publicacion as any).cantidad_envios) : "",
+        toneladas_por_envio: (publicacion as any).toneladas_por_envio != null ? String((publicacion as any).toneladas_por_envio) : "",
+        puerto_origen_destino: (publicacion as any).puerto_origen_destino ?? "",
+        pais_destino: (publicacion as any).pais_destino ?? "",
         provincia: publicacion.provincia ?? "",
         localidad: publicacion.localidad ?? "",
         puerto: puertosGuardados[0] ?? publicacion.puerto ?? "",
@@ -414,6 +456,20 @@ export default function NuevaPublicacionForm() {
         representado_razon_social: esIntermediario ? form.representado_razon_social.trim() : null,
         representado_cuit: esIntermediario ? form.representado_cuit.replace(/\D/g, "") : null,
         representado_sisa_categoria: esIntermediario ? form.representado_sisa_categoria.trim() || null : null,
+        base_precio_cbot: form.base_precio_cbot,
+        premium_cbot: form.premium_cbot.trim() ? Number(form.premium_cbot) : null,
+        humedad_maxima: form.humedad_maxima.trim() ? Number(form.humedad_maxima) : null,
+        materia_extrana_maxima: form.materia_extrana_maxima.trim() ? Number(form.materia_extrana_maxima) : null,
+        aflatoxinas_max_ppb: form.aflatoxinas_max_ppb.trim() ? Number(form.aflatoxinas_max_ppb) : null,
+        proteina_minima: form.proteina_minima.trim() ? Number(form.proteina_minima) : null,
+        granos_danados_maximos: form.granos_danados_maximos.trim() ? Number(form.granos_danados_maximos) : null,
+        granos_quebrados_maximos: form.granos_quebrados_maximos.trim() ? Number(form.granos_quebrados_maximos) : null,
+        instrumentos_pago_internacional: form.instrumentos_pago_internacional,
+        tipo_buque: form.tipo_buque.trim() || null,
+        cantidad_envios: form.cantidad_envios.trim() ? Number(form.cantidad_envios) : null,
+        toneladas_por_envio: form.toneladas_por_envio.trim() ? Number(form.toneladas_por_envio) : null,
+        puerto_origen_destino: form.puerto_origen_destino.trim() || null,
+        pais_destino: form.pais_destino.trim() || null,
       };
 
       if (modoEdicion && publicacionId) {
@@ -462,6 +518,20 @@ export default function NuevaPublicacionForm() {
         representado_razon_social: "",
         representado_cuit: "",
         representado_sisa_categoria: "",
+        base_precio_cbot: false,
+        premium_cbot: "",
+        humedad_maxima: "",
+        materia_extrana_maxima: "",
+        aflatoxinas_max_ppb: "",
+        proteina_minima: "",
+        granos_danados_maximos: "",
+        granos_quebrados_maximos: "",
+        instrumentos_pago_internacional: [],
+        tipo_buque: "",
+        cantidad_envios: "",
+        toneladas_por_envio: "",
+        puerto_origen_destino: "",
+        pais_destino: "",
       });
       setPuertosSeleccionados([]);
       setLugaresSeleccionados([]);
@@ -610,6 +680,30 @@ export default function NuevaPublicacionForm() {
             return <span key={codigo}>{lugar?.nombre ?? codigo}<button type="button" aria-label={"Quitar " + (lugar?.nombre ?? codigo)} onClick={() => setLugaresSeleccionados((actuales) => actuales.filter((item) => item !== codigo))}>×</button></span>;
           })}
         </div>}
+      </section>
+
+      <section className="publication-observations">
+        <div className="publication-section-heading"><div><span className="publication-kicker">CONDICIONES INTERNACIONALES</span><h2>Precio, calidad y pagos</h2><p>Estos datos se guardan en la publicación y pueden incorporarse al borrador documental.</p></div></div>
+        <div className="publication-basic-grid">
+          <label className="publication-checkbox"><input type="checkbox" checked={form.base_precio_cbot} onChange={(e) => actualizarCampo("base_precio_cbot", e.target.checked as unknown as string)} /> Precio de referencia CBOT</label>
+          <label>Premium / diferencial CBOT<input type="number" step="0.01" value={form.premium_cbot} onChange={(e) => actualizarCampo("premium_cbot", e.target.value)} placeholder="Sin valor predeterminado" /></label>
+          <label>Humedad máxima (%)<input type="number" step="0.01" value={form.humedad_maxima} onChange={(e) => actualizarCampo("humedad_maxima", e.target.value)} /></label>
+          <label>Materia extraña máxima (%)<input type="number" step="0.01" value={form.materia_extrana_maxima} onChange={(e) => actualizarCampo("materia_extrana_maxima", e.target.value)} /></label>
+          <label>Aflatoxinas máximas (ppb)<input type="number" step="0.01" value={form.aflatoxinas_max_ppb} onChange={(e) => actualizarCampo("aflatoxinas_max_ppb", e.target.value)} /></label>
+          <label>Proteína mínima (%)<input type="number" step="0.01" value={form.proteina_minima} onChange={(e) => actualizarCampo("proteina_minima", e.target.value)} /></label>
+          <label>Granos dañados máximos (%)<input type="number" step="0.01" value={form.granos_danados_maximos} onChange={(e) => actualizarCampo("granos_danados_maximos", e.target.value)} /></label>
+          <label>Granos quebrados máximos (%)<input type="number" step="0.01" value={form.granos_quebrados_maximos} onChange={(e) => actualizarCampo("granos_quebrados_maximos", e.target.value)} /></label>
+        </div>
+        <div className="publication-basic-grid" style={{marginTop:16}}>
+          <fieldset><legend>Instrumentos de pago internacional</legend>
+            {["DLC","SBLC","TT"].map((instrumento) => <label key={instrumento} style={{display:"inline-flex",gap:8,marginRight:18,alignItems:"center"}}><input type="checkbox" checked={form.instrumentos_pago_internacional.includes(instrumento)} onChange={(e) => setForm((prev) => ({...prev,instrumentos_pago_internacional:e.target.checked?[...prev.instrumentos_pago_internacional,instrumento]:prev.instrumentos_pago_internacional.filter((x)=>x!==instrumento)}))}/>{instrumento}</label>)}
+          </fieldset>
+          <label>País de destino<input value={form.pais_destino} onChange={(e)=>actualizarCampo("pais_destino",e.target.value)} placeholder="País de destino comercial"/></label>
+          <label>Puerto de origen / destino<input value={form.puerto_origen_destino} onChange={(e)=>actualizarCampo("puerto_origen_destino",e.target.value)} placeholder="Puerto y terminal, si corresponde"/></label>
+          <label>Tipo de buque<input value={form.tipo_buque} onChange={(e)=>actualizarCampo("tipo_buque",e.target.value)} placeholder="Tipo de buque, si corresponde"/></label>
+          <label>Cantidad de embarques<input type="number" min="1" step="1" value={form.cantidad_envios} onChange={(e)=>actualizarCampo("cantidad_envios",e.target.value)}/></label>
+          <label>Toneladas por embarque<input type="number" min="0.01" step="0.01" value={form.toneladas_por_envio} onChange={(e)=>actualizarCampo("toneladas_por_envio",e.target.value)}/></label>
+        </div>
       </section>
 
       <section className="publication-quality">
