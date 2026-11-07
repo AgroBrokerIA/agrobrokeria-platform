@@ -13,14 +13,10 @@ async function authorized(req:Request){
  const cron=Deno.env.get("CRON_SECRET"),a=req.headers.get("authorization")||"";
  if(cron&&a==="Bearer "+cron)return true;
  if(SERVICE&&a==="Bearer "+SERVICE)return true;
- const token=a.match(/^Bearer\s+(.+)$/i)?.[1];if(!token)return false;
+ const token=a.match(/^Bearer\s+(.+)$/i)?.[1];
+ if(!token)return false;
  const {data:cronValid,error:cronError}=await db.rpc("validar_cron_market_sync",{p_token:token});
  if(!cronError&&cronValid===true)return true;
- const c=createClient(URL,ANON,{global:{headers:{Authorization:"Bearer "+token}}});
- const {data:{user},error:userError}=await c.auth.getUser(token);
- if(userError||!user)return false;
- const {data:admin,error:adminError}=await db.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
- return !adminError&&!!admin;
  const c=createClient(URL,ANON,{global:{headers:{Authorization:"Bearer "+token}}});
  const {data:{user},error:userError}=await c.auth.getUser(token);
  if(userError||!user)return false;
