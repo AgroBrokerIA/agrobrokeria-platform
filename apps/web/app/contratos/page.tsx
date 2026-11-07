@@ -336,7 +336,7 @@ export default function ContratosPage(){
    if(participantesError){setError("No se pudieron cargar las empresas participantes: "+participantesError.message);return;}
    const options:CompanyOption[]=(participantes||[]).map((p:any)=>({
      id:String(p.empresa_id),rol:String(p.rol).toUpperCase(),razon_social:p.razon_social||"Empresa sin razón social",
-     cuit:p.cuit||"",sisa_categoria:[p.sisa_categoria,p.sisa_status].filter(Boolean).join(" · "),
+     cuit:String(p.cuit||"").replace(/\D/g,"").slice(0,11),sisa_categoria:[p.sisa_categoria,p.sisa_status].filter(Boolean).join(" · "),
      sisa_status:p.sisa_status||"",verificada:Boolean(p.verificada)
    }));
    setCompanyOptions(options);
@@ -344,8 +344,8 @@ export default function ContratosPage(){
    const part=(role:string)=>partes?.find((x:any)=>String(x.rol).toUpperCase()===role);
    const seller=find("VENDEDOR"),buyer=find("COMPRADOR"),broker=find("INTERMEDIARIO");
    setForm(x=>({...x,
-     vendedorEmpresaId:seller?.id||"",vendedor:seller?.razon_social||part("VENDEDOR")?.nombre_razon_social||"",vendedorCuit:seller?.cuit||part("VENDEDOR")?.cuit||"",vendedorSisa:seller?.sisa_categoria||"",
-     compradorEmpresaId:buyer?.id||"",comprador:buyer?.razon_social||part("COMPRADOR")?.nombre_razon_social||"",compradorCuit:buyer?.cuit||part("COMPRADOR")?.cuit||"",compradorSisa:buyer?.sisa_categoria||"",
+     vendedorEmpresaId:seller?.id||"",vendedor:seller?.razon_social||part("VENDEDOR")?.nombre_razon_social||"",vendedorCuit:seller?.cuit||String(part("VENDEDOR")?.cuit||"").replace(/\D/g,"").slice(0,11),vendedorSisa:seller?.sisa_categoria||"",
+     compradorEmpresaId:buyer?.id||"",comprador:buyer?.razon_social||part("COMPRADOR")?.nombre_razon_social||"",compradorCuit:buyer?.cuit||String(part("COMPRADOR")?.cuit||"").replace(/\D/g,"").slice(0,11),compradorSisa:buyer?.sisa_categoria||"",
      intermediarioEmpresaId:broker?.id||"",intermediario:broker?.razon_social||part("INTERMEDIARIO")?.nombre_razon_social||"",intermediarioCuit:broker?.cuit||"",intermediarioSisa:broker?.sisa_categoria||""
    }));
  }
