@@ -5,20 +5,12 @@
   "devCommand": "cd apps/web && npm run dev",
   "crons": [
     {
-      "path": "/api/cron/market-data",
-      "schedule": "*/15 * * * *"
-    },
-    {
       "path": "/api/cron/verificaciones",
       "schedule": "30 12 * * 1-5"
     },
     {
       "path": "/api/cron/contratos-vencidos",
       "schedule": "15 3 * * *"
-    },
-    {
-      "path": "/api/cron/scoring-confianza",
-      "schedule": "0 3 * * *"
     }
   ]
 }
