@@ -682,8 +682,9 @@ export default function NuevaPublicacionForm() {
         </div>}
       </section>
 
-      <section className="publication-observations">
-        <div className="publication-section-heading"><div><span className="publication-kicker">CONDICIONES INTERNACIONALES</span><h2>Precio, calidad y pagos</h2><p>Estos datos se guardan en la publicación y pueden incorporarse al borrador documental.</p></div></div>
+      <details className="publication-optional-comex">
+        <summary><span><strong>Condiciones internacionales (opcional)</strong><small>CBOT, calidad, instrumentos de pago y embarques. Completá solo lo que corresponda.</small></span><b>＋</b></summary>
+        <div className="publication-optional-comex-body">
         <div className="publication-basic-grid">
           <label className="publication-checkbox"><input type="checkbox" checked={form.base_precio_cbot} onChange={(e) => actualizarCampo("base_precio_cbot", e.target.checked)} /> Precio de referencia CBOT</label>
           <label>Premium / diferencial CBOT<input type="number" step="0.01" value={form.premium_cbot} onChange={(e) => actualizarCampo("premium_cbot", e.target.value)} placeholder="Sin valor predeterminado" /></label>
@@ -704,7 +705,8 @@ export default function NuevaPublicacionForm() {
           <label>Cantidad de embarques<input type="number" min="1" step="1" value={form.cantidad_envios} onChange={(e)=>actualizarCampo("cantidad_envios",e.target.value)}/></label>
           <label>Toneladas por embarque<input type="number" min="0.01" step="0.01" value={form.toneladas_por_envio} onChange={(e)=>actualizarCampo("toneladas_por_envio",e.target.value)}/></label>
         </div>
-      </section>
+        </div>
+      </details>
 
       <section className="publication-quality">
         <label>Calidad<input value={form.calidad} onChange={(e) => actualizarCampo("calidad", e.target.value)} placeholder="Especificación comercial" /></label>
