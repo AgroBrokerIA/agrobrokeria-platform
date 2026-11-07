@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "Accueil",
+    "market": "Marché",
+    "contracts": "Contrats",
+    "logistics": "Logistique",
+    "support": "Assistance technique"
+  },
+  "auth": {
+    "login": "Se connecter",
+    "register": "Créer un compte gratuit",
+    "kyc_pending": "Compte en attente d’un contrôle manuel de conformité",
+    "sisa_error": "Inscription refusée : statut SISA invalide ou exclu"
+  },
+  "contracts": {
+    "title_f1": "Contrat d’achat et de vente de céréales (F1)",
+    "vendedor": "Vendeur / Producteur",
+    "comprador": "Acheteur / Centre de collecte",
+    "intermediario": "Intermédiaire externe / Commissionnaire",
+    "comision_plataforma": "Frais technologiques de la plateforme",
+    "subir_comprobante": "Téléverser le reçu de virement bancaire (PDF/image)",
+    "estado_custodia": "Commission retenue jusqu’au respect des conditions de libération"
+  }
+}
