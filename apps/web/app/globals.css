@@ -2040,3 +2040,41 @@ html,body,.app-body{font-family:var(--ab-font)}
  .contract-preview-card>header{grid-template-columns:26px minmax(0,1fr)!important}
  .contract-preview-card>header button{grid-column:1/-1!important;justify-self:end}
 }
+
+
+/* Ajuste de lectura de Oportunidades IA: evitar que las etiquetas de empresa se apilen letra por letra. */
+.ai-table-scroll .ai-table-head,
+.ai-table-scroll .ai-row{
+  width:1040px!important;
+  min-width:1040px!important;
+  grid-template-columns:minmax(210px,2fr) 90px 82px 130px 115px 115px 75px 70px 90px!important;
+  gap:7px!important;
+}
+.ai-table-scroll .ai-product{
+  display:grid!important;
+  grid-template-columns:34px minmax(0,1fr)!important;
+  grid-template-rows:auto!important;
+  column-gap:7px!important;
+  row-gap:3px!important;
+  min-width:0!important;
+  overflow-wrap:normal!important;
+}
+.ai-table-scroll .ai-product>b{grid-column:1!important;grid-row:1!important;align-self:start!important}
+.ai-table-scroll .ai-product strong,
+.ai-table-scroll .ai-product small{
+  grid-column:2!important;
+  min-width:0!important;
+  width:100%!important;
+  overflow-wrap:anywhere!important;
+  word-break:normal!important;
+  white-space:normal!important;
+  line-height:1.35!important;
+}
+.ai-table-scroll .ai-product strong{grid-row:1!important}
+.ai-table-scroll .ai-product small{grid-row:auto!important}
+.ai-table-scroll .ai-row>span{min-width:0!important;overflow-wrap:anywhere}
+.ai-table-scroll .ai-row .ai-detail{min-width:78px!important;white-space:normal!important;padding:7px 5px!important}
+@media(max-width:700px){
+  .ai-table-scroll .ai-table-head,
+  .ai-table-scroll .ai-row{width:1040px!important;min-width:1040px!important}
+}
