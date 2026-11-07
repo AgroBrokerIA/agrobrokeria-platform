@@ -124,7 +124,9 @@ export default function RegisterPage() {
         if(isCompany && sisaProof) await upload(data.user.id,sisaProof,"SISA_CONSTANCIA");
         router.replace("/dashboard"); router.refresh(); return;
       }
-      setMessage("La cuenta fue creada. Confirmá tu correo e ingresá para continuar. La documentación es opcional y no bloquea el acceso. Si tu proveedor exige confirmar el correo, los datos detallados deberán completarse en tu perfil al ingresar.");
+      setMessage(isCompany
+        ? "La cuenta fue creada. Confirmá tu correo e ingresá. Los datos de la empresa quedaron guardados; por seguridad, volvé a cargar desde Mi Perfil el DNI, estatuto, poder o acta, constancia ARCA y constancia SISA para completar la revisión."
+        : "La cuenta fue creada. Confirmá tu correo e ingresá para continuar. Tus datos básicos quedaron guardados; podés completar la documentación opcional desde Mi Perfil.");
     } catch(err) { setError(err instanceof Error?err.message:"No se pudo completar el registro."); }
     finally { setLoading(false); }
   }
