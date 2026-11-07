@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "Início",
+    "market": "Mercado",
+    "contracts": "Contratos",
+    "logistics": "Logística",
+    "support": "Suporte técnico"
+  },
+  "auth": {
+    "login": "Entrar",
+    "register": "Criar conta gratuita",
+    "kyc_pending": "Conta aguardando análise manual de conformidade",
+    "sisa_error": "Cadastro rejeitado: situação SISA inválida ou excluída"
+  },
+  "contracts": {
+    "title_f1": "Contrato de compra e venda de grãos (F1)",
+    "vendedor": "Vendedor / Produtor",
+    "comprador": "Comprador / Unidade de recebimento",
+    "intermediario": "Intermediário externo / Comissionista",
+    "comision_plataforma": "Tarifa tecnológica da plataforma",
+    "subir_comprobante": "Enviar comprovante de transferência bancária (PDF/imagem)",
+    "estado_custodia": "Comissão retida até o cumprimento das condições de liberação"
+  }
+}
