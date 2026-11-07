@@ -374,23 +374,24 @@ export default function OperacionesPage() {
   async function revisarRetencionComision(retencionId: string, resultado: "RETENIDA" | "RECHAZADO") {
     if (!esAdminPlataforma) { setError("Solo Administración puede revisar la retención de comisión."); return; }
     let observaciones: string | null = null;
+    let referenciaBancaria: string | null = null;
     if (resultado === "RECHAZADO") {
       observaciones = window.prompt("Indicá el motivo del rechazo para que la empresa pueda volver a cargar el comprobante:")?.trim() || null;
       if (!observaciones) { setError("Para rechazar el comprobante tenés que indicar el motivo."); return; }
     } else {
+      referenciaBancaria = window.prompt("Ingresá el número de operación que verificaste en el homebanking:")?.trim() || null;
+      if (!referenciaBancaria) { setError("La validación requiere el número de operación bancaria real."); return; }
       observaciones = window.prompt("Observación administrativa (opcional):")?.trim() || null;
-      if (!window.confirm("¿Confirmás que la transferencia fue verificada y que la comisión quedará RETENIDA hasta el cierre contractual?")) return;
+      if (!window.confirm("¿Confirmás que verificaste el ingreso real en la cuenta bancaria? La comisión se asignará a cada viaje y se liberará tramo por tramo cuando se confirme la entrega.")) return;
     }
     setRevisandoRetencionComision(true); setError(""); setMensaje("");
     try {
       const { data: resultadoRevision, error } = resultado === "RETENIDA"
-        ? await supabase.rpc("confirmar_retencion_comision_plataforma", { p_retencion_id: retencionId, p_observaciones: observaciones })
+        ? await supabase.rpc("validar_comprobante_comision_bancaria", { p_retencion_id: retencionId, p_numero_operacion_bancaria: referenciaBancaria, p_observaciones: observaciones })
         : await supabase.rpc("rechazar_comprobante_comision_plataforma", { p_retencion_id: retencionId, p_motivo: observaciones });
       if (error) throw error;
       setMensaje(resultado === "RETENIDA"
-        ? (resultadoRevision?.estado === "LIBERADA"
-          ? "Transferencia verificada. Como ya estaban confirmadas todas las entregas por transportista y productor, la comisión quedó liberada contablemente."
-          : "Transferencia verificada. La comisión AgroBrokerIA quedó RETENIDA; seguirá así hasta la doble conformidad de todos los viajes.")
+        ? "Ingreso bancario validado. La comisión se distribuyó por viaje y cada tramo se liberará al confirmar CPE validada y doble conformidad de entrega."
         : "Comprobante rechazado. El motivo quedó registrado y la empresa pagadora puede volver a cargarlo desde Operaciones.");
       await cargarOperaciones();
     } catch (e) {
@@ -2822,7 +2823,7 @@ Firma: ______________________________
               {retencionComision.observaciones && <p style={{margin:0,color:"#92400e"}}>Observaciones: {retencionComision.observaciones}</p>}
               {esAdminPlataforma && retencionComision.comprobante_url && <button type="button" onClick={()=>void abrirComprobanteRetencionComision(retencionComision.comprobante_url)} style={{justifySelf:"start",padding:"8px 12px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff",cursor:"pointer"}}>Abrir comprobante bancario</button>}
               {esAdminPlataforma && retencionComision.estado==="COMPROBANTE_ENVIADO" && <div style={{display:"flex",gap:8,flexWrap:"wrap"}}>
-                <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RETENIDA")} style={{padding:"9px 12px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{revisandoRetencionComision?"Procesando…":"Verificar transferencia y retener comisión"}</button>
+                <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RETENIDA")} style={{padding:"9px 12px",border:0,borderRadius:8,background:"#047857",color:"#fff",cursor:"pointer"}}>{revisandoRetencionComision?"Procesando…":"Validar ingreso y asignar por camión"}</button>
                 <button type="button" disabled={revisandoRetencionComision} onClick={()=>void revisarRetencionComision(retencionComision.id,"RECHAZADO")} style={{padding:"9px 12px",border:"1px solid #b91c1c",borderRadius:8,background:"#fff",color:"#b91c1c",cursor:"pointer"}}>Rechazar comprobante</button>
               </div>}
               {retencionComision.estado==="RETENIDA" && <div style={{display:"grid",gap:8}}>
