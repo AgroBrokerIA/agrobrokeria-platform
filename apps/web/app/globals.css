@@ -1675,3 +1675,12 @@ td{font-size:13px}
  .app-body .page-shell main :where(.module-hero,.dashboard-hero){align-items:flex-start;flex-wrap:wrap}
  .app-body .page-shell main :where(table){display:block;max-width:100%;overflow-x:auto}
 }
+
+
+/* Scale down oversized inline display text found in newer standalone screens. */
+.app-body .page-shell main [style*="font-size: 50px"]{font-size:30px!important}
+.app-body .page-shell main [style*="font-size: 28px"]{font-size:25px!important;line-height:1.25!important}
+.app-body .page-shell main [style*="font-size: 22px"]{font-size:16px!important;line-height:1.35!important}
+.app-body .page-shell main [style*="font-size: 20px"]{font-size:15px!important;line-height:1.4!important}
+.app-body .page-shell main [style*="font-size: 19px"]{font-size:14px!important;line-height:1.4!important}
+.app-body .page-shell main [style*="font-size: 18px"]{font-size:13px!important;line-height:1.45!important}
