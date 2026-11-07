@@ -33,6 +33,9 @@ type Formulario = {
   proteina: string;
   observaciones: string;
   pais_id: number;
+  representado_razon_social: string;
+  representado_cuit: string;
+  representado_sisa_categoria: string;
 };
 
 type Puerto = {
@@ -163,6 +166,9 @@ export default function NuevaPublicacionForm() {
     proteina: "",
     observaciones: "",
     pais_id: 1,
+    representado_razon_social: "",
+    representado_cuit: "",
+    representado_sisa_categoria: "",
   });
 
   const [puertosSeleccionados, setPuertosSeleccionados] = useState<string[]>([]);
@@ -179,6 +185,7 @@ export default function NuevaPublicacionForm() {
   const [mensaje, setMensaje] = useState("");
   const [error, setError] = useState("");
   const [modoEdicion, setModoEdicion] = useState(false);
+  const [esIntermediario, setEsIntermediario] = useState(false);
   const [publicacionId, setPublicacionId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -223,6 +230,13 @@ export default function NuevaPublicacionForm() {
     try {
       setCargando(true);
       setError("");
+
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { data: perfil } = await supabase.from("profiles").select("tipo_usuario").eq("id", user.id).maybeSingle();
+        const rol = String(perfil?.tipo_usuario ?? "").toLowerCase();
+        setEsIntermediario(rol.includes("intermediario") || rol.includes("comisionista") || rol.includes("corredor"));
+      }
 
       const parametros = new URLSearchParams(window.location.search);
       const id = parametros.get("id");
@@ -302,6 +316,9 @@ export default function NuevaPublicacionForm() {
         moneda_id: Number(publicacion.moneda_id),
         incoterm_id: Number(publicacion.incoterm_id),
         pais_id: Number(publicacion.pais_id ?? 1),
+        representado_razon_social: publicacion.representado_razon_social ?? "",
+        representado_cuit: publicacion.representado_cuit ?? "",
+        representado_sisa_categoria: publicacion.representado_sisa_categoria ?? "",
         provincia: publicacion.provincia ?? "",
         localidad: publicacion.localidad ?? "",
         puerto: puertosGuardados[0] ?? publicacion.puerto ?? "",
@@ -369,6 +386,8 @@ export default function NuevaPublicacionForm() {
     setError("");
 
     if (!form.producto_id) return setError("Seleccioná un producto.");
+    if (esIntermediario && !form.representado_razon_social.trim()) return setError("Ingresá la razón social del productor o cliente representado.");
+    if (esIntermediario && !/^[0-9]{11}$/.test(form.representado_cuit.replace(/\\D/g, ""))) return setError("Ingresá un CUIT válido de 11 dígitos, sin puntos ni guiones.");
     if (!form.cantidad_tn || Number(form.cantidad_tn) <= 0) return setError("Ingresá una cantidad válida en toneladas.");
     if (form.precio_tn.trim() && Number(form.precio_tn) <= 0) return setError("El precio debe ser mayor que cero o quedar vacío.");
 
@@ -392,6 +411,9 @@ export default function NuevaPublicacionForm() {
         proteina: form.proteina ? Number(form.proteina) : null,
         observaciones: form.observaciones.trim(),
         pais_id: form.pais_id || null,
+        representado_razon_social: esIntermediario ? form.representado_razon_social.trim() : null,
+        representado_cuit: esIntermediario ? form.representado_cuit.replace(/\\D/g, "") : null,
+        representado_sisa_categoria: esIntermediario ? form.representado_sisa_categoria.trim() || null : null,
       };
 
       if (modoEdicion && publicacionId) {
@@ -437,6 +459,9 @@ export default function NuevaPublicacionForm() {
         proteina: "",
         observaciones: "",
         pais_id: paises.find((x) => x.codigo_iso === "AR")?.id ?? 1,
+        representado_razon_social: "",
+        representado_cuit: "",
+        representado_sisa_categoria: "",
       });
       setPuertosSeleccionados([]);
       setLugaresSeleccionados([]);
@@ -458,6 +483,15 @@ export default function NuevaPublicacionForm() {
 
       {mensaje && <div style={{ padding: 12, borderRadius: 8, background: "#dcfce7", color: "#166534" }}>{mensaje}</div>}
       {error && <div style={{ padding: 12, borderRadius: 8, background: "#fee2e2", color: "#991b1b" }}>{error}</div>}
+
+      {esIntermediario && <section className="publication-observations" aria-label="Datos del representado">
+        <div className="publication-section-heading"><div><span className="publication-kicker">REPRESENTACIÓN COMERCIAL</span><h2>Datos del productor o cliente representado</h2><p>Como intermediario, indicá a nombre de quién publicás. Estos datos se validan y quedan asociados a la publicación.</p></div></div>
+        <div className="publication-basic-grid">
+          <label>Razón social del representado<input required value={form.representado_razon_social} onChange={(e) => actualizarCampo("representado_razon_social", e.target.value)} placeholder="Razón social completa" /></label>
+          <label>CUIT del representado<input required inputMode="numeric" maxLength={13} value={form.representado_cuit} onChange={(e) => actualizarCampo("representado_cuit", e.target.value)} placeholder="30-12345678-9" /></label>
+          <label>Categoría SISA (opcional)<input value={form.representado_sisa_categoria} onChange={(e) => actualizarCampo("representado_sisa_categoria", e.target.value)} placeholder="Categoría, si corresponde" /></label>
+        </div>
+      </section>}
 
       <div className="publication-basic-grid">
         <label>Tipo<select value={form.tipo} onChange={(e) => actualizarCampo("tipo", e.target.value as "VENTA" | "COMPRA")}><option value="VENTA">Venta</option><option value="COMPRA">Compra</option></select></label>
