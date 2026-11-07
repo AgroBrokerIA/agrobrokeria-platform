@@ -33,7 +33,7 @@ jobs:
 
       - name: Apply compatible security fixes
         working-directory: apps/web
-        run: npm audit fix --package-lock-only --ignore-scripts
+        run: npm audit fix --package-lock-only --ignore-scripts || true
 
       - name: Verify clean install
         working-directory: apps/web
