@@ -5,8 +5,14 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Corredor","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario","intermediario"],["Comisionista","comisionista"],["Productor","productor"]];
-const bankRoles = ["corredor","intermediario","comisionista"];
+const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Corredor oficial","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario independiente","intermediario"],["Comisionista independiente","comisionista"],["Productor","productor"]];
+const intermediaryRoles = ["corredor","intermediario","comisionista"];
+const operatorTypeForRole = (role:string):string|null => ({
+  productor:"productor", acopio:"acopio", cooperativa:"cooperativa",
+  corredor:"corredor_oficial", intermediario:"comisionista_intermediario",
+  comisionista:"comisionista_intermediario", exportador:"exportador",
+  transportista:"transportista"
+} as Record<string,string>)[role] || null;
 const initial = {
   accountType:"PERSONA", role:"comprador", documentType:"DNI", documentNumber:"", cuilCuit:"", companyCuit:"", representativeCuil:"",
   firstName:"", middleName:"", lastName:"", birthDate:"", gender:"", nationality:"Argentina", countryOfBirth:"Argentina", maritalStatus:"",
@@ -35,7 +41,9 @@ export default function RegisterPage() {
   const [authorityDoc,setAuthorityDoc] = useState<File|null>(null);
   const [arcaProof,setArcaProof] = useState<File|null>(null);
   const [sisaProof,setSisaProof] = useState<File|null>(null);
-  const isBankRole = bankRoles.includes(form.role);
+  const isIntermediaryRole = intermediaryRoles.includes(form.role);
+  const isBankRole = false;
+  const tipoOperador = operatorTypeForRole(form.role);
   const isCompany = form.accountType === "EMPRESA";
   const isTransportista = form.role === "transportista";
   const update = (key:keyof FormState,value:string) => setForm(p=>({...p,[key]:value}));
@@ -53,13 +61,13 @@ export default function RegisterPage() {
     if(!accepted){setError("Aceptá los Términos y Condiciones para continuar.");return;}
     if(form.password.length<8||form.password!==form.confirmPassword){setError("Revisá la contraseña: debe tener 8 caracteres como mínimo y coincidir.");return;}
     if(!form.documentNumber.trim()||(!isCompany&&!form.cuilCuit.trim())||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
+    if(isIntermediaryRole && !isCompany){setError("Para operar como corredor oficial, comisionista o intermediario independiente necesitás registrar una empresa/organización con CUIT y completar la verificación del legajo.");return;}
     if(isTransportista && (!driverPhoto || !driverDniFront || !driverDniBack)){setError("Para registrarte como transportista, la foto de perfil y el DNI frente y dorso son obligatorios.");return;}
     if(isTransportista && driverPhoto && !["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
     if(isTransportista && [driverDniFront,driverDniBack].some(file=>file && file.type !== "application/pdf" && !file.type.startsWith("image/"))){setError("El frente y dorso del DNI deben adjuntarse como imagen o PDF.");return;}
     if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\D/g,"").length!==11||!statuteDoc||!authorityDoc||!arcaProof||!sisaProof||!dniFront||!dniBack||!form.representativePosition.trim())){setError("Para registrar una empresa se requiere razón social, CUIT, cargo del representante, DNI, estatuto/contrato social, poder o acta de autoridades, constancia ARCA y constancia SISA.");return;}
     const allowedDocs=["application/pdf","image/jpeg","image/png","image/webp"];
     if(isCompany && [statuteDoc,authorityDoc,arcaProof,sisaProof].some(file=>!file||!allowedDocs.includes(file.type)||file.size<=0||file.size>10*1024*1024)){setError("Los documentos societarios, ARCA y SISA deben ser PDF/JPG/PNG/WEBP y no superar 10 MB cada uno.");return;}
-    if(isBankRole && (!form.bankName||!form.accountHolder.trim()||!form.cbuCvu.trim())){setError("Para corredores, intermediarios y comisionistas, completá los datos bancarios para cobrar comisiones.");return;}
     setLoading(true);
     try {
       const {data,error:authError}=await supabase.auth.signUp({
@@ -68,7 +76,7 @@ export default function RegisterPage() {
           nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),
           empresa:isCompany?normalize(form.legalName):"",
           cuit:(isCompany?form.companyCuit:form.cuilCuit).replace(/\D/g,""),
-          tipo_usuario:form.role,account_type:form.accountType,
+          tipo_usuario:form.role,tipo_operador:tipoOperador,account_type:form.accountType,
           legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:"",
           document_type:form.documentType,document_number:form.documentNumber.replace(/\D/g,""),
           first_name:normalize(form.firstName),middle_name:normalize(form.middleName),last_name:normalize(form.lastName),
@@ -87,7 +95,7 @@ export default function RegisterPage() {
       if(authError) throw authError;
       if(!data.user) throw new Error("No se pudo crear el usuario.");
       const draft:Record<string,unknown> = {
-        user_id:data.user.id,account_type:form.accountType,role:form.role,document_type:form.documentType,document_number:form.documentNumber.replace(/\D/g,""),
+        user_id:data.user.id,account_type:form.accountType,role:form.role,tipo_operador:tipoOperador,document_type:form.documentType,document_number:form.documentNumber.replace(/\D/g,""),
         cuil_cuit:(isCompany?form.companyCuit:form.cuilCuit).replace(/\D/g,""),representative_cuil:form.representativeCuil.replace(/\D/g,"")||null,first_name:normalize(form.firstName),middle_name:normalize(form.middleName),last_name:normalize(form.lastName),
         birth_date:form.birthDate||null,gender:form.gender||null,nationality:form.nationality,country_of_birth:form.countryOfBirth,marital_status:form.maritalStatus||null,
         legal_name:isCompany?normalize(form.legalName):null,trade_name:normalize(form.tradeName)||null,ruca_number:form.rucaNumber.trim()||null,representative_position:isCompany?normalize(form.representativePosition):null,
@@ -103,10 +111,6 @@ export default function RegisterPage() {
         if(isCompany){
           const {error:companySyncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
           if(companySyncError){router.replace("/perfil?empresa=pendiente");router.refresh();return;}
-        }
-        if(isBankRole){
-          const {error:bankError}=await supabase.from("user_bank_accounts").insert({user_id:data.user.id,bank_name:form.bankName,account_type:form.accountTypeBank,currency:form.currency,account_holder:normalize(form.accountHolder),cbu_cvu:form.cbuCvu.replace(/\s/g,""),alias:form.alias.trim()||null});
-          if(bankError) throw bankError;
         }
         if(isTransportista && driverPhoto && driverDniFront && driverDniBack){
           const stamp=Date.now();
