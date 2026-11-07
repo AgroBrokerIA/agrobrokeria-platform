@@ -38,8 +38,8 @@ function buildPdfWithoutIntermediary(f:FormState){
  pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento un contrato formal de compraventa de granos F1, celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
  let y=98;
  pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
- y=wrap("EL VENDEDOR: "+field(f.vendedor)+" con CUIT/RUT/RUC __________________ y domicilio en ______________________________.",m,y,W-2*m);
- y=wrap("EL COMPRADOR: "+field(f.comprador)+" con CUIT/RUT/RUC __________________ y domicilio en ______________________________.",m,y+4,W-2*m);
+ y=wrap("EL VENDEDOR: "+field(f.vendedor)+" · CUIT: "+(f.vendedorCuit||"___________________")+" · SISA: "+(f.vendedorSisa||"No informado")+". Domicilio en ______________________________.",m,y,W-2*m);
+ y=wrap("EL COMPRADOR: "+field(f.comprador)+" · CUIT: "+(f.compradorCuit||"___________________")+" · SISA: "+(f.compradorSisa||"No informado")+". Domicilio en ______________________________.",m,y+4,W-2*m);
  y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("2. CONDICIONES PARTICULARES",m,y);y+=16;
  const rows=[
   ["Grano / Producto",field(f.producto)],["Cosecha / Campaña",field(f.campania)],
@@ -74,9 +74,9 @@ function buildPdf(f:FormState){
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;
    pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
-   y=drawWrapped(pdf,party("VENDEDOR",f.vendedor)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________, representado por ____________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("COMPRADOR",f.comprador)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________, representado por ____________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("INTERMEDIARIO (BRÓKER)",f.intermediario)+` con CUIT/RUT/RUC __________________ y domicilio en ______________________________.`,m,y,W-2*m,9);
+   y=drawWrapped(pdf,party("VENDEDOR",f.vendedor)+` · CUIT: ${f.vendedorCuit||"___________________"} · SISA: ${f.vendedorSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
+   y+=5;y=drawWrapped(pdf,party("COMPRADOR",f.comprador)+` · CUIT: ${f.compradorCuit||"___________________"} · SISA: ${f.compradorSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
+   y+=5;y=drawWrapped(pdf,party("INTERMEDIARIO (BRÓKER)",f.intermediario)+` · CUIT: ${f.intermediarioCuit||"___________________"} · SISA: ${f.intermediarioSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
    y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. CONDICIONES PARTICULARES DE LA MERCADERÍA",m,y);y+=14;
    const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
    const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const ls=pdf.splitTextToSize(b,col2-12);const h=Math.max(28,ls.length*10+14);if(y+h>H-64){pdf.addPage();y=48;}pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(30,30,30);pdf.text(ls,m+col1+6,y+12);y+=h;}
@@ -320,7 +320,7 @@ export default function ContratosPage(){
 
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
-   if(!op){ setForm(x=>({...x,operacionId:""})); setConfidentiality([]); return; }
+   if(!op){ setForm(initial); setCompanyOptions([]); setConfidentiality([]); return; }
    setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda ?? "",tipoOperacion:op.publicacion_compra_id&&op.publicacion_venta_id?"COMPRAVENTA (COMPRA + VENTA)":op.publicacion_compra_id?"COMPRA":"VENTA"}));
    void cargarConfidencialidad(id);
    void cargarPartesOperacion(id);
@@ -415,7 +415,10 @@ export default function ContratosPage(){
   window.setTimeout(()=>URL.revokeObjectURL(url),1500);
  }
  function download(tipo:"F1"){
-  if(!form.operacionId||!form.producto){setMessage("Seleccioná una operación y producto antes de generar el PDF.");return;}
+  if(!form.operacionId||!form.producto){setError("Seleccioná una operación y producto antes de generar el PDF.");return;}
+  if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
+  if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
+  if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
   try{
    if(!form.moneda.trim()){setMessage("La operación no tiene moneda registrada. Corregí la moneda de la operación antes de generar el PDF.");return;}
    const next={...effectiveForm,tipo,moneda:form.moneda};
