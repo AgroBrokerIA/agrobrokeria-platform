@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "Home",
+    "market": "Market",
+    "contracts": "Contracts",
+    "logistics": "Logistics",
+    "support": "Technical Support"
+  },
+  "auth": {
+    "login": "Sign In",
+    "register": "Create Free Account",
+    "kyc_pending": "Account Pending Manual Compliance Review",
+    "sisa_error": "Registration Rejected: Invalid or Excluded SISA Status"
+  },
+  "contracts": {
+    "title_f1": "Grain Purchase and Sale Agreement (F1)",
+    "vendedor": "Seller / Producer",
+    "comprador": "Buyer / Acopio",
+    "intermediario": "External Broker / Commission Agent",
+    "comision_plataforma": "Platform Technology Fee",
+    "subir_comprobante": "Upload Bank Wire Receipt (PDF/Image)",
+    "estado_custodia": "Commission retained pending release conditions"
+  }
+}
