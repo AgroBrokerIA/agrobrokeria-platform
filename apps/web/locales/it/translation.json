@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "Home",
+    "market": "Mercato",
+    "contracts": "Contratti",
+    "logistics": "Logistica",
+    "support": "Supporto tecnico"
+  },
+  "auth": {
+    "login": "Accedi",
+    "register": "Crea un account gratuito",
+    "kyc_pending": "Account in attesa di verifica manuale della conformità",
+    "sisa_error": "Registrazione rifiutata: stato SISA non valido o escluso"
+  },
+  "contracts": {
+    "title_f1": "Contratto di compravendita di cereali (F1)",
+    "vendedor": "Venditore / Produttore",
+    "comprador": "Acquirente / Centro di raccolta",
+    "intermediario": "Intermediario esterno / Commissionario",
+    "comision_plataforma": "Commissione tecnologica della piattaforma",
+    "subir_comprobante": "Carica ricevuta del bonifico bancario (PDF/immagine)",
+    "estado_custodia": "Commissione trattenuta fino al rispetto delle condizioni di rilascio"
+  }
+}
