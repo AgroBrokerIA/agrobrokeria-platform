@@ -24,7 +24,7 @@ $old$;
      ) THEN
     RAISE EXCEPTION 'INVALID_PRIVATE_BANK_RECEIPT';
   END IF;
-$ new$;
+$new$;
   IF position(v_old in v_def)=0 THEN RAISE EXCEPTION 'BANK_RECEIPT_VALIDATION_ANCHOR_NOT_FOUND'; END IF;
   EXECUTE replace(v_def,v_old,v_new);
 END $$;
