@@ -37,29 +37,27 @@ export default function OportunidadesPage(){
   const norm=(v?:string|null)=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").replace(/\s*\([^)]*\)/g,"").replace(/\s+/g," ").trim().toLowerCase();
   const isBuy=(v:string)=>["COMPRA","DEMANDA","BUY","PURCHASE","NECESIDAD"].includes(norm(v).toUpperCase());
   const isSell=(v:string)=>["VENTA","OFERTA","SELL","SELLING"].includes(norm(v).toUpperCase());
-  const score=(buy:Publication,sell:Publication)=>{
-   if(buy.id===sell.id||(buy.empresa_id&&sell.empresa_id&&buy.empresa_id===sell.empresa_id)||(buy.intermediario_empresa_id&&buy.intermediario_empresa_id===sell.empresa_id)||(sell.intermediario_empresa_id&&sell.intermediario_empresa_id===buy.empresa_id))return 0;
-   if(!isBuy(buy.tipo)||!isSell(sell.tipo))return 0;
-   if(!norm(buy.productos?.nombre)||norm(buy.productos?.nombre)!==norm(sell.productos?.nombre))return 0;
-   if(buy.moneda_id!=null&&sell.moneda_id!=null&&Number(buy.moneda_id)!==Number(sell.moneda_id))return 0;
-   const sameCity=!!buy.localidad&&norm(buy.localidad)===norm(sell.localidad);
-   const sameProvince=!!buy.provincia&&norm(buy.provincia)===norm(sell.provincia);
-   const price=buy.precio_tn==null||sell.precio_tn==null?0:Math.max(0,25-Math.min(25,Math.abs(Number(buy.precio_tn)-Number(sell.precio_tn))/Math.max(1,Number(sell.precio_tn))*25));
-   const quantity=Number(buy.cantidad_tn)>0&&Number(sell.cantidad_tn)>0?20:0;
-    return Math.min(100,35+(sameCity?20:sameProvince?12:0)+price+quantity);
-  };
-  const matches:Opportunity[]=[];
-  for(let i=0;i<pubs.length;i++)for(let j=i+1;j<pubs.length;j++){
-   const a=pubs[i],b=pubs[j];
-   if(!ownPublicationIds.has(a.id)&&!ownPublicationIds.has(b.id))continue;
-   if(ownPublicationIds.has(a.id)&&ownPublicationIds.has(b.id))continue;
-   const aBuy=isBuy(a.tipo),bBuy=isBuy(b.tipo);
-   if(aBuy===bBuy)continue;
-   const buy=aBuy?a:b, sell=aBuy?b:a;
-   const s=score(buy,sell); if(s<45)continue;
-   const other=ownPublicationIds.has(buy.id)?sell:buy;
-   matches.push({id:[a.id,b.id].sort().join(":"),publicacion_id:other.id,contactPublicationId:other.id,empresa_id:other.empresa_id||"",indice_compatibilidad:Math.round(s),estado:"ACTIVA",creada_en:a.creada_en||b.creada_en||"",distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.representado_razon_social||buy.empresas?.razon_social||"Publicador no identificado",venta_empresa:sell.empresas?.representado_razon_social||sell.empresas?.razon_social||"Publicador no identificado",compra_intermediario:buy.empresas?.intermediario_razon_social||null,venta_intermediario:sell.empresas?.intermediario_razon_social||null,compra_representado_cuit:buy.empresas?.representado_cuit||null,venta_representado_cuit:sell.empresas?.representado_cuit||null,compra_publicador_id:buy.publicador_profile_id,venta_publicador_id:sell.publicador_profile_id,producto:buy.productos?.nombre,compra_pais:buy.paises?.nombre,venta_pais:sell.paises?.nombre,misma_localidad:norm(buy.localidad)===norm(sell.localidad),precio_compra:buy.precio_tn,precio_venta:sell.precio_tn},publicacion:other});
-  }
+  const ownPublications=pubs.filter(p=>ownPublicationIds.has(p.id));
+  const scored=await Promise.all(ownPublications.map(async own=>{
+   const {data:ranked,error:rankError}=await supabase.rpc("calcular_smart_matches",{p_publicacion_id:own.id});
+   if(rankError){console.warn("No se pudo calcular el matching del servidor",own.id,rankError.message);return [] as Opportunity[];}
+   const candidates=(ranked||[]) as Array<{empresa_id:string;empresa:string;puntaje_total:number;recomendada:boolean}>;
+   const ownIsBuy=isBuy(own.tipo);
+   const counterparts=pubs.filter(other=>{
+    if(ownPublicationIds.has(other.id))return false;
+    if(own.id===other.id)return false;
+    if(ownIsBuy?!isSell(other.tipo):!isBuy(other.tipo))return false;
+    return candidates.some(candidate=>candidate.empresa_id===other.empresa_id||candidate.empresa_id===other.intermediario_empresa_id);
+   });
+   return counterparts.flatMap(other=>{
+    const candidate=candidates.find(x=>x.empresa_id===other.empresa_id||x.empresa_id===other.intermediario_empresa_id);
+    if(!candidate||!candidate.recomendada)return [];
+    const buy=ownIsBuy?own:other, sell=ownIsBuy?other:own;
+    const score=Math.max(0,Math.min(100,Number(candidate.puntaje_total)||0));
+    return [{id:[buy.id,sell.id].sort().join(":"),publicacion_id:other.id,contactPublicationId:other.id,empresa_id:other.empresa_id||candidate.empresa_id,indice_compatibilidad:score,estado:"ACTIVA",creada_en:own.creada_en||other.creada_en||"",distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,compra_empresa:buy.empresas?.representado_razon_social||buy.empresas?.razon_social||"Publicador no identificado",venta_empresa:sell.empresas?.representado_razon_social||sell.empresas?.razon_social||"Publicador no identificado",compra_intermediario:buy.empresas?.intermediario_razon_social||null,venta_intermediario:sell.empresas?.intermediario_razon_social||null,compra_representado_cuit:buy.empresas?.representado_cuit||null,venta_representado_cuit:sell.empresas?.representado_cuit||null,compra_publicador_id:buy.publicador_profile_id,venta_publicador_id:sell.publicador_profile_id,producto:buy.productos?.nombre,compra_pais:buy.paises?.nombre,venta_pais:sell.paises?.nombre,precio_compra:buy.precio_tn,precio_venta:sell.precio_tn,explicacion:"Puntaje calculado por el motor de compatibilidad del servidor",empresa_match:candidate.empresa},publicacion:other} as Opportunity];
+   });
+  }));
+  const matches=Array.from(new Map(scored.flat().map(x=>[x.id,x])).values());
   if(active){setItems(matches.sort((a,b)=>b.indice_compatibilidad-a.indice_compatibilidad));await Promise.all(matches.map(x=>supabase.rpc("registrar_alerta_oportunidad",{p_publicacion_compra_id:String(x.detalles?.compra_id||""),p_publicacion_venta_id:String(x.detalles?.venta_id||"")} ).then(({error})=>{if(error)console.warn("No se pudo registrar alerta de oportunidad",error.message)})));}
  }catch(e){if(active)setError(e instanceof Error?e.message:"No se pudieron calcular las oportunidades.")}finally{if(active)setLoading(false)}};
  void load();
