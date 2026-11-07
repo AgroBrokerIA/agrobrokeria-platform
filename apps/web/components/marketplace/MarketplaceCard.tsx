@@ -73,8 +73,8 @@ export default function MarketplaceCard({ publicacion }: Props) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}><Badge>{publicacion.tipo}</Badge><span className="company-role-badge" style={{color:companyBadge.color,background:companyBadge.background,borderColor:companyBadge.border}}><i />{companyBadge.label}{companyBadge.verified ? " · Verificada" : ""}</span></div><div style={{ fontSize: 28 }}>⭐</div>
       </div>
-      <h2 style={{ marginTop: 15, marginBottom: 5, fontSize: 34 }}>🌽 {publicacion.productos?.nombre ?? "Producto"}</h2>
-      <p style={{ color: "#666", marginBottom: 6 }}>{publicacion.representado_razon_social ?? publicacion.empresas?.razon_social ?? "Empresa"}</p>
+      <h2 style={{ marginTop: 15, marginBottom: 5, fontSize: 34 }}>🌽 {publicacion.productos?.nombre ?? "Producto no informado"}</h2>
+      <p style={{ color: "#666", marginBottom: 6 }}>{publicacion.representado_razon_social ?? publicacion.empresas?.razon_social ?? "Publicador no identificado"}</p>
       {publicacion.representado_cuit && <p style={{ color:"#64748b",fontSize:13,margin:"0 0 6px" }}>CUIT representado: {publicacion.representado_cuit}</p>}
       {publicacion.intermediario?.razon_social && <p style={{ color:"#475569",fontSize:13,margin:"0 0 12px" }}>Intermediario: {publicacion.intermediario.razon_social}{publicacion.intermediario.cuit ? ` · CUIT ${publicacion.intermediario.cuit}` : ""}</p>}
       {publicacion.representado_razon_social ? (
@@ -85,9 +85,9 @@ export default function MarketplaceCard({ publicacion }: Props) {
         </div>
       ) : (
         <div className="company-reputation" aria-label="Historial comercial">
-          <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>
-          <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>
-          <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>
+          <div><strong>{publicacion.empresas?.operaciones_realizadas != null ? publicacion.empresas.operaciones_realizadas : "Sin datos"}</strong><span>negocios</span></div>
+          <div><strong>{publicacion.empresas?.toneladas_operadas != null ? `${publicacion.empresas.toneladas_operadas} TN` : "Sin datos"}</strong><span>operadas</span></div>
+          <div><strong>{publicacion.empresas?.reputacion_score != null ? `${publicacion.empresas.reputacion_score}%` : "Sin datos"}</strong><span>cumplimiento histórico</span></div>
         </div>
       )}
 
@@ -131,7 +131,7 @@ export default function MarketplaceCard({ publicacion }: Props) {
           <div className="market-detail-header">
             <div>
               <span className="eyebrow">DETALLE DE OPERACIÓN</span>
-              <h3>{publicacion.productos?.nombre ?? "Commodity"} · {publicacion.cantidad_tn} TN</h3>
+              <h3>{publicacion.productos?.nombre ?? "Producto no informado"} · {publicacion.cantidad_tn} TN</h3>
             </div>
             <span className="market-detail-status">● {publicacion.estado || "PUBLICADA"}</span>
           </div>
