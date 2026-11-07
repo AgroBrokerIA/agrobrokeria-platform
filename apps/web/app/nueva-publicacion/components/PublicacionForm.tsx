@@ -242,7 +242,7 @@ export default function PublicationForm(props: any) {
     if (isIntermediary) {
       if (!intermediarioEmpresaId) { setError("Tu legajo de corredor/comisionista debe estar vinculado y verificado antes de publicar en representación de un cliente."); return; }
       if (!form.representado_razon_social.trim()) { setError("Ingresá la razón social del productor o cliente representado."); return; }
-      if (!/^\\d{11}$/.test(form.representado_cuit.replace(/\\D/g, ""))) { setError("Ingresá un CUIT válido de 11 dígitos del cliente representado."); return; }
+      if (!/^\d{11}$/.test(form.representado_cuit.replace(/\D/g, ""))) { setError("Ingresá un CUIT válido de 11 dígitos del cliente representado."); return; }
     }
 
     if (!form.provincia.trim()) {
@@ -282,7 +282,7 @@ export default function PublicationForm(props: any) {
         empresa_id: contexto.empresaId,
         intermediario_empresa_id: contexto.intermediarioEmpresaId,
         representado_razon_social: contexto.isIntermediary ? form.representado_razon_social.trim() : null,
-        representado_cuit: contexto.isIntermediary ? form.representado_cuit.replace(/\\D/g, "") : null,
+        representado_cuit: contexto.isIntermediary ? form.representado_cuit.replace(/\D/g, "") : null,
         representado_sisa_categoria: contexto.isIntermediary ? (form.representado_sisa_categoria.trim() || null) : null,
 
         tipo: form.tipo as "VENTA" | "COMPRA",
