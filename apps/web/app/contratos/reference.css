@@ -131,3 +131,64 @@
 .contract-language-bar span,.contract-language-bar button{font-size:11px}
 @media(max-width:1100px){.contract-builder-grid{grid-template-columns:1fr}.contract-previews{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.contract-builder-reference{padding:18px 12px 38px}.contract-builder-head{align-items:flex-start}.contract-builder-actions{width:100%;overflow:visible}.contract-builder-tabs{overflow-x:auto;flex-wrap:nowrap}.contract-previews{grid-template-columns:1fr}.contract-builder-fields{grid-template-columns:1fr}.contract-commodity-picks{grid-template-columns:repeat(3,minmax(0,1fr))}.contract-paper{min-height:0}.contract-list-panel>button{grid-template-columns:1fr}.paper-clause{grid-template-columns:1fr;gap:3px}}
+
+
+/* Corrección de maquetación: selector, formulario y vista previa contractual */
+.contract-builder-reference,
+.contract-builder-reference *{box-sizing:border-box}
+.contract-builder-reference{width:100%;max-width:100%;min-width:0;overflow-x:clip}
+.contract-builder-head{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;flex-wrap:wrap}
+.contract-builder-head>div:first-child{flex:1 1 360px;min-width:0}
+.contract-builder-head h1{font-size:clamp(25px,2.1vw,32px);line-height:1.2;letter-spacing:-.45px;margin:0 0 7px}
+.contract-builder-head p{max-width:900px;font-size:14px;line-height:1.6;margin:0;overflow-wrap:anywhere}
+.contract-builder-tabs{display:flex;flex-wrap:wrap;gap:4px;width:100%;max-width:100%;white-space:normal}
+.contract-builder-grid{display:grid;grid-template-columns:minmax(320px, min(42%, 470px)) minmax(0,1fr);gap:20px;align-items:start;width:100%;min-width:0}
+.contract-builder-form,.contract-previews,.contract-preview-card{min-width:0;width:100%;max-width:100%}
+.contract-builder-form{padding:clamp(16px,1.8vw,24px);overflow:visible}
+.contract-type-picks{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px;width:100%;min-width:0;align-items:stretch}
+.contract-type-picks>.contract-template-single{display:grid!important;grid-column:1/-1;width:100%;min-width:0;max-width:100%;gap:9px;padding:15px 16px;margin:0;border:1px solid #cfe3d6;border-radius:12px;background:#f4fbf6;white-space:normal;overflow-wrap:anywhere}
+.contract-template-single>b{display:block;font-size:14px;line-height:1.4;overflow-wrap:anywhere}
+.contract-template-single>span{display:block;font-size:12px;line-height:1.65;overflow-wrap:anywhere;word-break:normal}
+.contract-type-picks>button{display:flex!important;align-items:center;justify-content:flex-start;width:100%;min-width:0;min-height:62px;padding:12px 14px;gap:12px;text-align:left}
+.contract-type-picks>button>span{display:block;flex:1;min-width:0}
+.contract-type-picks>button strong{display:block;font-size:15px;line-height:1.3}
+.contract-type-picks>button small{display:block;font-size:11px;line-height:1.4;white-space:normal}
+.contract-builder-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 14px}
+.contract-builder-fields label,.contract-builder-observation{min-width:0;font-size:12px;line-height:1.45}
+.contract-builder-fields input,.contract-builder-fields select,.contract-builder-observation textarea{width:100%;min-width:0;max-width:100%;min-height:42px;height:auto;padding:10px 11px;font-size:13px;line-height:1.4}
+.contract-builder-observation textarea{min-height:90px;resize:vertical}
+.contract-previews{display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:16px;align-items:start}
+.contract-preview-card{overflow:hidden}
+.contract-preview-card>header{display:grid;grid-template-columns:38px minmax(0,1fr) auto;gap:10px;align-items:center;padding:13px 15px}
+.contract-preview-card>header>div:nth-child(2){min-width:0}
+.contract-preview-card>header strong{font-size:13px;line-height:1.4;overflow-wrap:anywhere}
+.contract-preview-card>header small{font-size:11px;line-height:1.45;white-space:normal;overflow-wrap:anywhere}
+.contract-preview-card>header button{font-size:11px;line-height:1.35;padding:9px 11px;white-space:nowrap}
+.contract-paper{width:calc(100% - 28px);max-width:760px;min-height:0;margin:14px auto 18px;padding:clamp(18px,2.4vw,30px);overflow-wrap:anywhere;word-break:normal}
+.paper-brand{padding-right:0;gap:10px;flex-wrap:wrap}
+.paper-brand strong{font-size:clamp(18px,2vw,23px);line-height:1.25;letter-spacing:-.5px}
+.paper-brand span{font-size:10px;line-height:1.4}
+.paper-meta{position:static;display:block;width:max-content;max-width:100%;margin:12px 0 14px;font-size:10px;line-height:1.5}
+.contract-paper h3{font-size:15px;line-height:1.45;margin:12px 0 16px;overflow-wrap:anywhere}
+.contract-paper>p{font-size:12px;line-height:1.65;margin:0 0 14px;overflow-wrap:anywhere}
+.paper-clause{display:grid;grid-template-columns:minmax(145px, min(31%, 205px)) minmax(0,1fr);gap:12px;margin:0;padding:10px 0;border-bottom:1px solid #e6ebef;font-size:11px;line-height:1.6;overflow-wrap:anywhere;word-break:normal}
+.paper-clause b{font-size:10px;line-height:1.5;overflow-wrap:anywhere}
+.paper-clause span{display:block;min-width:0;font-size:11px;line-height:1.65;overflow-wrap:anywhere;word-break:normal}
+.paper-signatures{gap:24px;margin-top:28px;padding-top:12px}
+.paper-signatures b{font-size:10px;line-height:1.4;overflow-wrap:anywhere}
+.paper-signatures small{font-size:10px;line-height:1.4}
+.contract-list-panel,.contract-info-panel{min-width:0;max-width:100%;overflow-wrap:anywhere}
+@media(max-width:1100px){
+ .contract-builder-grid{grid-template-columns:minmax(0,1fr)}
+ .contract-previews{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:700px){
+ .contract-builder-reference{padding:16px 12px 34px}
+ .contract-builder-tabs{flex-wrap:nowrap;overflow-x:auto;white-space:nowrap}
+ .contract-builder-fields{grid-template-columns:minmax(0,1fr)}
+ .contract-preview-card>header{grid-template-columns:34px minmax(0,1fr);align-items:start}
+ .contract-preview-card>header button{grid-column:1/-1;width:100%}
+ .contract-paper{width:calc(100% - 16px);padding:16px 13px;margin:8px auto 12px}
+ .paper-clause{grid-template-columns:minmax(0,1fr);gap:4px}
+ .paper-signatures{grid-template-columns:1fr 1fr;gap:14px}
+}
