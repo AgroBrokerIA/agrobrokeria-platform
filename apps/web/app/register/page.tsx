@@ -64,7 +64,25 @@ export default function RegisterPage() {
     try {
       const {data,error:authError}=await supabase.auth.signUp({
         email:form.email.trim(),password:form.password,
-        options:{data:{nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),empresa:isCompany?normalize(form.legalName):"",cuit:isCompany?form.companyCuit.replace(/\D/g,""):form.cuilCuit.replace(/\D/g,""),tipo_usuario:form.role,account_type:form.accountType,legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:"",representative_cuil:form.representativeCuil.replace(/\D/g,"")}}
+        options:{data:{
+          nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),
+          empresa:isCompany?normalize(form.legalName):"",
+          cuit:(isCompany?form.companyCuit:form.cuilCuit).replace(/\D/g,""),
+          tipo_usuario:form.role,account_type:form.accountType,
+          legal_accepted:true,legal_user_agent:typeof navigator!=="undefined"?navigator.userAgent:"",
+          document_type:form.documentType,document_number:form.documentNumber.replace(/\D/g,""),
+          first_name:normalize(form.firstName),middle_name:normalize(form.middleName),last_name:normalize(form.lastName),
+          birth_date:form.birthDate||null,gender:form.gender||null,nationality:form.nationality,country_of_birth:form.countryOfBirth,marital_status:form.maritalStatus||null,
+          representative_cuil:form.representativeCuil.replace(/\D/g,""),
+          representative_position:isCompany?normalize(form.representativePosition):null,
+          trade_name:normalize(form.tradeName),ruca_number:form.rucaNumber.trim(),
+          email:form.email.trim().toLowerCase(),phone:form.phone.trim(),phone_alt:form.phoneAlt.trim(),
+          country:form.country,province:normalize(form.province),city:normalize(form.city),street:normalize(form.street),
+          street_number:form.streetNumber.trim(),floor:form.floor.trim(),apartment:form.apartment.trim(),postal_code:form.postalCode.trim(),
+          economic_activity:form.economicActivity,income_tax_status:form.incomeTaxStatus,vat_status:form.vatStatus,employment_status:form.employmentStatus,
+          politically_exposed:form.politicallyExposed==="true",obliged_subject:form.obligedSubject==="true",
+          lawful_funds:form.lawfulFunds==="true",us_tax_resident:form.usTaxResident==="true"
+        }}
       });
       if(authError) throw authError;
       if(!data.user) throw new Error("No se pudo crear el usuario.");
