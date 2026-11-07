@@ -3,7 +3,11 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 
 type Publicacion = {
   id: string;
-  empresa_id: string;
+  empresa_id: string | null;
+  intermediario_empresa_id?: string | null;
+  publicador_profile_id?: string | null;
+  representado_razon_social?: string | null;
+  representado_cuit?: string | null;
   tipo: string;
   producto_id: number;
   cantidad_tn: number;
@@ -245,7 +249,7 @@ async function obtenerCandidatos(
     .eq("activo", true);
 
   for (const interes of intereses ?? []) {
-    if (interes.empresa_id === publicacion.empresa_id) {
+    if ([publicacion.empresa_id, publicacion.intermediario_empresa_id].includes(interes.empresa_id)) {
       continue;
     }
 
@@ -277,7 +281,7 @@ async function obtenerCandidatos(
     .eq("producto_id", publicacion.producto_id);
 
   for (const producto of productos ?? []) {
-    if (producto.empresa_id === publicacion.empresa_id) {
+    if ([publicacion.empresa_id, publicacion.intermediario_empresa_id].includes(producto.empresa_id)) {
       continue;
     }
 
@@ -359,6 +363,10 @@ export async function procesarPublicacionConIA(
         `
         id,
         empresa_id,
+        intermediario_empresa_id,
+        publicador_profile_id,
+        representado_razon_social,
+        representado_cuit,
         tipo,
         producto_id,
         cantidad_tn,
