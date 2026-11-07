@@ -387,7 +387,7 @@ export default function NuevaPublicacionForm() {
 
     if (!form.producto_id) return setError("Seleccioná un producto.");
     if (esIntermediario && !form.representado_razon_social.trim()) return setError("Ingresá la razón social del productor o cliente representado.");
-    if (esIntermediario && !/^[0-9]{11}$/.test(form.representado_cuit.replace(/\\D/g, ""))) return setError("Ingresá un CUIT válido de 11 dígitos, sin puntos ni guiones.");
+    if (esIntermediario && !/^[0-9]{11}$/.test(form.representado_cuit.replace(/\D/g, ""))) return setError("Ingresá un CUIT válido de 11 dígitos, sin puntos ni guiones.");
     if (!form.cantidad_tn || Number(form.cantidad_tn) <= 0) return setError("Ingresá una cantidad válida en toneladas.");
     if (form.precio_tn.trim() && Number(form.precio_tn) <= 0) return setError("El precio debe ser mayor que cero o quedar vacío.");
 
@@ -412,7 +412,7 @@ export default function NuevaPublicacionForm() {
         observaciones: form.observaciones.trim(),
         pais_id: form.pais_id || null,
         representado_razon_social: esIntermediario ? form.representado_razon_social.trim() : null,
-        representado_cuit: esIntermediario ? form.representado_cuit.replace(/\\D/g, "") : null,
+        representado_cuit: esIntermediario ? form.representado_cuit.replace(/\D/g, "") : null,
         representado_sisa_categoria: esIntermediario ? form.representado_sisa_categoria.trim() || null : null,
       };
 
