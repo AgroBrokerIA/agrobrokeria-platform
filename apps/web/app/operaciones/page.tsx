@@ -628,6 +628,30 @@ export default function OperacionesPage() {
       }
 
       // =========================================================
+      // RECONCILIACIÓN: VISADO APROBADO → RETENCIÓN DE COMISIÓN
+      // Corrige operaciones aprobadas que quedaron detenidas en etapa 3
+      // por no haberse ejecutado el avance al guardar el visado.
+      // =========================================================
+      let workflowsActualizados = [...workflowsNormalizados];
+      for (const workflow of workflowsNormalizados) {
+        const control = (controlesComercialesDB || []).find((item: any) => item.operacion_id === workflow.operacion_id);
+        const aprobado = String(control?.visado_resultado || control?.visado_estado || "").toUpperCase() === "APROBADO";
+        if (workflow.orden !== 3 || !aprobado) continue;
+        const { data: avance, error: avanceError } = await supabase.rpc(
+          "avanzar_visado_aprobado_a_retencion",
+          { p_operacion_id: workflow.operacion_id }
+        );
+        if (avanceError) {
+          console.error("Visado aprobado pendiente de avance a retención:", workflow.operacion_id, avanceError);
+          continue;
+        }
+        workflowsActualizados = workflowsActualizados.map((item) => item.operacion_id === workflow.operacion_id
+          ? {...item, orden:4, etapa_actual:"Retención de comisión AgroBrokerIA", etapa_actual_id:avance?.etapa_destino_id || item.etapa_actual_id}
+          : item);
+      }
+      setWorkflows(workflowsActualizados);
+
+      // =========================================================
       // SINCRONIZACIÓN AUTOMÁTICA: FIRMAS APROBADAS → LOGÍSTICA
       // La base valida las dos copias aprobadas y mueve el workflow
       // de forma atómica, sin depender de estados React desactualizados.
