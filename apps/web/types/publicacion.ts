@@ -3,6 +3,12 @@ export interface Publicacion {
 
   empresa_id: string | null;
 
+  /** Intermediario con legajo verificado que publica por cuenta de un cliente. */
+  intermediario_empresa_id?: string | null;
+  representado_razon_social?: string | null;
+  representado_cuit?: string | null;
+  representado_sisa_categoria?: string | null;
+
   tipo: "COMPRA" | "VENTA";
 
   tipo_contrato?: "F1" | "F2" | null;
