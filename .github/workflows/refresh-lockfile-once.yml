@@ -33,7 +33,7 @@ jobs:
 
       - name: Apply compatible security fixes
         working-directory: apps/web
-        run: npm audit fix --package-lock-only --ignore-scripts || true
+        run: npm audit fix --ignore-scripts || true
 
       - name: Verify clean install
         working-directory: apps/web
@@ -46,12 +46,12 @@ jobs:
       - name: Commit lockfile
         shell: bash
         run: |
-          if git diff --quiet -- apps/web/package-lock.json; then
+          if git diff --quiet -- apps/web/package-lock.json apps/web/package.json; then
             echo "Lockfile is already current."
             exit 0
           fi
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add apps/web/package-lock.json
+          git add apps/web/package-lock.json apps/web/package.json
           git commit -m "security: refresh dependency lockfile with patched packages"
           git push
