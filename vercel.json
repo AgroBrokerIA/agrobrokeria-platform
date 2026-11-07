@@ -15,6 +15,10 @@
     {
       "path": "/api/cron/contratos-vencidos",
       "schedule": "15 3 * * *"
+    },
+    {
+      "path": "/api/cron/scoring-confianza",
+      "schedule": "0 3 * * *"
     }
   ]
 }
