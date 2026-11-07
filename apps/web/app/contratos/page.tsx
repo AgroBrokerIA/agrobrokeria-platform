@@ -159,6 +159,7 @@ export default function ContratosPage(){
        setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:"F1"}));
        const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
        if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
+       void cargarPartesOperacion(contratoDestino.operacion_id);
        void loadSignedCopies(contratoDestino.id,contratoDestino.operacion_id);
      } else if(params.get("tab")==="mis") setTab("mis");
    }
@@ -321,7 +322,8 @@ export default function ContratosPage(){
  function selectOperation(id:string){
    const op=operaciones.find(x=>x.id===id);
    if(!op){ setForm(initial); setCompanyOptions([]); setConfidentiality([]); return; }
-   setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda ?? "",tipoOperacion:op.publicacion_compra_id&&op.publicacion_venta_id?"COMPRAVENTA (COMPRA + VENTA)":op.publicacion_compra_id?"COMPRA":"VENTA"}));
+   setCompanyOptions([]);
+   setForm(x=>({...x,operacionId:id,cantidad:String(op.cantidad_tn ?? ""),precio:String(op.precio_tn ?? ""),moneda:op.moneda ?? "",tipoOperacion:op.publicacion_compra_id&&op.publicacion_venta_id?"COMPRAVENTA (COMPRA + VENTA)":op.publicacion_compra_id?"COMPRA":"VENTA",terminalId:"",puerto:"",vendedorEmpresaId:"",compradorEmpresaId:"",intermediarioEmpresaId:"",vendedor:"",comprador:"",intermediario:"",vendedorCuit:"",compradorCuit:"",intermediarioCuit:"",vendedorSisa:"",compradorSisa:"",intermediarioSisa:""}));
    void cargarConfidencialidad(id);
    void cargarPartesOperacion(id);
    void cargarDocumentosFirma(id);
@@ -495,7 +497,7 @@ export default function ContratosPage(){
     </div>
   </section>:null}
 
-  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:"F1"}));setMessage("Contrato seleccionado.");void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
+  {tab==="mis"&&<section className="contract-list-panel"><h2>Mis contratos</h2>{loading?<p>Cargando contratos…</p>:rows.length===0?<p>No hay contratos registrados todavía.</p>:rows.map(c=><button key={c.id} onClick={()=>{setSelected(c);setTab("mis");setForm(x=>({...x,operacionId:c.operacion_id,precio:String(c.precio_tn||x.precio),cantidad:String(c.cantidad_tn||x.cantidad),tipo:"F1"}));setMessage("Contrato seleccionado.");void cargarPartesOperacion(c.operacion_id);void loadSignedCopies(c.id)}}><strong>{c.numero_contrato}</strong><span>Contrato F1 · {c.estado}</span><small>{c.fecha_firma?new Date(c.fecha_firma).toLocaleDateString("es-AR"):"Sin firma"}</small></button>)}
    {selected&&<div className="contract-info-panel" style={{marginTop:16}}><h2 style={{marginTop:18}}>Solicitar más tiempo para cerrar el contrato</h2><p>La solicitud queda auditada. El vencimiento actual no cambia hasta que un administrador apruebe la prórroga.</p><div className="contract-builder-fields">
     <label>Días adicionales solicitados<input type="number" min="1" max="30" value={extensionDays} onChange={e=>setExtensionDays(e.target.value)}/></label>
     <label>Motivo<textarea value={extensionReason} onChange={e=>setExtensionReason(e.target.value)} placeholder="Por qué no se puede cerrar todavía"/></label>
