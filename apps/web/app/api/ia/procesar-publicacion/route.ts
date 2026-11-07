@@ -71,18 +71,18 @@ export async function POST(request: Request) {
       .from("profiles")
       .select("active_company_id")
       .eq("id", user.id)
-      .single();
+      .maybeSingle();
 
-    if (profileError || !profile?.active_company_id) {
+    if (profileError || !profile) {
       return NextResponse.json(
-        { ok: false, error: "No se pudo determinar la empresa activa." },
+        { ok: false, error: "No se pudo determinar el perfil autenticado." },
         { status: 403 }
       );
     }
 
     const { data: publicacion, error: publicacionError } = await supabaseAuth
       .from("publicaciones")
-      .select("empresa_id")
+      .select("empresa_id,publicador_profile_id,intermediario_empresa_id")
       .eq("id", publicacionId)
       .single();
 
@@ -93,7 +93,33 @@ export async function POST(request: Request) {
       );
     }
 
-    if (publicacion.empresa_id !== profile.active_company_id) {
+    // El dueño puede ser el perfil que publicó por cuenta propia o un miembro
+    // activo de la empresa representada. Los intermediarios independientes no
+    // requieren que la publicación tenga empresa_id como titular del grano.
+    const isProfilePublisher = publicacion.publicador_profile_id === user.id;
+    let isActiveCompanyMember = false;
+
+    if (profile.active_company_id) {
+      const { data: mappings, error: mappingError } = await supabaseAuth
+        .from("company_empresa_map")
+        .select("empresa_id")
+        .eq("company_id", profile.active_company_id)
+        .eq("verified", true);
+
+      if (mappingError) {
+        return NextResponse.json(
+          { ok: false, error: "No se pudo validar la vinculación empresarial." },
+          { status: 403 }
+        );
+      }
+
+      isActiveCompanyMember = Boolean(
+        publicacion.empresa_id &&
+        (mappings || []).some((mapping: { empresa_id: string }) => mapping.empresa_id === publicacion.empresa_id)
+      );
+    }
+
+    if (!isProfilePublisher && !isActiveCompanyMember) {
       return NextResponse.json(
         { ok: false, error: "No tenés autorización para procesar esta publicación." },
         { status: 403 }
