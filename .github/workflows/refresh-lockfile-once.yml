@@ -3,7 +3,7 @@ name: Refresh patched dependency lockfile
 on:
   push:
     branches:
-      - feat/kyc-legal-institutional-docs
+      - main
     paths:
       - apps/web/package.json
       - .github/workflows/refresh-lockfile-once.yml
