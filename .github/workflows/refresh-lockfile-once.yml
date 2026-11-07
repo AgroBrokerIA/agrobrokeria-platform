@@ -1,6 +1,7 @@
 name: Refresh patched dependency lockfile
 
 on:
+  workflow_dispatch:
   push:
     branches:
       - main
