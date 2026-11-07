@@ -378,7 +378,6 @@ export default function ContratosPage(){
    if(!form.vendedor.trim()||!form.comprador.trim()){setError("Completá la razón social del vendedor y del comprador.");return;}
    if(!form.puerto.trim()){setError("Seleccioná una terminal activa o ingresá el lugar de entrega específico.");return;}
    if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("El CUIT del vendedor y del comprador debe contener exactamente 11 dígitos.");return;}
-   if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
    if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
    setBusy(true);setError("");setMessage("");
    const op=operaciones.find(x=>x.id===form.operacionId);
@@ -418,7 +417,6 @@ export default function ContratosPage(){
   if(!form.puerto.trim()){setError("Seleccioná una terminal activa o ingresá el lugar de entrega específico.");return;}
   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
   if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
-  if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
   try{
    if(!form.moneda.trim()){setMessage("La operación no tiene moneda registrada. Corregí la moneda de la operación antes de generar el PDF.");return;}
    const next={...effectiveForm,tipo,moneda:form.moneda};
