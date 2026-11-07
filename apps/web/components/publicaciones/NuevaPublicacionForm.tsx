@@ -377,7 +377,7 @@ export default function NuevaPublicacionForm() {
     }
   }
 
-  function actualizarCampo(campo: keyof Formulario, valor: string | number) {
+  function actualizarCampo(campo: keyof Formulario, valor: string | number | boolean | string[]) {
     setForm((anterior) => ({ ...anterior, [campo]: valor }));
   }
 
@@ -685,7 +685,7 @@ export default function NuevaPublicacionForm() {
       <section className="publication-observations">
         <div className="publication-section-heading"><div><span className="publication-kicker">CONDICIONES INTERNACIONALES</span><h2>Precio, calidad y pagos</h2><p>Estos datos se guardan en la publicación y pueden incorporarse al borrador documental.</p></div></div>
         <div className="publication-basic-grid">
-          <label className="publication-checkbox"><input type="checkbox" checked={form.base_precio_cbot} onChange={(e) => actualizarCampo("base_precio_cbot", e.target.checked as unknown as string)} /> Precio de referencia CBOT</label>
+          <label className="publication-checkbox"><input type="checkbox" checked={form.base_precio_cbot} onChange={(e) => actualizarCampo("base_precio_cbot", e.target.checked)} /> Precio de referencia CBOT</label>
           <label>Premium / diferencial CBOT<input type="number" step="0.01" value={form.premium_cbot} onChange={(e) => actualizarCampo("premium_cbot", e.target.value)} placeholder="Sin valor predeterminado" /></label>
           <label>Humedad máxima (%)<input type="number" step="0.01" value={form.humedad_maxima} onChange={(e) => actualizarCampo("humedad_maxima", e.target.value)} /></label>
           <label>Materia extraña máxima (%)<input type="number" step="0.01" value={form.materia_extrana_maxima} onChange={(e) => actualizarCampo("materia_extrana_maxima", e.target.value)} /></label>
