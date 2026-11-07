@@ -82,6 +82,7 @@ function buildPdf(f:FormState){
    pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=22;pdf.setFont("helvetica","normal");pdf.setFontSize(9);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=48;
    const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"]];
    sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/3;pdf.line(x,y,x+135,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+13);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+b,x,y+25);pdf.text("DNI/Pasaporte: __________________",x,y+37);});
+  }
  return pdf;
 }
 
