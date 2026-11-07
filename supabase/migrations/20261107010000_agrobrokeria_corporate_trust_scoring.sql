@@ -59,7 +59,7 @@ BEGIN
     END IF;
   END LOOP;
   RETURN round(v_total,2);
-END $function$
+END $function$;
 
 
 CREATE OR REPLACE FUNCTION public.recalcular_scoring_confianza_agrobrokeria()
@@ -311,7 +311,7 @@ BEGIN
     v_processed:=v_processed+1;
   END LOOP;
   RETURN jsonb_build_object('ok',true,'processed',v_processed,'without_history',v_without_history,'calculated_at',now(),'version','1.0.0');
-END $function$
+END $function$;
 
 
 REVOKE ALL ON FUNCTION public.agrobroker_horas_habiles(timestamptz,timestamptz) FROM PUBLIC,anon,authenticated;
