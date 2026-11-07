@@ -1560,3 +1560,38 @@ main{min-width:0}
 [role="alert"]{overflow-wrap:anywhere}
 @media(max-width:900px){.app-header{padding-inline:14px}.module-page,.dashboard-page{padding-inline:22px}}
 @media(max-width:650px){.app-sidebar{width:64px;padding-inline:6px}.module-page,.dashboard-page{padding-inline:14px}.app-header{gap:8px}.app-header-actions{min-width:0}}
+
+
+/* Sistema visual unificado: legibilidad, alineación y adaptación responsive */
+html{scroll-behavior:smooth}
+body{font-size:14px;line-height:1.55;-webkit-font-smoothing:antialiased;text-rendering:optimizeLegibility}
+.app-body,.page-shell,.page-shell>main,main{min-width:0;max-width:100%}
+.page-shell>main{width:100%}
+.module-page,.dashboard-page{min-width:0}
+h1,h2,h3,h4,h5,p,small,strong,span,label,td,th{overflow-wrap:anywhere}
+h1,h2,h3,h4{line-height:1.25}
+p{line-height:1.6}
+button,input,select,textarea{font-family:inherit;letter-spacing:normal;line-height:1.4}
+input,select,textarea{min-width:0;max-width:100%;box-sizing:border-box}
+button{white-space:normal}
+[role=alert],[role=status]{max-width:100%;overflow-wrap:anywhere;line-height:1.55}
+table{width:100%;border-collapse:collapse}
+th,td{padding:10px 12px;vertical-align:middle;line-height:1.45}
+th{font-size:12px;font-weight:750}
+td{font-size:13px}
+:where(main,section,article,aside,form,header,footer)>:where(div,section,article,form){min-width:0}
+:where(.module-page,.dashboard-page) :where(button,a,input,select,textarea){max-width:100%}
+@media(max-width:1100px){
+ .app-body .app-sidebar{flex-basis:76px;width:76px}
+ .app-body .page-shell{min-width:0}
+ .page-shell>main{width:100%}
+}
+@media(max-width:760px){
+ .app-body .app-sidebar{flex-basis:60px;width:60px;padding-inline:5px}
+ .module-page,.dashboard-page{padding:18px 12px 36px}
+ .module-hero,.dashboard-hero{align-items:flex-start;flex-wrap:wrap}
+ .module-hero h1,.module-title{font-size:25px;line-height:1.2}
+ .app-header{padding-inline:10px;gap:8px}
+ .app-header-actions{min-width:0;gap:5px}
+ table{display:block;max-width:100%;overflow-x:auto}
+}
