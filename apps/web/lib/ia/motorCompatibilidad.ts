@@ -11,8 +11,8 @@ type Publicacion = {
   tipo: string;
   producto_id: number;
   cantidad_tn: number;
-  precio_tn: number;
-  moneda_id: number;
+  precio_tn: number | null;
+  moneda_id: number | null;
   incoterm_id?: number | null;
   provincia?: string | null;
   localidad?: string | null;
@@ -70,7 +70,7 @@ function calcularCantidad(
   minimo?: number | null,
   maximo?: number | null
 ): number {
-  if (!minimo && !maximo) return 70;
+  if (minimo == null && maximo == null) return 0;
 
   if (minimo && cantidad < minimo) return 30;
 
@@ -83,7 +83,7 @@ function calcularPrecio(
   precio: number,
   objetivo?: number | null
 ): number {
-  if (!objetivo || objetivo <= 0) return 70;
+  if (precio == null || objetivo == null || objetivo <= 0) return 0;
 
   const diferencia =
     Math.abs(precio - objetivo) / objetivo;
@@ -142,7 +142,7 @@ function calcularZona(
     }
   }
 
-  if (!evaluables) return 70;
+  if (!evaluables) return 0;
 
   return Math.round(
     (coincidencias / evaluables) * 100
@@ -188,7 +188,7 @@ async function obtenerHistorial(
     ...(ventas ?? []).map((x) => x.id),
   ];
 
-  if (ids.length === 0) return 50;
+  if (ids.length === 0) return 0;
 
   const { count, error } = await db
     .from("operaciones")
@@ -200,7 +200,7 @@ async function obtenerHistorial(
       `publicacion_compra_id.in.(${ids.join(",")}),publicacion_venta_id.in.(${ids.join(",")})`
     );
 
-  if (error || !count) return 50;
+  if (error || !count) return 0;
 
   if (count >= 20) return 100;
   if (count >= 10) return 90;
@@ -219,9 +219,9 @@ async function obtenerDocumentacion(
     .eq("empresa_id", empresaId)
     .limit(1);
 
-  if (error) return 50;
+  if (error) return 0;
 
-  return data && data.length > 0 ? 100 : 50;
+  return data && data.length > 0 ? 100 : 0;
 }
 
 async function obtenerCandidatos(
@@ -406,16 +406,13 @@ export async function procesarPublicacionConIA(
       );
 
     const mismaMoneda =
-      candidato.moneda_id == null ||
-      Number(candidato.moneda_id) ===
-        Number(publicacion.moneda_id);
+      candidato.moneda_id != null &&
+      publicacion.moneda_id != null &&
+      Number(candidato.moneda_id) === Number(publicacion.moneda_id);
 
     const puntajePrecio = mismaMoneda
-      ? calcularPrecio(
-          Number(publicacion.precio_tn),
-          candidato.precio_objetivo
-        )
-      : 20;
+      ? calcularPrecio(publicacion.precio_tn, candidato.precio_objetivo)
+      : 0;
 
     const puntajeZona =
       calcularZona(
