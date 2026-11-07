@@ -191,7 +191,10 @@ BEGIN
       JOIN settled s ON s.operacion_id=os.operacion_id
       WHERE a.trips>0 AND a.trips=a.confirmed
         AND s.paid_amount>=coalesce(o.importe_total,0)
-        AND coalesce(o.importe_total,0)>0
+        AND coalesce(o.importe_total,0)>0 AND upper(coalesce(o.estado,''))
+       IN ('CERRADA','LIQUIDADA')
+       AND EXISTS (SELECT 1 FROM public.operacion_liquidacion ol
+                   WHERE ol.operacion_id=os.operacion_id AND ol.estado='CONFIRMADA')
     )
     SELECT avg(points),count(*) INTO v_financial,v_trips FROM scored;
     IF v_trips=0 THEN v_financial:=NULL; END IF;
@@ -257,10 +260,11 @@ BEGIN
       )/v_coverage);
     END IF;
 
+    IF v_score IS NOT NULL AND v_coverage<100 THEN v_badge_label:=v_badge_label||' · Provisional'; END IF;
     IF v_score IS NULL THEN
       v_badge_code:='SIN_HISTORIAL';v_badge_label:='Historial insuficiente';v_badge_color:='#9E9E9E';v_state:='SIN_HISTORIAL';v_without_history:=v_without_history+1;
     ELSIF v_score>=90 THEN
-      v_badge_code:='PREMIUM';v_badge_label:='Operador Premium / SISA Excelente';v_badge_color:='#00C853';v_state:=CASE WHEN v_coverage=100 THEN 'COMPLETO' ELSE 'PROVISIONAL' END;
+      v_badge_code:='PREMIUM';v_badge_label:=CASE WHEN v_sisa=100 THEN 'Operador Premium / SISA Excelente' ELSE 'Operador Premium' END;v_badge_color:='#00C853';v_state:=CASE WHEN v_coverage=100 THEN 'COMPLETO' ELSE 'PROVISIONAL' END;
     ELSIF v_score>=70 THEN
       v_badge_code:='VERIFICADO';v_badge_label:='Operador Verificado / Riesgo Bajo';v_badge_color:='#2962FF';v_state:=CASE WHEN v_coverage=100 THEN 'COMPLETO' ELSE 'PROVISIONAL' END;
     ELSIF v_score>=40 THEN
