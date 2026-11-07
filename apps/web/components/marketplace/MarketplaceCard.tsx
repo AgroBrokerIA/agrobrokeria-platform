@@ -10,7 +10,7 @@ import { getCompanyBadge } from "@/lib/company-badges";
 type Props = { publicacion: any };
 
 export default function MarketplaceCard({ publicacion }: Props) {
-  const companyBadge = getCompanyBadge(publicacion.empresas?.tipo_empresa, Boolean(publicacion.empresas?.verificada));
+  const companyBadge = getCompanyBadge(publicacion.empresas?.tipo_empresa ?? publicacion.intermediario?.tipo_empresa ?? "INTERMEDIARIO", Boolean(publicacion.empresas?.verificada ?? publicacion.intermediario?.verificada));
   const [mostrarFormulario, setMostrarFormulario] = useState(false);
   const [mostrarDetalle, setMostrarDetalle] = useState(false);
   const [enviando, setEnviando] = useState(false);
@@ -74,12 +74,22 @@ export default function MarketplaceCard({ publicacion }: Props) {
         <div style={{display:"flex",alignItems:"center",gap:7,flexWrap:"wrap"}}><Badge>{publicacion.tipo}</Badge><span className="company-role-badge" style={{color:companyBadge.color,background:companyBadge.background,borderColor:companyBadge.border}}><i />{companyBadge.label}{companyBadge.verified ? " · Verificada" : ""}</span></div><div style={{ fontSize: 28 }}>⭐</div>
       </div>
       <h2 style={{ marginTop: 15, marginBottom: 5, fontSize: 34 }}>🌽 {publicacion.productos?.nombre ?? "Producto"}</h2>
-      <p style={{ color: "#666", marginBottom: 12 }}>{publicacion.empresas?.razon_social ?? "Empresa"}</p>
-      <div className="company-reputation" aria-label="Historial comercial">
-        <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>
-        <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>
-        <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>
-      </div>
+      <p style={{ color: "#666", marginBottom: 6 }}>{publicacion.representado_razon_social ?? publicacion.empresas?.razon_social ?? "Empresa"}</p>
+      {publicacion.representado_cuit && <p style={{ color:"#64748b",fontSize:13,margin:"0 0 6px" }}>CUIT representado: {publicacion.representado_cuit}</p>}
+      {publicacion.intermediario?.razon_social && <p style={{ color:"#475569",fontSize:13,margin:"0 0 12px" }}>Intermediario: {publicacion.intermediario.razon_social}{publicacion.intermediario.cuit ? ` · CUIT ${publicacion.intermediario.cuit}` : ""}</p>}
+      {publicacion.representado_razon_social ? (
+        <div className="company-reputation" aria-label="Representación comercial">
+          <div><strong>Legajo</strong><span>{publicacion.intermediario?.verificada ? "Intermediario verificado" : "En revisión"}</span></div>
+          <div><strong>SISA</strong><span>{publicacion.representado_sisa_categoria || "No informado"}</span></div>
+          <div><strong>Honorarios</strong><span>Externos y privados</span></div>
+        </div>
+      ) : (
+        <div className="company-reputation" aria-label="Historial comercial">
+          <div><strong>{publicacion.empresas?.operaciones_realizadas ?? 0}</strong><span>negocios</span></div>
+          <div><strong>{publicacion.empresas?.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div>
+          <div><strong>{publicacion.empresas?.reputacion_score ?? 0}%</strong><span>cumplimiento histórico</span></div>
+        </div>
+      )}
 
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 30 }}>
         <div><p style={{ color: "#666" }}>Cantidad publicada</p><h3>{publicacion.cantidad_tn} TN</h3><br /><p style={{ color: "#666" }}>Provincia</p><h3>{publicacion.provincia}</h3></div>
