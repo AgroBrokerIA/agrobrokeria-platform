@@ -72,6 +72,20 @@ export default function Header() {
     return () => { activo = false; subscription.unsubscribe(); if(realtime)void supabase.removeChannel(realtime); window.removeEventListener("agrobrokeria:language-changed", onLanguage); window.removeEventListener("agrobrokeria:profile-changed", onProfile); };
   }, []);
 
+  async function cambiarIdioma(next: string) {
+    const supported = ["es","en","pt","zh","fr","it","ru","hi"];
+    if (!supported.includes(next)) return;
+    setIdioma(next.toUpperCase());
+    localStorage.setItem("agrobrokeria.language", next);
+    document.documentElement.lang = next;
+    window.dispatchEvent(new Event("agrobrokeria:language-changed"));
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user) {
+      const { error } = await supabase.from("profiles").update({ idioma_preferido: next }).eq("id", user.id);
+      if (error) console.warn("No se pudo guardar el idioma en el perfil:", error.message);
+    }
+  }
+
   async function cerrarSesion() { await supabase.auth.signOut(); setMenuAbierto(false); router.replace("/login"); }
 
   function ejecutarBusqueda(e: React.FormEvent) {
@@ -89,7 +103,11 @@ export default function Header() {
     </form>
     <button type="button" className="header-country" onClick={() => router.push("/idioma")} aria-label="País"><span>🌐</span> Todos los países <b>⌄</b></button>
     <div className="app-header-actions">
-      <button type="button" className="header-language" onClick={() => router.push("/idioma")} aria-label="Idioma">🇪🇸 <strong>{idioma}</strong>⌄</button>
+      <label className="header-language-select" aria-label="Idioma de la plataforma">🌐
+        <select value={idioma.toLowerCase()} onChange={e => void cambiarIdioma(e.target.value)} title="Seleccionar idioma">
+          <option value="es">Español (ES)</option><option value="en">English (EN)</option><option value="pt">Português (PT)</option><option value="zh">中文 (ZH)</option><option value="fr">Français (FR)</option><option value="it">Italiano (IT)</option><option value="ru">Русский (RU)</option><option value="hi">हिन्दी (HI)</option>
+        </select>
+      </label>
       <Link href="/notificaciones" className="header-icon header-notify" aria-label="Notificaciones">♧{notificaciones > 0 && <i>{notificaciones > 99 ? "99+" : notificaciones}</i>}</Link>
       <Link href="/mensajes" className="header-icon header-message" aria-label="Mensajes">✉{mensajes > 0 && <i>{mensajes}</i>}</Link>
       {usuario ? <div className="user-menu-wrap" ref={menuRef}>
