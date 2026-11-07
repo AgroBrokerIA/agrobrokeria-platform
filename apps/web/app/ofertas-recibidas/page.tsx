@@ -33,6 +33,7 @@ type PerfilEmpresa = {
   company_id: string;
 };
 
+type TrustScore={score:number|null;cobertura_pct:number;badge_label:string;badge_color:string;estado_scoring:string};
 type Empresa = {
   id: string;
   razon_social: string | null;
@@ -41,6 +42,7 @@ type Empresa = {
   tipo_empresa?: string | null;
   verificada?: boolean | null;
   reputacion_score?: number | null;
+  trustScore?:TrustScore|null;
   operaciones_realizadas?: number | null;
   toneladas_operadas?: number | null;
 };
@@ -342,7 +344,7 @@ export default function OfertasRecibidasPage() {
 
       const ofertanteIds = [...new Set((ofertasDB || []).map((o: any) => o.empresa_id).filter(Boolean))];
       let ofertantes: Empresa[] = [];
-      if (ofertanteIds.length) { const { data } = await supabase.from("empresas").select("id, razon_social, nombre_comercial, cuit, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas").in("id", ofertanteIds); ofertantes = (data || []) as Empresa[]; }
+      if (ofertanteIds.length) { const { data } = await supabase.from("empresas").select("id, razon_social, nombre_comercial, cuit, tipo_empresa, verificada, reputacion_score, operaciones_realizadas, toneladas_operadas").in("id", ofertanteIds); const scoreResult=await supabase.from("empresa_scoring_actual").select("empresa_id,score,cobertura_pct,badge_label,badge_color,estado_scoring").in("empresa_id",ofertanteIds); if(scoreResult.error)console.error("Scoring de confianza no disponible",scoreResult.error); const scores=new Map((scoreResult.data||[]).map((s:any)=>[String(s.empresa_id),s])); ofertantes = (data || []).map((company:any)=>({...company,trustScore:(scores.get(String(company.id)) as TrustScore|undefined)||null})) as Empresa[]; }
       const mapaOfertantes = new Map(ofertantes.map((e) => [e.id, e]));
 
       // =====================================================
@@ -837,7 +839,7 @@ export default function OfertasRecibidasPage() {
                         "-"}
                     </div>
 
-                    {oferta.empresa_ofertante && (() => { const badge = getCompanyBadge(oferta.empresa_ofertante.tipo_empresa, Boolean(oferta.empresa_ofertante.verificada)); return <div className="company-badge-stack" style={{alignItems:"flex-start",marginTop:8}}><span className="company-role-badge" style={{color:badge.color,background:badge.background,borderColor:badge.border}}><i />{badge.label}{badge.verified ? " · Verificada" : ""}</span><div className="company-reputation"><div><strong>{oferta.empresa_ofertante.operaciones_realizadas ?? 0}</strong><span>negocios</span></div><div><strong>{oferta.empresa_ofertante.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div><div><strong>{oferta.empresa_ofertante.reputacion_score ?? 0}%</strong><span>cumplimiento</span></div></div></div>; })()}                  </div>
+                    {oferta.empresa_ofertante && (() => { const badge = getCompanyBadge(oferta.empresa_ofertante.tipo_empresa, Boolean(oferta.empresa_ofertante.verificada)); return <div className="company-badge-stack" style={{alignItems:"flex-start",marginTop:8}}><span className="company-role-badge" style={{color:badge.color,background:badge.background,borderColor:badge.border}}><i />{badge.label}{badge.verified ? " · Verificada" : ""}</span><div className="company-reputation"><div><strong>{oferta.empresa_ofertante.operaciones_realizadas ?? 0}</strong><span>negocios</span></div><div><strong>{oferta.empresa_ofertante.toneladas_operadas ?? 0} TN</strong><span>operadas</span></div><div><strong style={{color:oferta.empresa_ofertante.trustScore?.badge_color||"#64748b"}}>{oferta.empresa_ofertante.trustScore?.score!=null?oferta.empresa_ofertante.trustScore.score+"/100":"—"}</strong><span>{oferta.empresa_ofertante.trustScore?.badge_label||"Sin historial"}</span></div></div>{oferta.empresa_ofertante.trustScore?.score!=null?<small style={{color:"#64748b"}}>Cobertura de evidencia: {oferta.empresa_ofertante.trustScore.cobertura_pct}%</small>:null}</div>; })()}                  </div>
                 </div>
 
                 {oferta.observaciones && (
