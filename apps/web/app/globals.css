@@ -1887,3 +1887,91 @@ html,body,.app-body{font-family:var(--ab-font)}
 .legal-site-footer small{font-size:10px}
 @media(max-width:1050px){.contract-builder-grid{grid-template-columns:minmax(0,1fr)}.contract-previews{grid-template-columns:minmax(0,1fr)}}
 @media(max-width:700px){.publication-optional-comex>summary{padding:15px}.publication-optional-comex-body{padding:12px}.publication-form .publication-observations-input{min-height:280px!important}.contract-builder-form{padding:15px}.contract-builder-fields{grid-template-columns:minmax(0,1fr)}.contract-commodity-picks{grid-template-columns:repeat(2,minmax(0,1fr))}.contract-preview-card>header{align-items:flex-start;flex-wrap:wrap}.contract-preview-card header button{margin-left:auto}.contract-paper{padding:15px 12px}.paper-clause{grid-template-columns:minmax(0,1fr)}.paper-parties>div{grid-template-columns:minmax(0,1fr)}.paper-parties>div span{grid-column:1}.legal-site-footer{padding:16px 12px}.legal-site-footer>div{padding:15px}}
+
+
+/* Ajuste visual global solicitado: escala compacta de referencia (captura 7). */
+.app-body .page-shell main{font-size:12px;line-height:1.45}
+.app-body .page-shell main :where(h1){font-size:24px!important;line-height:1.25!important;letter-spacing:-.35px!important}
+.app-body .page-shell main :where(h2){font-size:15px!important;line-height:1.35!important}
+.app-body .page-shell main :where(h3){font-size:13px!important;line-height:1.35!important}
+.app-body .page-shell main :where(p){font-size:11px;line-height:1.5}
+.app-body .page-shell main :where(label,legend,.field-label,.form-label,.input-label){font-size:10px!important;line-height:1.4!important}
+.app-body .page-shell main :where(input:not([type=checkbox]):not([type=radio]),select,textarea){font-size:11px!important;min-height:32px}
+.app-body .page-shell main :where(button,[role=button]){font-size:11px;min-height:30px}
+.app-body .page-shell main :where(small,.helper-text,.field-hint){font-size:9px;line-height:1.4}
+.app-body .page-shell main :where(.module-page){padding:20px 24px 38px}
+.app-body .page-shell main :where(.module-hero){margin-bottom:13px;gap:10px}
+.app-body .page-shell main :where(.module-hero h1,.module-title){font-size:24px!important}
+.app-body .page-shell main :where(.settings-grid){grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.app-body .page-shell main :where(.settings-card){padding:15px;gap:11px;border-radius:12px}
+.app-body .page-shell main :where(.settings-icon){width:36px;height:36px;flex:0 0 36px;border-radius:9px;font-size:17px}
+.app-body .page-shell main :where(.settings-card h2){font-size:13px!important;line-height:1.35!important}
+.app-body .page-shell main :where(.settings-card p){font-size:10px;line-height:1.45}
+.app-body .page-shell main :where(.settings-arrow){font-size:15px}
+.ai-reference{padding:16px 18px 24px}
+.ai-head h1{font-size:24px!important;letter-spacing:-.35px!important}
+.ai-head p{font-size:11px;line-height:1.45;margin:3px 0 11px}
+.ai-kpis{gap:9px;margin-bottom:10px}
+.ai-kpi{height:76px;padding:9px 11px;gap:9px}
+.ai-kpi>b{width:36px;height:36px;font-size:18px}
+.ai-kpi strong{font-size:16px}
+.ai-tabs{height:39px;margin-bottom:10px}
+.ai-tabs button{padding:0 14px;font-size:9px}
+.ai-layout{grid-template-columns:minmax(0,1fr) 230px;gap:10px}
+.ai-table-title{min-height:58px;height:auto;gap:10px;padding:9px}
+.ai-table-title h2{font-size:13px!important}
+.ai-table-title p{font-size:9px}
+.ai-table-scroll{max-width:100%;overflow-x:auto;overscroll-behavior-x:contain}
+.ai-table-head,.ai-row{min-width:760px;grid-template-columns:1.15fr .65fr .65fr .9fr .85fr .8fr .62fr .55fr .72fr;gap:5px;padding:0 7px}
+.ai-table-head{height:32px;font-size:7px}
+.ai-row{min-height:58px;font-size:8px}
+.ai-row strong{font-size:8px}
+.ai-row small{font-size:7px;overflow-wrap:anywhere}
+.ai-product{grid-template-columns:27px minmax(0,1fr);column-gap:5px;min-width:0}
+.ai-product>b{width:26px;height:26px;font-size:15px}
+.ai-detail{font-size:7px;padding:7px 3px;white-space:normal}
+.ai-filters{padding:10px}
+.ai-filter-title h2{font-size:11px!important}
+.ai-filter{font-size:8px;margin:8px 0}
+.ai-filter select,.ai-filter input{height:29px;font-size:8px}
+.ai-apply{height:34px;font-size:9px}
+.reports-reference{padding:16px 18px 24px}
+.reports-head h1{font-size:24px!important;letter-spacing:-.35px!important}
+.reports-head p{font-size:11px;line-height:1.45;margin:3px 0 11px}
+.reports-actions{gap:6px}
+.reports-actions button,.reports-actions select{height:34px;padding:0 10px;font-size:9px}
+.reports-actions select{min-width:120px}
+.reports-kpis{gap:8px;margin-bottom:10px}
+.reports-kpi{height:72px;padding:8px 9px;gap:8px}
+.reports-kpi>b{width:34px;height:34px;font-size:17px}
+.reports-kpi strong{font-size:15px}
+.reports-kpi small{font-size:8px}
+.reports-kpi i{font-size:7px;margin-top:3px}
+.reports-tabs{height:38px;margin-bottom:10px}
+.reports-tabs button{padding:0 13px;font-size:8px}
+.reports-grid-top,.reports-grid-mid{gap:8px}
+.reports-panel,.reports-detail{padding:10px;min-height:180px}
+.reports-panel h2,.reports-detail h2{font-size:11px!important;margin-bottom:8px}
+.reports-detail{margin-top:8px}
+.reports-filters{padding:11px}
+.reports-filters label{font-size:9px!important;margin:8px 0}
+.reports-filters input,.reports-filters select{min-height:30px;height:30px;font-size:9px!important}
+.reports-filter-head h2{font-size:12px!important}
+.reports-filter-head button,.reports-filter-submit{font-size:9px}
+.rtr{font-size:8px;min-height:38px}
+.rtr.head{min-height:29px;font-size:7px}
+@media(max-width:1050px){
+ .ai-layout{grid-template-columns:minmax(0,1fr)}
+ .ai-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px 12px}
+ .reports-grid-top,.reports-grid-mid{grid-template-columns:repeat(2,minmax(0,1fr))}
+}
+@media(max-width:760px){
+ .app-body .page-shell main :where(.module-page){padding:15px 12px 30px}
+ .app-body .page-shell main :where(.settings-grid){grid-template-columns:minmax(0,1fr)}
+ .ai-reference,.reports-reference{padding:14px 10px 24px}
+ .ai-head,.reports-head{gap:8px;flex-wrap:wrap}
+ .ai-head h1,.reports-head h1{font-size:21px!important}
+ .ai-kpis,.reports-kpis{grid-template-columns:repeat(2,minmax(0,1fr))}
+ .ai-filters{grid-template-columns:minmax(0,1fr)}
+ .reports-grid-top,.reports-grid-mid{grid-template-columns:minmax(0,1fr)}
+}
