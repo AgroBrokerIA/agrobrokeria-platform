@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "Inicio",
+    "market": "Mercado",
+    "contracts": "Contratos",
+    "logistics": "Logística",
+    "support": "Soporte técnico"
+  },
+  "auth": {
+    "login": "Iniciar sesión",
+    "register": "Crear cuenta gratuita",
+    "kyc_pending": "Cuenta pendiente de revisión manual de cumplimiento",
+    "sisa_error": "Registro rechazado: estado SISA inválido o excluido"
+  },
+  "contracts": {
+    "title_f1": "Contrato de compraventa de granos (F1)",
+    "vendedor": "Vendedor / Productor",
+    "comprador": "Comprador / Acopio",
+    "intermediario": "Corredor externo / Comisionista",
+    "comision_plataforma": "Cargo tecnológico de la plataforma",
+    "subir_comprobante": "Subir comprobante de transferencia bancaria (PDF/imagen)",
+    "estado_custodia": "Comisiones retenidas hasta cumplir las condiciones de liberación"
+  }
+}
