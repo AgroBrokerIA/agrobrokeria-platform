@@ -1,22 +1,34 @@
 "use client";
 import {useEffect,useState} from "react";
 import {supabase} from "@/lib/supabase/client";
-type Share={id:string;viaje_id:string;importe_asignado:number;estado:string;liberado_at:string|null;viajes?:{patente_camion:string|null;carta_porte_numero:string|null;estado:string|null;destino:string|null;viaje_cartas_porte?:{estado_verificacion:string;numero_carta_porte:string}[]|null}|null};
+type Share={id:string;viaje_id:string;importe_liberado:number;estado:string;liberada_at:string|null;viajes?:{patente_camion:string|null;carta_porte_numero:string|null;estado:string|null;destino:string|null;viaje_cartas_porte?:{estado_verificacion:string;numero_carta_porte:string}[]|null}|null};
 type Retention={id:string;operacion_id:string;importe:number;moneda_id:number;referencia_pago:string;referencia_bancaria_validada:string|null;comprobante_url:string|null;estado:string;observaciones:string|null;creado_at:string;fecha_validacion_manual:string|null;operaciones?:{codigo:string;cantidad_tn:number}|null;operacion_comision_viajes?:Share[]};
 export default function ComisionesEntregasAdmin(){
  const[admin,setAdmin]=useState(false),[rows,setRows]=useState<Retention[]>([]),[loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState("");
  const[refs,setRefs]=useState<Record<string,string>>({}),[notes,setNotes]=useState<Record<string,string>>({}),[busy,setBusy]=useState<string|null>(null);
  async function load(){setLoading(true);setError("");const{data:ok,error:adminError}=await supabase.rpc("es_administrador_plataforma");if(adminError||ok!==true){setAdmin(false);setLoading(false);return;}setAdmin(true);
- const{data,error}=await supabase.from("operacion_comision_retenciones").select("id,operacion_id,importe,moneda_id,referencia_pago,referencia_bancaria_validada,comprobante_url,estado,observaciones,creado_at,fecha_validacion_manual,operaciones(codigo,cantidad_tn),operacion_comision_viajes(id,viaje_id,importe_asignado,estado,liberado_at,viajes(patente_camion,carta_porte_numero,estado,destino,viaje_cartas_porte(estado_verificacion,numero_carta_porte)))").order("creado_at",{ascending:false});
- if(error){setError(error.message);setRows([]);}else setRows((data||[]) as unknown as Retention[]);setLoading(false);}
+ const{data,error}=await supabase.from("operacion_comision_retenciones").select("id,operacion_id,importe,moneda_id,referencia_pago,referencia_bancaria_validada,comprobante_url,estado,observaciones,creado_at,fecha_validacion_manual,operaciones(codigo,cantidad_tn)").order("creado_at",{ascending:false});
+ if(error){setError(error.message);setRows([]);setLoading(false);return;}
+ const base=(data||[]) as unknown as Retention[];
+ const operationIds=[...new Set(base.map(x=>x.operacion_id).filter(Boolean))];
+ if(operationIds.length){
+   const{data:allocations,error:allocationError}=await supabase.from("operacion_comision_viajes").select("id,operacion_id,viaje_id,importe_liberado,estado,liberada_at,viajes(patente_camion,carta_porte_numero,estado,destino)").in("operacion_id",operationIds);
+   if(allocationError){setError(allocationError.message);setRows(base);setLoading(false);return;}
+   const voyageIds=[...new Set((allocations||[]).map((x:any)=>x.viaje_id).filter(Boolean))];
+   let cpes:any[]=[];
+   if(voyageIds.length){const{data:cpesData}=await supabase.from("viaje_cartas_porte").select("viaje_id,estado_verificacion,numero_carta_porte").in("viaje_id",voyageIds);cpes=cpesData||[];}
+   const hydrated=base.map(row=>({...row,operacion_comision_viajes:(allocations||[]).filter((a:any)=>a.operacion_id===row.operacion_id).map((a:any)=>({...a,viajes:a.viajes?{...a.viajes,viaje_cartas_porte:cpes.filter((cp:any)=>cp.viaje_id===a.viaje_id)}:null}))}));
+   setRows(hydrated as unknown as Retention[]);
+ }else setRows(base);
+ setLoading(false);}
  useEffect(()=>{void load()},[]);
  async function openReceipt(path:string){const{data,error}=await supabase.storage.from("documentos-operacion").createSignedUrl(path,300);if(error||!data?.signedUrl){setError(error?.message||"No se pudo abrir el comprobante.");return;}window.open(data.signedUrl,"_blank","noopener,noreferrer");}
  async function approve(id:string){setBusy(id);setError("");setMessage("");const{error}=await supabase.rpc("validar_comprobante_comision_bancaria",{p_retencion_id:id,p_numero_operacion_bancaria:refs[id]||"",p_observaciones:notes[id]||null});if(error)setError(error.message);else{setMessage("Ingreso bancario validado y comisión distribuida por viaje. Cada tramo se libera al confirmar los hitos documentales.");await load();}setBusy(null);}
  async function reject(id:string){const reason=notes[id]?.trim();if(!reason){setError("Ingresá el motivo de rechazo.");return;}setBusy(id);setError("");const{error}=await supabase.rpc("rechazar_comprobante_comision_plataforma",{p_retencion_id:id,p_motivo:reason});if(error)setError(error.message);else{setMessage("Comprobante rechazado; el operador puede volver a cargarlo.");await load();}setBusy(null);}
  const money=(v:number)=>Number(v||0).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
  const shares=rows.flatMap(r=>r.operacion_comision_viajes||[]);
- const held=shares.filter(x=>x.estado==="RETENIDA").reduce((s,x)=>s+Number(x.importe_asignado),0);
- const released=shares.filter(x=>x.estado==="LIBERADA").reduce((s,x)=>s+Number(x.importe_asignado),0);
+ const held=shares.filter(x=>x.estado==="RETENIDA").reduce((s,x)=>s+Number(x.importe_liberado),0);
+ const released=shares.filter(x=>x.estado==="LIBERADA").reduce((s,x)=>s+Number(x.importe_liberado),0);
  const pending=rows.filter(r=>r.estado==="COMPROBANTE_ENVIADO");
  const retainedParent=rows.filter(r=>r.estado==="RETENIDA").reduce((s,r)=>s+Number(r.importe),0);
  const unallocated=Math.max(0,retainedParent-held-released);
@@ -37,7 +49,7 @@ export default function ComisionesEntregasAdmin(){
  <label>Observaciones / motivo<input value={notes[r.id]||""} onChange={e=>setNotes(v=>({...v,[r.id]:e.target.value}))} style={field} placeholder="Detalle de conciliación o rechazo"/></label>
  <div style={{display:"flex",alignItems:"end",gap:8,flexWrap:"wrap"}}><button disabled={busy===r.id||!refs[r.id]?.trim()} onClick={()=>void approve(r.id)} style={success}>{busy===r.id?"Procesando…":"Aprobar y asignar por camión"}</button><button disabled={busy===r.id||!notes[r.id]?.trim()} onClick={()=>void reject(r.id)} style={danger}>Rechazar comprobante</button></div></div>}
  {r.referencia_bancaria_validada&&<p style={{fontSize:13,color:"#166534"}}>Validación bancaria: {r.referencia_bancaria_validada} · {r.fecha_validacion_manual?new Date(r.fecha_validacion_manual).toLocaleString("es-AR"):""}</p>}
- <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}><strong>Distribución por viaje</strong>{!r.operacion_comision_viajes?.length?<p style={{color:"#92400e",fontSize:13}}>Sin distribución: revisar que cada viaje tenga toneladas declaradas o kilos cargados.</p>:r.operacion_comision_viajes.map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}><span><b>{t.viajes?.patente_camion||"Patente pendiente"}</b> · CPE {t.viajes?.carta_porte_numero||"sin emitir"} · Viaje: {t.viajes?.estado||"sin estado"} · CPE: {t.viajes?.viaje_cartas_porte?.[0]?.estado_verificacion||"sin validar"}</span><span><b>USD {money(t.importe_asignado)}</b> · {t.estado==="LIBERADA"?"Liberada":t.estado==="RETENIDA"?"Retenida":"Bloqueada"} {t.liberado_at?"· "+new Date(t.liberado_at).toLocaleString("es-AR"):""}</span></div>)}</div></article>)}</>}
+ <div style={{marginTop:14,borderTop:"1px solid #e2e8f0",paddingTop:12}}><strong>Distribución por viaje</strong>{!r.operacion_comision_viajes?.length?<p style={{color:"#92400e",fontSize:13}}>Sin distribución: revisar que cada viaje tenga toneladas declaradas o kilos cargados.</p>:r.operacion_comision_viajes.map(t=><div key={t.id} style={{display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap",padding:"8px 0",borderBottom:"1px solid #f1f5f9"}}><span><b>{t.viajes?.patente_camion||"Patente pendiente"}</b> · CPE {t.viajes?.carta_porte_numero||"sin emitir"} · Viaje: {t.viajes?.estado||"sin estado"} · CPE: {t.viajes?.viaje_cartas_porte?.[0]?.estado_verificacion||"sin validar"}</span><span><b>USD {money(t.importe_liberado)}</b> · {t.estado==="LIBERADA"?"Liberada":t.estado==="RETENIDA"?"Retenida":"Bloqueada"} {t.liberada_at?"· "+new Date(t.liberada_at).toLocaleString("es-AR"):""}</span></div>)}</div></article>)}</>}
  </main>;
 }
 const field:React.CSSProperties={display:"block",width:"100%",padding:"10px 12px",border:"1px solid #cbd5e1",borderRadius:8,background:"transparent",marginTop:5,color:"inherit"};
