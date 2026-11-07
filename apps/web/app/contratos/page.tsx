@@ -11,13 +11,15 @@ type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|
 
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
 
-type FormState={operacionId:string;tipo:"F1";tipoOperacion:string;producto:string;campania:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string;intermediario:string;procedencia:string;jurisdiccion:string;ciudadArbitral:string;comision:string};
+type FormState={operacionId:string;tipo:"F1";tipoOperacion:string;producto:string;campania:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;terminalId:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string;intermediario:string;vendedorEmpresaId:string;compradorEmpresaId:string;intermediarioEmpresaId:string;vendedorCuit:string;compradorCuit:string;intermediarioCuit:string;vendedorSisa:string;compradorSisa:string;intermediarioSisa:string;procedencia:string;jurisdiccion:string;ciudadArbitral:string;comision:string};
+type CompanyOption={id:string;rol:string;razon_social:string;cuit:string;sisa_categoria:string;sisa_status:string;verificada:boolean};
+type TerminalOption={id:string;nombre:string;puerto:string|null;localidad:string|null;provincia:string|null};
 type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null;publicacion_compra_id:string|null;publicacion_venta_id:string|null};
 type Extension={id:string;operacion_id:string;contrato_id:string;motivo:string;justificativo:string;dias_solicitados:number;vencimiento_solicitado_at:string;evidencia_url:string|null;estado_revision:string;dias_aprobados:number|null;vencimiento_aprobado_at:string|null;observaciones_revision:string|null;created_at:string};
 type ConfidentialityStatus={rol:"COMPRADOR"|"VENDEDOR"|"INTERMEDIARIO";company_id:string;requerido:boolean;aceptado:boolean;aceptado_at:string|null;version:string|null;hash_sha256:string|null;documento_codigo?:string|null;documento_titulo?:string|null};
 type ExternalDoc={id:string;nombre_archivo:string|null;url_archivo:string|null;aprobado:boolean|null;firmado_externamente:boolean|null;sha256:string|null;creado_en:string|null;operacion_id:string};
 
-const initial:FormState={operacionId:"",tipo:"F1",tipoOperacion:"COMPRAVENTA (COMPRA + VENTA)",producto:"",campania:"",cantidad:"",precio:"",moneda:"",condicion:"",puerto:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:"",intermediario:"",procedencia:"",jurisdiccion:"",ciudadArbitral:"",comision:""};
+const initial:FormState={operacionId:"",tipo:"F1",tipoOperacion:"COMPRAVENTA (COMPRA + VENTA)",producto:"",campania:"",cantidad:"",precio:"",moneda:"",condicion:"",puerto:"",terminalId:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:"",intermediario:"",vendedorEmpresaId:"",compradorEmpresaId:"",intermediarioEmpresaId:"",vendedorCuit:"",compradorCuit:"",intermediarioCuit:"",vendedorSisa:"",compradorSisa:"",intermediarioSisa:"",procedencia:"",jurisdiccion:"",ciudadArbitral:"",comision:""};
 
 function esc(v:string){return v.replace(/[<>]/g,"");}
 function money(v:string){const n=Number(v||0);return Number.isFinite(n)?n.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}):"0,00"}
@@ -123,7 +125,7 @@ function buildConfidentialityPdf(f:FormState){
 }
 
 export default function ContratosPage(){
- const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
+ const [rows,setRows]=useState<C[]>([]),[versions,setVersions]=useState<V[]>([]),[productos,setProductos]=useState<string[]>([]),[puertos,setPuertos]=useState<string[]>([]),[companyOptions,setCompanyOptions]=useState<CompanyOption[]>([]),[terminales,setTerminales]=useState<TerminalOption[]>([]),[operaciones,setOperaciones]=useState<Operation[]>([]),[extensions,setExtensions]=useState<Extension[]>([]),[confidentiality,setConfidentiality]=useState<ConfidentialityStatus[]>([]),[confidentialityBusy,setConfidentialityBusy]=useState(false);
  const [extensionDays,setExtensionDays]=useState("1"),[extensionReason,setExtensionReason]=useState(""),[extensionJustification,setExtensionJustification]=useState(""),[extensionEvidence,setExtensionEvidence]=useState(""),[extensionDetails,setExtensionDetails]=useState(""),[extensionBusy,setExtensionBusy]=useState(false),[cancelReason,setCancelReason]=useState(""),[cancelJustification,setCancelJustification]=useState(""),[cancelEvidence,setCancelEvidence]=useState(""),[cancelBusy,setCancelBusy]=useState(false);
  const [loading,setLoading]=useState(true),[error,setError]=useState(""),[message,setMessage]=useState(""),[externalDocs,setExternalDocs]=useState<ExternalDoc[]>([]),[externalDocId,setExternalDocId]=useState(""),[externalSha,setExternalSha]=useState(""),[externalBusy,setExternalBusy]=useState(false);
  const [tab,setTab]=useState("tipos"),[idioma,setIdioma]=useState("es"),[busy,setBusy]=useState(false),[signedPdfFile,setSignedPdfFile]=useState<File|null>(null),[signedUploadBusy,setSignedUploadBusy]=useState(false),[vendorFile,setVendorFile]=useState<File|null>(null),[buyerFile,setBuyerFile]=useState<File|null>(null),[copyRows,setCopyRows]=useState<any[]>([]),[copyBusy,setCopyBusy]=useState<"VENDEDOR"|"COMPRADOR"|null>(null),[isPlatformAdmin,setIsPlatformAdmin]=useState(false),[allowedCopyRoles,setAllowedCopyRoles]=useState<string[]>([]),[cancelRows,setCancelRows]=useState<any[]>([]);
@@ -135,11 +137,12 @@ export default function ContratosPage(){
    const {data:{user:sessionUser}}=await supabase.auth.getUser();
    if(sessionUser){const {data:adminRow}=await supabase.from("platform_admins").select("user_id").eq("user_id",sessionUser.id).maybeSingle();const admin=!!adminRow;setIsPlatformAdmin(admin);if(admin){const {data:requests,error:requestsError}=await supabase.from("cancelaciones_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,evidencia_url,estado_revision,created_at,observaciones_revision").order("created_at",{ascending:false});if(requestsError)setError(requestsError.message);setCancelRows(requests||[]);}else setCancelRows([]);}
    const selectedOperationId=selected?.operacion_id||form.operacionId||null;
-   const [c,v,p,port,op,ext,conf]=await Promise.all([
+   const [c,v,p,port,term,op,ext,conf]=await Promise.all([
      supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
+     supabase.from("terminales_puerto").select("id,nombre,puerto,localidad,provincia").eq("activa",true).order("nombre"),
      supabase.from("operaciones").select("id,codigo,cantidad_tn,precio_tn,importe_total,estado,monedas(codigo),publicacion_compra_id,publicacion_venta_id").order("fecha_operacion",{ascending:false}),
      supabase.from("prorrogas_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,dias_solicitados,vencimiento_solicitado_at,evidencia_url,estado_revision,dias_aprobados,vencimiento_aprobado_at,observaciones_revision,created_at").order("created_at",{ascending:false}),
      selectedOperationId?supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:selectedOperationId}):Promise.resolve({data:[],error:null})
@@ -161,6 +164,7 @@ export default function ContratosPage(){
    }
    if(p.error)setError("No se pudo cargar el catálogo de productos: "+p.error.message);else setProductos((p.data||[]).map((x:any)=>String(x.nombre)));
    if(port.error)setError("No se pudo cargar el catálogo de puertos: "+port.error.message);else setPuertos((port.data||[]).map((x:any)=>String(x.nombre)));
+   if(term.error)setError("No se pudieron cargar las terminales portuarias autorizadas: "+term.error.message);else setTerminales((term.data||[]) as TerminalOption[]);
    setOperaciones((op.data||[]).map((x:any)=>({...x,moneda:x.monedas?.codigo||null})) as Operation[]);
    setExtensions((ext.data||[]) as Extension[]);
    if(!conf.error)setConfidentiality((conf.data||[]) as ConfidentialityStatus[]); else setConfidentiality([]);
@@ -323,13 +327,37 @@ export default function ContratosPage(){
    void cargarDocumentosFirma(id);
  }
  async function cargarPartesOperacion(operationId:string){
-   const {data}=await supabase.from("partes_operacion").select("rol,nombre_razon_social").eq("operacion_id",operationId);
-   if(!data)return;
+   const [{data:participantes,error:participantesError},{data:partes}]=await Promise.all([
+     supabase.from("operacion_participantes").select("rol,empresa_id").eq("operacion_id",operationId),
+     supabase.from("partes_operacion").select("rol,nombre_razon_social,cuit").eq("operacion_id",operationId)
+   ]);
+   if(participantesError){setError("No se pudieron cargar las empresas participantes: "+participantesError.message);return;}
+   const ids=[...new Set((participantes||[]).map((p:any)=>p.empresa_id).filter(Boolean))];
+   if(!ids.length){setCompanyOptions([]);setForm(x=>({...x,vendedor:partes?.find((p:any)=>String(p.rol).toUpperCase()==="VENDEDOR")?.nombre_razon_social||"",comprador:partes?.find((p:any)=>String(p.rol).toUpperCase()==="COMPRADOR")?.nombre_razon_social||"",intermediario:partes?.find((p:any)=>String(p.rol).toUpperCase()==="INTERMEDIARIO")?.nombre_razon_social||"",vendedorCuit:partes?.find((p:any)=>String(p.rol).toUpperCase()==="VENDEDOR")?.cuit||"",compradorCuit:partes?.find((p:any)=>String(p.rol).toUpperCase()==="COMPRADOR")?.cuit||""}));return;}
+   const {data:empresas,error:empresasError}=await supabase.from("empresas").select("id,razon_social,nombre_comercial,cuit,cuenta_id,verificada").in("id",ids);
+   if(empresasError){setError("No se pudieron cargar los datos empresariales: "+empresasError.message);return;}
+   const userIds=[...new Set((empresas||[]).map((e:any)=>e.cuenta_id).filter(Boolean))];
+   let onboarding:any[]=[];
+   if(userIds.length){const {data}=await supabase.from("account_onboarding").select("user_id,sisa_categoria,sisa_status").in("user_id",userIds);onboarding=data||[];}
+   const options:CompanyOption[]=(participantes||[]).flatMap((p:any)=>{
+     const e=(empresas||[]).find((item:any)=>item.id===p.empresa_id);if(!e)return[];
+     const sisa=onboarding.find((item:any)=>item.user_id===e.cuenta_id);
+     return [{id:e.id,rol:String(p.rol).toUpperCase(),razon_social:e.razon_social||e.nombre_comercial||"Empresa sin razón social",cuit:e.cuit||"",sisa_categoria:sisa?.sisa_categoria||"",sisa_status:sisa?.sisa_status||"",verificada:Boolean(e.verificada)}];
+   });
+   setCompanyOptions(options);
+   const find=(role:string)=>options.find(x=>x.rol===role);
+   const part=(role:string)=>partes?.find((x:any)=>String(x.rol).toUpperCase()===role);
+   const seller=find("VENDEDOR"),buyer=find("COMPRADOR"),broker=find("INTERMEDIARIO");
    setForm(x=>({...x,
-     vendedor:data.find((p:any)=>String(p.rol).toUpperCase()==="VENDEDOR")?.nombre_razon_social||"",
-     comprador:data.find((p:any)=>String(p.rol).toUpperCase()==="COMPRADOR")?.nombre_razon_social||"",
-     intermediario:data.find((p:any)=>String(p.rol).toUpperCase()==="INTERMEDIARIO")?.nombre_razon_social||""
+     vendedorEmpresaId:seller?.id||"",vendedor:seller?.razon_social||part("VENDEDOR")?.nombre_razon_social||"",vendedorCuit:seller?.cuit||part("VENDEDOR")?.cuit||"",vendedorSisa:seller?.sisa_categoria||"",
+     compradorEmpresaId:buyer?.id||"",comprador:buyer?.razon_social||part("COMPRADOR")?.nombre_razon_social||"",compradorCuit:buyer?.cuit||part("COMPRADOR")?.cuit||"",compradorSisa:buyer?.sisa_categoria||"",
+     intermediarioEmpresaId:broker?.id||"",intermediario:broker?.razon_social||part("INTERMEDIARIO")?.nombre_razon_social||"",intermediarioCuit:broker?.cuit||"",intermediarioSisa:broker?.sisa_categoria||""
    }));
+ }
+ function selectCompany(role:"VENDEDOR"|"COMPRADOR"|"INTERMEDIARIO",id:string){
+   const company=companyOptions.find(x=>x.id===id&&x.rol===role);
+   const prefix=role==="VENDEDOR"?"vendedor":role==="COMPRADOR"?"comprador":"intermediario";
+   setForm(x=>({...x,[prefix+"EmpresaId"]:id,[prefix]:company?.razon_social||"",[prefix+"Cuit"]:company?.cuit||"",[prefix+"Sisa"]:company?.sisa_categoria||""}));
  }
  async function cargarConfidencialidad(operationId:string){
    const {data,error}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:operationId});
@@ -351,19 +379,22 @@ export default function ContratosPage(){
    finally{setConfidentialityBusy(false);}
  }
  async function saveDraft(){
-   if(!form.operacionId){setMessage("Seleccioná una operación.");return;}
+   if(!form.operacionId){setError("Seleccioná una operación.");return;}
+   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\\D/g,""))){setError("El CUIT del vendedor y del comprador debe contener exactamente 11 dígitos.");return;}
+   if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
+   if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
    setBusy(true);setError("");setMessage("");
    const op=operaciones.find(x=>x.id===form.operacionId);
    if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
    const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
    const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:form.moneda || null,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,contenido:contractContent(form),intermediario_externo:form.intermediario||null,pacto_comision_externa_declarada:Boolean(form.intermediario.trim())};
+   const payload={numero_contrato:numeroContrato,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:form.moneda||null,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:form.entrega,flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,vendedor_cuit:form.vendedorCuit,comprador_cuit:form.compradorCuit,vendedor_sisa:form.vendedorSisa,comprador_sisa:form.compradorSisa,intermediario:form.intermediario,intermediario_cuit:form.intermediarioCuit,intermediario_sisa:form.intermediarioSisa,vendedor_empresa_id:form.vendedorEmpresaId||null,comprador_empresa_id:form.compradorEmpresaId||null,intermediario_empresa_id:form.intermediarioEmpresaId||null,terminal_id:form.terminalId||null,contenido:contractContent(form),intermediario_externo:form.intermediario||null,pacto_comision_externa_declarada:Boolean(form.intermediario.trim())};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
  }
  function contractContent(f:FormState){
-   return JSON.stringify({tipo:f.tipo,tipo_operacion:f.tipoOperacion,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda || null,condicion:f.condicion,puerto:f.puerto,entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,vendedor:f.vendedor,comprador:f.comprador,intermediario:f.intermediario,procedencia:f.procedencia,pacto_comision_externa_declarada:Boolean(f.intermediario.trim()),comision_externa_fuera_de_plataforma:Boolean(f.intermediario.trim()),comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
+   return JSON.stringify({tipo:f.tipo,tipo_operacion:f.tipoOperacion,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion_precio:f.condicion,puerto:f.puerto,terminal_id:f.terminalId||null,plazo_entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,procedencia:f.procedencia,partes:{vendedor:{empresa_id:f.vendedorEmpresaId||null,razon_social:f.vendedor,cuit:f.vendedorCuit,sisa_categoria:f.vendedorSisa},comprador:{empresa_id:f.compradorEmpresaId||null,razon_social:f.comprador,cuit:f.compradorCuit,sisa_categoria:f.compradorSisa},intermediario:{empresa_id:f.intermediarioEmpresaId||null,razon_social:f.intermediario,cuit:f.intermediarioCuit,sisa_categoria:f.intermediarioSisa}},pacto_comision_externa_declarada:Boolean(f.intermediario.trim()),comision_externa_fuera_de_plataforma:Boolean(f.intermediario.trim()),comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
  }
 
  const update=(key:keyof FormState,value:string)=>setForm(x=>({...x,[key]:value}));
@@ -429,15 +460,24 @@ export default function ContratosPage(){
        <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
-       <label>Precio por TN<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
+       <label>Precio por TN (obligatorio)<input type="number" min="0.01" step="0.01" required value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal" placeholder="Precio acordado por tonelada"/></label>
        <label>Moneda de la operación<input value={form.moneda || "Sin moneda registrada"} readOnly/></label>
        <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}><option value="">Seleccionar condición</option>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
-       <label>Puerto de entrega<select value={form.puerto} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto</option>{puertos.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
+       <label>Terminal portuaria autorizada<select value={form.terminalId} onChange={e=>{const t=terminales.find(x=>x.id===e.target.value);setForm(x=>({...x,terminalId:t?.id||"",puerto:t?[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · "):x.puerto}));}}><option value="">Seleccionar terminal activa</option>{terminales.map(t=><option key={t.id} value={t.id}>{[t.nombre,t.puerto,t.localidad,t.provincia].filter(Boolean).join(" · ")}</option>)}</select></label>
+       <label>Lugar de entrega específico<input value={form.puerto} onChange={e=>update("puerto",e.target.value)} placeholder="Terminal, planta, localidad o destino exacto" required/></label>
        <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
        <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Completar según la operación"/></label>
-       <label>Vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social"/></label>
-       <label>Comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social"/></label>
-       <label>Intermediario (si existe)<input value={form.intermediario} onChange={e=>update("intermediario",e.target.value)} placeholder="Se deja vacío si no hay intermediario"/></label>
+       <label>Empresa vendedora<select value={form.vendedorEmpresaId} onChange={e=>selectCompany("VENDEDOR",e.target.value)} required><option value="">Seleccionar vendedor de la operación</option>{companyOptions.filter(x=>x.rol==="VENDEDOR").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
+       <label>Razón social vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social completa" required/></label>
+       <label>CUIT vendedor (11 dígitos)<input value={form.vendedorCuit} onChange={e=>update("vendedorCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
+       <label>Condición SISA vendedor<input value={form.vendedorSisa} onChange={e=>update("vendedorSisa",e.target.value)} placeholder="Se completa desde el registro SISA"/></label>
+       <label>Empresa compradora<select value={form.compradorEmpresaId} onChange={e=>selectCompany("COMPRADOR",e.target.value)} required><option value="">Seleccionar comprador de la operación</option>{companyOptions.filter(x=>x.rol==="COMPRADOR").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
+       <label>Razón social comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social completa" required/></label>
+       <label>CUIT comprador (11 dígitos)<input value={form.compradorCuit} onChange={e=>update("compradorCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
+       <label>Condición SISA comprador<input value={form.compradorSisa} onChange={e=>update("compradorSisa",e.target.value)} placeholder="Se completa desde el registro SISA"/></label>
+       <label>Intermediario (si existe)<select value={form.intermediarioEmpresaId} onChange={e=>selectCompany("INTERMEDIARIO",e.target.value)}><option value="">Sin intermediario</option>{companyOptions.filter(x=>x.rol==="INTERMEDIARIO").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
+       <label>Razón social intermediario<input value={form.intermediario} onChange={e=>update("intermediario",e.target.value)} placeholder="Opcional"/></label>
+       {form.intermediario.trim()&&<><label>CUIT intermediario<input value={form.intermediarioCuit} onChange={e=>update("intermediarioCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789"/></label><label>Condición SISA intermediario<input value={form.intermediarioSisa} onChange={e=>update("intermediarioSisa",e.target.value)} placeholder="Condición SISA"/></label></>}
        {hasIntermediary&&<div className="contract-builder-alert" role="note" style={{gridColumn:"1 / -1"}}>✦ Operación con Intermediación Externa Protegida. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación tradicional se pactan y liquidan de forma externa y privada entre las partes. AgroBrokerIA no los cobra ni interviene en sus controversias.</div>}
        <label>Campaña<input value={form.campania} onChange={e=>update("campania",e.target.value)} placeholder="Ej. 2025/2026"/></label>
        <label>Procedencia<input value={form.procedencia} onChange={e=>update("procedencia",e.target.value)}/></label>
@@ -487,9 +527,35 @@ export default function ContratosPage(){
 }
 
 function PreviewCard({type,form,onDownload,active}:{type:"F1";form:FormState;onDownload:(type:"F1")=>void;active:boolean}){
+ const clauses:[string,string][]=[
+  ["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],
+  ["2. PRODUCTO / COMMODITY",form.producto||"Pendiente de completar"],
+  ["3. CAMPAÑA",form.campania||"Pendiente de completar"],
+  ["4. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas":"Pendiente de completar"],
+  ["5. PRECIO POR TN",(form.moneda?form.moneda+" ":"")+(form.precio?money(form.precio):"Pendiente de completar")+" por tonelada métrica"],
+  ["6. CONDICIÓN DE PRECIO",form.condicion||"Pendiente de completar"],
+  ["7. LUGAR DE ENTREGA",form.puerto||"Pendiente de completar"],
+  ["8. PLAZO DE ENTREGA",form.entrega||"Pendiente de completar"],
+  ["9. FORMA DE PAGO",form.pago||"Pendiente de completar"],
+  ["10. PROCEDENCIA",form.procedencia||"Pendiente de completar"],
+  ["11. CALIDAD / OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]
+ ];
  return <article className={"contract-preview-card "+(active?"active":"")}>
-   <header><div className={type==="F1"?"green":"blue"}>▤</div><div><strong>Contrato {type} - {type==="F1"?"Blanco (Formal)":"Privado"}</strong><small>{type==="F1"?"Documento F1 generado a partir de los datos registrados.":"Documento F1 generado a partir de los datos registrados."}</small></div><button onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
-   <div className="contract-paper"><div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div><div className="paper-meta">N°: {type}-BORRADOR<br/>Fecha: {new Date().toLocaleDateString("es-AR")}</div><h3>{type==="F1"?"CONTRATO DE COMPRAVENTA DE GRANOS":"CONTRATO DE ABASTECIMIENTO DE GRANOS"}</h3><p>Entre <b>{form.vendedor||"EL VENDEDOR"}</b> y <b>{form.comprador||"EL COMPRADOR"}</b>, acuerdan celebrar el presente contrato de compraventa de <b>{form.producto}</b> bajo las siguientes cláusulas:</p>{[["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],["2. OBJETO",form.producto||"No especificado"],["3. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas.":"No especificada"],["4. CALIDAD",form.observaciones||"No especificada"],["5. PRECIO",(form.moneda?form.moneda+" ":"")+(form.precio?money(form.precio):"________")+" por tonelada métrica."],["6. CONDICIÓN DE PRECIO",form.condicion||"No especificada"],["7. LUGAR DE ENTREGA",form.puerto||"No especificado"],["8. PLAZO DE ENTREGA",form.entrega||"No especificado"],["9. FORMA DE PAGO",form.pago||"No especificada"],["10. DOCUMENTACIÓN","Factura comercial, Carta de Porte, Certificado de Calidad y documentación aplicable."],["11. LEGISLACIÓN APLICABLE","Se completará según la operación y jurisdicción pactada."],["12. OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]].map(([h,t])=><div className="paper-clause" key={h}><b>{h}</b><span>{t}</span></div>)}<div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma</small></div></div></div>
+  <header><div className="green">▤</div><div><strong>Contrato F1 · Vista previa dinámica</strong><small>Resumen comercial editable. No sustituye el modelo oficial homologado.</small></div><button type="button" onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
+  <div className="contract-paper">
+   <div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div>
+   <div className="paper-meta">BORRADOR F1 · {new Date().toLocaleDateString("es-AR")}</div>
+   <h3>RESUMEN DE CONDICIONES COMERCIALES · F1</h3>
+   <p>Las partes identificadas a continuación revisan las condiciones comerciales registradas para la operación seleccionada. Los datos se actualizan al modificar el formulario.</p>
+   <section className="paper-parties">
+    <h4>PARTES INTERVINIENTES</h4>
+    <div><b>VENDEDOR</b><strong>{form.vendedor||"Pendiente de seleccionar"}</strong><span>CUIT: {form.vendedorCuit||"Pendiente"} · SISA: {form.vendedorSisa||"No informado"}</span></div>
+    <div><b>COMPRADOR</b><strong>{form.comprador||"Pendiente de seleccionar"}</strong><span>CUIT: {form.compradorCuit||"Pendiente"} · SISA: {form.compradorSisa||"No informado"}</span></div>
+    {form.intermediario.trim()&&<div><b>INTERMEDIARIO</b><strong>{form.intermediario}</strong><span>CUIT: {form.intermediarioCuit||"Pendiente"} · SISA: {form.intermediarioSisa||"No informado"}</span></div>}
+   </section>
+   <section className="paper-clauses"><h4>CONDICIONES DE LA OPERACIÓN</h4>{clauses.map(([label,value])=><div className="paper-clause" key={label}><b>{label}</b><span>{value}</span></div>)}</section>
+   <div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma externa del vendedor</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma externa del comprador</small></div></div>
+   <p className="paper-legal-note">Documento preliminar de datos. Para formalizar la operación, las partes deben incorporar el modelo F1 oficial aplicable, firmarlo externamente y cargar las copias PDF firmadas en AgroBrokerIA.</p>
+  </div>
  </article>
 }
-
