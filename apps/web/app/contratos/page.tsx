@@ -51,18 +51,7 @@ function buildPdfWithoutIntermediary(f:FormState){
  const c1=145,c2=W-2*m-c1;
  for(const [a,b] of rows){const h=27;pdf.setDrawColor(175,190,205);pdf.rect(m,y,c1,h);pdf.rect(m+c1,y,c2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);pdf.text(pdf.splitTextToSize(b,c2-12),m+c1+6,y+11);y+=h;}
  y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=17;y=wrap("Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
- const clauses=[
-  ["PRIMERA: OBJETO","El Vendedor se obliga a vender y el Comprador a comprar el producto, cantidad y campaña indicados en las Condiciones Particulares."],
-  ["SEGUNDA: CANTIDAD","La cantidad contractual será la indicada en las Condiciones Particulares, expresada en toneladas métricas, con la tolerancia que allí se establezca."],
-  ["TERCERA: CALIDAD","La mercadería deberá cumplir las normas de calidad comercial aplicables al producto y las condiciones pactadas entre las partes."],
-  ["CUARTA: PRECIO","El precio pactado será "+(f.precio?money(f.precio):"________")+" "+(f.moneda||"SIN MONEDA")+" por tonelada métrica, salvo la fórmula o condición expresamente indicada en las Condiciones Particulares."],
-  ["QUINTA: CONDICIÓN DE PRECIO","La condición comercial será la indicada en las Condiciones Particulares (por ejemplo, FAS, FOB o CIF), sin alterar los demás términos del contrato."],
-  ["SEXTA: LUGAR DE ENTREGA","El lugar, puerto o destino de entrega será el consignado en las Condiciones Particulares y en los documentos operativos de la operación."],
-  ["SÉPTIMA: PLAZO DE ENTREGA","La entrega se realizará dentro del período indicado en las Condiciones Particulares, sujeto a la coordinación logística correspondiente."],
-  ["OCTAVA: FORMA DE PAGO","El medio, plazo y condiciones de pago serán los indicados en las Condiciones Particulares y documentación comercial asociada."],
-  ["NOVENA: DOCUMENTACIÓN","Las partes deberán entregar la factura comercial, Carta de Porte, certificados de calidad y demás documentación que resulte aplicable a la operación."],
-  ["DÉCIMA: LEGISLACIÓN APLICABLE","La ley y jurisdicción aplicables serán las consignadas en el contrato y deberán quedar definidas antes de la firma definitiva."]
- ];
+ const clauses: [string, string][] = [];
  for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
  y+=20;pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("En prueba de conformidad, se firma el presente contrato por las partes intervinientes.",m,y);y+=42;
  const sigs=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
@@ -79,7 +68,7 @@ function buildPdf(f:FormState){
  const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
  const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Conste por el presente documento que se celebra el ${dateText}, bajo las condiciones que se detallan a continuación.`,m,76);};
  if(f.tipo==="F1"){
-   pageTitle("CONTRATO DE COMPRAVENTA DE GRANOS");
+   pageTitle("BORRADOR DE CONDICIONES COMERCIALES · F1");
    header(new Date().toLocaleDateString("es-AR"));
    let y=100;
    pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
@@ -90,10 +79,7 @@ function buildPdf(f:FormState){
    const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas (Tolerancia: +/- 5%)":"________________ Toneladas Métricas (Tolerancia: +/- 5%)"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
    const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const h=28;pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setTextColor(30,30,30);const ls=pdf.splitTextToSize(b,m+col1+6?col2-12:col2-12);pdf.text(ls,m+col1+6,y+12);y+=h;}
    y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=18;y=drawWrapped(pdf,"Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
-   const clauses=[
-    ["PRIMERA: OBJETO",`El Vendedor se obliga a transferir la propiedad y a entregar la cantidad de granos especificada en las Condiciones Particulares, y el Comprador se obliga a recibirla y a pagar el precio estipulado conforme a las modalidades comerciales acordadas.`],
-    ["SEGUNDA: CALIDAD, MERMAS Y ACONDICIONAMIENTO",`La mercadería deberá cumplir con los estándares de calidad comercial vigentes para el tipo de grano en la región de entrega. Las determinaciones de calidad, peso, humedad y materias extrañas se realizarán en el punto de destino. Cualquier exceso sobre las bases de tolerancia autorizadas sufrirá las mermas y rebajas de precio correspondientes bajo las tablas oficiales del sector.`]
-   ];
+   const clauses: [string, string][] = [];
    for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=drawWrapped(pdf,t,m,y+12,W-2*m,8.5,10);y+=8;}
    pdf.addPage();y=48;pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.setTextColor(25,25,25);pdf.setFont("helvetica","bold");pdf.setFontSize(9.5);pdf.setTextColor(25,25,25);pdf.text("TERCERA: INTERMEDIACIÓN EXTERNA Y HONORARIOS PRIVADOS",m,y);
    y=drawWrapped(pdf,"Las partes dejan constancia de la intervención del intermediario identificado en este contrato. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación de terceros se pactan, documentan, facturan y abonan de forma privada y externa entre quienes los hayan acordado. AgroBrokerIA no los calcula, retiene, administra ni cobra, y no interviene en sus controversias.",m,y+14,W-2*m,9,11);y+=8;
@@ -466,7 +452,7 @@ export default function ContratosPage(){
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio por TN<input value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal"/></label>
        <label>Moneda de la operación<input value={form.moneda || "Sin moneda registrada"} readOnly/></label>
-       <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
+       <label>Condición de precio<select value={form.condicion} onChange={e=>update("condicion",e.target.value)}><option value="">Seleccionar condición</option>{["FAS","FOB","CIF","Precio pizarra","FCA"].map(x=><option key={x}>{x}</option>)}</select></label>
        <label>Puerto de entrega<select value={form.puerto} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto</option>{puertos.map(x=><option key={x} value={x}>{x}</option>)}</select></label>
        <label>Fecha de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
        <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Completar según la operación"/></label>
