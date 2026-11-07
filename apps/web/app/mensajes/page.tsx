@@ -61,7 +61,7 @@ export default function MensajesPage(){
   if(comerciales.error){setError("No se pudieron cargar los mensajes de operaciones: "+comerciales.error.message);setCargando(false);return}
   if(pubChats.error){setError("No se pudieron cargar los mensajes de publicaciones: "+pubChats.error.message);setCargando(false);return}
   const ids=[...new Set((comerciales.data||[]).map(m=>m.operacion_id))];
-  const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,cantidad_tn,tipo_operacion,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
+  const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,cantidad_tn,tipo_operacion:modalidad_comercial,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
   if(opsResult.error){setError(opsResult.error.message);setCargando(false);return}
   const pubIds=[...new Set((opsResult.data||[]).flatMap(o=>[o.publicacion_compra_id,o.publicacion_venta_id]).filter(Boolean))];
   const productsResult=pubIds.length?await supabase.from("publicaciones").select("id,producto_id,productos(nombre)").in("id",pubIds):{data:[],error:null};
