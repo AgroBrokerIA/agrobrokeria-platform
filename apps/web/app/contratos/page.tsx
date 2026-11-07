@@ -380,15 +380,16 @@ export default function ContratosPage(){
  }
  async function saveDraft(){
    if(!form.operacionId){setError("Seleccioná una operación.");return;}
-   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\\D/g,""))){setError("El CUIT del vendedor y del comprador debe contener exactamente 11 dígitos.");return;}
-   if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
+   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("El CUIT del vendedor y del comprador debe contener exactamente 11 dígitos.");return;}
+   if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
    if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
    setBusy(true);setError("");setMessage("");
    const op=operaciones.find(x=>x.id===form.operacionId);
    if(!op){setError("La operación seleccionada ya no está disponible.");setBusy(false);return;}
    const cantidad=Number(form.cantidad)||0,precio=Number(form.precio)||0;
+   if(cantidad!==Number(op.cantidad_tn)||precio!==Number(op.precio_tn)){setError("La cantidad y el precio deben coincidir con los términos aceptados de la operación. Modificá primero la negociación si corresponde cambiar el precio.");setBusy(false);return;}
    const numeroContrato=selected?.numero_contrato||`ABIA-${op.codigo}-BORRADOR`;
-   const payload={numero_contrato:numeroContrato,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:form.moneda||null,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:form.entrega,flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,vendedor_cuit:form.vendedorCuit,comprador_cuit:form.compradorCuit,vendedor_sisa:form.vendedorSisa,comprador_sisa:form.compradorSisa,intermediario:form.intermediario,intermediario_cuit:form.intermediarioCuit,intermediario_sisa:form.intermediarioSisa,vendedor_empresa_id:form.vendedorEmpresaId||null,comprador_empresa_id:form.compradorEmpresaId||null,intermediario_empresa_id:form.intermediarioEmpresaId||null,terminal_id:form.terminalId||null,contenido:contractContent(form),intermediario_externo:form.intermediario||null,pacto_comision_externa_declarada:Boolean(form.intermediario.trim())};
+   const payload={numero_contrato:numeroContrato,cantidad_tn:cantidad,precio_tn:precio,importe_total:cantidad*precio,moneda:form.moneda||null,condicion_entrega:form.condicion,lugar_carga:"",destino:form.puerto,forma_pago:form.pago,plazo_pago:"",flete:"",calidad:form.observaciones,observaciones:form.observaciones,vendedor:form.vendedor,comprador:form.comprador,vendedor_cuit:form.vendedorCuit,comprador_cuit:form.compradorCuit,vendedor_sisa:form.vendedorSisa,comprador_sisa:form.compradorSisa,intermediario:form.intermediario,intermediario_cuit:form.intermediarioCuit,intermediario_sisa:form.intermediarioSisa,vendedor_empresa_id:form.vendedorEmpresaId||null,comprador_empresa_id:form.compradorEmpresaId||null,intermediario_empresa_id:form.intermediarioEmpresaId||null,terminal_id:form.terminalId||null,contenido:contractContent(form),intermediario_externo:form.intermediario||null,pacto_comision_externa_declarada:Boolean(form.intermediario.trim())};
    const {error}=await supabase.rpc("guardar_contrato_comercial",{p_operacion_id:form.operacionId,p_datos:payload});
    if(error)setError(error.message);else{setMessage("Borrador guardado en la operación.");await load();}
    setBusy(false);
@@ -416,9 +417,9 @@ export default function ContratosPage(){
  }
  function download(tipo:"F1"){
   if(!form.operacionId||!form.producto){setError("Seleccioná una operación y producto antes de generar el PDF.");return;}
-  if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
+  if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
   if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
-  if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
+  if(form.intermediario.trim()&&!/^[0-9]{11}$/.test(form.intermediarioCuit.replace(/\D/g,""))){setError("El CUIT del intermediario debe contener exactamente 11 dígitos.");return;}
   try{
    if(!form.moneda.trim()){setMessage("La operación no tiene moneda registrada. Corregí la moneda de la operación antes de generar el PDF.");return;}
    const next={...effectiveForm,tipo,moneda:form.moneda};
@@ -472,15 +473,15 @@ export default function ContratosPage(){
        <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Completar según la operación"/></label>
        <label>Empresa vendedora<select value={form.vendedorEmpresaId} onChange={e=>selectCompany("VENDEDOR",e.target.value)} required><option value="">Seleccionar vendedor de la operación</option>{companyOptions.filter(x=>x.rol==="VENDEDOR").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
        <label>Razón social vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social completa" required/></label>
-       <label>CUIT vendedor (11 dígitos)<input value={form.vendedorCuit} onChange={e=>update("vendedorCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
+       <label>CUIT vendedor (11 dígitos)<input value={form.vendedorCuit} onChange={e=>update("vendedorCuit",e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
        <label>Condición SISA vendedor<input value={form.vendedorSisa} onChange={e=>update("vendedorSisa",e.target.value)} placeholder="Se completa desde el registro SISA"/></label>
        <label>Empresa compradora<select value={form.compradorEmpresaId} onChange={e=>selectCompany("COMPRADOR",e.target.value)} required><option value="">Seleccionar comprador de la operación</option>{companyOptions.filter(x=>x.rol==="COMPRADOR").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
        <label>Razón social comprador<input value={form.comprador} onChange={e=>update("comprador",e.target.value)} placeholder="Razón social completa" required/></label>
-       <label>CUIT comprador (11 dígitos)<input value={form.compradorCuit} onChange={e=>update("compradorCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
+       <label>CUIT comprador (11 dígitos)<input value={form.compradorCuit} onChange={e=>update("compradorCuit",e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
        <label>Condición SISA comprador<input value={form.compradorSisa} onChange={e=>update("compradorSisa",e.target.value)} placeholder="Se completa desde el registro SISA"/></label>
        <label>Intermediario (si existe)<select value={form.intermediarioEmpresaId} onChange={e=>selectCompany("INTERMEDIARIO",e.target.value)}><option value="">Sin intermediario</option>{companyOptions.filter(x=>x.rol==="INTERMEDIARIO").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
        <label>Razón social intermediario<input value={form.intermediario} onChange={e=>update("intermediario",e.target.value)} placeholder="Opcional"/></label>
-       {form.intermediario.trim()&&<><label>CUIT intermediario<input value={form.intermediarioCuit} onChange={e=>update("intermediarioCuit",e.target.value.replace(/\\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789"/></label><label>Condición SISA intermediario<input value={form.intermediarioSisa} onChange={e=>update("intermediarioSisa",e.target.value)} placeholder="Condición SISA"/></label></>}
+       {form.intermediario.trim()&&<><label>CUIT intermediario<input value={form.intermediarioCuit} onChange={e=>update("intermediarioCuit",e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789"/></label><label>Condición SISA intermediario<input value={form.intermediarioSisa} onChange={e=>update("intermediarioSisa",e.target.value)} placeholder="Condición SISA"/></label></>}
        {hasIntermediary&&<div className="contract-builder-alert" role="note" style={{gridColumn:"1 / -1"}}>✦ Operación con Intermediación Externa Protegida. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación tradicional se pactan y liquidan de forma externa y privada entre las partes. AgroBrokerIA no los cobra ni interviene en sus controversias.</div>}
        <label>Campaña<input value={form.campania} onChange={e=>update("campania",e.target.value)} placeholder="Ej. 2025/2026"/></label>
        <label>Procedencia<input value={form.procedencia} onChange={e=>update("procedencia",e.target.value)}/></label>
