@@ -9,7 +9,7 @@ import "./reference.css";
 type C={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
 
-const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["it","Italiano"],["fr","Français"],["de","Deutsch"]];
+const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["zh","中文"],["fr","Français"],["it","Italiano"],["ru","Русский"],["hi","हिन्दी"],["de","Deutsch"]];
 
 type FormState={operacionId:string;tipo:"F1";tipoOperacion:string;producto:string;campania:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;terminalId:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string;intermediario:string;vendedorEmpresaId:string;compradorEmpresaId:string;intermediarioEmpresaId:string;vendedorCuit:string;compradorCuit:string;intermediarioCuit:string;vendedorSisa:string;compradorSisa:string;intermediarioSisa:string;procedencia:string;jurisdiccion:string;ciudadArbitral:string;comision:string};
 type CompanyOption={id:string;rol:string;razon_social:string;cuit:string;sisa_categoria:string;sisa_status:string;verificada:boolean};
