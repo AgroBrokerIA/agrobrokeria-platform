@@ -42,7 +42,7 @@ export async function GET(request: NextRequest) {
 
     const checks: Record<string, { ok: boolean; detail?: string }> = {};
     const checkDb = admin ?? supabase;
-    const requiredTables = ["empresas", "publicaciones", "ofertas_negociacion", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "medios_cobro", "retiros_comisiones"];
+    const requiredTables = ["empresas", "publicaciones", "productos", "monedas", "ofertas_negociacion", "operaciones", "operacion_workflow", "operacion_liquidacion", "operacion_comisiones", "operacion_comision_retenciones", "operacion_comision_viajes", "viajes", "viaje_cartas_porte", "workflow_etapas", "workflow_historial", "loi", "sco", "contratos", "documentos_operacion", "empresas_documentos", "mensajes_comerciales", "medios_cobro", "retiros_comisiones"];
 
     for (const table of requiredTables) {
       const { error } = await checkDb.from(table).select("*", { count: "exact", head: true });
@@ -52,6 +52,18 @@ export async function GET(request: NextRequest) {
     }
 
     checks.supabase = { ok: requiredTables.every(t => checks["db_" + t]?.ok), detail: `${requiredTables.length} tablas críticas verificadas` };
+
+    // Validaciones explícitas de columnas usadas por módulos que no deben
+    // quedar fuera del preflight por una tabla existente con esquema antiguo.
+    const [operationSchema, retentionSchema, voyageShareSchema] = await Promise.all([
+      checkDb.from("operaciones").select("id,modalidad_comercial", { count: "exact", head: true }),
+      checkDb.from("operacion_comision_retenciones").select("id,operacion_id,importe,estado", { count: "exact", head: true }),
+      checkDb.from("operacion_comision_viajes").select("id,operacion_id,viaje_id,importe_liberado,estado", { count: "exact", head: true })
+    ]);
+    const schemaErrors = [operationSchema.error, retentionSchema.error, voyageShareSchema.error].filter(Boolean);
+    checks.operational_schema = schemaErrors.length
+      ? { ok: false, detail: schemaErrors.map(error => error?.message).join(" · ") }
+      : { ok: true, detail: "Columnas de operaciones y conciliación por viaje verificadas." };
 
     // Integridad estructural del workflow: el circuito comercial vigente
     // contiene nueve etapas obligatorias, desde oferta aceptada hasta cierre.
@@ -310,7 +322,7 @@ export async function GET(request: NextRequest) {
       detail: process.env.CRON_SECRET ? "CRON_SECRET configurado." : "Falta CRON_SECRET."
     };
 
-    const allCore = checks.supabase.ok;
+    const allCore = checks.supabase.ok && checks.operational_schema.ok;
     const arcaReady = checks.arca_environment.ok && checks.arca_credentials.ok && checks.arca_connectivity.ok;
     const integrationsReady =
       checks.signature_provider.ok &&
