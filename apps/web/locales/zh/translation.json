@@ -1,0 +1,24 @@
+{
+  "menu": {
+    "home": "首页",
+    "market": "市场",
+    "contracts": "合同",
+    "logistics": "物流",
+    "support": "技术支持"
+  },
+  "auth": {
+    "login": "登录",
+    "register": "创建免费账户",
+    "kyc_pending": "账户等待人工合规审核",
+    "sisa_error": "注册被拒绝：SISA 状态无效或被排除"
+  },
+  "contracts": {
+    "title_f1": "谷物买卖合同（F1）",
+    "vendedor": "卖方 / 生产商",
+    "comprador": "买方 / 收购站",
+    "intermediario": "外部经纪人 / 佣金代理",
+    "comision_plataforma": "平台技术服务费",
+    "subir_comprobante": "上传银行转账凭证（PDF/图片）",
+    "estado_custodia": "佣金在满足释放条件前暂 retenida"
+  }
+}
