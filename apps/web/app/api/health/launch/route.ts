@@ -53,8 +53,9 @@ export async function GET(request: NextRequest) {
 
     checks.supabase = { ok: requiredTables.every(t => checks["db_" + t]?.ok), detail: `${requiredTables.length} tablas críticas verificadas` };
 
-    // Integridad estructural del workflow: el flujo comercial publicado debe
-    // conservar exactamente las 10 etapas obligatorias definidas para granos.
+    // Integridad estructural del workflow: el circuito comercial vigente
+    // contiene nueve etapas obligatorias, desde oferta aceptada hasta cierre.
+    // La retención/liberación de comisión se controla dentro de las etapas 4, 7 y 8.
     try {
       const { data: workflow } = await checkDb
         .from("workflows")
@@ -75,15 +76,28 @@ export async function GET(request: NextRequest) {
           .eq("workflow_id", workflow.id)
           .order("orden", { ascending: true });
 
+        const expectedStages = [
+          "Oferta aceptada",
+          "Acuerdo Comercial / Reserva",
+          "Visado de mercadería",
+          "Retención de comisión AgroBrokerIA",
+          "Contrato Definitivo",
+          "Firmas",
+          "Logística / Entrega",
+          "Liquidación",
+          "Cerrada"
+        ];
         const validStages =
           !stagesError &&
-          stages?.length === 10 &&
+          stages?.length === expectedStages.length &&
           stages.every((stage, index) =>
-            stage.orden === index + 1 && stage.obligatoria === true
+            stage.orden === index + 1 &&
+            stage.obligatoria === true &&
+            stage.nombre === expectedStages[index]
           );
 
         checks.workflow_definition = validStages
-          ? { ok: true, detail: "Workflow de granos: 10/10 etapas obligatorias." }
+          ? { ok: true, detail: "Workflow de granos: 9/9 etapas obligatorias y en orden." }
           : {
               ok: false,
               detail: stagesError?.message ?? `Workflow inválido: ${stages?.length ?? 0} etapas.`
