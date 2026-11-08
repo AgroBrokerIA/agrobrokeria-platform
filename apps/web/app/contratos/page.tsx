@@ -426,6 +426,9 @@ export default function ContratosPage(){
   if(!form.vendedor.trim()||!form.comprador.trim()){setError("Completá la razón social del vendedor y del comprador.");return;}
   if(!form.puerto.trim()){setError("Seleccioná una terminal activa o ingresá el lugar de entrega específico.");return;}
   if(!/^[0-9]{11}$/.test(form.vendedorCuit.replace(/\D/g,""))||!/^[0-9]{11}$/.test(form.compradorCuit.replace(/\D/g,""))){setError("Completá CUIT de vendedor y comprador con exactamente 11 dígitos.");return;}
+  if(!form.cantidad.trim()||!Number.isFinite(Number(form.cantidad))||Number(form.cantidad)<=0){setError("Ingresá una cantidad de toneladas válida y mayor que cero.");return;}
+  if(!form.calidad.trim()){setError("Completá la condición de calidad de la mercadería.");return;}
+  if(!form.pago.trim()||!form.plazoPago.trim()||!form.responsableFlete){setError("Completá modalidad de pago, plazo de pago y responsabilidad del flete.");return;}
   if(!form.precio.trim()||!Number.isFinite(Number(form.precio))||Number(form.precio)<=0){setError("Ingresá un precio por tonelada válido y mayor que cero.");return;}
   try{
    if(!form.moneda.trim()){setMessage("La operación no tiene moneda registrada. Corregí la moneda de la operación antes de generar el PDF.");return;}
@@ -446,7 +449,7 @@ export default function ContratosPage(){
   }catch(e){setError(e instanceof Error?e.message:"No se pudo descargar el PDF.");}
  }
  function preview(tipo:"F1"){setForm(x=>({...x,tipo}));setMessage(`Vista previa ${tipo} seleccionada.`)}
- function printPdf(){const pdf=buildPdf(form);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
+ function printPdf(){if(!form.calidad.trim()||!form.pago.trim()||!form.plazoPago.trim()||!form.responsableFlete||!form.cantidad.trim()){setError("Completá calidad, cantidad, modalidad y plazo de pago y responsabilidad del flete antes de imprimir.");return;}const pdf=buildPdf(effectiveForm);const url=pdf.output("bloburl");window.open(url.toString(),"_blank","noopener,noreferrer")}
  function emailPdf(){const subject=encodeURIComponent(`Contrato ${form.tipo} AgroBrokerIA`);window.location.href=`mailto:?subject=${subject}&body=${encodeURIComponent("Adjuntá el PDF generado por AgroBrokerIA.")}`}
  function sharePdf(){if(navigator.share){void navigator.share({title:`Contrato ${form.tipo} AgroBrokerIA`,text:"Contrato generado por AgroBrokerIA"})}else{download(form.tipo)}}
  
