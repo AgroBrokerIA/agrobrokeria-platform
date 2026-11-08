@@ -45,7 +45,7 @@ export default function TransaccionesPage(){
   for(const x of ops||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
   out.sort((a,b)=>+new Date(b.date)-+new Date(a.date));setRows(out);setSelected(out[0]||null);setLoading(false);
  })()},[]);
- const filtered=useMemo(()=>rows.filter(r=>(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,query,type,status,currency]);
+ const filtered=useMemo(()=>rows.filter(r=>(isAdmin||r.type!=="Comisión")&&(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,isAdmin,query,type,status,currency]);
  const totals=useMemo(()=>{const sum=(predicate:(r:Tx)=>boolean)=>rows.filter(predicate).reduce((m,r)=>{m[r.currency]=(m[r.currency]||0)+Math.abs(r.amount);return m},{} as Record<string,number>);return {in:sum(r=>r.amount>0&&r.type!=="Comisión"),out:sum(r=>r.amount<0),comm:sum(r=>r.type==="Comisión")}},[rows]);
  const formatTotals=(values:Record<string,number>)=>Object.entries(values).length?Object.entries(values).map(([c,v])=>money(v,c)).join(" · "):"Sin movimientos registrados";
  const currencies=Array.from(new Set(rows.map(r=>r.currency)));
