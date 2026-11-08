@@ -5,6 +5,8 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Op = { id:string; codigo:string|null; cantidad_tn:number|null; estado:string|null };
+type Viaje = {id:string;transportista_profile_id:string|null;patente_camion:string|null;patente_acoplado:string|null;estado:string|null;carta_porte_ctg:string|null};
+type Transportista = {profile_id:string;cuit:string|null;nombre_completo:string|null;verificacion_estado:string};
 type Log = {
   id:string; operacion_id:string; estado:string|null; carta_porte_numero:string|null;
   carta_porte_estado:string|null; carta_porte_origen:string|null; carta_porte_codigo:string|null;
@@ -24,13 +26,14 @@ const empty = {
   tipo_cp:"", sucursal:"", cod_grano:"", peso_bruto_kg:"", peso_tara_kg:"",
   cuit_solicitante:"", origen_provincia:"", origen_localidad:"", nro_renspa:"",
   destino_cuit:"", destino_provincia:"", destino_localidad:"", planta:"", destinatario_cuit:"",
-  km_recorrer:"", dominio_camion:"", chofer_cuit:"", cuit_pagador_flete:"", cuit_intermediario_flete:"",
+  km_recorrer:"", dominio_camion:"", chofer_cuit:"", cuit_pagador_flete:"", cuit_intermediario_flete:"", fecha_hora_partida:"",
   cosecha:"", codigo_turno:"", tarifa:"", corresponde_retiro_productor:"false", es_destino_campo:"false", mercaderia_fumigada:"false"
 };
 
 export default function CartaPortePage(){
   const [ops,setOps]=useState<Op[]>([]), [logs,setLogs]=useState<Log[]>([]);
-  const [selected,setSelected]=useState(""), [form,setForm]=useState(empty);
+  const [viajes,setViajes]=useState<Viaje[]>([]),[transportistas,setTransportistas]=useState<Transportista[]>([]);
+  const [selected,setSelected]=useState(""),[selectedViaje,setSelectedViaje]=useState(""),[form,setForm]=useState(empty);
   const [loading,setLoading]=useState(true), [saving,setSaving]=useState(false), [emitting,setEmitting]=useState(false), [message,setMessage]=useState(""), [error,setError]=useState("");
 
   const logMap=useMemo(()=>new Map(logs.map(x=>[x.operacion_id,x])),[logs]);
@@ -45,7 +48,9 @@ export default function CartaPortePage(){
     if(o.error||l.error){setError(o.error?.message||l.error?.message||"No se pudo cargar Carta de Porte.");setLoading(false);return}
     const oo=(o.data||[]) as Op[], ll=(l.data||[]) as Log[];
     setOps(oo); setLogs(ll);
-    if(!selected && oo[0]) setSelected(oo[0].id);
+    const requestedOperation=typeof window!=="undefined"?new URLSearchParams(window.location.search).get("operacion"):null;
+    if(requestedOperation && oo.some(x=>x.id===requestedOperation))setSelected(requestedOperation);
+    else if(!selected && oo[0]) setSelected(oo[0].id);
     setLoading(false);
   }
 
@@ -53,6 +58,19 @@ export default function CartaPortePage(){
 
   useEffect(()=>{
     if(!selected) return;
+    setSelectedViaje("");
+    void (async()=>{
+      const {data:trips,error:tripError}=await supabase.from("viajes").select("id,transportista_profile_id,patente_camion,patente_acoplado,estado,carta_porte_ctg").eq("operacion_id",selected).order("creado_en",{ascending:true});
+      if(tripError){setError("No se pudieron cargar los camiones asignados: "+tripError.message);setViajes([]);setTransportistas([]);return;}
+      const rows=(trips||[]) as Viaje[];setViajes(rows);
+      const ids=[...new Set(rows.map(x=>x.transportista_profile_id).filter(Boolean) as string[])];
+      if(ids.length){
+        const {data:drivers,error:driverError}=await supabase.from("transportistas").select("profile_id,cuit,nombre_completo,verificacion_estado").in("profile_id",ids);
+        if(driverError){setError("No se pudieron cargar los datos de los transportistas: "+driverError.message);setTransportistas([]);}
+        else setTransportistas((drivers||[]) as Transportista[]);
+      }else setTransportistas([]);
+      if(rows.length)setSelectedViaje(rows.find(x=>!x.carta_porte_ctg)?.id||rows[0].id);
+    })();
     const l=logMap.get(selected);
     setForm(l ? {
       ...empty,
@@ -71,11 +89,15 @@ export default function CartaPortePage(){
   async function emitArca(){
     if(!selected){setError("Seleccioná una operación.");return}
     setEmitting(true);setError("");setMessage("");
-    const payload={operation_id:selected,...form,sucursal:form.sucursal?Number(form.sucursal):undefined,es_destino_campo:form.es_destino_campo==="true",corresponde_retiro_productor:form.corresponde_retiro_productor==="true",mercaderia_fumigada:form.mercaderia_fumigada==="true"};
+    if(!selectedViaje){setError("Primero asigná un camión a esta operación desde Operaciones → Logística.");setEmitting(false);return;}
+    const trip=viajes.find(x=>x.id===selectedViaje);
+    const driver=transportistas.find(x=>x.profile_id===trip?.transportista_profile_id);
+    if(!trip?.transportista_profile_id){setError("El viaje seleccionado todavía no tiene transportista asignado.");setEmitting(false);return;}
+    const payload={operation_id:selected,viaje_id:selectedViaje,...form,transportista_cuit:form.transportista_cuit||driver?.cuit||"",chofer_cuit:form.chofer_cuit||driver?.cuit||"",dominio_camion:form.dominio_camion||trip.patente_camion||"",sucursal:form.sucursal?Number(form.sucursal):undefined,fecha_hora_partida:form.fecha_hora_partida||(form.fecha_carga&&form.hora_carga?form.fecha_carga+"T"+form.hora_carga+":00":""),es_destino_campo:form.es_destino_campo==="true",corresponde_retiro_productor:form.corresponde_retiro_productor==="true",mercaderia_fumigada:form.mercaderia_fumigada==="true"};
     const {data,error:e}=await supabase.functions.invoke("carta-porte-arca",{body:payload});
     if(e){setError(e.message||"No se pudo invocar WSCPE.");setEmitting(false);return}
     if(!data?.ok){setError(data?.error||data?.errors?.map((x:any)=>x.code+": "+x.description).join(" | ")||"ARCA no autorizó la Carta de Porte.");setEmitting(false);return}
-    setMessage("Carta de Porte autorizada por ARCA. CTG "+data.nro_ctg+" · orden "+data.nro_orden+".");
+    setMessage("Carta de Porte autorizada por ARCA. CTG "+data.nro_ctg+" · orden "+data.nro_orden+". El CTG quedó guardado en el viaje. Adjuntá el PDF oficial desde la ficha de logística para completar el expediente documental.");
     await load();setEmitting(false);
   }
 
@@ -105,6 +127,15 @@ export default function CartaPortePage(){
         {ops.map(o=><option key={o.id} value={o.id}>{o.codigo||o.id} · {Number(o.cantidad_tn||0).toLocaleString("es-AR")} TN · {o.estado||"sin estado"}</option>)}
       </select>
     </section>
+    {selected&&<section className="company-card" style={{marginBottom:18}}>
+      <label>Camión / viaje al que corresponde esta Carta de Porte</label>
+      <select value={selectedViaje} onChange={e=>setSelectedViaje(e.target.value)} style={{display:"block",width:"100%",marginTop:8,padding:12,borderRadius:10,border:"1px solid #dbe3ea"}}>
+        <option value="">Seleccionar camión asignado</option>
+        {viajes.map(v=>{const t=transportistas.find(x=>x.profile_id===v.transportista_profile_id);return <option key={v.id} value={v.id}>{t?.nombre_completo||"Transportista"} · {v.patente_camion||"Sin patente"}{v.carta_porte_ctg?" · CTG "+v.carta_porte_ctg:" · Sin CTG"}</option>})}
+      </select>
+      {selectedViaje&&(()=>{const v=viajes.find(x=>x.id===selectedViaje);const t=transportistas.find(x=>x.profile_id===v?.transportista_profile_id);return <p style={{fontSize:12,color:"#475569",marginTop:8}}>Datos precargados: {t?.nombre_completo||"Transportista"} · CUIT {t?.cuit||"pendiente"} · Camión {v?.patente_camion||"patente pendiente"} · Acoplado {v?.patente_acoplado||"no registrado"}. Estado de identidad: {t?.verificacion_estado||"no disponible"}.</p>})()}
+      {viajes.length===0&&<p style={{fontSize:13,color:"#b45309"}}>Todavía no hay camiones asignados. Volvé a la operación y asigná los transportistas antes de emitir.</p>}
+    </section>}
     {loading?<section className="company-card">Cargando…</section>:selected&&<section className="company-card">
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16}}>
         {[
@@ -136,13 +167,13 @@ export default function CartaPortePage(){
             ["planta","Planta destino","text"],["destinatario_cuit","CUIT destinatario","text"],["transportista_cuit","CUIT transportista","text"],
             ["dominio_camion","Dominio camión","text"],["chofer_cuit","CUIT chofer","text"],["km_recorrer","Km a recorrer","number"],
             ["cuit_pagador_flete","CUIT pagador flete","text"],["cuit_intermediario_flete","CUIT intermediario flete","text"],["codigo_turno","Código turno","text"],
-            ["cosecha","Cosecha","text"],["tarifa","Tarifa","number"]
+            ["cosecha","Cosecha","text"],["tarifa","Tarifa","number"],["fecha_hora_partida","Fecha y hora de partida","datetime-local"]
           ].map((x:any)=><label key={x[0]}>{x[1]}<input type={x[2]} value={(form as any)[x[0]]||""} onChange={e=>set(x[0],e.target.value)} style={{display:"block",width:"100%",marginTop:6,padding:10,borderRadius:8,border:"1px solid #dbe3ea"}} /></label>)}
         </div>
         <div style={{display:"flex",gap:20,marginTop:12,flexWrap:"wrap"}}>
           {[["es_destino_campo","Destino campo"],["corresponde_retiro_productor","Retiro productor"],["mercaderia_fumigada","Mercadería fumigada"]].map((x:any)=><label key={x[0]}><input type="checkbox" checked={(form as any)[x[0]]==="true"} onChange={e=>set(x[0],e.target.checked?"true":"false")} /> {x[1]}</label>)}
         </div>
-        <button className="module-pill" type="button" disabled={emitting} onClick={()=>void emitArca()} style={{marginTop:16}}>{emitting?"Enviando a ARCA…":"Emitir oficialmente en ARCA"}</button>
+        <button className="module-pill" type="button" disabled={emitting||!selectedViaje||Boolean(viajes.find(x=>x.id===selectedViaje)?.carta_porte_ctg)} onClick={()=>void emitArca()} style={{marginTop:16}}>{emitting?"Enviando a ARCA…":viajes.find(x=>x.id===selectedViaje)?.carta_porte_ctg?"Carta de Porte ya emitida":"Emitir oficialmente en ARCA"}</button>
       </div>
       <button className="module-pill" type="button" disabled={saving} onClick={()=>void save()} style={{marginTop:18}}>{saving?"Guardando…":"Guardar Carta de Porte"}</button>
     </section>}
