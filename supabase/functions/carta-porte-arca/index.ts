@@ -115,6 +115,8 @@ async function soap(environment:string,method:string,inner:string,auth:{token:st
 
 function requiredString(v:unknown,name:string){const s=String(v??"").trim();if(!s)throw new Error("WSCPE_REQUIRED_"+name);return s}
 function optionalXml(name:string,v:unknown){const s=String(v??"").trim();return s?"<"+name+">"+esc(s)+"</"+name+">":""}
+function cuitDigits(v:unknown,name:string,optional=false){const s=String(v??"").replace(/\D/g,"");if(optional&&!s)return "";if(s.length!==11)throw new Error("WSCPE_INVALID_CUIT_"+name);return s}
+function optionalCuitXml(name:string,v:unknown){const s=String(v??"").trim();return s?optionalXml(name,cuitDigits(s,name,true)):""}
 
 Deno.serve(async req=>{
   try{
@@ -161,30 +163,30 @@ Deno.serve(async req=>{
     const {data:cfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cuit_secret_name").eq("company_id",companyId).maybeSingle();
     if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
     const environment=cfg.environment==="production"?"production":"homologacion";
-    const cuit=(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit;
+    const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
     const cert=envPem(cfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"), key=envPem(cfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64");
     if(!cert||!key)return json({error:"ARCA_WSCPE_CREDENTIALS_NOT_CONFIGURED"},409);
 
     const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg.punto_venta);
     if(!Number.isInteger(sucursal)||sucursal<1)throw new Error("WSCPE_INVALID_SUCURSAL");
-    const cuitSolicitante=requiredString(b.cuit_solicitante,"CUIT_SOLICITANTE");
+    const cuitSolicitante=cuitDigits(b.cuit_solicitante,"SOLICITANTE");
     const tipoGrano=requiredString(b.cod_grano,"COD_GRANO");
     const pesoBruto=requiredString(b.peso_bruto_kg,"PESO_BRUTO_KG");
     const pesoTara=requiredString(b.peso_tara_kg,"PESO_TARA_KG");
     const origenProvincia=requiredString(b.origen_provincia,"ORIGEN_PROVINCIA");
     const origenLocalidad=requiredString(b.origen_localidad,"ORIGEN_LOCALIDAD");
-    const destinoCuit=requiredString(b.destino_cuit,"DESTINO_CUIT");
+    const destinoCuit=cuitDigits(b.destino_cuit,"DESTINO");
     const destinoProvincia=requiredString(b.destino_provincia,"DESTINO_PROVINCIA");
     const destinoLocalidad=requiredString(b.destino_localidad,"DESTINO_LOCALIDAD");
-    const destinatarioCuit=requiredString(b.destinatario_cuit,"DESTINATARIO_CUIT");
-    const transportistaCuit=requiredString(b.transportista_cuit||transportista.cuit,"TRANSPORTISTA_CUIT");
+    const destinatarioCuit=cuitDigits(b.destinatario_cuit,"DESTINATARIO");
+    const transportistaCuit=cuitDigits(b.transportista_cuit||transportista.cuit,"TRANSPORTISTA");
     const dominio=requiredString(b.dominio_camion||viaje.patente_camion,"DOMINIO_CAMION");
     const dominioAcoplado=String(b.dominio_acoplado||viaje.patente_acoplado||"").trim();
     const fechaPartidaRaw=requiredString(b.fecha_hora_partida,"FECHA_HORA_PARTIDA"); const fechaPartida=fechaPartidaRaw.length===16?fechaPartidaRaw+":00":fechaPartidaRaw;
     const km=requiredString(b.km_recorrer,"KM_RECORRER");
-    const choferCuit=requiredString(b.chofer_cuit||transportista.cuit,"CHOFER_CUIT");
-    const pagadorFlete=requiredString(b.cuit_pagador_flete,"CUIT_PAGADOR_FLETE");
-    const intermediarioFlete=String(b.cuit_intermediario_flete??"").trim();
+    const choferCuit=cuitDigits(b.chofer_cuit||transportista.cuit,"CHOFER");
+    const pagadorFlete=cuitDigits(b.cuit_pagador_flete,"PAGADOR_FLETE");
+    const intermediarioFlete=cuitDigits(b.cuit_intermediario_flete,"INTERMEDIARIO_FLETE",true);
     const fumigada=String(b.mercaderia_fumigada??"false");
 
     const token=await getToken(environment,cuit,cert,key);
@@ -197,7 +199,7 @@ Deno.serve(async req=>{
     if(!Number.isInteger(nroOrden)||nroOrden<1)throw new Error("WSCPE_INVALID_NRO_ORDEN");
 
     const origin='<origen><productor><codProvincia>'+esc(origenProvincia)+'</codProvincia><codLocalidad>'+esc(origenLocalidad)+'</codLocalidad>'+optionalXml("nroRenspa",b.nro_renspa)+'</productor></origen>';
-    const inter='<intervinientes>'+optionalXml("cuitRemitenteComercialVentaPrimaria",b.cuit_remitente_comercial_venta_primaria)+optionalXml("cuitRemitenteComercialVentaSecundaria",b.cuit_remitente_comercial_venta_secundaria)+optionalXml("cuitCorredorVentaPrimaria",b.cuit_corredor_venta_primaria)+optionalXml("cuitCorredorVentaSecundaria",b.cuit_corredor_venta_secundaria)+'</intervinientes>';
+    const inter='<intervinientes>'+optionalCuitXml("cuitRemitenteComercialVentaPrimaria",b.cuit_remitente_comercial_venta_primaria)+optionalCuitXml("cuitRemitenteComercialVentaSecundaria",b.cuit_remitente_comercial_venta_secundaria)+optionalCuitXml("cuitCorredorVentaPrimaria",b.cuit_corredor_venta_primaria)+optionalCuitXml("cuitCorredorVentaSecundaria",b.cuit_corredor_venta_secundaria)+'</intervinientes>';
     const load='<datosCarga><codGrano>'+esc(tipoGrano)+'</codGrano>'+optionalXml("cosecha",b.cosecha)+'<pesoBruto>'+esc(pesoBruto)+'</pesoBruto><pesoTara>'+esc(pesoTara)+'</pesoTara></datosCarga>';
     const dest='<destino><cuit>'+esc(destinoCuit)+'</cuit><esDestinoCampo>'+String(Boolean(b.es_destino_campo))+'</esDestinoCampo><codProvincia>'+esc(destinoProvincia)+'</codProvincia><codLocalidad>'+esc(destinoLocalidad)+'</codLocalidad>'+optionalXml("planta",b.planta)+'</destino><destinatario><cuit>'+esc(destinatarioCuit)+'</cuit></destinatario>';
     const transport='<transporte><cuitTransportista>'+esc(transportistaCuit)+'</cuitTransportista><dominio>'+esc(dominio)+'</dominio>'+optionalXml("dominio",dominioAcoplado)+'<fechaHoraPartida>'+esc(fechaPartida)+'</fechaHoraPartida><kmRecorrer>'+esc(km)+'</kmRecorrer>'+optionalXml("codigoTurno",b.codigo_turno)+'<cuitChofer>'+esc(choferCuit)+'</cuitChofer>'+optionalXml("tarifa",b.tarifa)+'<cuitPagadorFlete>'+esc(pagadorFlete)+'</cuitPagadorFlete>'+optionalXml("cuitIntermediarioFlete",intermediarioFlete)+'<mercaderiaFumigada>'+fumigada+'</mercaderiaFumigada></transporte>';
