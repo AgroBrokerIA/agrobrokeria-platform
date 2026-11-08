@@ -11,7 +11,7 @@ type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|
 
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["zh","中文"],["fr","Français"],["it","Italiano"],["ru","Русский"],["hi","हिन्दी"],["de","Deutsch"]];
 
-type FormState={operacionId:string;tipo:"F1";tipoOperacion:string;producto:string;campania:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;terminalId:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string;intermediario:string;vendedorEmpresaId:string;compradorEmpresaId:string;intermediarioEmpresaId:string;vendedorCuit:string;compradorCuit:string;intermediarioCuit:string;vendedorSisa:string;compradorSisa:string;intermediarioSisa:string;procedencia:string;jurisdiccion:string;ciudadArbitral:string;comision:string};
+type FormState={operacionId:string;tipo:"F1";tipoOperacion:string;producto:string;campania:string;cantidad:string;precio:string;moneda:string;condicion:string;puerto:string;terminalId:string;entrega:string;pago:string;observaciones:string;vendedor:string;comprador:string;intermediario:string;vendedorEmpresaId:string;compradorEmpresaId:string;intermediarioEmpresaId:string;vendedorCuit:string;compradorCuit:string;intermediarioCuit:string;vendedorSisa:string;compradorSisa:string;intermediarioSisa:string;procedencia:string;jurisdiccion:string;ciudadArbitral:string;comision:string;calidad:string;responsableFlete:string;plazoPago:string};
 type CompanyOption={id:string;rol:string;razon_social:string;cuit:string;sisa_categoria:string;sisa_status:string;verificada:boolean};
 type TerminalOption={id:string;nombre:string;puerto:string|null;localidad:string|null;provincia:string|null};
 type Operation={id:string;codigo:string;cantidad_tn:number;precio_tn:number;importe_total:number;estado:string;moneda:string|null;publicacion_compra_id:string|null;publicacion_venta_id:string|null};
@@ -19,7 +19,7 @@ type Extension={id:string;operacion_id:string;contrato_id:string;motivo:string;j
 type ConfidentialityStatus={rol:"COMPRADOR"|"VENDEDOR"|"INTERMEDIARIO";company_id:string;requerido:boolean;aceptado:boolean;aceptado_at:string|null;version:string|null;hash_sha256:string|null;documento_codigo?:string|null;documento_titulo?:string|null};
 type ExternalDoc={id:string;nombre_archivo:string|null;url_archivo:string|null;aprobado:boolean|null;firmado_externamente:boolean|null;sha256:string|null;creado_en:string|null;operacion_id:string};
 
-const initial:FormState={operacionId:"",tipo:"F1",tipoOperacion:"COMPRAVENTA (COMPRA + VENTA)",producto:"",campania:"",cantidad:"",precio:"",moneda:"",condicion:"",puerto:"",terminalId:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:"",intermediario:"",vendedorEmpresaId:"",compradorEmpresaId:"",intermediarioEmpresaId:"",vendedorCuit:"",compradorCuit:"",intermediarioCuit:"",vendedorSisa:"",compradorSisa:"",intermediarioSisa:"",procedencia:"",jurisdiccion:"",ciudadArbitral:"",comision:""};
+const initial:FormState={operacionId:"",tipo:"F1",tipoOperacion:"COMPRAVENTA (COMPRA + VENTA)",producto:"",campania:"",cantidad:"",precio:"",moneda:"",condicion:"",puerto:"",terminalId:"",entrega:"",pago:"",observaciones:"",vendedor:"",comprador:"",intermediario:"",vendedorEmpresaId:"",compradorEmpresaId:"",intermediarioEmpresaId:"",vendedorCuit:"",compradorCuit:"",intermediarioCuit:"",vendedorSisa:"",compradorSisa:"",intermediarioSisa:"",procedencia:"",jurisdiccion:"Provincia de Santa Fe",ciudadArbitral:"Venado Tuerto",comision:"",calidad:"",responsableFlete:"",plazoPago:""};
 
 function esc(v:string){return v.replace(/[<>]/g,"");}
 function money(v:string){const n=Number(v||0);return Number.isFinite(n)?n.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2}):"0,00"}
@@ -28,72 +28,75 @@ function drawWrapped(pdf:jsPDF,text:string,x:number,y:number,maxWidth:number,fon
  pdf.setFont("helvetica","normal");pdf.setFontSize(fontSize);const lines=pdf.splitTextToSize(text,maxWidth);pdf.text(lines,x,y);return y+lines.length*lineGap;
 }
 
-function buildPdfWithoutIntermediary(f:FormState){
- const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- const W=pdf.internal.pageSize.getWidth();const m=42;const blue=[35,68,110] as const;
- const field=(v:string)=>v||"_______________________________";
- const wrap=(t:string,x:number,y:number,w:number,size=9,gap=11)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(size);const ls=pdf.splitTextToSize(t,w);pdf.text(ls,x,y);return y+ls.length*gap};
- const title=(t:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);pdf.text(t,W/2,42,{align:"center"});};
- title("BORRADOR DE CONDICIONES COMERCIALES · F1");
- pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text("Conste por el presente documento un contrato formal de compraventa de granos F1, celebrado el "+new Date().toLocaleDateString("es-AR")+", entre las partes identificadas a continuación.",m,70);
- let y=98;
- pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=17;
- y=wrap("EL VENDEDOR: "+field(f.vendedor)+" · CUIT: "+(f.vendedorCuit||"___________________")+" · SISA: "+(f.vendedorSisa||"No informado")+". Domicilio en ______________________________.",m,y,W-2*m);
- y=wrap("EL COMPRADOR: "+field(f.comprador)+" · CUIT: "+(f.compradorCuit||"___________________")+" · SISA: "+(f.compradorSisa||"No informado")+". Domicilio en ______________________________.",m,y+4,W-2*m);
- y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("2. CONDICIONES PARTICULARES",m,y);y+=16;
- const rows=[
-  ["Grano / Producto",field(f.producto)],["Cosecha / Campaña",field(f.campania)],
-  ["Tipo de operación",f.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],
-  ["Cantidad",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],
-  ["Precio Pactado",f.precio?money(f.precio)+" "+(f.moneda||"SIN MONEDA")+" por Tonelada Métrica":"________________ por Tonelada Métrica"],
-  ["Base de Entrega",f.condicion||"________________"],["Procedencia",field(f.procedencia)],
-  ["Destino / Entrega",f.puerto||"________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"],
-  ["Forma de Pago",f.pago||"________________"],["Observaciones",f.observaciones||"________________"]
+function f1ContractSections(f:FormState):[string,string][]{
+ const tn=Math.max(0,Number(f.cantidad||0));
+ const total=tn*Math.max(0,Number(f.precio||0));
+ const commission=tn*1;
+ const moneyLabel=(value:number)=>value.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
+ const origin=f.procedencia||"A completar por las partes";
+ const destination=f.puerto||"A completar por las partes";
+ const payment=f.pago||"A definir por las partes";
+ const paymentTerm=f.plazoPago||"A definir por las partes";
+ const freight=f.responsableFlete||"A definir por las partes";
+ const quality=f.calidad||"Según especificaciones comerciales y documentación de calidad que se adjunte";
+ return [
+  ["CLÁUSULA 1 — OBJETO Y MERCADERÍA",`El VENDEDOR se obliga a transferir en propiedad y entregar al COMPRADOR, y este se obliga a recibir y abonar según las condiciones comerciales establecidas, la mercadería declarada bajo el presente Modelo F1: Producto: ${f.producto||"A completar"}; Cosecha/Campaña: ${f.campania||"A completar"}; Condición de calidad: ${quality}; Volumen total: ${tn?moneyLabel(tn)+" toneladas métricas ("+moneyLabel(tn*1000)+" kg)":"A completar"}; Operación de mercado identificada por el ID ${f.operacionId||"pendiente de asignación"}.`],
+  ["CLÁUSULA 2 — PRECIO Y LIQUIDACIÓN",`El precio pactado es de ${f.moneda||"moneda a definir"} ${f.precio?moneyLabel(Number(f.precio)):"A completar"} por tonelada métrica. El importe total estimado asciende a ${f.moneda||"moneda a definir"} ${f.precio&&tn?moneyLabel(total):"A completar"}. La liquidación de los granos efectivamente pesados se realizará mediante transferencia bancaria directa a las cuentas declaradas por las partes, una vez emitida la Liquidación Primaria de Granos (LPG) que corresponda. Condición de precio: ${f.condicion||"A definir"}.`],
+  ["CLÁUSULA 3 — CONDICIONES DE LOGÍSTICA Y ENTREGA",`Lugar de carga / origen: ${origin}. Destino de descarga: ${destination}. Modalidad y forma de pago: ${payment}. Plazo de pago y ejecución: ${paymentTerm}. Responsabilidad del flete: ${freight}. Período de entrega: ${f.entrega||"A definir por las partes"}. Las cantidades finales se determinarán por los comprobantes de pesaje y recepción correspondientes.`],
+  ["CLÁUSULA 4 — INTEGRACIÓN REGULATORIA DE CARTAS DE PORTE (CPE)",`El movimiento físico de la mercadería deberá estar respaldado por una Carta de Porte Electrónica (CPE) autorizada por ARCA. AgroBrokerIA vinculará el CTG, el estado de autorización, el viaje, el transportista y los dominios registrados en el expediente de la operación, y conservará el PDF oficial cuando ARCA lo entregue o la copia oficial que carguen las partes. El seguimiento GPS y las alertas de ruta solo funcionarán durante el viaje cuando el transportista otorgue permiso de geolocalización y exista una ruta georreferenciada válida cargada para ese trayecto. Estos controles tecnológicos no sustituyen la CPE ni las verificaciones de las autoridades competentes.`],
+  ["CLÁUSULA 5 — COMISIÓN TECNOLÓGICA Y REGISTRO DE LIBERACIÓN",`Las partes prestan conformidad para el pago de la comisión por servicio tecnológico de intermediación digital de AgroBrokerIA, fijada en USD 1,00 por tonelada métrica efectivamente entregada y validada. Para el volumen declarado, la comisión estimada es de USD ${moneyLabel(commission)} y se ajustará a las toneladas finales documentadas. El importe se abonará mediante transferencia bancaria directa a la cuenta informada por Agocomercio Santa Fe. AgroBrokerIA registrará la comisión como pendiente y su liberación contable quedará condicionada a la confirmación documentada de recepción/descarga. La plataforma no recibe, custodia ni mantiene fondos correspondientes al precio de los granos o al flete; esos pagos se realizan directamente entre las partes por los medios bancarios que estas acuerden.`],
+  ["CLÁUSULA 6 — LEGISLACIÓN, JURISDICCIÓN Y FIRMA",`Para cualquier controversia derivada de la interpretación o ejecución del presente contrato, las partes constituyen domicilio en los domicilios informados en sus legajos y se someten a la jurisdicción de los Tribunales Ordinarios de ${f.ciudadArbitral||"Venado Tuerto"}, ${f.jurisdiccion||"Provincia de Santa Fe"}, salvo norma imperativa en contrario. En prueba de conformidad, las partes imprimirán, firmarán fuera de AgroBrokerIA y cargarán las copias PDF firmadas desde el expediente del contrato. La plataforma registrará la fecha de recepción y la huella SHA-256 de cada archivo. La firma digital integrada dentro de AgroBrokerIA no se encuentra habilitada.`]
  ];
- const c1=145,c2=W-2*m-c1;
- for(const [a,b] of rows){const wrapped=pdf.splitTextToSize(b,c2-12);const h=Math.max(27,wrapped.length*10+13);if(y+h>pdf.internal.pageSize.getHeight()-58){pdf.addPage();y=48;}pdf.setDrawColor(175,190,205);pdf.rect(m,y,c1,h);pdf.rect(m+c1,y,c2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+Math.min(17,h-7));pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(30,30,30);pdf.text(wrapped,m+c1+6,y+11);y+=h;}
- y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(10);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=17;y=wrap("Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
- const clauses: [string, string][] = [];
- for(const [h,t] of clauses){pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text(h,m,y);y=wrap(t,m,y+12,W-2*m,8.5,10);y+=7;if(y>760){pdf.addPage();y=48;}}
- y+=12;
- if(y+92>pdf.internal.pageSize.getHeight()-40){pdf.addPage();y=48;}
- pdf.setFont("helvetica","bold");pdf.setFontSize(9);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=16;
- pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=30;
- const sigs=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
- sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+170,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+12);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+pdf.splitTextToSize(b,165)[0],x,y+24);pdf.text("DNI/Pasaporte: __________________",x,y+36);});
+}
+
+function buildF1Pdf(f:FormState){
+ const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
+ const W=pdf.internal.pageSize.getWidth(),H=pdf.internal.pageSize.getHeight(),m=42;
+ const blue=[35,68,110] as const,green=[41,105,72] as const;
+ let y=48;
+ const ensure=(height:number)=>{if(y+height>H-48){pdf.addPage();y=48;}};
+ const paragraph=(text:string,size=8.8,gap=11.5,after=7)=>{
+  pdf.setFont("helvetica","normal");pdf.setFontSize(size);pdf.setTextColor(35,35,35);
+  const lines=pdf.splitTextToSize(text,W-2*m);ensure(lines.length*gap+after+2);pdf.text(lines,m,y);y+=lines.length*gap+after;
+ };
+ const heading=(text:string)=>{
+  ensure(25);pdf.setFont("helvetica","bold");pdf.setFontSize(9.4);pdf.setTextColor(...blue);pdf.text(text,m,y);y+=15;
+ };
+ const operationId=f.operacionId||"PENDIENTE";
+ const shortId=operationId.replace(/[^a-z0-9]/gi,"").slice(0,16).toUpperCase()||"PENDIENTE";
+ pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);
+ pdf.text('CONTRATO DE COMPRAVENTA DE GRANOS "MODELO F1"',W/2,y,{align:"center"});y+=23;
+ pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.setTextColor(...green);
+ pdf.text("N° CONTRATO: CON-"+shortId,m,y);y+=13;
+ pdf.text("N° OPERACIÓN: "+operationId,m,y);y+=13;
+ pdf.text("FECHA DE EMISIÓN: "+new Date().toLocaleDateString("es-AR"),m,y);y+=17;
+ heading("PREÁMBULO: PARTES CONTRATANTES");
+ paragraph(`En la localidad de ${f.ciudadArbitral||"Venado Tuerto"}, ${f.jurisdiccion||"Provincia de Santa Fe"}, República Argentina, se celebra el presente instrumento de compraventa de granos mediante la plataforma AgroBrokerIA, con intervención de las partes identificadas a continuación.`);
+ paragraph(`1. EL VENDEDOR: ${f.vendedor||"A completar"}, CUIT/CUIL ${f.vendedorCuit||"A completar"}, domicilio constituido según legajo digital, condición SISA: ${f.vendedorSisa||"No informada"}.`);
+ paragraph(`2. EL COMPRADOR: ${f.comprador||"A completar"}, CUIT/CUIL ${f.compradorCuit||"A completar"}, domicilio constituido según legajo digital, condición SISA: ${f.compradorSisa||"No informada"}.`);
+ if(f.intermediario.trim()) paragraph(`3. EL INTERMEDIARIO: ${f.intermediario}, CUIT ${f.intermediarioCuit||"A completar"}, condición SISA: ${f.intermediarioSisa||"No informada"}, con domicilio según legajo digital.`);
+ for(const [title,body] of f1ContractSections(f)){heading(title);paragraph(body,8.6,11,8);}
+ heading("FIRMAS EXTERNAS DE LAS PARTES");
+ paragraph("Las partes deberán firmar este documento fuera de AgroBrokerIA y cargar los PDF firmados por vendedor y comprador. Si existe intermediario, podrá cargar su copia firmada en el mismo expediente.");
+ const parties:[string,string][]=[["EL VENDEDOR",f.vendedor||"____________________________"],["EL COMPRADOR",f.comprador||"____________________________"]];
+ if(f.intermediario.trim()) parties.push(["EL INTERMEDIARIO",f.intermediario]);
+ ensure(100);
+ const col=(W-2*m)/parties.length;
+ parties.forEach(([role,name],i)=>{
+  const x=m+i*col;pdf.setDrawColor(90,100,110);pdf.line(x,y,x+col-18,y);
+  pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(role,x,y+13);
+  pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(35,35,35);
+  pdf.text("Nombre/Razón social: "+pdf.splitTextToSize(name,col-20)[0],x,y+26);
+  pdf.text("CUIT/DNI: ______________________",x,y+39);
+  pdf.text("Fecha: ____/____/________",x,y+52);
+ });
+ y+=72;heading("HUELLA DE AUDITORÍA AGROBROKERIA");
+ paragraph("La huella criptográfica SHA-256 se calcula y registra automáticamente al cargar cada PDF firmado en el expediente digital. El hash definitivo de cada archivo queda asociado a su registro documental; no se utiliza un hash de ejemplo en el contrato.");
  return pdf;
 }
 
-function buildPdf(f:FormState){
- if(!f.intermediario.trim()) return buildPdfWithoutIntermediary(f);
- const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});
- const W=pdf.internal.pageSize.getWidth();const H=pdf.internal.pageSize.getHeight();const m=42;const green=[41,105,72] as const;const blue=[35,68,110] as const;
- const field=(label:string,value:string)=>value||"_______________________________";
- const party=(role:string,value:string)=>`• EL ${role}: ${field(role,value)}`;
- const pageTitle=(title:string,subtitle?:string)=>{pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...(blue));pdf.text(title,W/2,42,{align:"center"});if(subtitle){pdf.setFontSize(10);pdf.setTextColor(...green);pdf.text(subtitle,W/2,57,{align:"center"})}};
- const header=(dateText:string)=>{pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(55,55,55);pdf.text(`Borrador generado el ${dateText}. Este documento resume datos comerciales y no sustituye el modelo oficial F1 vigente.`,m,76);};
- if(f.tipo==="F1"){
-   pageTitle("BORRADOR DE CONDICIONES COMERCIALES · F1");
-   header(new Date().toLocaleDateString("es-AR"));
-   let y=100;
-   pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("1. PARTES INTERVINIENTES",m,y);y+=18;
-   y=drawWrapped(pdf,party("VENDEDOR",f.vendedor)+` · CUIT: ${f.vendedorCuit||"___________________"} · SISA: ${f.vendedorSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("COMPRADOR",f.comprador)+` · CUIT: ${f.compradorCuit||"___________________"} · SISA: ${f.compradorSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
-   y+=5;y=drawWrapped(pdf,party("INTERMEDIARIO (BRÓKER)",f.intermediario)+` · CUIT: ${f.intermediarioCuit||"___________________"} · SISA: ${f.intermediarioSisa||"No informado"} · domicilio en ______________________________.`,m,y,W-2*m,9);
-   y+=12;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("2. CONDICIONES PARTICULARES DE LA MERCADERÍA",m,y);y+=14;
-   const rows=[["Grano / Producto",field("",f.producto)],["Cosecha / Campaña",field("",f.campania)],["Cantidad (Toneladas)",f.cantidad?money(f.cantidad)+" Toneladas Métricas":"________________ Toneladas Métricas"],["Precio Pactado",f.precio?money(f.precio)+" por Tonelada Métrica (Moneda: "+(f.moneda||"________")+")":"________________ por Tonelada Métrica (Moneda: ________)"],["Base de Entrega",f.condicion||"________________ (Ej: FAS / FOB / Planta)"],["Procedencia",field("",f.procedencia)],["Destino / Entrega",f.puerto||"_______________________________"],["Período de Entrega",f.entrega||"Desde el ____/____/_______ hasta el ____/____/_______"]];
-   const col1=145,col2=W-2*m-col1;for(const [a,b] of rows){const ls=pdf.splitTextToSize(b,col2-12);const h=Math.max(28,ls.length*10+14);if(y+h>H-64){pdf.addPage();y=48;}pdf.setDrawColor(175,190,205);pdf.rect(m,y,col1,h);pdf.rect(m+col1,y,col2,h);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.setTextColor(...blue);pdf.text(a,m+6,y+17);pdf.setFont("helvetica","normal");pdf.setFontSize(8);pdf.setTextColor(30,30,30);pdf.text(ls,m+col1+6,y+12);y+=h;}
-   y+=14;pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.text("3. DOCUMENTO PRELIMINAR",m,y);y+=18;y=drawWrapped(pdf,"Este documento resume las condiciones comerciales registradas. No incorpora cláusulas jurídicas creadas por AgroBrokerIA ni sustituye el modelo oficial F1 vigente de la Bolsa correspondiente. Las partes deben utilizar el modelo oficial aplicable y cargar aquí las copias PDF firmadas externamente.",m,y,W-2*m,8.5,10);
-   // Las firmas se ubican al pie de la primera página cuando hay espacio.
-   // Solo se abre otra página si el contenido real no deja margen suficiente.
-   if(y+112>H-42){pdf.addPage();y=48;}else{y+=14;}
-   pdf.setFont("helvetica","bold");pdf.setFontSize(11);pdf.setTextColor(25,25,25);pdf.text("FIRMAS EXTERNAS DE LAS PARTES",m,y);y+=18;
-   pdf.setFont("helvetica","normal");pdf.setFontSize(8.5);pdf.text("Firmar fuera de AgroBrokerIA y cargar las copias PDF firmadas en la operación.",m,y);y+=34;
-   const sigs=[["Por el Vendedor",f.vendedor||"____________________________"],["Por el Comprador",f.comprador||"____________________________"]];
-   sigs.forEach(([a,b],i)=>{const x=m+i*(W-2*m)/2;pdf.line(x,y,x+170,y);pdf.setFont("helvetica","bold");pdf.setFontSize(8);pdf.text(a,x,y+12);pdf.setFont("helvetica","normal");pdf.text("Nombre: "+pdf.splitTextToSize(b,165)[0],x,y+24);pdf.text("DNI/Pasaporte: __________________",x,y+36);});
-  }
- return pdf;
-}
+function buildPdfWithoutIntermediary(f:FormState){return buildF1Pdf(f);}
+function buildPdf(f:FormState){return buildF1Pdf(f);}
 
 function buildConfidentialityPdf(f:FormState){
  const pdf=new jsPDF({orientation:"portrait",unit:"pt",format:"a4"});const W=pdf.internal.pageSize.getWidth(),m=42;let y=45;
