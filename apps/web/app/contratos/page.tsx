@@ -65,7 +65,7 @@ function buildF1Pdf(f:FormState){
  const operationId=f.operacionId||"PENDIENTE";
  const shortId=operationId.replace(/[^a-z0-9]/gi,"").slice(0,16).toUpperCase()||"PENDIENTE";
  pdf.setFont("helvetica","bold");pdf.setFontSize(15);pdf.setTextColor(...blue);
- pdf.text('CONTRATO DE COMPRAVENTA DE GRANOS "MODELO F1"',W/2,y,{align:"center"});y+=23;
+ pdf.text('CONTRATO DE COMPRAVENTA DE GRANOS &quot;MODELO F1&quot;',W/2,y,{align:"center"});y+=23;
  pdf.setFont("helvetica","bold");pdf.setFontSize(8.5);pdf.setTextColor(...green);
  pdf.text("N° CONTRATO: CON-"+shortId,m,y);y+=13;
  pdf.text("N° OPERACIÓN: "+operationId,m,y);y+=13;
