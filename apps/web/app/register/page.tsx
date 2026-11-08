@@ -64,10 +64,16 @@ export default function RegisterPage() {
         ...prev,
         ...(tipo==="empresa"?{
           legalName:d.razonSocial||[d.apellido,d.nombre].filter(Boolean).join(" ")||prev.legalName,
-          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode
+          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode,
+          economicActivity:d.actividades?.[0]||prev.economicActivity,
+          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
+          vatStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
         }:{
           firstName:d.nombre||prev.firstName,lastName:d.apellido||prev.lastName,
-          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode
+          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode,
+          economicActivity:d.actividades?.[0]||prev.economicActivity,
+          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
+          vatStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
         })
       }));
       setLookupMessage("Datos encontrados en el padrón de ARCA. Revisalos antes de confirmar el registro.");
