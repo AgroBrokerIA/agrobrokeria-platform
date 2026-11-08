@@ -139,7 +139,9 @@ Deno.serve(async req=>{
     const {data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
     const companyId=profile?.active_company_id;
     if(!companyId)return json({error:"NO_ACTIVE_COMPANY"},409);
-    const {data:participant}=await db.from("operacion_participantes").select("id").eq("operacion_id",operationId).eq("empresa_id",companyId).limit(1);
+    const {data:companyMap}=await db.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).order("verified",{ascending:false}).limit(1).maybeSingle();
+    const empresaId=companyMap?.empresa_id||companyId;
+    const {data:participant}=await db.from("operacion_participantes").select("id").eq("operacion_id",operationId).eq("empresa_id",empresaId).limit(1);
     if(!participant?.length)return json({error:"FORBIDDEN_OPERATION"},403);
 
     const {data:platformAdmin,error:adminError}=await db.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
@@ -158,7 +160,7 @@ Deno.serve(async req=>{
     if(authorizationError)return json({error:"BROKER_AUTHORIZATION_LOOKUP_FAILED"},500);
     if(!platformAdmin&&!companyAdmin&&!brokerAuthorization)return json({error:"COMPANY_ADMIN_OR_AUTHORIZED_BROKER_REQUIRED"},403);
 
-    const {data:company}=await db.from("empresas").select("id,cuit").eq("id",companyId).maybeSingle();
+    const {data:company}=await db.from("empresas").select("id,cuit").eq("id",empresaId).maybeSingle();
     if(!company?.cuit)return json({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"},409);
     const {data:cfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cuit_secret_name").eq("company_id",companyId).maybeSingle();
     if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
