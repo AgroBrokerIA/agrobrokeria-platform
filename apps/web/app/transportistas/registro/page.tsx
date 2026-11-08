@@ -11,6 +11,9 @@ export default function RegistroTransportistaPage() {
   const [cuit, setCuit] = useState("");
   const [empresa, setEmpresa] = useState("");
   const [telefono, setTelefono] = useState("");
+  const [patenteCamion,setPatenteCamion]=useState("");
+  const [patenteAcoplado,setPatenteAcoplado]=useState("");
+  const [capacidadTn,setCapacidadTn]=useState("");
   const [foto, setFoto] = useState<File | null>(null);
   const [documento, setDocumento] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
@@ -21,6 +24,7 @@ export default function RegistroTransportistaPage() {
     e.preventDefault();
     setError("");
     setOk(false);
+    if (!patenteCamion.trim()) { setError("Registrá la patente del camión para poder recibir asignaciones."); return; }
     if (!foto) {
       setError("Adjuntá una fotografía actual del conductor para la verificación de identidad.");
       return;
@@ -72,8 +76,14 @@ export default function RegistroTransportistaPage() {
       await supabase.storage.from("agrobroker-private").remove(dniPath ? [fotoPath, dniPath] : [fotoPath]);
       setError("No se pudo registrar el perfil: " + rpcError.message);
     } else {
+      const truckResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteCamion,p_tipo:"CAMION",p_capacidad_tn:capacidadTn?Number(capacidadTn):null});
+      let vehicleError=truckResult.error;
+      if(!vehicleError && patenteAcoplado.trim()){
+        const trailerResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteAcoplado,p_tipo:"ACOPLADO",p_capacidad_tn:null});
+        vehicleError=trailerResult.error;
+      }
       setOk(true);
-      setError("");
+      setError(vehicleError?"El perfil se registró, pero no se pudo guardar uno de los dominios: "+vehicleError.message+" . Volvé a cargar el vehículo desde tu perfil o contactá Administración.":"");
     }
     setLoading(false);
   }
@@ -88,7 +98,8 @@ export default function RegistroTransportistaPage() {
         {ok ? (
           <div role="status" style={{ padding: 16, borderRadius: 10, background: "#ecfdf5", color: "#166534", border: "1px solid #a7f3d0" }}>
             <strong>Solicitud enviada.</strong>
-            <p style={{ marginBottom: 0 }}>Tu perfil quedó pendiente de verificación por AgroBrokerIA. Hasta que se verifique no podrás recibir asignaciones de viajes.</p>
+            <p style={{ marginBottom: 0 }}>Tu perfil y los dominios registrados quedaron pendientes de verificación por AgroBrokerIA. Hasta que se verifique no podrás recibir asignaciones de viajes.</p>
+            {error&&<p style={{marginBottom:0,color:"#92400e"}}>{error}</p>}
           </div>
         ) : (
           <form onSubmit={enviar} style={{ display: "grid", gap: 13 }}>
@@ -107,6 +118,15 @@ export default function RegistroTransportistaPage() {
               </label>
               <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Teléfono
                 <input value={telefono} onChange={e => setTelefono(e.target.value)} style={field} />
+              </label>
+              <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Patente del camión (obligatoria)
+                <input required value={patenteCamion} onChange={e=>setPatenteCamion(e.target.value.toUpperCase())} placeholder="Ej. AB123CD" style={field} />
+              </label>
+              <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Patente del acoplado (opcional)
+                <input value={patenteAcoplado} onChange={e=>setPatenteAcoplado(e.target.value.toUpperCase())} placeholder="Ej. AC123EF" style={field} />
+              </label>
+              <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Capacidad del camión (TN)
+                <input type="number" min="1" step="0.1" value={capacidadTn} onChange={e=>setCapacidadTn(e.target.value)} style={field} />
               </label>
             </div>
             <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Fotografía actual del conductor
