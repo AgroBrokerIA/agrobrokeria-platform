@@ -18,10 +18,19 @@ export const arcaConfig = {
     isProduction ? "agrobrokeria-wscpe.key" : "agrobrokeria-wscpe-homo.key"
   ),
 
-  certificatePem: process.env.ARCA_CERTIFICATE_PEM ?? null,
-  privateKeyPem: process.env.ARCA_PRIVATE_KEY_PEM ?? null,
-  certificateBase64: process.env.ARCA_CERTIFICATE_BASE64 ?? null,
-  privateKeyBase64: process.env.ARCA_PRIVATE_KEY_BASE64 ?? null,
+  // Homologation must never fall back to production credentials.
+  certificatePem: isProduction
+    ? process.env.ARCA_CERTIFICATE_PEM ?? null
+    : process.env.ARCA_CERTIFICATE_HOMO_PEM ?? null,
+  privateKeyPem: isProduction
+    ? process.env.ARCA_PRIVATE_KEY_PEM ?? null
+    : process.env.ARCA_PRIVATE_KEY_HOMO_PEM ?? null,
+  certificateBase64: isProduction
+    ? process.env.ARCA_CERTIFICATE_BASE64 ?? null
+    : process.env.ARCA_CERTIFICATE_HOMO_BASE64 ?? null,
+  privateKeyBase64: isProduction
+    ? process.env.ARCA_PRIVATE_KEY_BASE64 ?? null
+    : process.env.ARCA_PRIVATE_KEY_HOMO_BASE64 ?? null,
 
   wsaaUrl: isProduction
     ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
