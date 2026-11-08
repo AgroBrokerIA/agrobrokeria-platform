@@ -11,7 +11,7 @@ const typeMeta=(tipo:string|null)=>{
  if(t.includes("MENSAJ"))return{label:"Mensajes",icon:"▰",tone:"blue"};
  if(t.includes("CONTRAT"))return{label:"Contratos",icon:"♧",tone:"red"};
  if(t.includes("PAGO")||t.includes("FACTUR"))return{label:"Pagos",icon:"▤",tone:"yellow"};
- if(t.includes("LOG"))return{label:"Logística",icon:"▣",tone:"purple"};
+ if(t.includes("LOG")||t.includes("RECEPCION")||t.includes("CAMION")||t.includes("VIAJE"))return{label:"Logística",icon:"▣",tone:"purple"};
  if(t.includes("IA")||t.includes("OPORT"))return{label:"Oportunidades IA",icon:"★",tone:"yellow"};
  if(t.includes("DOC"))return{label:"Documentación",icon:"▤",tone:"green"};
  if(t.includes("OPER")||t.includes("OFERTA")||t.includes("DEMANDA"))return{label:"Operaciones",icon:"◆",tone:"green"};
