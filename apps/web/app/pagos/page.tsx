@@ -19,7 +19,7 @@ export default function PagosPage(){
  async function load(){
   setLoading(true);setError("");
   try{
-   const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const{data:adminFlag}=await supabase.rpc("es_administrador_plataforma");setIsAdmin(adminFlag===true);
+   const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const{data:adminFlag}=await supabase.rpc("es_administrador_plataforma");const admin=adminFlag===true;setIsAdmin(admin);
    const{data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(!profile?.active_company_id)throw new Error("No se encontró una empresa activa.");
    const {data:companyMap}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",profile.active_company_id).order("verified",{ascending:false}).limit(1).maybeSingle();
    const ownEntityId=companyMap?.empresa_id||profile.active_company_id;setOwnEmpresaId(ownEntityId);
@@ -42,10 +42,10 @@ export default function PagosPage(){
    }else{setPaymentOps([]);setSelectedPaymentOp("");}
    const [p,m,mon,w,c]=await Promise.all([
     supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").order("creado_en",{ascending:false}).limit(100),
-    supabase.from("medios_cobro").select("id,nombre,tipo,estado,alias,banco,cbu,moneda_id").eq("empresa_id",profile.active_company_id).order("es_predeterminado",{ascending:false}),
+    admin?supabase.from("medios_cobro").select("id,nombre,tipo,estado,alias,banco,cbu,moneda_id").eq("empresa_id",profile.active_company_id).order("es_predeterminado",{ascending:false}):Promise.resolve({data:[],error:null}),
     supabase.from("monedas").select("id,codigo"),
-    supabase.from("retiros_comisiones").select("id,importe,estado,fecha_solicitud,medio_cobro_id,moneda_id").eq("empresa_id",profile.active_company_id).order("fecha_solicitud",{ascending:false}).limit(50),
-    supabase.from("operacion_comisiones").select("saldo_pagado,saldo_reservado,estado,moneda_id").eq("empresa_id",profile.active_company_id)
+    admin?supabase.from("retiros_comisiones").select("id,importe,estado,fecha_solicitud,medio_cobro_id,moneda_id").eq("empresa_id",profile.active_company_id).order("fecha_solicitud",{ascending:false}).limit(50):Promise.resolve({data:[],error:null}),
+    admin?supabase.from("operacion_comisiones").select("saldo_pagado,saldo_reservado,estado,moneda_id").eq("empresa_id",profile.active_company_id):Promise.resolve({data:[],error:null})
    ]);
    if(p.error)throw p.error;if(m.error)throw m.error;if(mon.error)throw mon.error;
    setRows((p.data||[]) as Payment[]);setMethods((m.data||[]) as Method[]);setWithdrawals((w.data||[]) as Withdrawal[]);setCurr(Object.fromEntries((mon.data||[]).map((x:any)=>[x.id,x.codigo])));
@@ -90,7 +90,7 @@ export default function PagosPage(){
  }
  return <main className="payments-page">
   <header className="payments-hero"><div><h1>Pagos</h1><p>Gestioná y consultá los pagos registrados de tus operaciones.</p></div></header>
-  <nav className="payments-tabs"><Link className="active" href="/pagos">Resumen</Link><Link href="/transacciones">Transacciones</Link><Link href="/facturas">Facturación</Link>{isAdmin&&<><Link href="/medios-cobro">Medios de cobro</Link><Link href="/cuentas-bancarias">Cuentas bancarias</Link><Link href="/retiros-comisiones">Retiros</Link></>}</nav>
+  <nav className="payments-tabs"><Link className="active" href="/pagos">Resumen</Link><Link href="/transacciones">Transacciones</Link>{isAdmin?<Link href="/facturas">Facturación</Link>:<Link href="/cumplimientos#fiscal">Cumplimiento fiscal</Link>}{isAdmin&&<><Link href="/medios-cobro">Medios de cobro</Link><Link href="/cuentas-bancarias">Cuentas bancarias</Link><Link href="/retiros-comisiones">Retiros</Link></>}</nav>
   {error&&<div className="module-alert module-alert-error">{error}</div>}{msg&&<div className="module-alert">{msg}</div>}
   <section className="payment-kpis">
    <div className="payment-kpi green"><div className="payment-kpi-icon">✓</div><div><small>Pagos recibidos</small><strong>{received}</strong><em>Total de pagos registrados</em></div></div>
@@ -110,7 +110,7 @@ export default function PagosPage(){
    </div>:<p>No hay operaciones disponibles para registrar pagos desde esta empresa. Solo se muestran operaciones en las que participás como comprador o vendedor.</p>}
   </section>
   <section className="payments-content-grid">
-   <section className="payments-panel transactions-panel"><div className="payments-panel-title"><h2>Últimos pagos</h2><Link href="/transacciones">Ver todos →</Link></div><div className="payments-table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Método</th><th>Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{loading?<tr><td colSpan={6} className="payments-empty">Cargando pagos…</td></tr>:rows.slice(0,10).map(r=><tr key={r.id}><td>{r.fecha_pago?new Date(r.fecha_pago).toLocaleDateString("es-AR"):"—"}</td><td><strong>{r.operacion_id||"—"}</strong></td><td><span className="payment-type-icon blue">{iconFor(r.metodo_pago||"")}</span>{r.metodo_pago||"Pago de operación"}</td><td><strong>{money(Number(r.importe||0),curr[r.moneda_id||0]||"Moneda")}</strong></td><td><span className={`payment-state ${tone(r.estado)}`}>{label(r.estado)}</span></td><td><Link className="payment-action" href={r.operacion_id?"/operaciones/"+r.operacion_id:"/transacciones"}>→</Link></td></tr>)}</tbody></table></div></section>
+   <section className="payments-panel transactions-panel"><div className="payments-panel-title"><h2>Últimos pagos</h2><Link href="/transacciones">Ver todos →</Link></div><div className="payments-table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Método</th><th>Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{loading?<tr><td colSpan={6} className="payments-empty">Cargando pagos…</td></tr>:rows.slice(0,10).map(r=><tr key={r.id}><td>{(r.fecha_pago||r.creado_en)?new Date(r.fecha_pago||r.creado_en).toLocaleDateString("es-AR"):"—"}</td><td><strong>{r.operacion_id||"—"}</strong></td><td><span className="payment-type-icon blue">{iconFor(r.metodo_pago||"")}</span>{r.metodo_pago||"Pago de operación"}</td><td><strong>{money(Number(r.importe||0),curr[r.moneda_id||0]||"Moneda")}</strong></td><td><span className={`payment-state ${tone(r.estado)}`}>{label(r.estado)}</span></td><td><Link className="payment-action" href={r.operacion_id?"/operaciones/"+r.operacion_id:"/transacciones"}>→</Link></td></tr>)}</tbody></table></div></section>
    {isAdmin&&<section className="payments-panel withdrawal-panel"><h2>Solicitar retiro</h2><p className="withdrawal-balance">Saldo disponible <strong>{commissionCurrencyIds.length===1?money(balance,displayCurrency):"Varias monedas"}</strong></p><div className="withdrawal-amount">{commissionCurrencyIds.length===1?money(Number(amount||0),displayCurrency):"—"}</div><label>Monto a retirar</label><div className="withdrawal-input"><input type="number" min="0" max={balance} value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0,00"/><span>{displayCurrency||"Seleccioná una moneda"}</span></div><p className="withdrawal-method-note">El retiro se procesa mediante la cuenta bancaria seleccionada y su medio de cobro validado.</p><label>Cuenta bancaria</label><select value={bankId} onChange={e=>setBankId(e.target.value)}><option value="">Seleccionar cuenta</option>{banks.map(b=><option key={b.id} value={b.id}>{b.banco||b.nombre} · ****{b.cbu?.slice(-4)||"—"}</option>)}</select><button className="withdrawal-submit" disabled={busy||!amount||!bankId||commissionCurrencyIds.length!==1} onClick={requestWithdrawal}>{busy?"Procesando…":"Solicitar retiro →"}</button><div className="withdrawal-info"><span>ⓘ</span><div><strong>Procesamiento seguro</strong><p>La solicitud queda pendiente de validación y retenciones correspondientes.</p></div></div></section>}
   </section>
   {isAdmin&&<section className="payments-bottom-grid">
