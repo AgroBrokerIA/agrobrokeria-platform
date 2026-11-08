@@ -126,6 +126,38 @@ Deno.serve(async req=>{
     const uc=createClient(URL,ANON,{global:{headers:{Authorization:auth}}}); const {data:{user}}=await uc.auth.getUser();
     if(!user)return json({error:"AUTH_REQUIRED"},401);
     const b=await req.json().catch(()=>({}));
+    if(b.action==="health"){
+      const {data:admin,error:adminError}=await db.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle();
+      if(adminError)return json({error:"ADMIN_LOOKUP_FAILED"},500);
+      if(!admin)return json({error:"PLATFORM_ADMIN_REQUIRED"},403);
+      const {data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
+      const companyId=profile?.active_company_id;
+      if(!companyId)return json({error:"NO_ACTIVE_COMPANY"},409);
+      const {data:companyMap,error:mapError}=await db.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).eq("verified",true).order("created_at",{ascending:true}).limit(1).maybeSingle();
+      if(mapError)return json({error:"COMPANY_MAP_LOOKUP_FAILED"},500);
+      const empresaId=companyMap?.empresa_id||companyId;
+      const {data:company}=await db.from("empresas").select("id,cuit").eq("id",empresaId).maybeSingle();
+      if(!company?.cuit)return json({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"},409);
+      const {data:cfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cuit_secret_name").eq("company_id",companyId).maybeSingle();
+      if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
+      const environment=cfg.environment==="production"?"production":"homologacion";
+      const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
+      const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):"ARCA_CERTIFICATE_HOMO_BASE64";
+      const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):"ARCA_PRIVATE_KEY_HOMO_BASE64";
+      const cert=envPem(certSecretName,certSecretName),key=envPem(keySecretName,keySecretName);
+      if(!cert||!key)return json({ok:false,environment,cuit_configured:true,certificate_configured:!!cert,private_key_configured:!!key,error:environment==="production"?"ARCA_WSCPE_PRODUCTION_CREDENTIALS_NOT_CONFIGURED":"ARCA_WSCPE_HOMOLOGATION_CREDENTIALS_NOT_CONFIGURED"},409);
+      try{
+        const certificate=forge.pki.certificateFromPem(cert),privateKey=forge.pki.privateKeyFromPem(key);
+        const publicFromKey=forge.pki.rsa.setPublicKey((privateKey as any).n,(privateKey as any).e);
+        const privateKeyMatches=forge.pki.publicKeyToPem(certificate.publicKey)===forge.pki.publicKeyToPem(publicFromKey);
+        const now=new Date(),certificateValid=certificate.validity.notBefore<=now&&certificate.validity.notAfter>=now;
+        if(!privateKeyMatches||!certificateValid)return json({ok:false,environment,certificate_configured:true,private_key_configured:true,certificate_valid:certificateValid,private_key_matches:privateKeyMatches,error:"ARCA_HOMOLOGATION_CERTIFICATE_INVALID_OR_MISMATCHED"},409);
+        const ticket=await getToken(environment,cuit,cert,key);
+        const response=await soap(environment,"ConsultarProvinciasReq","",{token:ticket.token,sign:ticket.sign,cuit});
+        if(hasFault(response))return json({ok:false,environment,wsaa:"OK",wscpe:"FAULT",errors:allErrors(response),error:"ARCA_WSCPE_HOMOLOGATION_QUERY_FAILED"},502);
+        return json({ok:true,environment,certificate_valid:true,private_key_matches:true,wsaa:"OK",wscpe:"OK",message:"Autenticación y consulta de provincias WSCPE completadas. No se emitió ninguna Carta de Porte."});
+      }catch(e){return json({ok:false,environment,error:e instanceof Error?e.message:"ARCA_HOMOLOGATION_DIAGNOSTIC_FAILED"},502);}
+    }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
     const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
