@@ -55,9 +55,7 @@ export default function RegisterPage() {
     if(cuit.length!==11)return;
     setLookupLoading(true);setLookupMessage("");
     try{
-      const {data:{session}}=await supabase.auth.getSession();
-      if(!session?.access_token){setLookupMessage("La consulta oficial estará disponible al validar tu sesión.");return;}
-      const response=await fetch("/api/arca/padron/consulta",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+session.access_token},body:JSON.stringify({cuit})});
+      const response=await fetch("/api/arca/padron/consulta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cuit})});
       const payload=await response.json().catch(()=>({}));
       if(!response.ok||!payload?.ok)throw new Error(payload?.error||"No se pudieron consultar los datos oficiales.");
       const d=payload.result;
