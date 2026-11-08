@@ -7,6 +7,13 @@ export type PadronResult = {
   estadoClave?: string;
   tipoClave?: string;
   tipoPersona?: string;
+  nombre?: string;
+  apellido?: string;
+  razonSocial?: string;
+  domicilio?: string;
+  localidad?: string;
+  provincia?: string;
+  codigoPostal?: string;
   impuestos?: string[];
   actividades?: string[];
   monotributoDetectado?: boolean;
@@ -63,10 +70,18 @@ export async function consultarPersonaPadron(cuitInput:string):Promise<PadronRes
   const errorConstancia=tag(body,"errorConstancia");
   if(!general||errorConstancia)return {configured:true,found:false,error:errorConstancia?"ARCA no devolvió una constancia válida":"SIN_DATOS_GENERALES"};
   const estadoClave=tag(general,"estadoClave").toUpperCase()||"NO_INFORMADO";
+  const domicilioFiscal=tag(body,"domicilioFiscal");
+  const nombre=decodeXml(tag(general,"nombre"));
+  const apellido=decodeXml(tag(general,"apellido"));
+  const razonSocial=decodeXml(tag(general,"razonSocial"));
+  const domicilio=decodeXml(tag(domicilioFiscal,"direccion"));
+  const localidad=decodeXml(tag(domicilioFiscal,"localidad"));
+  const provincia=decodeXml(tag(domicilioFiscal,"descripcionProvincia")||tag(domicilioFiscal,"idProvincia"));
+  const codigoPostal=decodeXml(tag(domicilioFiscal,"codPostal"));
   const impuestos=[...body.matchAll(/<descripcionImpuesto>([\s\S]*?)<\/descripcionImpuesto>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
   const actividades=[...body.matchAll(/<descripcionActividad>([\s\S]*?)<\/descripcionActividad>/gi)].map(m=>decodeXml(m[1].trim())).filter(Boolean).slice(0,30);
   const monotributoBlock=tag(body,"datosMonotributo");
   const monotributoError=tag(body,"errorMonotributo")||null;
   const monotributoDetectado=!!monotributoBlock&&!monotributoError&&/(categoria|actividad|impuesto)/i.test(monotributoBlock);
-  return {configured:true,found:true,estadoClave,tipoClave:tag(general,"tipoClave"),tipoPersona:tag(general,"tipoPersona"),impuestos,actividades,monotributoDetectado,monotributoInformado:!!monotributoBlock||!!monotributoError,monotributoError};
+  return {configured:true,found:true,estadoClave,tipoClave:tag(general,"tipoClave"),tipoPersona:tag(general,"tipoPersona"),nombre,apellido,razonSocial,domicilio,localidad,provincia,codigoPostal,impuestos,actividades,monotributoDetectado,monotributoInformado:!!monotributoBlock||!!monotributoError,monotributoError};
 }
