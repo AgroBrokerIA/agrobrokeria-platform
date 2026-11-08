@@ -97,6 +97,7 @@ export default function CartaPortePage(){
     const {data,error:e}=await supabase.functions.invoke("carta-porte-arca",{body:payload});
     if(e){setError(e.message||"No se pudo invocar WSCPE.");setEmitting(false);return}
     if(!data?.ok){setError(data?.error||data?.errors?.map((x:any)=>x.code+": "+x.description).join(" | ")||"ARCA no autorizó la Carta de Porte.");setEmitting(false);return}
+    setViajes(prev=>prev.map(x=>x.id===selectedViaje?{...x,carta_porte_ctg:String(data.nro_ctg)}:x));
     setMessage("Carta de Porte autorizada por ARCA. CTG "+data.nro_ctg+" · orden "+data.nro_orden+". "+(data.pdf_disponible?"El PDF oficial también se guardó automáticamente en el expediente del camión.":"ARCA no devolvió el PDF en esta respuesta ("+(data.pdf_error||"sin archivo") +"). El CTG y las toneladas quedaron guardados; adjuntá el PDF oficial desde la ficha de logística."));
     await load();setEmitting(false);
   }
