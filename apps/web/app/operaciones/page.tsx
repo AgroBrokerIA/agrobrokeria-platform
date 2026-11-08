@@ -317,6 +317,10 @@ export default function OperacionesPage() {
     });
 
   const [guardandoContrato, setGuardandoContrato] = useState(false);
+  const [cuitVendedorContrato, setCuitVendedorContrato] = useState("");
+  const [cuitCompradorContrato, setCuitCompradorContrato] = useState("");
+  const [calidadContrato, setCalidadContrato] = useState("");
+
 
   const [contrato, setContrato] = useState<Contrato>({
     operacion_id: "",
@@ -1307,6 +1311,11 @@ export default function OperacionesPage() {
     const comprador = partes.find(
       (parte) => parte.rol === "COMPRADOR"
     );
+    const contactoVendedor = contactos.find((c) => c.id === (vendedor?.contacto_id || ""));
+    const contactoComprador = contactos.find((c) => c.id === (comprador?.contacto_id || ""));
+    setCuitVendedorContrato(contactoVendedor?.cuit || "");
+    setCuitCompradorContrato(contactoComprador?.cuit || "");
+
 
     // Recuperar el acuerdo y generar el texto inicial al abrir el editor.
     const { data: acuerdoInicial, error: errorAcuerdoInicial } = await supabase
@@ -1333,6 +1342,8 @@ export default function OperacionesPage() {
       estado: acuerdoInicial?.estado || "BORRADOR",
     };
     setAcuerdo(acuerdoContrato);
+    setCalidadContrato(acuerdoContrato.calidad || "");
+
 
     const numeroContratoInicial = contratoData?.numero_contrato ||
       `CON-${operacion.codigo.replace(/^OP-/, "")}`;
@@ -2855,6 +2866,24 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
                   {contactos.map((contacto) => <option key={contacto.id} value={contacto.id}>{contacto.nombre_razon_social}{contacto.cuit ? ` — CUIT ${contacto.cuit}` : ""}</option>)}
                 </select>
               </label>
+            </div>
+
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginTop:14}}>
+              <label>CUIT vendedor<input style={inputContrato} value={cuitVendedorContrato} onChange={e=>setCuitVendedorContrato(e.target.value)} placeholder="CUIT del legajo del vendedor"/></label>
+              <label>CUIT comprador<input style={inputContrato} value={cuitCompradorContrato} onChange={e=>setCuitCompradorContrato(e.target.value)} placeholder="CUIT del legajo del comprador"/></label>
+              <label>Producto / tipo de grano<input style={inputContrato} value={operacionMeta[operacionContrato.id]?.producto || "Producto pendiente de identificación"} readOnly/></label>
+              <label>Condición de calidad<input style={inputContrato} value={calidadContrato} onChange={e=>setCalidadContrato(e.target.value)} placeholder="Humedad, merma y condición acordada"/></label>
+            </div>
+            <div style={{display:"flex",justifyContent:"flex-end",marginTop:10}}>
+              <button type="button" onClick={()=>{
+                try {
+                  if(!vendedorSeleccionado || !compradorSeleccionado) throw new Error("Seleccioná vendedor y comprador antes de regenerar el contrato.");
+                  const texto=generarContenidoContratoF1(operacionContrato, {...acuerdo, calidad:calidadContrato}, vendedorSeleccionado, compradorSeleccionado, contrato.numero_contrato, "F1", cuitVendedorContrato, cuitCompradorContrato, calidadContrato);
+                  setContrato(actual=>({...actual,contenido:texto}));
+                  setMensaje("Plantilla oficial F1 regenerada con los datos actuales. Revisá todos los campos antes de guardar.");
+                  setError("");
+                } catch(e) { setError(e instanceof Error ? e.message : "No se pudo regenerar el contrato."); }
+              }} style={{padding:"9px 12px",border:"1px solid #047857",borderRadius:8,background:"#ecfdf5",color:"#065f46",fontWeight:700,cursor:"pointer"}}>Regenerar plantilla oficial F1</button>
             </div>
             {contactos.length === 0 && <p style={{marginTop:8,color:"#b45309"}}>No hay contactos comerciales disponibles. Revisá permisos o registrá primero los contactos de vendedor y comprador.</p>}
             <label style={{display:"block",marginTop:16}}>Contenido del contrato (editable)
