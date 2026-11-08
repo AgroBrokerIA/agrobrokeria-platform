@@ -1,5 +1,6 @@
 name: Web CI
 # Launch validation: production-ready main branch
+# Re-run the full web validation for the latest integration fixes.
 
 on:
   push:
