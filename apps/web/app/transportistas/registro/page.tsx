@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, type FormEvent, type CSSProperties } from "react";
+import { useEffect, useState, type FormEvent, type CSSProperties } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 const field: CSSProperties = { width: "100%", height: 44, border: "1px solid #cbd5e1", borderRadius: 9, padding: "9px 12px", boxSizing: "border-box", color: "#0f172a", background: "#fff" };
+type PerfilTransportista={nombre_completo:string;verificacion_estado:string;activo:boolean};
+type VehiculoRegistrado={id:string;patente:string;tipo:string;capacidad_tn:number|null;habilitado:boolean};
 
 export default function RegistroTransportistaPage() {
   const [nombre, setNombre] = useState("");
@@ -19,6 +21,44 @@ export default function RegistroTransportistaPage() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [ok, setOk] = useState(false);
+  const [perfilExistente,setPerfilExistente]=useState<PerfilTransportista|null>(null);
+  const [vehiculosExistentes,setVehiculosExistentes]=useState<VehiculoRegistrado[]>([]);
+  const [perfilLoading,setPerfilLoading]=useState(true);
+  const [nuevoTipo,setNuevoTipo]=useState("CAMION");
+  const [nuevaPatente,setNuevaPatente]=useState("");
+  const [nuevaCapacidad,setNuevaCapacidad]=useState("");
+  const [agregandoVehiculo,setAgregandoVehiculo]=useState(false);
+  const [mensajeVehiculo,setMensajeVehiculo]=useState("");
+
+  async function cargarPerfilTransportista(){
+    const {data:userData}=await supabase.auth.getUser();
+    if(!userData.user){setPerfilExistente(null);setVehiculosExistentes([]);setPerfilLoading(false);return;}
+    const {data:perfil}=await supabase.from("transportistas").select("nombre_completo,verificacion_estado,activo").eq("profile_id",userData.user.id).maybeSingle();
+    setPerfilExistente(perfil as PerfilTransportista|null);
+    if(perfil){
+      const {data:vehiculos,error:vehiculosError}=await supabase.rpc("listar_mis_vehiculos_transportista");
+      if(vehiculosError)setMensajeVehiculo("No se pudieron consultar los dominios: "+vehiculosError.message);
+      else setVehiculosExistentes((vehiculos||[]) as VehiculoRegistrado[]);
+    }
+    setPerfilLoading(false);
+  }
+
+  useEffect(()=>{void cargarPerfilTransportista();},[ok]);
+
+  async function agregarVehiculo(){
+    setMensajeVehiculo("");
+    if(nuevaPatente.replace(/[^A-Z0-9]/gi,"").length<6){setMensajeVehiculo("Ingresá una patente válida.");return;}
+    setAgregandoVehiculo(true);
+    const {error:vehicleError}=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:nuevaPatente,p_tipo:nuevoTipo,p_capacidad_tn:nuevoTipo==="CAMION"&&nuevaCapacidad?Number(nuevaCapacidad):null});
+    if(vehicleError)setMensajeVehiculo("No se pudo registrar el dominio: "+vehicleError.message);
+    else{
+      setMensajeVehiculo("Dominio registrado correctamente.");
+      setNuevaPatente("");setNuevaCapacidad("");
+      const {data}=await supabase.rpc("listar_mis_vehiculos_transportista");
+      setVehiculosExistentes((data||[]) as VehiculoRegistrado[]);
+    }
+    setAgregandoVehiculo(false);
+  }
 
   async function enviar(e: FormEvent) {
     e.preventDefault();
@@ -96,7 +136,37 @@ export default function RegistroTransportistaPage() {
           <div style={{ fontSize: 22, fontWeight: 850 }}>Registro de transportista</div>
           <p style={{ color: "#64748b", fontSize: 14, lineHeight: 1.55 }}>Creá tu perfil para recibir asignaciones de viajes y actualizar el seguimiento de tus camiones en AgroBrokerIA.</p>
         </div>
-        {ok ? (
+        {perfilLoading?<p style={{color:"#64748b"}}>Consultando tu perfil de transportista…</p>:perfilExistente?(
+          <section style={{display:"grid",gap:14}}>
+            <div style={{padding:15,borderRadius:10,background:"#f0fdf4",border:"1px solid #bbf7d0"}}>
+              <strong>Perfil de transportista: {perfilExistente.nombre_completo}</strong>
+              <p style={{margin:"6px 0 0",fontSize:13}}>Verificación: {perfilExistente.verificacion_estado} · Estado: {perfilExistente.activo?"Activo":"Inactivo"}</p>
+            </div>
+            <div style={{display:"grid",gap:8}}>
+              <strong>Dominios registrados</strong>
+              {vehiculosExistentes.length?vehiculosExistentes.map(v=><div key={v.id} style={{padding:"10px 12px",border:"1px solid #dbe3ed",borderRadius:9,display:"flex",justifyContent:"space-between",gap:10,flexWrap:"wrap"}}>
+                <span><strong>{v.patente}</strong> · {v.tipo==="CAMION"?"Camión":"Acoplado"}{v.capacidad_tn?" · "+v.capacidad_tn+" TN":""}</span>
+                <span style={{fontSize:12,color:v.habilitado?"#047857":"#b45309"}}>{v.habilitado?"Habilitado":"Pendiente de habilitación"}</span>
+              </div>):<p style={{fontSize:13,color:"#64748b"}}>Todavía no registraste dominios. Agregá el camión y el acoplado que utilizás.</p>}
+            </div>
+            <div style={{borderTop:"1px solid #e2e8f0",paddingTop:14,display:"grid",gap:10}}>
+              <strong>Agregar otro vehículo</strong>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+                <label style={{display:"grid",gap:5,fontSize:13,fontWeight:700}}>Tipo
+                  <select value={nuevoTipo} onChange={e=>setNuevoTipo(e.target.value)} style={field}><option value="CAMION">Camión</option><option value="ACOPLADO">Acoplado</option></select>
+                </label>
+                <label style={{display:"grid",gap:5,fontSize:13,fontWeight:700}}>Patente
+                  <input value={nuevaPatente} onChange={e=>setNuevaPatente(e.target.value.toUpperCase())} placeholder="AB123CD" style={field}/>
+                </label>
+              </div>
+              {nuevoTipo==="CAMION"&&<label style={{display:"grid",gap:5,fontSize:13,fontWeight:700}}>Capacidad (TN)
+                <input type="number" min="1" step="0.1" value={nuevaCapacidad} onChange={e=>setNuevaCapacidad(e.target.value)} style={field}/>
+              </label>}
+              {mensajeVehiculo&&<p role="status" style={{fontSize:13,color:mensajeVehiculo.startsWith("No se")?"#b91c1c":"#047857",margin:0}}>{mensajeVehiculo}</p>}
+              <button type="button" disabled={agregandoVehiculo} onClick={()=>void agregarVehiculo()} style={{height:43,border:0,borderRadius:9,background:"#078b58",color:"#fff",fontWeight:800}}>{agregandoVehiculo?"Guardando dominio…":"Agregar dominio al perfil"}</button>
+            </div>
+          </section>
+        ):ok?(
           <div role="status" style={{ padding: 16, borderRadius: 10, background: "#ecfdf5", color: "#166534", border: "1px solid #a7f3d0" }}>
             <strong>Solicitud enviada.</strong>
             <p style={{ marginBottom: 0 }}>Tu perfil y los dominios registrados quedaron pendientes de verificación por AgroBrokerIA. Hasta que se verifique no podrás recibir asignaciones de viajes.</p>
