@@ -17,8 +17,8 @@ begin
  if v_empresa_activa is null then raise exception 'EMPRESA_COMERCIAL_NO_VINCULADA'; end if;
  if not public.usuario_participa_operacion(p_operacion_id) then raise exception 'No autorizado para esta operación'; end if;
  if v_empresa_activa not in (p_empresa_pagadora,p_empresa_cobradora) then raise exception 'La empresa activa no participa del pago'; end if;
- if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_pagadora) then raise exception 'Empresa pagadora no participa de la operación'; end if;
- if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_cobradora) then raise exception 'Empresa cobradora no participa de la operación'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_pagadora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'La empresa pagadora debe ser el comprador de la operación'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_cobradora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'La empresa cobradora debe ser el vendedor de la operación'; end if;
  select importe_total,moneda_id into v_total,v_moneda from public.operaciones where id=p_operacion_id for update;
  if v_total is null or v_total<=0 then raise exception 'Operación sin importe contractual válido'; end if;
  if v_moneda is null or p_moneda_id<>v_moneda then raise exception 'La moneda del pago no coincide con la moneda contractual'; end if;
