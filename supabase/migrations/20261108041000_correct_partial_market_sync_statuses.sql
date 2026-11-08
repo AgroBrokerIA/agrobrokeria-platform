@@ -1,0 +1,1 @@
+update public.market_sync_runs set status='PARTIAL' where status='SUCCESS' and nullif(trim(error_message),'') is not null;
