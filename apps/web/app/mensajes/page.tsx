@@ -7,7 +7,7 @@ import PanelMensajes from "@/components/mensajes/PanelMensajes";
 import PanelMensajesPublicacion from "@/components/mensajes/PanelMensajesPublicacion";
 
 type Conversacion={operacion_id:string;codigo:string;ultimo_mensaje:string;ultimo_mensaje_at:string;no_leidos:number;recibidos:number;tipo:"operacion"|"publicacion";conversacion_id?:string;publicacion_id?:string;producto?:string;cantidad_tn?:number;tipo_publicacion?:string;otro_usuario?:string};
-type EmpresaInfo={nombre:string;rol:string;pais:string;verificada:boolean;confiable:boolean;productos:string[];direccion:string;telefono:string;email:string;profileId?:string|null;score?:number|null;scoreLabel?:string|null;scoreColor?:string|null;scoreCoverage?:number|null;operationsEvaluated?:number;tripsEvaluated?:number;verificationStatus?:string;companyVerified?:boolean};
+type EmpresaInfo={nombre:string;nombreUsuario:string;rol:string;pais:string;provincia?:string;ciudad?:string;verificada:boolean;confiable:boolean;productos:string[];direccion:string;telefono:string;email:string;profileId?:string|null;score?:number|null;scoreLabel?:string|null;scoreColor?:string|null;scoreCoverage?:number|null;operationsEvaluated?:number;tripsEvaluated?:number;verificationStatus?:string;companyVerified?:boolean;razonSocial?:string;cuit?:string;tipoEmpresa?:string;tipoOperador?:string;sitioWeb?:string;descripcion?:string;contactoHabilitado?:boolean;contratoNumero?:string|null;contratoEstado?:string|null};
 type OperacionDisponible={id:string;codigo:string;estado?:string|null;rol?:string|null};
 
 export default function MensajesPage(){
@@ -89,31 +89,32 @@ export default function MensajesPage(){
  useEffect(()=>{if(seleccionada?.tipo==="operacion")void cargarEmpresa(seleccionada.operacion_id);else setEmpresa(null)},[seleccionada?.operacion_id,seleccionada?.tipo]);
  async function cargarEmpresa(operacionId:string){
   setEmpresa(null);
-  // Contact details are intentionally not requested from the server before
-  // the operation reaches the definitive-contract workflow stage (order 4).
-  const {data:workflow,error:workflowError}=await supabase.from("operacion_workflow")
-   .select("etapa_actual_id").eq("operacion_id",operacionId).maybeSingle();
-  if(workflowError){console.error("No se pudo comprobar la etapa contractual",workflowError);setEmpresa({nombre:"Participante de la operación",rol:"Participante",pais:"",verificada:false,confiable:false,productos:[],direccion:"Disponible al llegar a Contrato Definitivo",telefono:"Disponible al llegar a Contrato Definitivo",email:"Disponible al llegar a Contrato Definitivo"});return;}
-  const {data:etapa}=workflow?.etapa_actual_id
-   ? await supabase.from("workflow_etapas").select("orden").eq("id",workflow.etapa_actual_id).maybeSingle()
-   : {data:null};
-  if(!etapa || Number(etapa.orden)<4){
-   setEmpresa({nombre:"Participante de la operación",rol:"Participante",pais:"",verificada:false,confiable:false,productos:[],direccion:"Disponible al llegar a Contrato Definitivo",telefono:"Disponible al llegar a Contrato Definitivo",email:"Disponible al llegar a Contrato Definitivo"});
+  const {data,error}=await supabase.rpc("obtener_perfil_participante_operacion",{p_operacion_id:operacionId});
+  if(error){
+   console.error("No se pudo cargar el perfil de la contraparte",error);
+   setError(error.message==="NOT_OPERATION_PARTICIPANT"?"Tu empresa no figura como participante de esta operación.":"No se pudo cargar la identidad de la contraparte.");
    return;
   }
-  const {data,error}=await supabase.rpc("obtener_perfil_participante_operacion",{p_operacion_id:operacionId});
-  if(error){console.error("No se pudo cargar el perfil del participante",error);setError("No se pudo cargar el perfil del participante.");return;}
   const x=Array.isArray(data)?data[0]:data;
-  if(!x){setError("La empresa contraparte todavía no tiene un perfil de usuario vinculado. Administración debe completar la vinculación de la cuenta.");return;}
+  if(!x){
+   setError("La contraparte no tiene un perfil registrado vinculado a esta operación. Administración debe revisar la vinculación de la cuenta.");
+   return;
+  }
+  const roleLabels:Record<string,string>={VENDEDOR:"Vendedor",COMPRADOR:"Comprador",INTERMEDIARIO:"Intermediario",CORREDOR:"Corredor",ACOPIO:"Acopio",PRODUCTOR:"Productor",TRANSPORTISTA:"Transportista"};
   setEmpresa({
-   nombre:x.nombre||x.empresa_nombre||"Participante de la operación",
-   rol:x.rol==="VENDEDOR"?"Vendedor":x.rol==="COMPRADOR"?"Comprador":x.rol==="INTERMEDIARIO"?"Intermediario":x.rol||"Participante",
-   pais:x.pais||"País no informado",verificada:Boolean(x.verificada),confiable:false,productos:[],
-   direccion:[x.ciudad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",
-   telefono:x.telefono||"No informado",email:x.email||"No informado",
-   profileId:x.profile_id||null,score:x.score??null,scoreLabel:x.score_label||null,scoreColor:x.score_color||null,
+   nombre:x.empresa_nombre||x.razon_social||"Empresa participante",
+   nombreUsuario:x.nombre_usuario||"Usuario registrado",
+   rol:roleLabels[x.rol]||x.rol||"Participante",
+   pais:x.pais||"País no informado",provincia:x.provincia||"",ciudad:x.ciudad||"",
+   verificada:Boolean(x.verificada),confiable:false,productos:[],
+   direccion:[x.direccion,x.ciudad,x.provincia,x.pais].filter(Boolean).join(", ")||"Ubicación no informada",
+   telefono:x.telefono||"",email:x.email||"",profileId:x.profile_id||null,
+   score:x.score??null,scoreLabel:x.score_label||null,scoreColor:x.score_color||null,
    scoreCoverage:x.cobertura_pct??null,operationsEvaluated:Number(x.operaciones_evaluadas||0),tripsEvaluated:Number(x.viajes_evaluados||0),
-   verificationStatus:x.estado_verificacion||"NO_VERIFICADO",companyVerified:Boolean(x.empresa_verificada)
+   verificationStatus:x.estado_verificacion||"NO_VERIFICADO",companyVerified:Boolean(x.empresa_verificada),
+   razonSocial:x.razon_social||"",cuit:x.cuit||"",tipoEmpresa:x.tipo_empresa||"",tipoOperador:x.tipo_operador||"",
+   sitioWeb:x.sitio_web||"",descripcion:x.descripcion||"",contactoHabilitado:Boolean(x.contacto_habilitado),
+   contratoNumero:x.contrato_numero||null,contratoEstado:x.contrato_estado||null
   });
  }
  const fecha=(s:string)=>new Date(s).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
@@ -133,7 +134,7 @@ export default function MensajesPage(){
    </section>
    <aside className="messages-info">
     <div className="info-tabs">{["Información","Archivos","Operaciones"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</div>
-    {tab==="Información"&&seleccionada?.tipo==="publicacion"?<><div className="info-company"><div className="company-avatar huge">{initials(seleccionada.otro_usuario||"US")}</div><h2>{seleccionada.otro_usuario||"Usuario AgroBrokerIA"}</h2><p>Contacto de Marketplace</p><div className="badges"><span>{seleccionada.tipo_publicacion==="VENTA"?"Oferta de venta":"Demanda de compra"}</span></div></div><div className="info-block"><h3>Datos de la publicación</h3><p>Producto: {seleccionada.producto}</p><p>Cantidad: {seleccionada.cantidad_tn?.toLocaleString("es-AR")} TN</p><p>Tipo: {seleccionada.tipo_publicacion==="VENTA"?"Venta":"Compra"}</p><p>Publicación: {seleccionada.publicacion_id}</p></div></>:tab==="Información"&&<><div className="info-company"><div className="company-avatar huge">{initials(empresa?.nombre||"Ag")}</div><h2>{empresa?.nombre||"Empresa participante"}{empresa?.verificada&&<b> ✓</b>}</h2><p>{empresa?.pais||"País no informado"} | {empresa?.rol||"Rol no informado"}</p><div className="badges">{empresa?.verificada&&<span>✓ Usuario verificado</span>}{empresa?.companyVerified&&<span>✓ Empresa verificada</span>}{!empresa?.verificada&&!empresa?.companyVerified&&<span>{empresa?.verificationStatus==="PENDIENTE"?"Verificación pendiente":"Usuario no verificado"}</span>}{empresa?.score!=null&&<span style={{color:empresa.scoreColor||"#334155"}}>Scoring {empresa.score}/100</span>}</div><div className="info-buttons"><button disabled={!empresa?.profileId} onClick={()=>empresa?.profileId&&seleccionada?.tipo==="operacion"&&window.location.assign(`/perfil-participante/${seleccionada.operacion_id}`)}>{empresa?.profileId?"Ver perfil":"Perfil no disponible"}</button><button onClick={()=>accionHeader("videollamada")}>▣ Iniciar videollamada</button></div></div><div className="info-block"><h3>Datos de contacto</h3><p>♙ &nbsp; {empresa?.nombre||"Contacto comercial"}</p><p>✉ &nbsp; {empresa?.email||"No informado"}</p><p>☎ &nbsp; {empresa?.telefono||"No informado"}</p><p>⌖ &nbsp; {empresa?.direccion||"Ubicación no informada"}</p></div><div className="info-block"><h3>Reputación y scoring</h3><p><strong>{empresa?.score!=null?`${empresa.score}/100 · ${empresa.scoreLabel||"Scoring registrado"}`:"Historial insuficiente"}</strong></p><p>Cobertura de evidencia: {empresa?.scoreCoverage!=null?`${empresa.scoreCoverage}%`:"No disponible"}</p><p>Operaciones evaluadas: {empresa?.operationsEvaluated??0}</p><p>Viajes evaluados: {empresa?.tripsEvaluated??0}</p><p>Verificación de usuario: {empresa?.verificationStatus||"No informada"}</p></div><div className="info-block"><h3>Productos de interés</h3><p>{empresa?.productos?.length?empresa.productos.map(x=><span key={x}>{x}</span>):"No hay productos de interés registrados."}</p></div><div className="info-block"><h3>Operaciones recientes <Link href="/historial">Ver todas →</Link></h3>{conversaciones.slice(0,3).map(c=><p key={c.operacion_id}><span>{c.codigo}</span><em>{c.ultimo_mensaje_at? "Activa":"—"}</em></p>)}</div><div className="info-block notes"><h3>Notas</h3><div>Las notas comerciales se gestionan desde el expediente de la operación.</div></div></>}
+    {tab==="Información"&&seleccionada?.tipo==="publicacion"?<><div className="info-company"><div className="company-avatar huge">{initials(seleccionada.otro_usuario||"US")}</div><h2>{seleccionada.otro_usuario||"Usuario AgroBrokerIA"}</h2><p>Contacto de Marketplace</p><div className="badges"><span>{seleccionada.tipo_publicacion==="VENTA"?"Oferta de venta":"Demanda de compra"}</span></div></div><div className="info-block"><h3>Datos de la publicación</h3><p>Producto: {seleccionada.producto}</p><p>Cantidad: {seleccionada.cantidad_tn?.toLocaleString("es-AR")} TN</p><p>Tipo: {seleccionada.tipo_publicacion==="VENTA"?"Venta":"Compra"}</p><p>Publicación: {seleccionada.publicacion_id}</p></div></>:tab==="Información"&&<><div className="info-company"><div className="company-avatar huge">{initials(empresa?.nombre||"Ag")}</div><h2>{empresa?.nombre||"Empresa participante"}{empresa?.companyVerified&&<b> ✓</b>}</h2><p>{empresa?.nombreUsuario||"Usuario registrado"} · {empresa?.rol||"Participante"}</p><p>{[empresa?.ciudad,empresa?.provincia,empresa?.pais].filter(Boolean).join(" · ")||"Ubicación no informada"}</p><div className="badges">{empresa?.verificada&&<span>✓ Usuario verificado</span>}{empresa?.companyVerified&&<span>✓ Empresa verificada</span>}{!empresa?.verificada&&!empresa?.companyVerified&&<span>{empresa?.verificationStatus==="PENDIENTE"?"Verificación pendiente":"Usuario no verificado"}</span>}{empresa?.score!=null&&<span style={{color:empresa.scoreColor||"#334155"}}>Scoring {empresa.score}/100</span>}</div><div className="info-buttons"><button disabled={!empresa} onClick={()=>seleccionada?.tipo==="operacion"&&window.location.assign(`/perfil-participante/${seleccionada.operacion_id}`)}>Ver perfil completo</button><button onClick={()=>accionHeader("videollamada")}>▣ Iniciar videollamada</button></div></div><div className="info-block"><h3>Datos de la empresa</h3><p>♙ &nbsp; {empresa?.nombreUsuario||"Usuario registrado"} · {empresa?.rol||"Participante"}</p><p>⌖ &nbsp; {empresa?.direccion||"Ubicación no informada"}</p>{empresa?.razonSocial&&empresa.razonSocial!==empresa.nombre&&<p>Razón social: {empresa.razonSocial}</p>}{empresa?.cuit&&<p>CUIT: {empresa.cuit}</p>}{empresa?.tipoOperador&&<p>Actividad: {empresa.tipoOperador}</p>}{empresa?.sitioWeb&&<p>Sitio web: <a href={empresa.sitioWeb} target="_blank" rel="noreferrer">{empresa.sitioWeb}</a></p>}{empresa?.descripcion&&<p>{empresa.descripcion}</p>}<h3>Datos de contacto</h3>{empresa?.contactoHabilitado?<><p>✉ &nbsp; {empresa.email||"Correo no registrado"}</p><p>☎ &nbsp; {empresa.telefono||"Teléfono no registrado"}</p></>:<p>El correo y el teléfono se habilitan para ambas partes cuando la operación alcanza Contrato Definitivo.</p>}</div><div className="info-block"><h3>Reputación y scoring</h3><p><strong>{empresa?.score!=null?`${empresa.score}/100 · ${empresa.scoreLabel||"Scoring registrado"}`:"Historial insuficiente"}</strong></p><p>Cobertura de evidencia: {empresa?.scoreCoverage!=null?`${empresa.scoreCoverage}%`:"No disponible"}</p><p>Operaciones evaluadas: {empresa?.operationsEvaluated??0}</p><p>Viajes evaluados: {empresa?.tripsEvaluated??0}</p><p>Verificación de usuario: {empresa?.verificationStatus||"No informada"}</p></div><div className="info-block"><h3>Contrato de esta operación</h3>{empresa?.contactoHabilitado?<><p>Número: {empresa?.contratoNumero||"No informado"}</p><p>Estado: {empresa?.contratoEstado||"En formalización"}</p></>:<p>Los datos contractuales y de contacto se habilitan al llegar a Contrato Definitivo.</p>}</div><div className="info-block"><h3>Productos de interés</h3><p>{empresa?.productos?.length?empresa.productos.map(x=><span key={x}>{x}</span>):"No hay productos de interés registrados."}</p></div><div className="info-block"><h3>Operaciones recientes <Link href="/historial">Ver todas →</Link></h3>{conversaciones.slice(0,3).map(c=><p key={c.operacion_id}><span>{c.codigo}</span><em>{c.ultimo_mensaje_at? "Activa":"—"}</em></p>)}</div><div className="info-block notes"><h3>Notas</h3><div>Las notas comerciales se gestionan desde el expediente de la operación.</div></div></>}
     {tab==="Archivos"&&<div className="info-placeholder">Archivos compartidos de la conversación.</div>}
     {tab==="Operaciones"&&<div className="info-placeholder">Operaciones vinculadas a la conversación.</div>}
    </aside>
