@@ -554,7 +554,7 @@ export default function LogisticaEntrega({
           </div>
           <button type="button" style={secondary} disabled={guardando} onClick={() => void cargar()}>Actualizar</button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
           {[
             ["Camiones", resumen.viajes],
             ["Entregados", resumen.entregados],
