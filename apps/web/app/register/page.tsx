@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
+import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
@@ -32,6 +32,8 @@ export default function RegisterPage() {
   const [loading,setLoading] = useState(false);
   const [lookupLoading,setLookupLoading] = useState(false);
   const [lookupMessage,setLookupMessage] = useState("");
+  const [lookupStatus,setLookupStatus] = useState<"idle"|"loading"|"success"|"warning"|"error">("idle");
+  const lookupSequence=useRef(0);
   const [error,setError] = useState("");
   const [message,setMessage] = useState("");
   const [dniFront,setDniFront] = useState<File|null>(null);
@@ -49,17 +51,26 @@ export default function RegisterPage() {
   const isCompany = form.accountType === "EMPRESA";
   const isTransportista = form.role === "transportista";
   const update = (key:keyof FormState,value:string) => setForm(p=>({...p,[key]:value}));
+  const handleCuilChange=(value:string)=>{
+    update("cuilCuit",value);
+    const digits=value.replace(/\\D/g,"");
+    lookupSequence.current++;
+    if(digits.length===11)void buscarDatosOficiales(digits,"persona");
+    else{setLookupLoading(false);setLookupStatus("idle");setLookupMessage(digits.length>0?"Ingresá los 11 dígitos del CUIL/CUIT para consultar ARCA.":"");}
+  };
   const normalize = (value:string) => value.trim().toLocaleUpperCase("es-AR");
   async function buscarDatosOficiales(numero:string,tipo:"persona"|"empresa"){
     const cuit=numero.replace(/\D/g,"");
     if(cuit.length!==11)return;
-    setLookupLoading(true);setLookupMessage("");
+    const requestId=++lookupSequence.current;
+    setLookupLoading(true);setLookupStatus("loading");setLookupMessage("Consultando el padrón oficial de ARCA…");
     try{
       const response=await fetch("/api/arca/padron/consulta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cuit})});
       const payload=await response.json().catch(()=>({}));
+      if(requestId!==lookupSequence.current)return;
       if(!response.ok||!payload?.ok)throw new Error(payload?.error||"No se pudieron consultar los datos oficiales.");
       const d=payload.result;
-      if(!d?.found){setLookupMessage("ARCA no devolvió datos para ese CUIT/CUIL. Revisá el número y completá los campos manualmente.");return;}
+      if(!d?.found){setLookupStatus("warning");setLookupMessage("ARCA no encontró datos para ese CUIL/CUIT. Revisá los 11 dígitos o completá los datos manualmente.");return;}
       setForm(prev=>({
         ...prev,
         ...(tipo==="empresa"?{
@@ -76,9 +87,14 @@ export default function RegisterPage() {
           vatStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
         })
       }));
-      setLookupMessage("Datos encontrados en el padrón de ARCA. Revisalos antes de confirmar el registro.");
-    }catch(e){setLookupMessage(e instanceof Error?e.message:"No se pudo consultar el padrón de ARCA.");}
-    finally{setLookupLoading(false);}
+      setLookupStatus("success");
+      setLookupMessage("Datos encontrados en ARCA. Se completaron los campos disponibles; revisalos antes de confirmar.");
+    }catch(e){
+      if(requestId!==lookupSequence.current)return;
+      const detail=e instanceof Error?e.message:"";
+      const friendly=detail==="SUPABASE_SERVER_KEYS_NOT_CONFIGURED"?"La consulta oficial no está configurada en el servidor. Completá los datos manualmente o avisá a Administración.":detail==="ARCA_CUIT_NO_CONFIGURADO"||detail.includes("credenciales X.509")?"Faltan las credenciales oficiales de ARCA en Vercel. Administración debe configurarlas.":detail==="PADRON_RATE_LIMIT_UNAVAILABLE"?"El control de consultas no está disponible temporalmente. Intentá nuevamente más tarde.":detail==="PADRON_LOOKUP_RATE_LIMIT_EXCEEDED"?"Se alcanzó el límite temporal de consultas. Esperá unos minutos y volvé a intentar.":detail==="CUIT_CUIL_MUST_HAVE_11_DIGITS"?"El CUIL/CUIT debe contener exactamente 11 dígitos.":"No se pudo completar la consulta de ARCA. Verificá el CUIL/CUIT e intentá nuevamente.";
+      setLookupStatus("error");setLookupMessage(friendly);
+    }finally{if(requestId===lookupSequence.current)setLookupLoading(false);}
   }
   const upload = async (userId:string,file:File,type:string) => {
     const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_");
