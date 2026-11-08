@@ -35,10 +35,7 @@ export default function MensajesPage(){
   setMostrarSelectorOperacion(true);setCargandoOperaciones(true);setErrorSelector("");setOperacionesDisponibles([]);
   try{
    const {data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");
-   const {data:perfil,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();if(pe)throw pe;
-   if(!perfil?.active_company_id)throw new Error("Seleccioná una empresa activa antes de iniciar una conversación.");
-   // La RPC resuelve el ID de empresa comercial desde la empresa activa
-   // y valida la membresía en servidor, evitando lecturas parciales por RLS.
+   // La RPC resuelve la participación comercial por empresa activa o por perfil personal.
    const {data:ops,error:oe}=await supabase.rpc("listar_operaciones_mensajes_disponibles");
    if(oe)throw oe;
    const disponibles=(ops||[]) as OperacionDisponible[];
