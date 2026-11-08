@@ -16,6 +16,8 @@ type Viaje = {
   patente_acoplado: string | null;
   kilos_cargados: number | null;
   kilos_entregados: number | null;
+  carta_porte_ctg?: string | null;
+  carta_porte_tn?: number | null;
   entregado_confirmado_at: string | null;
   transportista_entrega_confirmada_por?: string | null;
   transportista_entrega_confirmada_at?: string | null;
@@ -323,9 +325,10 @@ export default function LogisticaEntrega({
         setError("Solo se permiten archivos PDF de Cartas de Porte.");
         continue;
       }
-      const numero = window.prompt("Número de Carta de Porte que figura en " + file.name);
+      const numero = viaje.carta_porte_ctg || window.prompt("Número de Carta de Porte que figura en " + file.name);
+      if(viaje.carta_porte_ctg && numero) setMensaje("Se vinculará el PDF al CTG oficial "+viaje.carta_porte_ctg+".");
       if (!numero?.trim()) continue;
-      const kilosText = window.prompt("Ingresá los kilos declarados que leíste en ese PDF. Se revisarán antes de liberar comisión.");
+      const kilosText = window.prompt("Confirmá los kilos netos declarados en el PDF. Se revisarán antes de liberar comisión.",String(viaje.kilos_cargados||""));
       if (!kilosText?.trim() || !Number.isFinite(Number(kilosText)) || Number(kilosText) <= 0) {
         setError("No se cargó " + file.name + ": los kilos declarados deben ser un número mayor a cero.");
         continue;
@@ -643,6 +646,7 @@ export default function LogisticaEntrega({
                 <div style={{ fontSize: 15, fontWeight: 850 }}>Camión {index + 1} · {viaje.patente_camion || "Patente pendiente"}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{viaje.origen_nombre || viaje.origen || "Origen pendiente"} → {viaje.destino_nombre || viaje.destino || "Destino pendiente"}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Identidad: transportista verificado</div>
+                {viaje.carta_porte_ctg&&<div style={{fontSize:12,color:"#047857",marginTop:4,fontWeight:750}}>CTG ARCA: {viaje.carta_porte_ctg} · Volumen declarado: {Number(viaje.carta_porte_tn||0).toLocaleString("es-AR",{maximumFractionDigits:3})} TN</div>}
                 {transportista?.foto_perfil_path && <button type="button" style={{ ...secondary, marginTop: 7 }} onClick={() => void verFotoTransportista(transportista.foto_perfil_path)}>Ver fotografía del conductor</button>}
               </div>
               <span style={{ padding: "6px 10px", borderRadius: 99, background: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#dcfce7" : "#eaf2ff", color: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 800 }}>{estadoLabel(viaje.estado)}</span>
