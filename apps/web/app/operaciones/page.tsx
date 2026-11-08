@@ -1778,7 +1778,7 @@ Los parámetros de humedad, materias extrañas, granos dañados, merma, toleranc
 
 CLÁUSULA 6 — SERVICIO DE INTERMEDIACIÓN Y COMISIÓN TECNOLÓGICA
 
-Las partes reconocen únicamente las comisiones que se encuentren expresamente informadas y aceptadas en el registro de la operación. La comisión propia de AgroBrokerIA se calcula según la tarifa vigente informada en la plataforma y se paga por transferencia bancaria a la cuenta corporativa que se encuentre verificada. Su estado de retención o liberación contable se regirá por los registros efectivos de la operación. Los honorarios de intermediarios terceros se acuerdan, facturan y liquidan externamente entre quienes correspondan. Esta cláusula no establece custodia de fondos del flete ni garantiza una transferencia automática de fondos de terceros.
+Las partes reconocen únicamente las comisiones que se encuentren expresamente informadas y aceptadas en el registro de la operación. La comisión propia de AgroBrokerIA es de USD 1 (un dólar estadounidense) por tonelada métrica, equivalente a USD ${formatoNumero(operacion.cantidad_tn)} para el volumen contractual indicado. Se paga por transferencia bancaria a la cuenta corporativa verificada y su estado de retención o liberación contable depende de los registros efectivos de la operación. Su estado de retención o liberación contable se regirá por los registros efectivos de la operación. Los honorarios de intermediarios terceros se acuerdan, facturan y liquidan externamente entre quienes correspondan. Esta cláusula no establece custodia de fondos del flete ni garantiza una transferencia automática de fondos de terceros.
 
 CLÁUSULA 7 — ENTREGA, RECEPCIÓN Y CONSTANCIAS
 
@@ -1794,7 +1794,7 @@ El incumplimiento será tratado conforme a las obligaciones expresamente asumida
 
 CLÁUSULA 10 — LEGISLACIÓN Y JURISDICCIÓN
 
-El contrato se interpretará conforme a las leyes de la República Argentina. La jurisdicción territorial deberá completarse y aceptarse expresamente por las partes antes de la firma: ${acuerdoDatos.observaciones?.trim() || "Jurisdicción y observaciones particulares: completar y validar por las partes."}
+El contrato se interpretará conforme a las leyes de la República Argentina. Si resulta legalmente procedente y ambas partes lo aceptan expresamente, se someten a los Tribunales Ordinarios competentes de Venado Tuerto, Provincia de Santa Fe. Esta elección deberá ser revisada por las partes y su asesoría legal antes de la firma.
 
 CLÁUSULA 11 — CONFORMIDAD, FIRMA Y DOCUMENTACIÓN
 
