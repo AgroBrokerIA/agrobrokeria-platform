@@ -8,7 +8,7 @@ import Sidebar from "./Sidebar";
 import PageContainer from "./PageContainer";
 import { supabase } from "@/lib/supabase/client";
 
-const ADMIN_ROUTES = ["/admin", "/administracion", "/verificaciones", "/retiros-comisiones", "/medios-cobro", "/cuentas-bancarias", "/comisiones"];
+const ADMIN_ROUTES = ["/admin", "/administracion", "/verificaciones", "/retiros-comisiones", "/medios-cobro", "/cuentas-bancarias", "/comisiones", "/facturas"];
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/reset-password", "/terminos", "/privacidad", "/ayuda", "/como-verificamos"];
 
 export default function AppChrome({ children }: { children: ReactNode }) {
