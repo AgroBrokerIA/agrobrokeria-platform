@@ -85,6 +85,21 @@ export default function CartaPortePage(){
     } : empty);
   },[selected,logMap]);
 
+  useEffect(()=>{
+    const trip=viajes.find(x=>x.id===selectedViaje);
+    if(!trip)return;
+    const driver=transportistas.find(x=>x.profile_id===trip.transportista_profile_id);
+    setForm(prev=>({...prev,
+      transportista:prev.transportista||driver?.nombre_completo||"",
+      transportista_cuit:prev.transportista_cuit||driver?.cuit||"",
+      chofer_nombre:prev.chofer_nombre||driver?.nombre_completo||"",
+      chofer_cuit:prev.chofer_cuit||driver?.cuit||"",
+      dominio_camion:prev.dominio_camion||trip.patente_camion||"",
+      patente_camion:prev.patente_camion||trip.patente_camion||"",
+      patente_acoplado:prev.patente_acoplado||trip.patente_acoplado||""
+    }));
+  },[selectedViaje,viajes,transportistas]);
+
   const set=(k:keyof typeof form,v:string)=>setForm(x=>({...x,[k]:v}));
   async function emitArca(){
     if(!selected){setError("Seleccioná una operación.");return}
