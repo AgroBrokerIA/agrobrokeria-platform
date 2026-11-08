@@ -66,6 +66,8 @@ type Evento = {
 type ComisionViaje = {
   viaje_id: string;
   toneladas_entregadas: number;
+  valor_por_tn?: number | null;
+  importe_asignado?: number | null;
   importe_liberado: number;
   estado: string;
 };
@@ -194,7 +196,7 @@ export default function LogisticaEntrega({
       supabase.rpc("listar_transportistas_verificados", { p_operacion_id: operacionId }),
       supabase.from("viaje_cartas_porte").select("*").eq("operacion_id", operacionId).order("creada_at", { ascending: false }),
       supabase.from("viaje_eventos").select("*").eq("operacion_id", operacionId).order("registrado_at", { ascending: true }),
-      supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId).eq("estado", "LIBERADA"),
+      supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId),
       supabase.from("operacion_carta_porte_autorizaciones").select("*").eq("operacion_id", operacionId).order("autorizado_at", { ascending: false }),
     ]);
     if (v.error) setError("No se pudieron cargar los viajes: " + v.error.message);
@@ -239,6 +241,7 @@ export default function LogisticaEntrega({
     entregados: viajes.filter((v) => v.estado === "ENTREGADO_CONFIRMADO").length,
     toneladas: comisiones.reduce((n, x) => n + Number(x.toneladas_entregadas || 0), 0),
     comision: comisiones.reduce((n, x) => n + Number(x.importe_liberado || 0), 0),
+    comisionPendiente: comisiones.reduce((n,x)=>n+Math.max(Number(x.importe_asignado||0)-Number(x.importe_liberado||0),0),0),
   }), [viajes, comisiones]);
 
   async function buscarCorredores() {
@@ -551,12 +554,13 @@ export default function LogisticaEntrega({
           </div>
           <button type="button" style={secondary} disabled={guardando} onClick={() => void cargar()}>Actualizar</button>
         </div>
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(4,minmax(0,1fr))", gap: 8 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(5,minmax(0,1fr))", gap: 8 }}>
           {[
             ["Camiones", resumen.viajes],
             ["Entregados", resumen.entregados],
             ["TN confirmadas", resumen.toneladas.toLocaleString("es-AR", { maximumFractionDigits: 3 })],
             ["Comisión liberada", "USD " + resumen.comision.toLocaleString("es-AR", { maximumFractionDigits: 2 })],
+            ["Comisión por liberar", "USD " + resumen.comisionPendiente.toLocaleString("es-AR", { maximumFractionDigits: 2 })],
           ].map(([label, value]) => (
             <div key={String(label)} style={{ background: "#fff", border: "1px solid #e2e8f0", borderRadius: 10, padding: 10, minWidth: 0 }}>
               <div style={{ color: "#64748b", fontSize: 11, fontWeight: 700 }}>{label}</div>
@@ -647,6 +651,7 @@ export default function LogisticaEntrega({
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{viaje.origen_nombre || viaje.origen || "Origen pendiente"} → {viaje.destino_nombre || viaje.destino || "Destino pendiente"}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Identidad: transportista verificado</div>
                 {viaje.carta_porte_ctg&&<div style={{fontSize:12,color:"#047857",marginTop:4,fontWeight:750}}>CTG ARCA: {viaje.carta_porte_ctg} · Volumen declarado: {Number(viaje.carta_porte_tn||0).toLocaleString("es-AR",{maximumFractionDigits:3})} TN</div>}
+                {comisionViaje?<div style={{fontSize:12,color:"#334155",marginTop:5,padding:"8px 10px",borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0"}}><strong>Comisión de este transporte:</strong> {Number(comisionViaje.toneladas_entregadas||0).toLocaleString("es-AR",{maximumFractionDigits:3})} TN · Asignada USD {Number(comisionViaje.importe_asignado||0).toLocaleString("es-AR",{maximumFractionDigits:2})} · Liberada USD {Number(comisionViaje.importe_liberado||0).toLocaleString("es-AR",{maximumFractionDigits:2})} · Pendiente USD {Math.max(Number(comisionViaje.importe_asignado||0)-Number(comisionViaje.importe_liberado||0),0).toLocaleString("es-AR",{maximumFractionDigits:2})} · {comisionViaje.estado}</div>:<div style={{fontSize:12,color:"#64748b",marginTop:5}}>Comisión individual pendiente de asignación de retención para este viaje.</div>}
                 {transportista?.foto_perfil_path && <button type="button" style={{ ...secondary, marginTop: 7 }} onClick={() => void verFotoTransportista(transportista.foto_perfil_path)}>Ver fotografía del conductor</button>}
               </div>
               <span style={{ padding: "6px 10px", borderRadius: 99, background: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#dcfce7" : "#eaf2ff", color: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 800 }}>{estadoLabel(viaje.estado)}</span>
