@@ -161,6 +161,8 @@ export default function LogisticaEntrega({
   operacionId: string;
   onEntregaConfirmada?: () => Promise<boolean>;
 }) {
+  const [ahora, setAhora] = useState(0);
+  useEffect(() => { const actualizar = () => setAhora(Date.now()); actualizar(); const timer = window.setInterval(actualizar, 30000); return () => window.clearInterval(timer); }, []);
   const [viajes, setViajes] = useState<Viaje[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
   const [vehiculosDisponibles,setVehiculosDisponibles]=useState<VehiculoRegistrado[]>([]);
@@ -724,7 +726,7 @@ export default function LogisticaEntrega({
                   </button>
                 </div>
               )}
-              {esProductor && viaje.estado === "ESPERANDO_RECEPCION_PRODUCTOR" && viaje.transportista_entrega_confirmada_at && (!viaje.receptor_objecion_hasta || Date.now() < new Date(viaje.receptor_objecion_hasta).getTime()) && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
+              {esProductor && viaje.estado === "ESPERANDO_RECEPCION_PRODUCTOR" && viaje.transportista_entrega_confirmada_at && (!viaje.receptor_objecion_hasta || ahora > 0 && ahora < new Date(viaje.receptor_objecion_hasta).getTime()) && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
                 <div style={{display:"grid",gap:8}}>
                   <label style={{fontSize:12,fontWeight:700}}>Evidencia de recepción (PDF, JPG o PNG; máximo 10 MB)
                     <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e)=>setEvidenciasProductor((current)=>({...current,[viaje.id]:e.target.files?.[0]||null}))} />
