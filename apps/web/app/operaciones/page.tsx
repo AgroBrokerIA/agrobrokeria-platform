@@ -1381,14 +1381,20 @@ export default function OperacionesPage() {
     // con los contactos seleccionados en esta operación.
     if (contenidoInicial.includes("DATOS DE VENDEDOR Y COMPRADOR: completar desde los contactos de la operación.") ||
         contenidoInicial.includes("CONDICIONES COMERCIALES: completar los campos faltantes del acuerdo.") ||
+        contenidoInicial.includes("Producto: 13.") ||
+        contenidoInicial.includes("CONTRATO DE ABASTECIMIENTO DE GRANOS") ||
         (contenidoInicial.includes("TERCERA: PLAZO DE ENTREGA") && contenidoInicial.includes("de 2027"))) {
       try {
         contenidoInicial = generarContenidoContratoF1(
           operacion,
           acuerdoContrato,
-          vendedorSeleccionado,
-          compradorSeleccionado,
-          numeroContratoInicial
+          vendedor?.contacto_id || "",
+          comprador?.contacto_id || "",
+          numeroContratoInicial,
+          "F1",
+          contactos.find((c) => c.id === (vendedor?.contacto_id || ""))?.cuit || "",
+          contactos.find((c) => c.id === (comprador?.contacto_id || ""))?.cuit || "",
+          acuerdoContrato.calidad || ""
         );
       } catch {
         // Mantener el borrador editable; la confirmación exige seleccionar ambas partes.
