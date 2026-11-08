@@ -33,7 +33,8 @@ export default function PagosPage(){
     ]);
     const ownRoleMap=new Map(ownOps.map((x:any)=>[x.operacion_id,String(x.rol||"").toUpperCase()]));
     const list=(operationRows||[]).flatMap((op:any)=>{
-     const role=ownRoleMap.get(op.id);const other=(allParticipants||[]).find((x:any)=>x.operacion_id===op.id&&x.empresa_id!==ownEntityId&&String(x.rol||"").toUpperCase()===(role==="COMPRADOR"?"VENDEDOR":"COMPRADOR"));
+     const role=ownRoleMap.get(op.id);if(!role)return [];
+     const other=(allParticipants||[]).find((x:any)=>x.operacion_id===op.id&&x.empresa_id!==ownEntityId&&String(x.rol||"").toUpperCase()===(role==="COMPRADOR"?"VENDEDOR":"COMPRADOR"));
      if(!other)return [];
      const entity=Array.isArray(other.empresas)?other.empresas[0]:other.empresas;
      return [{id:op.id,codigo:op.codigo||op.id.slice(0,8),importe_total:Number(op.importe_total||0),moneda_id:Number(op.moneda_id||0),ownRole:role,otherEmpresaId:other.empresa_id,otherName:entity?.nombre_comercial||entity?.razon_social||"Contraparte"}];
