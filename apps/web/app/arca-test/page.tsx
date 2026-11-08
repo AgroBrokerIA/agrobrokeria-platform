@@ -9,7 +9,7 @@ export default function ArcaTestPage() {
 
   async function ejecutarPrueba() {
     setCargando(true);
-    setResultado("Autenticando sesión y consultando ARCA...");
+    setResultado("Validando credenciales y consultando ARCA en homologación...");
 
     const {
       data: { session },
@@ -22,21 +22,11 @@ export default function ArcaTestPage() {
     }
 
     try {
-      const response = await fetch("/api/arca/wscpe/auth-test", {
-        headers: {
-          Authorization: `Bearer ${session.access_token}`,
-        },
-        cache: "no-store",
-      });
-
-      const data = await response.json();
-      setResultado(JSON.stringify(data, null, 2));
+      const {data,error}=await supabase.functions.invoke("carta-porte-arca",{body:{action:"health"}});
+      setResultado(JSON.stringify(error?{ok:false,error:error.message,detalle:data}:data,null,2));
     } catch (error) {
-      setResultado(
-        error instanceof Error
-          ? `Error de conexión: ${error.message}`
-          : "Error de conexión con el servidor."
-      );
+      setResultado(error instanceof Error?error.message:"Error de conexión con ARCA.");
+    }
     } finally {
       setCargando(false);
     }
@@ -62,7 +52,7 @@ export default function ArcaTestPage() {
           cursor: cargando ? "wait" : "pointer",
         }}
       >
-        {cargando ? "Probando..." : "Probar conexión ARCA"}
+        {cargando ? "Probando..." : "Probar homologación ARCA"}
       </button>
 
       <pre
