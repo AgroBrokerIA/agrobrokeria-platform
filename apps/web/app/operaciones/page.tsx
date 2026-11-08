@@ -2828,12 +2828,13 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
                 <select style={inputContrato} value={vendedorSeleccionado} onChange={async (e) => {
                   const id = e.target.value;
                   setVendedorSeleccionado(id);
+                  setCuitVendedorContrato(contactos.find((c) => c.id === id)?.cuit || "");
                   if (id) {
                     await guardarParteOperacion(operacionContrato.id, "VENDEDOR", id);
                     const compradorId = compradorSeleccionado;
                     if (compradorId) {
                       try {
-                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, id, compradorId, contrato.numero_contrato);
+                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, id, compradorId, contrato.numero_contrato, "F1", contactos.find((c) => c.id === id)?.cuit || "", cuitCompradorContrato, calidadContrato);
                         setContrato(actual => ({ ...actual, contenido: texto }));
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
@@ -2849,12 +2850,13 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
                 <select style={inputContrato} value={compradorSeleccionado} onChange={async (e) => {
                   const id = e.target.value;
                   setCompradorSeleccionado(id);
+                  setCuitCompradorContrato(contactos.find((c) => c.id === id)?.cuit || "");
                   if (id) {
                     await guardarParteOperacion(operacionContrato.id, "COMPRADOR", id);
                     const vendedorId = vendedorSeleccionado;
                     if (vendedorId) {
                       try {
-                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, vendedorId, id, contrato.numero_contrato);
+                        const texto = generarContenidoContratoF1(operacionContrato, acuerdo, vendedorId, id, contrato.numero_contrato, "F1", cuitVendedorContrato, contactos.find((c) => c.id === id)?.cuit || "", calidadContrato);
                         setContrato(actual => ({ ...actual, contenido: texto }));
                       } catch (e) {
                         setError(e instanceof Error ? e.message : "No se pudo actualizar el contrato.");
