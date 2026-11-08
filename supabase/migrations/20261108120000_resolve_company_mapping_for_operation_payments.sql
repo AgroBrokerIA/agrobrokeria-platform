@@ -22,7 +22,7 @@ begin
  select importe_total,moneda_id into v_total,v_moneda from public.operaciones where id=p_operacion_id for update;
  if v_total is null or v_total<=0 then raise exception 'Operación sin importe contractual válido'; end if;
  if v_moneda is null or p_moneda_id<>v_moneda then raise exception 'La moneda del pago no coincide con la moneda contractual'; end if;
- select coalesce(sum(importe),0) into v_pagado from public.pagos where operacion_id=p_operacion_id and moneda_id=p_moneda_id and estado in ('CONFIRMADO','PAGADO','COMPLETADO');
+ select coalesce(sum(importe),0) into v_pagado from public.pagos where operacion_id=p_operacion_id and moneda_id=p_moneda_id and estado not in ('RECHAZADO','CANCELADO','ANULADO');
  if v_pagado+p_importe>v_total then raise exception 'El pago acumulado supera el importe contractual'; end if;
  if nullif(trim(coalesce(p_referencia,'')),'') is not null and exists(select 1 from public.pagos where operacion_id=p_operacion_id and comprobante=trim(p_referencia)) then
   select id into v_id from public.pagos where operacion_id=p_operacion_id and comprobante=trim(p_referencia) limit 1; return v_id;
