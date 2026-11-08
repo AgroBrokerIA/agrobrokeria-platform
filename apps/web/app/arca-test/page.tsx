@@ -26,7 +26,6 @@ export default function ArcaTestPage() {
       setResultado(JSON.stringify(error?{ok:false,error:error.message,detalle:data}:data,null,2));
     } catch (error) {
       setResultado(error instanceof Error?error.message:"Error de conexión con ARCA.");
-    }
     } finally {
       setCargando(false);
     }
@@ -36,8 +35,7 @@ export default function ArcaTestPage() {
     <main style={{ padding: 32, maxWidth: 900, margin: "0 auto" }}>
       <h1 style={{ fontSize: 28, fontWeight: 700 }}>Prueba ARCA WSCPE</h1>
       <p style={{ marginTop: 8 }}>
-        Esta prueba usa tu sesión de AgroBrokerIA y luego intenta autenticarse
-        contra WSAA y consultar WSCPE en homologación.
+        Esta prueba usa tu sesión de administración, valida el certificado y la clave privada de homologación, autentica contra WSAA y consulta provincias en WSCPE. No emite Cartas de Porte.
       </p>
 
       <button
