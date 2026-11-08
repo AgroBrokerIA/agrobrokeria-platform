@@ -69,7 +69,7 @@ export default function PagosPage(){
  async function registerOperationPayment(){
   setError("");setMsg("");
   const op=paymentOps.find(x=>x.id===selectedPaymentOp);const n=Number(paymentAmount.replace(",","."));
-  if(!op||!ownEmpresaId){setError("Seleccioná una operación comercial en la que participes como comprador o vendedor.");return;}
+  if(!op||!ownEmpresaId){setError("Seleccioná una operación comercial en la que participes como comprador o vendedor.");return;}if(!op.moneda_id){setError("La operación no tiene una moneda contractual configurada. No se puede registrar el pago hasta corregir ese dato.");return;}
   if(!Number.isFinite(n)||n<=0){setError("Ingresá un importe de pago mayor a cero.");return;}
   if(!paymentReference.trim()){setError("Ingresá la referencia bancaria o identificador del comprobante.");return;}
   setPaymentBusy(true);
@@ -104,7 +104,7 @@ export default function PagosPage(){
    <h2>Registrar pago de una operación</h2>
    <p>El comprador o vendedor puede informar una transferencia. El registro queda en Pagos con estado pendiente hasta su conciliación; no se confirma automáticamente el cobro.</p>
    {paymentOps.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:12,alignItems:"end"}}>
-    <label>Operación y contraparte<select value={selectedPaymentOp} onChange={e=>setSelectedPaymentOp(e.target.value)} style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}>{paymentOps.map(op=><option key={op.id} value={op.id}>{op.codigo} · {op.ownRole==="COMPRADOR"?"Comprador":"Vendedor"} · {op.otherName}</option>)}</select></label>
+    <label>Operación y contraparte<select value={selectedPaymentOp} onChange={e=>setSelectedPaymentOp(e.target.value)} style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}>{paymentOps.map(op=><option key={op.id} value={op.id}>{op.codigo} · {op.ownRole==="COMPRADOR"?"Comprador":"Vendedor"} · {op.otherName} · {curr[op.moneda_id]||"Moneda"}</option>)}</select></label>
     <label>Importe transferido<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} placeholder="Importe" style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}/></label>
     <label>Referencia bancaria / comprobante<input value={paymentReference} onChange={e=>setPaymentReference(e.target.value)} placeholder="N.º de transferencia" style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}/></label>
     <button type="button" disabled={paymentBusy||!paymentAmount||!paymentReference.trim()} onClick={()=>void registerOperationPayment()} style={{padding:11,border:0,borderRadius:8,background:paymentBusy?"#94a3b8":"#087a50",color:"#fff",fontWeight:700}}>{paymentBusy?"Registrando…":"Registrar pago"}</button>
