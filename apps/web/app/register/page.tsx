@@ -119,8 +119,7 @@ export default function RegisterPage() {
     if(isIntermediaryRole && !isCompany){setError("Para operar como corredor oficial, comisionista o intermediario independiente necesitás registrar una empresa/organización con CUIT y completar la verificación del legajo.");return;}
     
     if(isTransportista && driverPhoto && (!["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)||driverPhoto.size>5*1024*1024)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
-    if(isTransportista && [driverDniFront,driverDniBack].some(file=>file && file.type !== "application/pdf" && !file.type.startsWith("image/"))){setError("El frente y dorso del DNI deben adjuntarse como imagen o PDF.");return;}
-    if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\D/g,"").length!==11||!statuteDoc||!authorityDoc||!arcaProof||!sisaProof||!dniFront||!dniBack||!form.representativePosition.trim())){setError("Para registrar una empresa se requiere razón social, CUIT, cargo del representante, DNI, estatuto/contrato social, poder o acta de autoridades, constancia ARCA y constancia SISA.");return;}
+    if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\D/g,"").length!==11||!form.documentNumber.trim()||!form.representativePosition.trim()||form.representativeCuil.replace(/\D/g,"").length!==11)){setError("Completá razón social, CUIT, DNI y CUIL de la persona representante y su cargo. Los documentos respaldatorios pueden agregarse luego desde Mi Perfil.");return;}
     const allowedDocs=["application/pdf","image/jpeg","image/png","image/webp"];
     if([dniFront,dniBack,statuteDoc,authorityDoc,arcaProof,sisaProof,driverDniFront,driverDniBack].filter((file):file is File=>!!file).some(file=>!allowedDocs.includes(file.type)||file.size<=0||file.size>10*1024*1024)){setError("Los documentos societarios, ARCA y SISA deben ser PDF/JPG/PNG/WEBP y no superar 10 MB cada uno.");return;}
     setLoading(true);
