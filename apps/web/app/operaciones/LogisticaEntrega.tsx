@@ -467,7 +467,7 @@ export default function LogisticaEntrega({
       });
       if (rpcError) throw rpcError;
       setEvidenciasTransportista((current)=>({...current,[viaje.id]:null}));
-      setMensaje("Entrega registrada con evidencia. Queda pendiente la confirmación del productor; la comisión sigue retenida.");
+      setMensaje("Entrega registrada con evidencia. Ya enviamos una notificación al receptor. Si no responde, recibirá recordatorios automáticos a las 2, 12, 24 y 48 horas. La comisión permanece retenida hasta validar la recepción.");
     } catch (e) {
       if (evidencePath) await supabase.storage.from("documentos-operacion").remove([evidencePath]);
       setError(e instanceof Error ? e.message : "No se pudo registrar la entrega del transportista.");
@@ -710,7 +710,7 @@ export default function LogisticaEntrega({
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "grid", gap: 10 }}>
               <div style={{ fontSize: 12, color: "#64748b" }}>
                 Transportista: {viaje.transportista_entrega_confirmada_at ? "confirmado el " + fecha(viaje.transportista_entrega_confirmada_at) : "pendiente"} · Productor: {viaje.productor_recepcion_confirmada_at ? "recepción confirmada el " + fecha(viaje.productor_recepcion_confirmada_at) : viaje.productor_recepcion_observada_at ? "incidencia registrada" : "pendiente"}.
-                La comisión no se libera con estas confirmaciones: queda sujeta a conciliación y cierre.
+                La comisión de este camión se libera contablemente cuando estén completas ambas confirmaciones, la evidencia, la Carta de Porte validada y la retención bancaria verificada. Si falta alguna condición, permanece retenida.
               </div>
               {esTransportista && viaje.transportista_profile_id === profileId && !viaje.transportista_entrega_confirmada_at && viaje.estado !== "OBSERVADO" && (
                 <div style={{display:"grid",gap:8}}>
