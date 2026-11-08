@@ -8,6 +8,7 @@ import Sidebar from "./Sidebar";
 import PageContainer from "./PageContainer";
 import { supabase } from "@/lib/supabase/client";
 
+const ADMIN_ROUTES = ["/retiros-comisiones", "/medios-cobro", "/cuentas-bancarias"];
 const PUBLIC_ROUTES = ["/", "/login", "/register", "/reset-password", "/terminos", "/privacidad", "/ayuda", "/como-verificamos"];
 
 export default function AppChrome({ children }: { children: ReactNode }) {
@@ -17,8 +18,13 @@ export default function AppChrome({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (isPublic) return;
     let activo = true;
-    supabase.auth.getUser().then(({ data }) => {
-      if (activo && !data.user) router.replace(`/login?next=${encodeURIComponent(pathname)}`);
+    supabase.auth.getUser().then(async ({ data }) => {
+      if (!activo) return;
+      if (!data.user) { router.replace(`/login?next=${encodeURIComponent(pathname)}`); return; }
+      if (ADMIN_ROUTES.some(route => pathname === route || pathname.startsWith(route + "/"))) {
+        const { data: isAdmin, error } = await supabase.rpc("es_administrador_plataforma");
+        if (activo && (error || isAdmin !== true)) router.replace("/dashboard?acceso=administrativo");
+      }
     });
     return () => { activo = false; };
   }, [isPublic, pathname, router]);
