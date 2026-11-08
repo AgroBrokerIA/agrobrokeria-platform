@@ -29,6 +29,8 @@ type Viaje = {
   productor_recepcion_observada_at?: string | null;
   transportista_entrega_evidencia_path?: string | null;
   productor_recepcion_evidencia_path?: string | null;
+  receptor_objecion_hasta?: string | null;
+  entrega_liberada_auto_at?: string | null;
 };
 
 type Transportista = {
@@ -101,7 +103,7 @@ const estadoLabel = (estado: string) =>
     INICIO_DESCARGA: "Inicio de descarga",
     DESCARGA_FINALIZADA: "Descarga finalizada",
     ESPERANDO_RECEPCION_PRODUCTOR: "Pendiente de recepción del productor",
-    ENTREGADO_CONFIRMADO: "Recepción confirmada por productor",
+    ENTREGADO_CONFIRMADO: "Entrega confirmada", 
     ENTREGA_CONFIRMADA: "Entrega confirmada",
     ENTREGA_TRANSPORTISTA_CONFIRMADA: "Entrega confirmada por transportista",
     RECEPCION_PRODUCTOR_CONFIRMADA: "Recepción confirmada por productor",
@@ -710,7 +712,7 @@ export default function LogisticaEntrega({
             <div style={{ borderTop: "1px solid #e2e8f0", paddingTop: 12, display: "grid", gap: 10 }}>
               <div style={{ fontSize: 12, color: "#64748b" }}>
                 Transportista: {viaje.transportista_entrega_confirmada_at ? "confirmado el " + fecha(viaje.transportista_entrega_confirmada_at) : "pendiente"} · Productor: {viaje.productor_recepcion_confirmada_at ? "recepción confirmada el " + fecha(viaje.productor_recepcion_confirmada_at) : viaje.productor_recepcion_observada_at ? "incidencia registrada" : "pendiente"}.
-                La comisión de este camión se libera contablemente cuando estén completas ambas confirmaciones, la evidencia, la Carta de Porte validada y la retención bancaria verificada. Si falta alguna condición, permanece retenida.
+                El receptor dispone de 24 horas desde la entrega documentada para confirmar o reportar una diferencia. Si no hay objeciones, el sistema confirma la entrega y libera contablemente la comisión de este camión, siempre que la evidencia, la Carta de Porte validada, los kilos y la retención bancaria estén verificados. No se realiza una transferencia bancaria automática.
               </div>
               {esTransportista && viaje.transportista_profile_id === profileId && !viaje.transportista_entrega_confirmada_at && viaje.estado !== "OBSERVADO" && (
                 <div style={{display:"grid",gap:8}}>
@@ -722,7 +724,7 @@ export default function LogisticaEntrega({
                   </button>
                 </div>
               )}
-              {esProductor && viaje.transportista_entrega_confirmada_at && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
+              {esProductor && viaje.estado === "ESPERANDO_RECEPCION_PRODUCTOR" && viaje.transportista_entrega_confirmada_at && (!viaje.receptor_objecion_hasta || Date.now() < new Date(viaje.receptor_objecion_hasta).getTime()) && !viaje.productor_recepcion_confirmada_at && !viaje.productor_recepcion_observada_at && (
                 <div style={{display:"grid",gap:8}}>
                   <label style={{fontSize:12,fontWeight:700}}>Evidencia de recepción (PDF, JPG o PNG; máximo 10 MB)
                     <input type="file" accept="application/pdf,image/jpeg,image/png" onChange={(e)=>setEvidenciasProductor((current)=>({...current,[viaje.id]:e.target.files?.[0]||null}))} />
@@ -737,7 +739,9 @@ export default function LogisticaEntrega({
               {esAdminPlataforma && viaje.productor_recepcion_evidencia_path && <button type="button" style={secondary} onClick={()=>void abrirEvidenciaEntrega(viaje.productor_recepcion_evidencia_path)}>Ver evidencia del productor</button>}
               {viaje.productor_recepcion_observaciones && <div style={{ color: "#b45309", fontSize: 12 }}>Observación del productor: {viaje.productor_recepcion_observaciones}</div>}
               {esAdminPlataforma && viaje.estado === "OBSERVADO" && <button type="button" style={primary} disabled={guardando} onClick={()=>void resolverIncidenciaRecepcion(viaje)}>Resolver incidencia y solicitar nueva confirmación</button>}
-              {viaje.productor_recepcion_confirmada_at && <div style={{ color: "#166534", fontSize: 12, fontWeight: 800 }}>Doble confirmación completa · {Number(viaje.productor_kilos_recibidos || 0).toLocaleString("es-AR")} kg · {fecha(viaje.productor_recepcion_confirmada_at)}</div>}
+              {viaje.productor_recepcion_confirmada_at && <div style={{ color: "#166534", fontSize: 12, fontWeight: 800 }}>Recepción confirmada por el receptor · {Number(viaje.productor_kilos_recibidos || 0).toLocaleString("es-AR")} kg · {fecha(viaje.productor_recepcion_confirmada_at)}</div>}
+              {viaje.estado === "ESPERANDO_RECEPCION_PRODUCTOR" && viaje.receptor_objecion_hasta && <div style={{ color: "#92400e", fontSize: 12 }}>Plazo para objetar la recepción: {fecha(viaje.receptor_objecion_hasta)}. Si no se registra una objeción, el sistema ejecutará la validación automática al vencer el plazo.</div>}
+              {viaje.entrega_liberada_auto_at && <div style={{ color: "#166534", fontSize: 12, fontWeight: 800 }}>Entrega confirmada automáticamente por vencimiento del plazo de 24 horas sin objeciones · {fecha(viaje.entrega_liberada_auto_at)}.</div>}
               {viaje.estado === "OBSERVADO" && <div style={{ color: "#b45309", fontSize: 12, fontWeight: 800 }}>Operación observada: requiere resolución administrativa antes de continuar.</div>}
             </div>
           </section>
