@@ -27,7 +27,7 @@ const empty = {
   cuit_solicitante:"", origen_provincia:"", origen_localidad:"", nro_renspa:"",
   destino_cuit:"", destino_provincia:"", destino_localidad:"", planta:"", destinatario_cuit:"",
   km_recorrer:"", dominio_camion:"", chofer_cuit:"", cuit_pagador_flete:"", cuit_intermediario_flete:"", fecha_hora_partida:"",
-  cosecha:"", codigo_turno:"", tarifa:"", corresponde_retiro_productor:"false", es_destino_campo:"false", mercaderia_fumigada:"false"
+  cosecha:"", codigo_turno:"", tarifa:"", corresponde_retiro_productor:"false", es_solicitante_campo:"false", es_destino_campo:"false", mercaderia_fumigada:"false"
 };
 
 export default function CartaPortePage(){
@@ -107,7 +107,7 @@ export default function CartaPortePage(){
     const trip=viajes.find(x=>x.id===selectedViaje);
     const driver=transportistas.find(x=>x.profile_id===trip?.transportista_profile_id);
     if(!trip?.transportista_profile_id){setError("El viaje seleccionado todavía no tiene transportista asignado.");setEmitting(false);return;}
-    const payload={operation_id:selected,viaje_id:selectedViaje,...form,transportista_cuit:form.transportista_cuit||driver?.cuit||"",chofer_cuit:form.chofer_cuit||driver?.cuit||"",dominio_camion:form.dominio_camion||trip.patente_camion||"",dominio_acoplado:form.patente_acoplado||trip.patente_acoplado||"",sucursal:form.sucursal?Number(form.sucursal):undefined,fecha_hora_partida:form.fecha_hora_partida||(form.fecha_carga&&form.hora_carga?form.fecha_carga+"T"+form.hora_carga+":00":""),es_destino_campo:form.es_destino_campo==="true",corresponde_retiro_productor:form.corresponde_retiro_productor==="true",mercaderia_fumigada:form.mercaderia_fumigada==="true"};
+    const payload={operation_id:selected,viaje_id:selectedViaje,...form,transportista_cuit:form.transportista_cuit||driver?.cuit||"",chofer_cuit:form.chofer_cuit||driver?.cuit||"",dominio_camion:form.dominio_camion||trip.patente_camion||"",dominio_acoplado:form.patente_acoplado||trip.patente_acoplado||"",sucursal:form.sucursal?Number(form.sucursal):undefined,fecha_hora_partida:form.fecha_hora_partida||(form.fecha_carga&&form.hora_carga?form.fecha_carga+"T"+form.hora_carga+":00":""),es_destino_campo:form.es_destino_campo==="true",corresponde_retiro_productor:form.corresponde_retiro_productor==="true",es_solicitante_campo:form.es_solicitante_campo==="true",mercaderia_fumigada:form.mercaderia_fumigada==="true"};
     const {data,error:e}=await supabase.functions.invoke("carta-porte-arca",{body:payload});
     if(e){setError(e.message||"No se pudo invocar WSCPE.");setEmitting(false);return}
     if(!data?.ok){setError(data?.error||data?.errors?.map((x:any)=>x.code+": "+x.description).join(" | ")||"ARCA no autorizó la Carta de Porte.");setEmitting(false);return}
@@ -180,13 +180,13 @@ export default function CartaPortePage(){
             ["origen_provincia","Código provincia origen","text"],["origen_localidad","Código localidad origen","text"],["nro_renspa","RENSPA","text"],
             ["destino_cuit","CUIT destino","text"],["destino_provincia","Código provincia destino","text"],["destino_localidad","Código localidad destino","text"],
             ["planta","Planta destino","text"],["destinatario_cuit","CUIT destinatario","text"],["transportista_cuit","CUIT transportista","text"],
-            ["dominio_camion","Dominio camión","text"],["chofer_cuit","CUIT chofer","text"],["km_recorrer","Km a recorrer","number"],
+            ["dominio_camion","Dominio camión","text"],["dominio_acoplado","Dominio acoplado","text"],["chofer_cuit","CUIT chofer","text"],["km_recorrer","Km a recorrer","number"],
             ["cuit_pagador_flete","CUIT pagador flete","text"],["cuit_intermediario_flete","CUIT intermediario flete","text"],["codigo_turno","Código turno","text"],
             ["cosecha","Cosecha","text"],["tarifa","Tarifa","number"],["fecha_hora_partida","Fecha y hora de partida","datetime-local"]
           ].map((x:any)=><label key={x[0]}>{x[1]}<input type={x[2]} value={(form as any)[x[0]]||""} onChange={e=>set(x[0],e.target.value)} style={{display:"block",width:"100%",marginTop:6,padding:10,borderRadius:8,border:"1px solid #dbe3ea"}} /></label>)}
         </div>
         <div style={{display:"flex",gap:20,marginTop:12,flexWrap:"wrap"}}>
-          {[["es_destino_campo","Destino campo"],["corresponde_retiro_productor","Retiro productor"],["mercaderia_fumigada","Mercadería fumigada"]].map((x:any)=><label key={x[0]}><input type="checkbox" checked={(form as any)[x[0]]==="true"} onChange={e=>set(x[0],e.target.checked?"true":"false")} /> {x[1]}</label>)}
+          {[["es_destino_campo","Destino campo"],["corresponde_retiro_productor","Retiro productor"],["es_solicitante_campo","Solicitante es campo"],["mercaderia_fumigada","Mercadería fumigada"]].map((x:any)=><label key={x[0]}><input type="checkbox" checked={(form as any)[x[0]]==="true"} onChange={e=>set(x[0],e.target.checked?"true":"false")} /> {x[1]}</label>)}
         </div>
         <button className="module-pill" type="button" disabled={emitting||!selectedViaje||Boolean(viajes.find(x=>x.id===selectedViaje)?.carta_porte_ctg)} onClick={()=>void emitArca()} style={{marginTop:16}}>{emitting?"Enviando a ARCA…":viajes.find(x=>x.id===selectedViaje)?.carta_porte_ctg?"Carta de Porte ya emitida":"Emitir oficialmente en ARCA"}</button>
       </div>
