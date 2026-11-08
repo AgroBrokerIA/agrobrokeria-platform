@@ -120,6 +120,7 @@ export default function MensajesPage(){
  const fecha=(s:string)=>new Date(s).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"});
  const initials=(s:string)=>s.split(" ").map(x=>x[0]).slice(0,2).join("").toUpperCase();
  const rows=useMemo(()=>conversaciones.map(c=>({...c,nombre:c.tipo==="publicacion"?(c.otro_usuario||"Usuario AgroBrokerIA"):(empresa?.nombre&&c.operacion_id===seleccionada?.operacion_id?empresa.nombre:c.codigo),flag:c.tipo==="publicacion"?c.codigo:(empresa?.pais&&c.operacion_id===seleccionada?.operacion_id?empresa.pais:"")})).filter(c=>(filtroConversaciones==="todas"||c.no_leidos>0)&&(!busqueda||`${c.nombre} ${c.codigo} ${c.ultimo_mensaje}`.toLowerCase().includes(busqueda.toLowerCase()))),[conversaciones,empresa,seleccionada,busqueda,filtroConversaciones]);
+ useEffect(()=>{if(filtroConversaciones==="no_leidas"){const primera=rows.find(c=>c.no_leidos>0);if(primera)setSeleccionada(actual=>actual?.operacion_id===primera.operacion_id?actual:primera)}},[filtroConversaciones,rows]);
  return <main className="messages-reference">
   <header className="messages-head"><div><h1>Mensajes</h1><p>Comunícate de forma segura con productores, acopios, compradores e intermediarios</p></div><button className="messages-new" onClick={()=>void abrirSelectorOperacion()}>＋ Iniciar desde una operación</button></header>
   {error&&<div className="messages-error">{error}</div>}{aviso&&<div className="messages-notice">{aviso}<button type="button" onClick={()=>setAviso("")}>Cerrar</button></div>}
