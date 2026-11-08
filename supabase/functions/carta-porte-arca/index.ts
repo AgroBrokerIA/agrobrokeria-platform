@@ -67,10 +67,10 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
 }
 
 async function soap(environment:string,method:string,inner:string,auth:{token:string,sign:string,cuit:string}){
-  const url=environment==="production"?"https://cpea-ws.arca.gob.ar/wscpe/services/soap":"https://cpea-ws-qaext.arca.gob.ar/wscpe/services/soap";
-  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="http://serviciosjava.arca.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuitRepresentada>'+esc(auth.cuit)+'</cuitRepresentada></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
+  const url=environment==="production"?"https://cpea-ws.afip.gob.ar/wscpe/services/soap":"https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap";
+  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="https://serviciosjava.afip.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuitRepresentada>'+esc(auth.cuit)+'</cuitRepresentada></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
   const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),30000); let r:Response;
-  try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"\"http://serviciosjava.arca.gob.ar/wscpe/"+method+"\""},body,signal:ac.signal})}
+  try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"\"https://serviciosjava.afip.gob.ar/wscpe/"+method+"\""},body,signal:ac.signal})}
   catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSCPE_TIMEOUT");throw e}
   finally{clearTimeout(timer)}
   const raw=new Uint8Array(await r.arrayBuffer());
@@ -201,7 +201,7 @@ Deno.serve(async req=>{
     const load='<datosCarga><codGrano>'+esc(tipoGrano)+'</codGrano>'+optionalXml("cosecha",b.cosecha)+'<pesoBruto>'+esc(pesoBruto)+'</pesoBruto><pesoTara>'+esc(pesoTara)+'</pesoTara></datosCarga>';
     const dest='<destino><cuit>'+esc(destinoCuit)+'</cuit><esDestinoCampo>'+String(Boolean(b.es_destino_campo))+'</esDestinoCampo><codProvincia>'+esc(destinoProvincia)+'</codProvincia><codLocalidad>'+esc(destinoLocalidad)+'</codLocalidad>'+optionalXml("planta",b.planta)+'</destino><destinatario><cuit>'+esc(destinatarioCuit)+'</cuit></destinatario>';
     const transport='<transporte><cuitTransportista>'+esc(transportistaCuit)+'</cuitTransportista><dominio>'+esc(dominio)+'</dominio>'+optionalXml("dominio",dominioAcoplado)+'<fechaHoraPartida>'+esc(fechaPartida)+'</fechaHoraPartida><kmRecorrer>'+esc(km)+'</kmRecorrer>'+optionalXml("codigoTurno",b.codigo_turno)+'<cuitChofer>'+esc(choferCuit)+'</cuitChofer>'+optionalXml("tarifa",b.tarifa)+'<cuitPagadorFlete>'+esc(pagadorFlete)+'</cuitPagadorFlete>'+optionalXml("cuitIntermediarioFlete",intermediarioFlete)+'<mercaderiaFumigada>'+fumigada+'</mercaderiaFumigada></transporte>';
-    const inner='<solicitud><cabecera><tipoCP>'+esc(tipoCP)+'</tipoCP><cuitSolicitante>'+esc(cuitSolicitante)+'</cuitSolicitante><sucursal>'+sucursal+'</sucursal><nroOrden>'+nroOrden+'</nroOrden></cabecera>'+origin+'<correspondeRetiroProductor>'+String(Boolean(b.corresponde_retiro_productor))+'</correspondeRetiroProductor>'+inter+load+dest+transport+optionalXml("observaciones",b.observaciones)+'</solicitud>';
+    const inner='<solicitud><cabecera><tipoCP>'+esc(tipoCP)+'</tipoCP><cuitSolicitante>'+esc(cuitSolicitante)+'</cuitSolicitante><sucursal>'+sucursal+'</sucursal><nroOrden>'+nroOrden+'</nroOrden></cabecera>'+origin+'<correspondeRetiroProductor>'+String(Boolean(b.corresponde_retiro_productor))+'</correspondeRetiroProductor><esSolicitanteCampo>'+String(Boolean(b.es_solicitante_campo))+'</esSolicitanteCampo>'+inter+load+dest+transport+optionalXml("observaciones",b.observaciones)+'</solicitud>';
 
     let xml:string;
     try{xml=await soap(environment,"AutorizarCPEAutomotorReq",inner,{token:token.token,sign:token.sign,cuit})}
@@ -224,7 +224,7 @@ Deno.serve(async req=>{
           const pdfBytes=Uint8Array.from(atob(compact),ch=>ch.charCodeAt(0));
           const safeCtg=String(ctg).replace(/[^0-9A-Za-z_-]/g,"");
           pdfPath="cpe/"+operationId+"/"+viajeId+"/ARCA-CTG-"+safeCtg+".pdf";
-          const upload=await db.storage.from("agrobroker-private").upload(pdfPath,pdfBytes,{contentType:"application/pdf",upsert:false});
+          const upload=await db.storage.from("agrobroker-private").upload(pdfPath,new Blob([pdfBytes],{type:"application/pdf"}),{contentType:"application/pdf",upsert:false});
           if(upload.error)throw upload.error;
           const digest=await crypto.subtle.digest("SHA-256",pdfBytes);
           const sha256=Array.from(new Uint8Array(digest)).map(x=>x.toString(16).padStart(2,"0")).join("");
