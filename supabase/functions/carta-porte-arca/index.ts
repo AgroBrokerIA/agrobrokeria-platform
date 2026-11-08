@@ -166,8 +166,11 @@ Deno.serve(async req=>{
     if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
     const environment=cfg.environment==="production"?"production":"homologacion";
     const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
-    const cert=envPem(cfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"), key=envPem(cfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64");
-    if(!cert||!key)return json({error:"ARCA_WSCPE_CREDENTIALS_NOT_CONFIGURED"},409);
+    // Homologation and production credentials are deliberately isolated.
+    const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):"ARCA_CERTIFICATE_HOMO_BASE64";
+    const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):"ARCA_PRIVATE_KEY_HOMO_BASE64";
+    const cert=envPem(certSecretName,certSecretName), key=envPem(keySecretName,keySecretName);
+    if(!cert||!key)return json({error:environment==="production"?"ARCA_WSCPE_PRODUCTION_CREDENTIALS_NOT_CONFIGURED":"ARCA_WSCPE_HOMOLOGATION_CREDENTIALS_NOT_CONFIGURED"},409);
 
     const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg.punto_venta);
     if(!Number.isInteger(sucursal)||sucursal<1)throw new Error("WSCPE_INVALID_SUCURSAL");
