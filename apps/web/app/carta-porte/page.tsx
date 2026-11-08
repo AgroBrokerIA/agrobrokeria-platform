@@ -63,9 +63,8 @@ export default function CartaPortePage(){
       const {data:trips,error:tripError}=await supabase.from("viajes").select("id,transportista_profile_id,patente_camion,patente_acoplado,estado,carta_porte_ctg").eq("operacion_id",selected).order("creado_en",{ascending:true});
       if(tripError){setError("No se pudieron cargar los camiones asignados: "+tripError.message);setViajes([]);setTransportistas([]);return;}
       const rows=(trips||[]) as Viaje[];setViajes(rows);
-      const ids=[...new Set(rows.map(x=>x.transportista_profile_id).filter(Boolean) as string[])];
-      if(ids.length){
-        const {data:drivers,error:driverError}=await supabase.from("transportistas").select("profile_id,cuit,nombre_completo,verificacion_estado").in("profile_id",ids);
+      if(rows.length){
+        const {data:drivers,error:driverError}=await supabase.rpc("listar_transportistas_asignados_operacion",{p_operacion_id:selected});
         if(driverError){setError("No se pudieron cargar los datos de los transportistas: "+driverError.message);setTransportistas([]);}
         else setTransportistas((drivers||[]) as Transportista[]);
       }else setTransportistas([]);
