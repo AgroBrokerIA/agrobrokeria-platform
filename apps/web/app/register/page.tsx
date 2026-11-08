@@ -53,7 +53,7 @@ export default function RegisterPage() {
   const update = (key:keyof FormState,value:string) => setForm(p=>({...p,[key]:value}));
   const handleCuilChange=(value:string)=>{
     update("cuilCuit",value);
-    const digits=value.replace(/\\D/g,"");
+    const digits=value.replace(/\D/g,"");
     lookupSequence.current++;
     if(digits.length===11)void buscarDatosOficiales(digits,"persona");
     else{setLookupLoading(false);setLookupStatus("idle");setLookupMessage(digits.length>0?"Ingresá los 11 dígitos del CUIL/CUIT para consultar ARCA.":"");}
@@ -193,7 +193,6 @@ export default function RegisterPage() {
       <div className="auth-logo">↗</div><h1>Crear cuenta</h1><p>Completá tus datos principales para ingresar a AgroBrokerIA.</p>
       {error&&<div className="auth-error" role="alert">{error}</div>}{message&&<div className="auth-success" role="status">{message}<p><Link href="/login">Ir a iniciar sesión</Link></p></div>}
       {lookupMessage&&<div className={lookupStatus==="error"?"auth-error":lookupStatus==="warning"||lookupStatus==="loading"?"auth-legal":"auth-success"} role="status" aria-live="polite">{lookupMessage}</div>}
-      {lookupLoading&&<p className="auth-legal">Consultando ARCA…</p>}
       <form onSubmit={registrarse}>
         <h2>Tipo de cuenta</h2>
         <div className="auth-two-col"><label>Tipo de registro<select value={form.accountType} onChange={e=>update("accountType",e.target.value)}><option value="PERSONA">Persona física</option><option value="EMPRESA">Empresa / organización</option></select></label><label>Actividad en AgroBrokerIA<select value={form.role} onChange={e=>update("role",e.target.value)}>{roles.map(([label,value])=><option key={value} value={value}>{label}</option>)}</select></label></div>
