@@ -470,6 +470,7 @@ export default function ContratosPage(){
        <label>Operación<select value={form.operacionId} onChange={e=>selectOperation(e.target.value)}><option value="">Seleccionar operación</option>{operaciones.map(o=><option key={o.id} value={o.id}>{o.codigo} · {o.publicacion_compra_id&&o.publicacion_venta_id?"Compra + Venta":o.publicacion_compra_id?"Compra":"Venta"} · {Number(o.cantidad_tn).toLocaleString("es-AR")} TN · {o.estado}</option>)}</select></label>
        <label>Tipo de operación<input value={form.tipoOperacion} readOnly/><small>Se determina por la operación: compra + venta.</small></label><label>Tipo de contrato<select value={form.tipo} onChange={e=>update("tipo",e.target.value as "F1")}><option value="F1">F1</option></select></label>
        <label>Commodity<select id="commodity-select" value={form.producto} onChange={e=>update("producto",e.target.value)}>{productos.map(p=><option key={p}>{p}</option>)}</select></label>
+       <label>Condición de calidad<input value={form.calidad} onChange={e=>update("calidad",e.target.value)} placeholder="Humedad, cuerpos extraños, merma y condición acordada"/></label>
        <label>Cantidad (TN)<input value={form.cantidad} onChange={e=>update("cantidad",e.target.value)} inputMode="decimal"/></label>
        <label>Precio por TN (obligatorio)<input type="number" min="0.01" step="0.01" required value={form.precio} onChange={e=>update("precio",e.target.value)} inputMode="decimal" placeholder="Precio acordado por tonelada"/></label>
        <label>Moneda de la operación<input value={form.moneda || "Sin moneda registrada"} readOnly/></label>
@@ -478,7 +479,9 @@ export default function ContratosPage(){
        <label>Puerto de entrega (catálogo activo)<select value={puertos.includes(form.puerto)?form.puerto:""} onChange={e=>update("puerto",e.target.value)}><option value="">Seleccionar puerto del catálogo</option>{puertos.map(p=><option key={p} value={p}>{p}</option>)}</select><small>Catálogo de puertos activos. La terminal georreferenciada se valida por separado.</small></label>
        <label>Lugar de entrega específico<input value={form.puerto} onChange={e=>update("puerto",e.target.value)} placeholder="Terminal, planta, localidad o destino exacto" required/></label>
        <label>Plazo / período de entrega<input value={form.entrega} onChange={e=>update("entrega",e.target.value)}/></label>
-       <label>Forma de pago<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Completar según la operación"/></label>
+       <label>Forma de pago / modalidad<input value={form.pago} onChange={e=>update("pago",e.target.value)} placeholder="Ej. Culata camión / transferencia bancaria"/></label>
+       <label>Plazo de pago<input value={form.plazoPago} onChange={e=>update("plazoPago",e.target.value)} placeholder="Ej. Contra entrega física verificada"/></label>
+       <label>Responsabilidad del flete<select value={form.responsableFlete} onChange={e=>update("responsableFlete",e.target.value)}><option value="">A definir por las partes</option><option value="A cargo exclusivo del COMPRADOR">A cargo del comprador</option><option value="A cargo exclusivo del VENDEDOR">A cargo del vendedor</option><option value="Compartido según acuerdo escrito">Compartido</option></select></label>
        <label>Empresa vendedora<select value={form.vendedorEmpresaId} onChange={e=>selectCompany("VENDEDOR",e.target.value)} required><option value="">Seleccionar vendedor de la operación</option>{companyOptions.filter(x=>x.rol==="VENDEDOR").map(x=><option key={x.id} value={x.id}>{x.razon_social}{x.cuit?" · CUIT "+x.cuit:""}</option>)}</select></label>
        <label>Razón social vendedor<input value={form.vendedor} onChange={e=>update("vendedor",e.target.value)} placeholder="Razón social completa" required/></label>
        <label>CUIT vendedor (11 dígitos)<input value={form.vendedorCuit} onChange={e=>update("vendedorCuit",e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789" required/></label>
@@ -492,7 +495,9 @@ export default function ContratosPage(){
        {form.intermediario.trim()&&<><label>CUIT intermediario<input value={form.intermediarioCuit} onChange={e=>update("intermediarioCuit",e.target.value.replace(/\D/g,"").slice(0,11))} inputMode="numeric" maxLength={11} pattern="[0-9]{11}" placeholder="30123456789"/></label><label>Condición SISA intermediario<input value={form.intermediarioSisa} onChange={e=>update("intermediarioSisa",e.target.value)} placeholder="Condición SISA"/></label></>}
        {hasIntermediary&&<div className="contract-builder-alert" role="note" style={{gridColumn:"1 / -1"}}>✦ Operación con Intermediación Externa Protegida. AgroBrokerIA solo procesa la comisión tecnológica de la Plataforma. Los honorarios de corretaje o intermediación tradicional se pactan y liquidan de forma externa y privada entre las partes. AgroBrokerIA no los cobra ni interviene en sus controversias.</div>}
        <label>Campaña<input value={form.campania} onChange={e=>update("campania",e.target.value)} placeholder="Ej. 2025/2026"/></label>
-       <label>Procedencia<input value={form.procedencia} onChange={e=>update("procedencia",e.target.value)}/></label>
+       <label>Procedencia / origen<input value={form.procedencia} onChange={e=>update("procedencia",e.target.value)}/></label>
+       <label>Ciudad de jurisdicción<input value={form.ciudadArbitral} onChange={e=>update("ciudadArbitral",e.target.value)}/></label>
+       <label>Provincia / jurisdicción<input value={form.jurisdiccion} onChange={e=>update("jurisdiccion",e.target.value)}/></label>
        
       </div>
       <label className="contract-builder-observation">Observaciones (opcional)<textarea value={form.observaciones} onChange={e=>update("observaciones",e.target.value)} /></label>
@@ -539,35 +544,23 @@ export default function ContratosPage(){
 }
 
 function PreviewCard({type,form,onDownload,active}:{type:"F1";form:FormState;onDownload:(type:"F1")=>void;active:boolean}){
- const clauses:[string,string][]=[
-  ["1. TIPO DE OPERACIÓN",form.tipoOperacion||"COMPRAVENTA (COMPRA + VENTA)"],
-  ["2. PRODUCTO / COMMODITY",form.producto||"Pendiente de completar"],
-  ["3. CAMPAÑA",form.campania||"Pendiente de completar"],
-  ["4. CANTIDAD",form.cantidad?money(form.cantidad)+" toneladas métricas":"Pendiente de completar"],
-  ["5. PRECIO POR TN",(form.moneda?form.moneda+" ":"")+(form.precio?money(form.precio):"Pendiente de completar")+" por tonelada métrica"],
-  ["6. CONDICIÓN DE PRECIO",form.condicion||"Pendiente de completar"],
-  ["7. LUGAR DE ENTREGA",form.puerto||"Pendiente de completar"],
-  ["8. PLAZO DE ENTREGA",form.entrega||"Pendiente de completar"],
-  ["9. FORMA DE PAGO",form.pago||"Pendiente de completar"],
-  ["10. PROCEDENCIA",form.procedencia||"Pendiente de completar"],
-  ["11. CALIDAD / OBSERVACIONES",form.observaciones||"Sin observaciones registradas"]
- ];
+ const sections=f1ContractSections(form);
  return <article className={"contract-preview-card "+(active?"active":"")}>
-  <header><div className="green">▤</div><div><strong>Contrato F1 · Vista previa dinámica</strong><small>Resumen comercial editable. No sustituye el modelo oficial homologado.</small></div><button type="button" onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
+  <header><div className="green">▤</div><div><strong>Contrato de compraventa de granos · Modelo F1</strong><small>Vista previa del mismo contenido que se descarga en PDF.</small></div><button type="button" onClick={()=>onDownload(type)}>⇩ Descargar PDF</button></header>
   <div className="contract-paper">
    <div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div>
-   <div className="paper-meta">BORRADOR F1 · {new Date().toLocaleDateString("es-AR")}</div>
-   <h3>RESUMEN DE CONDICIONES COMERCIALES · F1</h3>
-   <p>Las partes identificadas a continuación revisan las condiciones comerciales registradas para la operación seleccionada. Los datos se actualizan al modificar el formulario.</p>
+   <div className="paper-meta">CONTRATO F1 · {new Date().toLocaleDateString("es-AR")} · OPERACIÓN {form.operacionId||"PENDIENTE"}</div>
+   <h3>CONTRATO DE COMPRAVENTA DE GRANOS "MODELO F1"</h3>
+   <p>En la localidad de {form.ciudadArbitral||"Venado Tuerto"}, {form.jurisdiccion||"Provincia de Santa Fe"}, República Argentina, se celebra el presente instrumento entre las partes identificadas a continuación.</p>
    <section className="paper-parties">
-    <h4>PARTES INTERVINIENTES</h4>
-    <div><b>VENDEDOR</b><strong>{form.vendedor||"Pendiente de seleccionar"}</strong><span>CUIT: {form.vendedorCuit||"Pendiente"} · SISA: {form.vendedorSisa||"No informado"}</span></div>
-    <div><b>COMPRADOR</b><strong>{form.comprador||"Pendiente de seleccionar"}</strong><span>CUIT: {form.compradorCuit||"Pendiente"} · SISA: {form.compradorSisa||"No informado"}</span></div>
-    {form.intermediario.trim()&&<div><b>INTERMEDIARIO</b><strong>{form.intermediario}</strong><span>CUIT: {form.intermediarioCuit||"Pendiente"} · SISA: {form.intermediarioSisa||"No informado"}</span></div>}
+    <h4>PREÁMBULO: PARTES CONTRATANTES</h4>
+    <div><b>VENDEDOR</b><strong>{form.vendedor||"Pendiente de seleccionar"}</strong><span>CUIT/CUIL: {form.vendedorCuit||"Pendiente"} · SISA: {form.vendedorSisa||"No informada"}</span></div>
+    <div><b>COMPRADOR</b><strong>{form.comprador||"Pendiente de seleccionar"}</strong><span>CUIT/CUIL: {form.compradorCuit||"Pendiente"} · SISA: {form.compradorSisa||"No informada"}</span></div>
+    {form.intermediario.trim()&&<div><b>INTERMEDIARIO</b><strong>{form.intermediario}</strong><span>CUIT: {form.intermediarioCuit||"Pendiente"} · SISA: {form.intermediarioSisa||"No informada"}</span></div>}
    </section>
-   <section className="paper-clauses"><h4>CONDICIONES DE LA OPERACIÓN</h4>{clauses.map(([label,value])=><div className="paper-clause" key={label}><b>{label}</b><span>{value}</span></div>)}</section>
-   <div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma externa del vendedor</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma externa del comprador</small></div></div>
-   <p className="paper-legal-note">Documento preliminar de datos. Para formalizar la operación, las partes deben incorporar el modelo F1 oficial aplicable, firmarlo externamente y cargar las copias PDF firmadas en AgroBrokerIA.</p>
+   <section className="paper-clauses"><h4>CLÁUSULAS CONTRACTUALES</h4>{sections.map(([label,value])=><div className="paper-clause" key={label}><b>{label}</b><span>{value}</span></div>)}</section>
+   <div className="paper-signatures"><div><b>{form.vendedor||"VENDEDOR"}</b><small>Firma externa · PDF firmado</small></div><div><b>{form.comprador||"COMPRADOR"}</b><small>Firma externa · PDF firmado</small></div></div>
+   <p className="paper-legal-note">Las partes firman fuera de AgroBrokerIA y cargan las copias PDF firmadas. La plataforma registra la huella SHA-256 de cada archivo recibido. La firma digital integrada no está habilitada.</p>
   </div>
  </article>
 }
