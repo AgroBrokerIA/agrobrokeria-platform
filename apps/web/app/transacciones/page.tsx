@@ -28,8 +28,8 @@ function rowIcon(t:string){if(t==="Cobro")return"down";if(t==="Comisión")return
 function rowClass(t:string){if(t==="Cobro")return"green";if(t==="Comisión")return"orange";if(t==="Transferencia"||t==="Retiro")return"red";return"blue"}
 
 export default function TransaccionesPage(){
- const[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[actionMenu,setActionMenu]=useState<{id:string;top:number;left:number}|null>(null),[detailModal,setDetailModal]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
- useEffect(()=>{(async()=>{setLoading(true);
+ const[isAdmin,setIsAdmin]=useState(false),[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[actionMenu,setActionMenu]=useState<{id:string;top:number;left:number}|null>(null),[detailModal,setDetailModal]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
+ useEffect(()=>{(async()=>{setLoading(true);const{data:adminFlag}=await supabase.rpc("es_administrador_plataforma");setIsAdmin(adminFlag===true);
   const {data:ops}=await supabase.from("operaciones").select("id,codigo,importe_total,estado,fecha_operacion,creada_en,moneda_id").order("creada_en",{ascending:false}).limit(80);
   const operationIds=(ops||[]).map((x:any)=>x.id).filter(Boolean);
   const [pay,com]=operationIds.length?await Promise.all([
@@ -62,7 +62,7 @@ export default function TransaccionesPage(){
    <article className="tk green"><span><Icon name="wallet" size={25}/></span><div><small>Saldo disponible</small><strong>—</strong><em>Saldo no sincronizado</em></div></article>
    <article className="tk blue"><span><Icon name="down" size={25}/></span><div><small>Total ingresado</small><strong>{formatTotals(totals.in)}</strong><em>Ingresos registrados</em></div></article>
    <article className="tk pink"><span><Icon name="up" size={25}/></span><div><small>Total egresado</small><strong>{formatTotals(totals.out)}</strong><em>Egresos registrados</em></div></article>
-   <article className="tk amber"><span><Icon name="percent" size={25}/></span><div><small>Comisiones generadas</small><strong>{formatTotals(totals.comm)}</strong><em>Comisiones registradas</em></div></article>
+   {isAdmin&&<article className="tk amber"><span><Icon name="percent" size={25}/></span><div><small>Comisiones generadas</small><strong>{formatTotals(totals.comm)}</strong><em>Comisiones registradas</em></div></article>}
   </section>
   <div className="transactions-layout" onClick={()=>{if(actionMenu)setActionMenu(null)}}>
    <section className="transactions-main">
