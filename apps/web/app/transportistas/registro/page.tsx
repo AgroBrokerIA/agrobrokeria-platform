@@ -24,6 +24,7 @@ export default function RegistroTransportistaPage() {
     e.preventDefault();
     setError("");
     setOk(false);
+    if (cuit.replace(/\D/g,"").length!==11) { setError("Ingresá un CUIT válido de 11 dígitos del transportista. Es necesario para emitir Cartas de Porte en ARCA."); return; }
     if (!patenteCamion.trim()) { setError("Registrá la patente del camión para poder recibir asignaciones."); return; }
     if (!foto) {
       setError("Adjuntá una fotografía actual del conductor para la verificación de identidad.");
@@ -110,8 +111,9 @@ export default function RegistroTransportistaPage() {
               <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>DNI
                 <input required inputMode="numeric" value={dni} onChange={e => setDni(e.target.value)} style={field} />
               </label>
-              <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>CUIT (opcional)
-                <input value={cuit} onChange={e => setCuit(e.target.value)} style={field} />
+              <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>CUIT del transportista (obligatorio)
+                <input required inputMode="numeric" maxLength={13} value={cuit} onChange={e => setCuit(e.target.value)} placeholder="20-12345678-9" style={field} />
+                <small style={{color:"#64748b",fontWeight:400}}>Se utilizará para completar automáticamente los datos de transporte de la Carta de Porte.</small>
               </label>
               <label style={{ display: "grid", gap: 5, fontSize: 13, fontWeight: 700 }}>Empresa de transporte (opcional)
                 <input value={empresa} onChange={e => setEmpresa(e.target.value)} style={field} />
