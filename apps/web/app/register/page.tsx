@@ -116,6 +116,7 @@ export default function RegisterPage() {
     if(!accepted){setError("Aceptá los Términos y Condiciones para continuar.");return;}
     if(form.password.length<8||form.password!==form.confirmPassword){setError("Revisá la contraseña: debe tener 8 caracteres como mínimo y coincidir.");return;}
     if(!form.documentNumber.trim()||(!isCompany&&!form.cuilCuit.trim())||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
+    if(!isCompany && form.cuilCuit.replace(/[^0-9]/g,"").length!==11){setError("El CUIL/CUIT debe tener exactamente 11 dígitos. Podés completar los datos manualmente si ARCA no responde.");return;}
     if(isIntermediaryRole && !isCompany){setError("Para operar como corredor oficial, comisionista o intermediario independiente necesitás registrar una empresa/organización con CUIT y completar la verificación del legajo.");return;}
     
     if(isTransportista && driverPhoto && (!["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)||driverPhoto.size>5*1024*1024)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
