@@ -3,6 +3,22 @@ import forge from "npm:node-forge@1.3.1";
 
 const URL=Deno.env.get("SUPABASE_URL")!, ANON=Deno.env.get("SUPABASE_ANON_KEY")!, SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
 const db=createClient(URL,SERVICE);
+
+async function isPlatformAdmin(userId:string){
+ const {data,error}=await db.from("platform_admins").select("user_id").eq("user_id",userId).maybeSingle();
+ if(error)throw error;
+ return !!data;
+}
+async function isCompanyAdmin(userId:string,companyId:string){
+ const {data:memberships,error}=await db.from("company_users").select("company_id").eq("profile_id",userId).eq("activo",true).eq("rol","administrador");
+ if(error)throw error;
+ const ids=(memberships||[]).map((m:any)=>String(m.company_id)).filter(Boolean);
+ if(ids.includes(String(companyId)))return true;
+ if(!ids.length)return false;
+ const {data:maps,error:mapError}=await db.from("company_empresa_map").select("empresa_id").in("company_id",ids);
+ if(mapError)throw mapError;
+ return (maps||[]).some((m:any)=>String(m.empresa_id)===String(companyId));
+}
 function envText(name:string){return Deno.env.get(name)||""}
 function envPem(pemName:string,base64Name:string){
  const pem=Deno.env.get(pemName)||"";
@@ -30,9 +46,9 @@ function makeCms(certPem:string,keyPem:string){if(!certPem||!keyPem)throw new Er
  const cert=forge.pki.certificateFromPem(certPem),key=forge.pki.privateKeyFromPem(keyPem),now=new Date();
  const fmt=(d:Date)=>{const z=new Date(d.getTime()-3*60*60*1000);return z.toISOString().replace(/\.\d{3}Z$/,"-03:00")};
  const tra='<?xml version="1.0" encoding="UTF-8"?><loginTicketRequest version="1.0"><header><uniqueId>'+Math.floor(now.getTime()/1000)+'</uniqueId><generationTime>'+fmt(new Date(now.getTime()-60000))+'</generationTime><expirationTime>'+fmt(new Date(now.getTime()+600000))+'</expirationTime></header><service>wsfe</service></loginTicketRequest>';
- const p7=forge.pkcs7.createSignedData();p7.content=forge.util.createBuffer(tra,"utf8");p7.addCertificate(cert);p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[{type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}]});p7.sign({detached:false});return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
+ const p7=forge.pkcs7.createSignedData();p7.content=forge.util.createBuffer(tra,"utf8");p7.addCertificate(cert);p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[{type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}]});p7.sign({detached:true});return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
 }
-async function getToken(cfg:{environment:string,cert:string,key:string,cuit?:string}){const key=cacheKey(cfg),now=Date.now();const cached=tokenCache.get(key);if(cached&&cached.expiresAt>now+60000)return cached;const pending=tokenInflight.get(key);if(pending)return pending;const p=(async()=>{const ep=endpoints(cfg.environment),cms=makeCms(cfg.cert,cfg.key);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.view.sua.dvadac.desein.afip.gov"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsaa,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":""},body});const xml=await r.text();if(!r.ok){const m=xml.match(/(?:faultstring|descripcion|description|errorCode|codigo)[^>]*>([^<]{1,500})</i);const raw=(m?.[1]||"").trim();const code=(raw.match(/(?:coe\\.|cms\\.|xml\\.|wsn\\.|wsaa\\.)[A-Za-z0-9_.-]+/)||[])[0];throw new Error(code||("ARCA_WSAA_FAULT_"+raw.replace(/[^A-Za-z0-9_.: -]/g,"").slice(0,180)||("ARCA_WSAA_HTTP_"+r.status)))};const token=nodeText(xml,"token"),sign=nodeText(xml,"sign"),exp=nodeText(xml,"expirationTime");if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");const expiresAt=exp?Date.parse(exp):now+10*60*60*1000;const out={token,sign,expiresAt};tokenCache.set(key,out);return out})().finally(()=>tokenInflight.delete(key));tokenInflight.set(key,p);return p}
+async function getToken(cfg:{environment:string,cert:string,key:string,cuit?:string}){const key=cacheKey(cfg),now=Date.now();const cached=tokenCache.get(key);if(cached&&cached.expiresAt>now+60000)return cached;const pending=tokenInflight.get(key);if(pending)return pending;const p=(async()=>{const ep=endpoints(cfg.environment),cms=makeCms(cfg.cert,cfg.key);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.view.sua.dvadac.desein.afip.gov"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsaa,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"urn:LoginCms"},body});const xml=await r.text();if(!r.ok){const m=xml.match(/(?:faultstring|descripcion|description|errorCode|codigo)[^>]*>([^<]{1,500})</i);const raw=(m?.[1]||"").trim();const code=(raw.match(/(?:coe\\.|cms\\.|xml\\.|wsn\\.|wsaa\\.)[A-Za-z0-9_.-]+/)||[])[0];throw new Error(code||("ARCA_WSAA_FAULT_"+raw.replace(/[^A-Za-z0-9_.: -]/g,"").slice(0,180)||("ARCA_WSAA_HTTP_"+r.status)))};const token=nodeText(xml,"token"),sign=nodeText(xml,"sign"),exp=nodeText(xml,"expirationTime");if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");const expiresAt=exp?Date.parse(exp):now+10*60*60*1000;const out={token,sign,expiresAt};tokenCache.set(key,out);return out})().finally(()=>tokenInflight.delete(key));tokenInflight.set(key,p);return p}
 async function soap(method:string,inner:string,a:{token:string,sign:string},cfg:{environment:string,cuit:string}){const ep=endpoints(cfg.environment);const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><'+method+' xmlns="http://ar.gov.afip.dif.FEV1/"><Auth><Token>'+esc(a.token)+'</Token><Sign>'+esc(a.sign)+'</Sign><Cuit>'+esc(cfg.cuit)+'</Cuit></Auth>'+inner+'</'+method+'></soapenv:Body></soapenv:Envelope>';const r=await fetchWithTimeout(ep.wsfe,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":'"http://ar.gov.afip.dif.FEV1/'+method+'"'},body});const xml=await r.text();if(!r.ok||hasSoapFault(xml))throw new Error("ARCA_"+method+"_HTTP_"+r.status);return{ok:r.ok,status:r.status,xml}}
 async function authorize(i:any,cfg:{environment:string,cuit:string,cert:string,key:string}){
  const a=await getToken(cfg);
@@ -60,15 +76,20 @@ Deno.serve(async req=>{
   if(action==="test_connection"){
     const{data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
     if(!profile?.active_company_id)return new Response(JSON.stringify({ok:false,error:"ACTIVE_COMPANY_NOT_CONFIGURED"}),{status:409});
+    const platformAdmin=await isPlatformAdmin(user.id);
+    const companyAdmin=await isCompanyAdmin(user.id,String(profile.active_company_id));
+    if(!platformAdmin&&!companyAdmin)return new Response(JSON.stringify({ok:false,error:"COMPANY_ADMIN_REQUIRED"}),{status:403});
     const{data:company}=await db.from("companies").select("cuit,razon_social").eq("id",profile.active_company_id).maybeSingle();
     if(!company?.cuit)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});
-    const{data:arcaCfg}=await db.from("arca_company_config").select("environment,enabled,cuit_secret_name,cert_secret_name,private_key_secret_name").eq("company_id",profile.active_company_id).maybeSingle();
+    const{data:arcaCfg}=await db.from("arca_company_config").select("environment,enabled,cuit_secret_name,cert_secret_name,private_key_secret_name,cert_homologacion_secret_name,private_key_homologacion_secret_name").eq("company_id",profile.active_company_id).maybeSingle();
     if(arcaCfg&&!arcaCfg.enabled)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_DISABLED"}),{status:409});
     const environment=arcaCfg?.environment||GLOBAL_ENV;
     const configuredCuit=(arcaCfg?.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit;
     if(configuredCuit!==company.cuit)return new Response(JSON.stringify({ok:false,error:"ARCA_CUIT_MISMATCH"}),{status:409});
-    const cert=arcaCfg?.cert_secret_name?envPem(arcaCfg.cert_secret_name,"ARCA_CERTIFICATE_BASE64"):GLOBAL_CERT;
-    const key=arcaCfg?.private_key_secret_name?envPem(arcaCfg.private_key_secret_name,"ARCA_PRIVATE_KEY_BASE64"):GLOBAL_KEY;
+    const certSecretName=environment==="production"?(arcaCfg?.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):(arcaCfg?.cert_homologacion_secret_name||"ARCA_CERTIFICATE_HOMO_BASE64");
+    const keySecretName=environment==="production"?(arcaCfg?.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):(arcaCfg?.private_key_homologacion_secret_name||"ARCA_PRIVATE_KEY_HOMO_BASE64");
+    const cert=arcaCfg?envPem(certSecretName,certSecretName):GLOBAL_CERT;
+    const key=arcaCfg?envPem(keySecretName,keySecretName):GLOBAL_KEY;
     if(company.cuit!==GLOBAL_ARCA_CUIT&&!arcaCfg)return new Response(JSON.stringify({ok:false,error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});
     try{
       await getToken({environment,cuit:configuredCuit,cert,key});
@@ -81,8 +102,11 @@ Deno.serve(async req=>{
   }
   if(typeof id!=="string"||!/^[0-9a-f-]{36}$/i.test(id))return new Response(JSON.stringify({error:"INVALID_INVOICE_ID"}),{status:400});
   const{data:i}=await db.from("facturas").select("*,monedas:moneda_id(codigo)").eq("id",id).single();if(!i)return new Response(JSON.stringify({error:"INVOICE_NOT_FOUND"}),{status:404});
-  const{data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();const{data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);if(user.id!==i.usuario_responsable&&(profile?.active_company_id!==i.empresa_id||!p?.length))return new Response(JSON.stringify({error:"FORBIDDEN"}),{status:403});
-  const{data:company}=await db.from("companies").select("cuit").eq("id",i.empresa_id).maybeSingle();if(!company?.cuit)return new Response(JSON.stringify({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});const{data:arcaCfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name").eq("company_id",i.empresa_id).maybeSingle();let cfg:any;if(arcaCfg){if(!arcaCfg.enabled)return new Response(JSON.stringify({error:"ARCA_COMPANY_DISABLED"}),{status:409});if(Number(i.punto_venta)!==Number(arcaCfg.punto_venta))return new Response(JSON.stringify({error:"ARCA_PUNTO_VENTA_MISMATCH"}),{status:409});cfg={environment:arcaCfg.environment,cuit:(arcaCfg.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit,cert:envPem(arcaCfg.cert_secret_name||"","ARCA_CERTIFICATE_BASE64"),key:envPem(arcaCfg.private_key_secret_name||"","ARCA_PRIVATE_KEY_BASE64")};}else{if(company.cuit!==GLOBAL_ARCA_CUIT)return new Response(JSON.stringify({error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});cfg={environment:GLOBAL_ENV,cuit:GLOBAL_ARCA_CUIT,cert:GLOBAL_CERT,key:GLOBAL_KEY};}if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
+  const platformAdmin=await isPlatformAdmin(user.id);
+  const companyAdmin=await isCompanyAdmin(user.id,String(i.empresa_id));
+  const{data:p}=await db.from("operacion_participantes").select("empresa_id").eq("operacion_id",i.operacion_id).eq("empresa_id",i.empresa_id).limit(1);
+  if(!platformAdmin&&(!companyAdmin||!p?.length))return new Response(JSON.stringify({error:"COMPANY_ADMIN_OR_PLATFORM_ADMIN_REQUIRED"}),{status:403});
+  const{data:company}=await db.from("companies").select("cuit").eq("id",i.empresa_id).maybeSingle();if(!company?.cuit)return new Response(JSON.stringify({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"}),{status:409});const{data:arcaCfg}=await db.from("arca_company_config").select("environment,punto_venta,enabled,cert_secret_name,private_key_secret_name,cert_homologacion_secret_name,private_key_homologacion_secret_name").eq("company_id",i.empresa_id).maybeSingle();let cfg:any;if(arcaCfg){if(!arcaCfg.enabled)return new Response(JSON.stringify({error:"ARCA_COMPANY_DISABLED"}),{status:409});if(Number(i.punto_venta)!==Number(arcaCfg.punto_venta))return new Response(JSON.stringify({error:"ARCA_PUNTO_VENTA_MISMATCH"}),{status:409});const env=arcaCfg.environment;const certName=env==="production"?(arcaCfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):(arcaCfg.cert_homologacion_secret_name||"ARCA_CERTIFICATE_HOMO_BASE64");const keyName=env==="production"?(arcaCfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):(arcaCfg.private_key_homologacion_secret_name||"ARCA_PRIVATE_KEY_HOMO_BASE64");cfg={environment:env,cuit:(arcaCfg.cuit_secret_name?Deno.env.get(arcaCfg.cuit_secret_name):"")||company.cuit,cert:envPem(certName,certName),key:envPem(keyName,keyName)};}else{if(company.cuit!==GLOBAL_ARCA_CUIT)return new Response(JSON.stringify({error:"ARCA_COMPANY_NOT_CONFIGURED"}),{status:409});cfg={environment:GLOBAL_ENV,cuit:GLOBAL_ARCA_CUIT,cert:GLOBAL_CERT,key:GLOBAL_KEY};}if(i.estado==="AUTORIZADA")return new Response(JSON.stringify({ok:true,reused:true,invoice_id:id}),{headers:{"content-type":"application/json"}});
   await db.from("facturas").update({estado:"PENDIENTE_ARCA",arca_environment:cfg.environment==="production"?"PRODUCCION":"HOMOLOGACION",arca_service:"wsfev1",actualizada_en:new Date().toISOString()}).eq("id",id);
   try{
    const enriched={...i,moneda_codigo:i.monedas?.codigo};const o=await authorize(enriched,cfg),ok=o.result==="A"&&!!o.cae,v=o.venc&&/^\d{8}$/.test(o.venc)?o.venc.slice(0,4)+"-"+o.venc.slice(4,6)+"-"+o.venc.slice(6,8):null;
