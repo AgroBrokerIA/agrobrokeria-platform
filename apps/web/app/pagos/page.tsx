@@ -6,6 +6,7 @@ import {supabase} from "@/lib/supabase/client";
 type Payment={id:string;operacion_id:string;importe:number;moneda_id:number|null;metodo_pago:string|null;estado:string|null;fecha_pago:string|null;creado_en:string};
 type Method={id:string;nombre:string|null;tipo:string;estado:string|null;alias:string|null;banco:string|null;cbu:string|null;moneda_id:number|null};
 type Withdrawal={id:string;importe:number;estado:string|null;fecha_solicitud:string|null;medio_cobro_id:string|null;moneda_id:number|null};
+type PaymentOperation={id:string;codigo:string;importe_total:number;moneda_id:number;ownRole:string;otherEmpresaId:string;otherName:string};
 const money=(n:number,c:string)=>`${c} ${Number(n||0).toLocaleString("es-AR",{maximumFractionDigits:0})}`;
 const label=(s:string|null)=>/RECIB|PAGAD|CONFIRM/i.test(s||"")?"Recibido":/PROCES|PEND/i.test(s||"")?"En proceso":s||"Pendiente";
 const tone=(s:string|null)=>/RECIB|PAGAD|CONFIRM/i.test(s||"")?"ok":/PROCES|PEND/i.test(s||"")?"process":"process";
@@ -14,11 +15,31 @@ const iconFor=(name:string)=>/transfer|banc/i.test(name)?"🏦":/usdt|crypto/i.t
 export default function PagosPage(){
  const[isAdmin,setIsAdmin]=useState(false),[rows,setRows]=useState<Payment[]>([]),[methods,setMethods]=useState<Method[]>([]),[withdrawals,setWithdrawals]=useState<Withdrawal[]>([]),[curr,setCurr]=useState<Record<number,string>>({}),[commissionAvailable,setCommissionAvailable]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(""),[msg,setMsg]=useState("");
  const[amount,setAmount]=useState(""),[bankId,setBankId]=useState(""),[busy,setBusy]=useState(false);
+ const[ownEmpresaId,setOwnEmpresaId]=useState(""),[paymentOps,setPaymentOps]=useState<PaymentOperation[]>([]),[selectedPaymentOp,setSelectedPaymentOp]=useState(""),[paymentAmount,setPaymentAmount]=useState(""),[paymentReference,setPaymentReference]=useState(""),[paymentBusy,setPaymentBusy]=useState(false);
  async function load(){
   setLoading(true);setError("");
   try{
    const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const{data:adminFlag}=await supabase.rpc("es_administrador_plataforma");setIsAdmin(adminFlag===true);
    const{data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(!profile?.active_company_id)throw new Error("No se encontró una empresa activa.");
+   const {data:companyMap}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",profile.active_company_id).order("verified",{ascending:false}).limit(1).maybeSingle();
+   const ownEntityId=companyMap?.empresa_id||profile.active_company_id;setOwnEmpresaId(ownEntityId);
+   const {data:ownParticipation}=await supabase.from("operacion_participantes").select("operacion_id,rol").eq("empresa_id",ownEntityId);
+   const ownOps=(ownParticipation||[]).filter((x:any)=>["COMPRADOR","VENDEDOR"].includes(String(x.rol||"").toUpperCase()));
+   if(ownOps.length){
+    const ids=ownOps.map((x:any)=>x.operacion_id);
+    const [{data:operationRows},{data:allParticipants}]=await Promise.all([
+     supabase.from("operaciones").select("id,codigo,importe_total,moneda_id,estado").in("id",ids),
+     supabase.from("operacion_participantes").select("operacion_id,empresa_id,rol,empresas(id,razon_social,nombre_comercial)").in("operacion_id",ids)
+    ]);
+    const ownRoleMap=new Map(ownOps.map((x:any)=>[x.operacion_id,String(x.rol||"").toUpperCase()]));
+    const list=(operationRows||[]).flatMap((op:any)=>{
+     const role=ownRoleMap.get(op.id);const other=(allParticipants||[]).find((x:any)=>x.operacion_id===op.id&&x.empresa_id!==ownEntityId&&String(x.rol||"").toUpperCase()===(role==="COMPRADOR"?"VENDEDOR":"COMPRADOR"));
+     if(!other)return [];
+     const entity=Array.isArray(other.empresas)?other.empresas[0]:other.empresas;
+     return [{id:op.id,codigo:op.codigo||op.id.slice(0,8),importe_total:Number(op.importe_total||0),moneda_id:Number(op.moneda_id||0),ownRole:role,otherEmpresaId:other.empresa_id,otherName:entity?.nombre_comercial||entity?.razon_social||"Contraparte"}];
+    });
+    setPaymentOps(list);if(list.length&&!selectedPaymentOp)setSelectedPaymentOp(list[0].id);
+   }else{setPaymentOps([]);setSelectedPaymentOp("");}
    const [p,m,mon,w,c]=await Promise.all([
     supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").order("creado_en",{ascending:false}).limit(100),
     supabase.from("medios_cobro").select("id,nombre,tipo,estado,alias,banco,cbu,moneda_id").eq("empresa_id",profile.active_company_id).order("es_predeterminado",{ascending:false}),
@@ -44,6 +65,25 @@ export default function PagosPage(){
  const months=useMemo(()=>{const now=new Date();return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const monthRows=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key);const totals=new Map<number,number>();for(const r of monthRows)totals.set(r.moneda_id||0,(totals.get(r.moneda_id||0)||0)+Number(r.importe||0));const amount=totals.size===1?Number([...totals.values()][0]||0):0;return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value:aggregate(monthRows),amount}})},[rows,curr]);
  const monthAmounts=months.map(m=>m.amount);
  const maxMonth=Math.max(1,...monthAmounts);
+ async function registerOperationPayment(){
+  setError("");setMsg("");
+  const op=paymentOps.find(x=>x.id===selectedPaymentOp);const n=Number(paymentAmount.replace(",","."));
+  if(!op||!ownEmpresaId){setError("Seleccioná una operación comercial en la que participes como comprador o vendedor.");return;}
+  if(!Number.isFinite(n)||n<=0){setError("Ingresá un importe de pago mayor a cero.");return;}
+  if(!paymentReference.trim()){setError("Ingresá la referencia bancaria o identificador del comprobante.");return;}
+  setPaymentBusy(true);
+  try{
+   const payer=op.ownRole==="COMPRADOR"?ownEmpresaId:op.otherEmpresaId;
+   const receiver=op.ownRole==="VENDEDOR"?ownEmpresaId:op.otherEmpresaId;
+   const {data,error:rpcError}=await supabase.rpc("registrar_pago_operacion",{
+    p_operacion_id:op.id,p_empresa_pagadora:payer,p_empresa_cobradora:receiver,p_importe:n,p_moneda_id:op.moneda_id,p_metodo_pago:"TRANSFERENCIA",p_referencia:paymentReference.trim(),p_comprobante:paymentReference.trim()
+   });
+   if(rpcError)throw new Error(rpcError.message);
+   setPaymentAmount("");setPaymentReference("");setMsg("Pago registrado en Pagos con estado pendiente de conciliación. Referencia: "+String(data).slice(0,8).toUpperCase());
+   await load();
+  }catch(e){setError(e instanceof Error?e.message:"No se pudo registrar el pago.");}
+  finally{setPaymentBusy(false);}
+ }
  async function requestWithdrawal(){
   setMsg("");setError("");const n=Number(amount);if(!n||n<=0){setError("Ingresá un importe válido.");return}if(n>balance){setError("El importe supera el saldo disponible.");return}if(!bankId){setError("Seleccioná una cuenta bancaria.");return}
   setBusy(true);try{const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sesión expirada.");const{data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();const bank=methods.find(m=>m.id===bankId);if(!profile?.active_company_id||!bank)throw new Error("No se encontró la cuenta seleccionada.");if(!bank.moneda_id)throw new Error("La cuenta bancaria no tiene una moneda configurada.");const{data,error:e}=await supabase.rpc("solicitar_retiro_comision",{p_empresa_id:profile.active_company_id,p_profile_id:user.id,p_medio_cobro_id:bank.id,p_moneda_id:bank.moneda_id,p_importe:n});if(e)throw new Error(e.message);setAmount("");setMsg(`Solicitud de retiro creada: ${String(data).slice(0,8)}…`);await load()}catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar el retiro.")}finally{setBusy(false)}
@@ -58,6 +98,16 @@ export default function PagosPage(){
    {isAdmin&&<div className="payment-kpi blue"><div className="payment-kpi-icon">▣</div><div><small>Saldo para retirar</small><strong>{commissionCurrencyIds.length===1?money(balance,displayCurrency):commissionCurrencyIds.length>1?"Varias monedas":"Sin moneda"}</strong><em>Comisiones disponibles</em></div></div>}
    {isAdmin&&<div className="payment-kpi purple"><div className="payment-kpi-icon">↗</div><div><small>Total retirado</small><strong>{commissionCurrencyIds.length===1?money(withdrawn,displayCurrency):commissionCurrencyIds.length>1?"Varias monedas":"Sin moneda"}</strong><em>Retiros completados</em></div></div>}
    {isAdmin&&<Link className="payment-history-btn" href="/retiros-comisiones">Historial</Link>}
+  </section>
+  <section className="payments-panel payment-register-panel" style={{marginBottom:18,padding:20}}>
+   <h2>Registrar pago de una operación</h2>
+   <p>El comprador o vendedor puede informar una transferencia. El registro queda en Pagos con estado pendiente hasta su conciliación; no se confirma automáticamente el cobro.</p>
+   {paymentOps.length?<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(190px,1fr))",gap:12,alignItems:"end"}}>
+    <label>Operación y contraparte<select value={selectedPaymentOp} onChange={e=>setSelectedPaymentOp(e.target.value)} style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}>{paymentOps.map(op=><option key={op.id} value={op.id}>{op.codigo} · {op.ownRole==="COMPRADOR"?"Comprador":"Vendedor"} · {op.otherName}</option>)}</select></label>
+    <label>Importe transferido<input type="number" min="0.01" step="0.01" value={paymentAmount} onChange={e=>setPaymentAmount(e.target.value)} placeholder="Importe" style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}/></label>
+    <label>Referencia bancaria / comprobante<input value={paymentReference} onChange={e=>setPaymentReference(e.target.value)} placeholder="N.º de transferencia" style={{display:"block",width:"100%",padding:10,border:"1px solid #cbd5e1",borderRadius:8}}/></label>
+    <button type="button" disabled={paymentBusy||!paymentAmount||!paymentReference.trim()} onClick={()=>void registerOperationPayment()} style={{padding:11,border:0,borderRadius:8,background:paymentBusy?"#94a3b8":"#087a50",color:"#fff",fontWeight:700}}>{paymentBusy?"Registrando…":"Registrar pago"}</button>
+   </div>:<p>No hay operaciones disponibles para registrar pagos desde esta empresa. Solo se muestran operaciones en las que participás como comprador o vendedor.</p>}
   </section>
   <section className="payments-content-grid">
    <section className="payments-panel transactions-panel"><div className="payments-panel-title"><h2>Últimos pagos</h2><Link href="/transacciones">Ver todos →</Link></div><div className="payments-table-wrap"><table><thead><tr><th>Fecha</th><th>Operación</th><th>Método</th><th>Importe</th><th>Estado</th><th>Acción</th></tr></thead><tbody>{loading?<tr><td colSpan={6} className="payments-empty">Cargando pagos…</td></tr>:rows.slice(0,10).map(r=><tr key={r.id}><td>{r.fecha_pago?new Date(r.fecha_pago).toLocaleDateString("es-AR"):"—"}</td><td><strong>{r.operacion_id||"—"}</strong></td><td><span className="payment-type-icon blue">{iconFor(r.metodo_pago||"")}</span>{r.metodo_pago||"Pago de operación"}</td><td><strong>{money(Number(r.importe||0),curr[r.moneda_id||0]||"Moneda")}</strong></td><td><span className={`payment-state ${tone(r.estado)}`}>{label(r.estado)}</span></td><td><Link className="payment-action" href={r.operacion_id?"/operaciones/"+r.operacion_id:"/transacciones"}>→</Link></td></tr>)}</tbody></table></div></section>
