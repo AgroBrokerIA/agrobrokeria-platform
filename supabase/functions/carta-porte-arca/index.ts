@@ -167,7 +167,7 @@ Deno.serve(async req=>{
 
     const tipoCP=requiredString(b.tipo_cp,"TIPO_CP"), sucursal=Number(b.sucursal||cfg.punto_venta);
     if(!Number.isInteger(sucursal)||sucursal<1)throw new Error("WSCPE_INVALID_SUCURSAL");
-    const cuitSolicitante=requiredString(b.cuit_solicitante,cuit);
+    const cuitSolicitante=requiredString(b.cuit_solicitante,"CUIT_SOLICITANTE");
     const tipoGrano=requiredString(b.cod_grano,"COD_GRANO");
     const pesoBruto=requiredString(b.peso_bruto_kg,"PESO_BRUTO_KG");
     const pesoTara=requiredString(b.peso_tara_kg,"PESO_TARA_KG");
