@@ -73,7 +73,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
         .select("id,rol,version_contrato,estado,nombre_archivo,storage_path,subido_at,observaciones")
-        .eq("contrato_id", contract.id).order("subido_at", { ascending: true });
+        .eq("contrato_id", contract.id).order("version_contrato", { ascending: false }).order("subido_at", { ascending: false });
       if (copyError) throw copyError;
       setCopies((copyRows || []) as Copy[]);
     } catch (e) {
@@ -119,7 +119,10 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
       const { error: storageError } = await supabase.storage.from("documentos-operacion")
         .upload(path, file, { contentType: "application/pdf", upsert: false });
       if (storageError) throw storageError;
-      const { error: rpcError } = await supabase.rpc("registrar_copia_firmada_contrato", {
+      const rpcName = isAdmin
+        ? "registrar_copia_firmada_contrato_admin"
+        : "registrar_copia_firmada_contrato";
+      const { error: rpcError } = await supabase.rpc(rpcName, {
         p_contrato_id: contractId, p_rol: role, p_storage_path: path,
         p_nombre_archivo: file.name, p_sha256: hash
       });
@@ -191,7 +194,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
     </div>
     {(["VENDEDOR","COMPRADOR"] as const).map((role) => {
       const copy = copies.find((item) => item.rol === role);
-      const canUpload = roles.includes(role) && (!copy || copy.estado === "RECHAZADA");
+      const canUpload = (roles.includes(role) || isAdmin) && (!copy || copy.estado === "RECHAZADA");
       return <div key={role} style={{padding:13,border:"1px solid #e2e8f0",borderRadius:10,display:"grid",gap:9}}>
         <div style={{display:"flex",justifyContent:"space-between",gap:8,flexWrap:"wrap"}}>
           <strong>{role === "VENDEDOR" ? "Vendedor / Productor" : "Comprador"}</strong>
@@ -199,10 +202,11 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
         </div>
         {copy && <div style={{fontSize:12,color:"#475569"}}>{copy.nombre_archivo} · {new Date(copy.subido_at).toLocaleString("es-AR")}{copy.observaciones ? " · " + copy.observaciones : ""}</div>}
         {canUpload && <div style={{display:"grid",gap:8}}>
-          <label style={{fontSize:13}}>Seleccionar PDF firmado (máximo 20 MB)
+          <label style={{fontSize:13}}>{isAdmin ? "Adjuntar PDF recibido de la parte (máximo 20 MB)" : "Seleccionar PDF firmado (máximo 20 MB)"}
             <input type="file" accept="application/pdf,.pdf" onChange={(e)=>setFiles((current)=>({...current,[role]:e.target.files?.[0]||null}))} style={{display:"block",marginTop:6}}/>
           </label>
-          <button type="button" disabled={uploading!==null || !files[role]} onClick={()=>void upload(role)} style={{justifySelf:"start",padding:"9px 13px",border:0,borderRadius:8,background:"#0f766e",color:"#fff",fontWeight:700}}>{uploading===role?"Cargando…":"Cargar copia firmada del "+(role==="VENDEDOR"?"vendedor":"comprador")}</button>
+          <button type="button" disabled={uploading!==null || !files[role]} onClick={()=>void upload(role)} style={{justifySelf:"start",padding:"9px 13px",border:0,borderRadius:8,background:"#0f766e",color:"#fff",fontWeight:700}}>{uploading===role?"Cargando…":(isAdmin?"Registrar PDF recibido — ":"Cargar copia firmada del ")+(role==="VENDEDOR"?"vendedor":"comprador")}</button>
+          {isAdmin && <small style={{color:"#64748b"}}>Carga asistida por Administración. El archivo queda pendiente de revisión y aprobación; no equivale a firma digital.</small>}
         </div>}
         {roles.includes(role) && copy?.estado==="PENDIENTE" && <p style={{margin:0,fontSize:12,color:"#92400e"}}>Archivo recibido. Esperando revisión de Administración.</p>}
         {isAdmin && copy && <button type="button" onClick={()=>void openCopy(copy)} style={{justifySelf:"start",padding:"8px 12px",border:"1px solid #94a3b8",borderRadius:8,background:"#fff"}}>Abrir PDF para revisar</button>}
