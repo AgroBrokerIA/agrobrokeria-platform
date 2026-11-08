@@ -78,7 +78,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   if(!Number.isFinite(p)||p<=0||!Number.isFinite(q)||q<=0){setError("Ingresá un precio y una cantidad mayores a cero.");return;}
   setAccionando(true);setError("");
   const {error}=await supabase.rpc("crear_propuesta_publicacion",{p_conversacion_id:conversacionId,p_precio_tn:p,p_cantidad_tn:q,p_moneda_id:monedaId?Number(monedaId):null,p_observaciones:observaciones.trim()||null});
-  if(error)setError("No se pudo enviar la oferta: "+error.message);
+  if(error)setError(/VERIFICACION_SISA_PENDIENTE|KYC_EMPRESARIAL_PENDIENTE/i.test(error.message)?"Podés conversar libremente. Para enviar ofertas o contraofertas, la empresa debe completar la verificación KYC/SISA.":"No se pudo enviar la oferta: "+error.message);
   else {setMostrarOferta(false);setContraoferta(false);setObservaciones("");await cargarPropuestas();}
   setAccionando(false);
  }
@@ -86,7 +86,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   if(!window.confirm(accion==="ACEPTAR"?"¿Aceptás esta propuesta? Se creará la operación y un borrador contractual formal F1 para revisión y firma. Solo se admiten operaciones reales y declaradas.":"¿Querés rechazar esta propuesta?"))return;
   setAccionando(true);setError("");
   const {data,error}=await supabase.rpc("responder_propuesta_publicacion",{p_propuesta_id:id,p_accion:accion});
-  if(error)setError("No se pudo responder la oferta: "+error.message);
+  if(error)setError(/VERIFICACION_SISA_PENDIENTE|KYC_EMPRESARIAL_PENDIENTE/i.test(error.message)?"Podés consultar la propuesta y conversar. Para aceptarla o rechazarla, la empresa debe completar la verificación KYC/SISA.":"No se pudo responder la oferta: "+error.message);
   else if(accion==="ACEPTAR" && data?.operacion_id){window.location.assign("/operaciones");}
   await cargarPropuestas();setAccionando(false);
  }
