@@ -31,6 +31,7 @@ export default function RegistroTransportistaPage() {
   const [mensajeVehiculo,setMensajeVehiculo]=useState("");
 
   async function cargarPerfilTransportista(){
+    setPerfilLoading(true);
     const {data:userData}=await supabase.auth.getUser();
     if(!userData.user){setPerfilExistente(null);setVehiculosExistentes([]);setPerfilLoading(false);return;}
     const {data:perfil}=await supabase.from("transportistas").select("nombre_completo,verificacion_estado,activo").eq("profile_id",userData.user.id).maybeSingle();
