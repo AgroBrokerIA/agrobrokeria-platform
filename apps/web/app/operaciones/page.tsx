@@ -2710,7 +2710,43 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
             await abrirContrato(detalleOperacion);
             resultado = true;
           } else if (ordenDetalle === 6) {
-            setMensaje("Cargá las copias PDF firmadas por vendedor y comprador en el panel de esta operación. Administración las revisará desde aquí.");
+            setError("");
+            setMensaje("Verificando las dos copias firmadas y las aprobaciones administrativas…");
+            const { data: contratoFirmado, error: contratoFirmadoError } = await supabase
+              .from("contratos")
+              .select("id")
+              .eq("operacion_id", detalleOperacion.id)
+              .eq("estado", "CONFIRMADO")
+              .order("confirmado_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (contratoFirmadoError || !contratoFirmado?.id) {
+              setMensaje("");
+              setError("No se encontró el contrato definitivo confirmado: " + (contratoFirmadoError?.message || "contrato inexistente"));
+              return;
+            }
+            const { data: syncResult, error: syncError } = await supabase.rpc(
+              "sincronizar_workflow_firmas_contrato",
+              { p_contrato_id: contratoFirmado.id }
+            );
+            if (syncError) {
+              setMensaje("");
+              setError("No se pudo avanzar a Logística / Entrega: " + syncError.message);
+              return;
+            }
+            if (syncResult?.avanzada || syncResult?.ya_avanzada) {
+              setMensaje("Las dos copias firmadas están aprobadas. La operación pasó a Logística / Entrega.");
+              await cargarOperaciones();
+              setDetalleOperacion(null);
+              return;
+            }
+            setMensaje("");
+            const pendientes = [
+              syncResult?.copias_aprobadas !== undefined ? `copias aprobadas: ${syncResult.copias_aprobadas}/2` : null,
+              syncResult?.roles_requeridos !== undefined ? `partes requeridas: ${syncResult.roles_requeridos}/2` : null,
+              syncResult?.firmas_registradas !== undefined ? `firmas registradas: ${syncResult.firmas_registradas}/2` : null,
+            ].filter(Boolean).join(" · ");
+            setError("La base de datos todavía no autorizó el avance. " + (pendientes || "Revisá que ambas copias estén aprobadas para la misma versión del contrato.") + (syncResult?.orden ? ` · etapa actual: ${syncResult.orden}` : ""));
             return;
           } else if (ordenDetalle === 7) {
             return;
@@ -2808,7 +2844,7 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
               </div>
             </section>}
             {error && <p role="alert" style={{marginTop:12,padding:12,borderRadius:8,background:"#fee2e2",color:"#991b1b"}}>{error}</p>}
-            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle !== 8 && ordenDetalle !== 7 && <button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Retención de comisión" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar al Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Esperar firmas de vendedor y comprador" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button>}</div>
+            <div className="operation-detail-actions" style={{display:"flex",gap:12,justifyContent:"flex-end",marginTop:24,flexWrap:"wrap"}}><button type="button" style={{padding:"10px 16px",borderRadius:8,border:"1px solid #cbd5e1",cursor:"pointer"}} onClick={() => setDetalleOperacion(null)}>Cerrar</button>{ordenDetalle !== 8 && ordenDetalle !== 7 && <button type="button" style={{padding:"10px 16px",borderRadius:8,border:0,background:"#078b58",color:"#fff",cursor:"pointer"}} onClick={continuar}>{ordenDetalle === 1 ? "Iniciar Acuerdo Comercial / Reserva" : ordenDetalle === 2 ? "Completar acuerdo preliminar" : ordenDetalle === 3 ? (visadoAprobado(controlesComerciales[detalleOperacion.id]) ? "Continuar a Retención de comisión" : "Registrar visado de mercadería") : ordenDetalle === 4 ? (["RETENIDA","LIBERADA"].includes(String(retencionComision?.estado || controlesComerciales[detalleOperacion.id]?.comision_estado || "").toUpperCase()) ? "Continuar al Contrato Definitivo" : "Cargar / revisar comprobante de comisión") : ordenDetalle === 5 ? "Preparar contrato definitivo" : ordenDetalle === 6 ? "Verificar firmas y pasar a Logística" : ordenDetalle === 7 ? "Gestionar entrega" : ordenDetalle === 9 ? "Operación cerrada" : "Revisar workflow"}</button>}</div>
           </section>
         </div>;
       })()}
