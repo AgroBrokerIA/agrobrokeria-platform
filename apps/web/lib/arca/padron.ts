@@ -42,8 +42,8 @@ async function getTicket(){
 }
 
 export async function consultarPersonaPadron(cuitInput:string):Promise<PadronResult>{
-  const cuit=String(cuitInput||"").replace(/\\D/g,"");
-  if(!/^\\d{11}$/.test(cuit))throw new Error("CUIT_INVALIDO");
+  const cuit=String(cuitInput||"").replace(/\D/g,"");
+  if(!/^\d{11}$/.test(cuit))throw new Error("CUIT_INVALIDO");
   if(!arcaConfig.cuit)throw new Error("ARCA_CUIT_NO_CONFIGURADO");
   const ticket=await getTicket();
   const endpoint=arcaConfig.environment==="PRODUCCION"
