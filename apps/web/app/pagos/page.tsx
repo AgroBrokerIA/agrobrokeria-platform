@@ -49,7 +49,7 @@ export default function PagosPage(){
   setBusy(true);try{const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Sesión expirada.");const{data:profile}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();const bank=methods.find(m=>m.id===bankId);if(!profile?.active_company_id||!bank)throw new Error("No se encontró la cuenta seleccionada.");if(!bank.moneda_id)throw new Error("La cuenta bancaria no tiene una moneda configurada.");const{data,error:e}=await supabase.rpc("solicitar_retiro_comision",{p_empresa_id:profile.active_company_id,p_profile_id:user.id,p_medio_cobro_id:bank.id,p_moneda_id:bank.moneda_id,p_importe:n});if(e)throw new Error(e.message);setAmount("");setMsg(`Solicitud de retiro creada: ${String(data).slice(0,8)}…`);await load()}catch(e){setError(e instanceof Error?e.message:"No se pudo solicitar el retiro.")}finally{setBusy(false)}
  }
  return <main className="payments-page">
-  <header className="payments-hero"><div><h1>Pagos</h1><p>Gestiona los pagos de tus operaciones, comisiones y retiros de forma segura.</p></div></header>
+  <header className="payments-hero"><div><h1>Pagos</h1><p>Gestioná y consultá los pagos registrados de tus operaciones.</p></div></header>
   <nav className="payments-tabs"><Link className="active" href="/pagos">Resumen</Link><Link href="/transacciones">Transacciones</Link><Link href="/facturas">Facturación</Link>{isAdmin&&<><Link href="/medios-cobro">Medios de cobro</Link><Link href="/cuentas-bancarias">Cuentas bancarias</Link><Link href="/retiros-comisiones">Retiros</Link></>}</nav>
   {error&&<div className="module-alert module-alert-error">{error}</div>}{msg&&<div className="module-alert">{msg}</div>}
   <section className="payment-kpis">
