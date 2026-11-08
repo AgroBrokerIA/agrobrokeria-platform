@@ -36,6 +36,7 @@ type Transportista = {
   telefono: string | null;
   foto_perfil_path: string | null;
 };
+type VehiculoRegistrado={id:string;patente:string;tipo:string;capacidad_tn:number|null;habilitado:boolean};
 
 type CartaPorte = {
   id: string;
@@ -154,6 +155,9 @@ export default function LogisticaEntrega({
 }) {
   const [viajes, setViajes] = useState<Viaje[]>([]);
   const [transportistas, setTransportistas] = useState<Transportista[]>([]);
+  const [vehiculosDisponibles,setVehiculosDisponibles]=useState<VehiculoRegistrado[]>([]);
+  const [vehiculoCamionId,setVehiculoCamionId]=useState("");
+  const [vehiculoAcopladoId,setVehiculoAcopladoId]=useState("");
   const [cartas, setCartas] = useState<CartaPorte[]>([]);
   const [eventos, setEventos] = useState<Evento[]>([]);
   const [comisiones, setComisiones] = useState<ComisionViaje[]>([]);
@@ -265,28 +269,43 @@ export default function LogisticaEntrega({
     window.open(data.signedUrl, "_blank", "noopener,noreferrer");
   }
 
+  async function seleccionarTransportista(id:string){
+    setTransportistaId(id);setVehiculosDisponibles([]);setVehiculoCamionId("");setVehiculoAcopladoId("");setPatente("");setAcoplado("");
+    if(!id)return;
+    const {data,error:vehicleError}=await supabase.rpc("listar_vehiculos_transportista",{p_operacion_id:operacionId,p_transportista_profile_id:id});
+    if(vehicleError){setError("No se pudieron cargar los dominios registrados: "+vehicleError.message);return;}
+    const rows=(data||[]) as VehiculoRegistrado[];setVehiculosDisponibles(rows);
+    const truck=rows.find(x=>String(x.tipo).toUpperCase()==="CAMION");
+    const trailer=rows.find(x=>String(x.tipo).toUpperCase()==="ACOPLADO");
+    if(truck){setVehiculoCamionId(truck.id);setPatente(truck.patente);}
+    if(trailer){setVehiculoAcopladoId(trailer.id);setAcoplado(trailer.patente);}
+  }
+
   async function crearViaje() {
     setError("");
     setMensaje("");
-    if (!transportistaId || !origenNombre.trim() || !destinoNombre.trim() || !patente.trim()) {
-      setError("Completá transportista, origen, destino y patente del camión.");
+    if (!transportistaId || !vehiculoCamionId || !origenNombre.trim() || !destinoNombre.trim()) {
+      setError("Seleccioná transportista, camión registrado, origen y destino.");
       return;
     }
     setGuardando(true);
-    const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion", {
+    const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion_con_vehiculos", {
       p_operacion_id: operacionId,
       p_transportista_profile_id: transportistaId,
+      p_vehiculo_id: vehiculoCamionId,
+      p_acoplado_vehiculo_id: vehiculoAcopladoId || null,
       p_origen: origenDireccion || origenNombre,
       p_destino: destinoDireccion || destinoNombre,
       p_origen_nombre: origenNombre,
       p_destino_nombre: destinoNombre,
-      p_patente_camion: patente.toUpperCase(),
-      p_patente_acoplado: acoplado.toUpperCase() || null,
     });
     if (rpcError) setError("No se pudo crear el viaje: " + rpcError.message);
     else {
       setMensaje("Viaje creado y transportista asignado correctamente.");
       setTransportistaId("");
+      setVehiculosDisponibles([]);
+      setVehiculoCamionId("");
+      setVehiculoAcopladoId("");
       setPatente("");
       setAcoplado("");
       await cargar();
@@ -568,17 +587,20 @@ export default function LogisticaEntrega({
       {!esTransportista && <section style={panel}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800 }}>Asignar un camión</div>
-          <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Solo aparecen transportistas registrados y verificados por AgroBrokerIA.</div>
+          <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Solo aparecen transportistas verificados. Al seleccionarlos, se muestran únicamente los dominios registrados a su nombre y se completan automáticamente.</div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10 }}>
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Transportista
-            <select value={transportistaId} onChange={(e) => setTransportistaId(e.target.value)} style={input}>
-              <option value="">Seleccionar transportista</option>
+            <select value={transportistaId} onChange={(e) => void seleccionarTransportista(e.target.value)} style={input}>
+              <option value="">Seleccionar transportista verificado</option>
               {transportistas.map((t) => <option key={t.profile_id} value={t.profile_id}>{t.nombre_completo}{t.empresa_transporte ? " — " + t.empresa_transporte : ""}</option>)}
             </select>
           </label>
-          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Patente del camión
-            <input value={patente} onChange={(e) => setPatente(e.target.value)} placeholder="Ej. AB123CD" style={input} />
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Camión registrado
+            <select value={vehiculoCamionId} onChange={e=>{setVehiculoCamionId(e.target.value);setPatente(vehiculosDisponibles.find(v=>v.id===e.target.value)?.patente||"")}} style={input} disabled={!transportistaId}>
+              <option value="">Seleccionar dominio del camión</option>
+              {vehiculosDisponibles.filter(v=>String(v.tipo).toUpperCase()==="CAMION").map(v=><option key={v.id} value={v.id}>{v.patente}{v.capacidad_tn?" · "+v.capacidad_tn+" TN":""}</option>)}
+            </select>
           </label>
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Empresa / productor de origen
             <input value={origenNombre} onChange={(e) => setOrigenNombre(e.target.value)} placeholder="Nombre exacto de planta, productor o acopio" style={input} />
@@ -592,8 +614,11 @@ export default function LogisticaEntrega({
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Dirección de destino
             <input value={destinoDireccion} onChange={(e) => setDestinoDireccion(e.target.value)} placeholder="Localidad, provincia y dirección" style={input} />
           </label>
-          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Patente del acoplado (opcional)
-            <input value={acoplado} onChange={(e) => setAcoplado(e.target.value)} placeholder="Patente del acoplado" style={input} />
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Acoplado registrado (opcional)
+            <select value={vehiculoAcopladoId} onChange={e=>{setVehiculoAcopladoId(e.target.value);setAcoplado(vehiculosDisponibles.find(v=>v.id===e.target.value)?.patente||"")}} style={input} disabled={!transportistaId}>
+              <option value="">Sin acoplado</option>
+              {vehiculosDisponibles.filter(v=>String(v.tipo).toUpperCase()==="ACOPLADO").map(v=><option key={v.id} value={v.id}>{v.patente}</option>)}
+            </select>
           </label>
         </div>
         <div><button type="button" style={primary} disabled={guardando} onClick={() => void crearViaje()}>{guardando ? "Guardando…" : "Crear viaje y asignar transportista"}</button></div>
