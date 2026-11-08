@@ -2078,4 +2078,6 @@ html,body,.app-body{font-family:var(--ab-font)}
   .ai-table-scroll .ai-table-head,
   .ai-table-scroll .ai-row{width:1040px!important;min-width:1040px!important}
 }
-\n/* Reportes: detalle de operaciones a ancho completo */\n.reports-shell{display:flex;flex-direction:column;align-items:stretch}.reports-core{width:100%;max-width:none;min-width:0}.reports-detail{width:100%;max-width:none}.reports-table{width:100%;overflow-x:auto}.reports-filters{width:100%;order:-1}@media(max-width:1050px){.reports-shell{display:flex;flex-direction:column}.reports-filters{width:100%}}\n
+
+/* Reportes: detalle de operaciones a ancho completo */
+.reports-shell{display:flex;flex-direction:column;align-items:stretch}.reports-core{width:100%;max-width:none;min-width:0}.reports-detail{width:100%;max-width:none}.reports-table{width:100%;overflow-x:auto}.reports-filters{width:100%;order:-1}@media(max-width:1050px){.reports-shell{display:flex;flex-direction:column}.reports-filters{width:100%}}
