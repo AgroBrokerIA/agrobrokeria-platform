@@ -1778,7 +1778,7 @@ Los parámetros de humedad, materias extrañas, granos dañados, merma, toleranc
 
 CLÁUSULA 6 — SERVICIO DE INTERMEDIACIÓN Y COMISIÓN TECNOLÓGICA
 
-Las partes reconocen únicamente las comisiones que se encuentren expresamente informadas y aceptadas en el registro de la operación. La comisión propia de AgroBrokerIA es de USD 1 (un dólar estadounidense) por tonelada métrica, equivalente a USD ${formatoNumero(operacion.cantidad_tn)} para el volumen contractual indicado. Se paga por transferencia bancaria a la cuenta corporativa verificada y su estado de retención o liberación contable depende de los registros efectivos de la operación. Su estado de retención o liberación contable se regirá por los registros efectivos de la operación. Los honorarios de intermediarios terceros se acuerdan, facturan y liquidan externamente entre quienes correspondan. Esta cláusula no establece custodia de fondos del flete ni garantiza una transferencia automática de fondos de terceros.
+Las partes reconocen únicamente las comisiones que se encuentren expresamente informadas y aceptadas en el registro de la operación. La comisión propia de AgroBrokerIA es de USD 1 (un dólar estadounidense) por tonelada métrica, equivalente a USD ${formatoNumero(operacion.cantidad_tn)} para el volumen contractual indicado. Se paga por transferencia bancaria a la cuenta corporativa verificada; su retención o liberación contable depende de las reglas operativas y verificaciones efectivamente registradas. Los honorarios de intermediarios terceros se acuerdan, facturan y liquidan externamente entre quienes correspondan. Esta cláusula no establece custodia de fondos del flete ni garantiza una transferencia automática de fondos de terceros.
 
 CLÁUSULA 7 — ENTREGA, RECEPCIÓN Y CONSTANCIAS
 
