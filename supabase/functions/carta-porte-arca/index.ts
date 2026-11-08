@@ -217,6 +217,7 @@ Deno.serve(async req=>{
     const errors=allErrors(xml),ctg=nodeText(xml,"nroCTG"),estado=nodeText(xml,"estado"),fechaEmision=nodeText(xml,"fechaEmision"),fechaVto=nodeText(xml,"fechaVencimiento");
     const blockingErrors=errors.filter(e=>e.code!=="550");
     const ok=!!ctg && blockingErrors.length===0;
+    const responseForStorage=xml.replace(/<pdf[^>]*>[\s\S]*?<\/pdf>/i,"<pdf>[PDF almacenado en almacenamiento privado]</pdf>");
     let pdfDisponible=false,pdfPath:string|null=null,pdfError:string|null=null;
     if(ok){
       const pesoBrutoKg=Number(b.peso_bruto_kg),pesoTaraKg=Number(b.peso_tara_kg);
@@ -237,10 +238,10 @@ Deno.serve(async req=>{
           pdfDisponible=true;
         }catch(e){pdfError=String(e);}
       }else pdfError="ARCA_NO_INCLUYO_PDF_EN_LA_RESPUESTA";
-      const {error:tripSaveError}=await db.from("viajes").update({carta_porte_ctg:ctg,carta_porte_nro_orden:nroOrden,carta_porte_estado:"EMITIDA",carta_porte_emitida_at:fechaEmision||new Date().toISOString(),carta_porte_environment:environment,carta_porte_response:{service:"wscpe",environment,request:inner,response:xml,errors,pdf_path:pdfPath},carta_porte_tn:kilosNetos===null?null:kilosNetos/1000,kilos_cargados:kilosNetos,actualizado_at:new Date().toISOString()}).eq("id",viajeId).eq("operacion_id",operationId);
+      const {error:tripSaveError}=await db.from("viajes").update({carta_porte_ctg:ctg,carta_porte_nro_orden:nroOrden,carta_porte_estado:"EMITIDA",carta_porte_emitida_at:fechaEmision||new Date().toISOString(),carta_porte_environment:environment,carta_porte_response:{service:"wscpe",environment,request:inner,response:responseForStorage,errors,pdf_path:pdfPath},carta_porte_tn:kilosNetos===null?null:kilosNetos/1000,kilos_cargados:kilosNetos,actualizado_at:new Date().toISOString()}).eq("id",viajeId).eq("operacion_id",operationId);
       if(tripSaveError)return json({error:"ARCA_EMITIDA_BUT_TRIP_SAVE_FAILED",nro_ctg:ctg,nro_orden:nroOrden},500);
     }
-    const {error:logSaveError}=await db.from("operacion_logistica").update({carta_porte_numero:ctg||null,carta_porte_estado:ok?"EMITIDA":"OBSERVADA",carta_porte_origen:"ARCA_WSCPE",carta_porte_codigo:String(nroOrden),carta_porte_fecha_emision:fechaEmision||null,carta_porte_fecha_vencimiento:fechaVto||null,carta_porte_response:{service:"wscpe",environment,request:inner,response:xml,errors},updated_at:new Date().toISOString(),actualizado_por:user.id}).eq("operacion_id",operationId);
+    const {error:logSaveError}=await db.from("operacion_logistica").update({carta_porte_numero:ctg||null,carta_porte_estado:ok?"EMITIDA":"OBSERVADA",carta_porte_origen:"ARCA_WSCPE",carta_porte_codigo:String(nroOrden),carta_porte_fecha_emision:fechaEmision||null,carta_porte_fecha_vencimiento:fechaVto||null,carta_porte_response:{service:"wscpe",environment,request:inner,response:responseForStorage,errors},updated_at:new Date().toISOString(),actualizado_por:user.id}).eq("operacion_id",operationId);
     if(logSaveError)return json({error:"ARCA_RESULT_SAVE_FAILED",nro_ctg:ctg||null},500);
     if(!ok)return json({ok:false,operation_id:operationId,viaje_id:viajeId,nro_orden:nroOrden,errors,response:xml},422);
     return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:ctg,nro_orden:nroOrden,estado,fecha_emision:fechaEmision,fecha_vencimiento:fechaVto,pdf_disponible:pdfDisponible,pdf_error:pdfError,errors});
