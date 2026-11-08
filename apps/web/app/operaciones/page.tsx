@@ -1492,91 +1492,64 @@ export default function OperacionesPage() {
 
 
   function generarPDFContrato() {
-    const doc = new jsPDF();
-
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
     const margen = 20;
     const ancho = 170;
-    let y = 20;
+    const alto = 297;
+    const pie = 18;
+    let y = 24;
+    let pagina = 1;
 
+    const encabezado = () => {
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(8);
+      doc.setTextColor(5, 92, 67);
+      doc.text("AGROBROKERIA · CONTRATO COMERCIAL MODELO F1", margen, 12);
+      doc.setDrawColor(5, 140, 91);
+      doc.line(margen, 15, 190, 15);
+      doc.setTextColor(25, 35, 45);
+    };
+    const piePagina = () => {
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(8);
+      doc.setTextColor(100, 110, 120);
+      doc.text(`Contrato ${contrato.numero_contrato} · Página ${pagina}`, margen, 288);
+      doc.text("Borrador contractual sujeto a revisión y firma de las partes", 190, 288, { align: "right" });
+      doc.setTextColor(25, 35, 45);
+    };
+    encabezado();
     doc.setFont("helvetica", "bold");
-    doc.setFontSize(18);
-
-    doc.text(
-      "CONTRATO DE COMPRAVENTA DE GRANOS",
-      105,
-      y,
-      { align: "center" }
-    );
-
-    y += 12;
-
+    doc.setFontSize(15);
+    doc.text("CONTRATO DE COMPRAVENTA DE GRANOS", 105, y, { align: "center" });
+    y += 7;
     doc.setFontSize(11);
-    doc.text(
-      `N° ${contrato.numero_contrato}`,
-      105,
-      y,
-      { align: "center" }
-    );
+    doc.text('"MODELO F1"', 105, y, { align: "center" });
+    y += 10;
 
-    y += 15;
-
-    doc.setFont("helvetica", "normal");
-    doc.setFontSize(10);
-
-    const contenidoNormalizado = contrato.contenido
+    const contenido = contrato.contenido
       .replace(/\\n/g, String.fromCharCode(10))
       .replace(/\\r/g, "")
       .replace(/\\t/g, "  ");
-    for (const linea of contenidoNormalizado.split(String.fromCharCode(10))) {
+    for (const linea of contenido.split(String.fromCharCode(10))) {
       const texto = linea.trim();
-
-      if (!texto) {
-        y += 5;
-        continue;
-      }
-
-      const palabras = doc.splitTextToSize(
-        texto,
-        ancho
-      );
-
-      if (y + palabras.length * 5 > 270) {
+      if (!texto) { y += 3; continue; }
+      const esTitulo = /^(PREÁMBULO|CLÁUSULA|DATOS DE FIRMA|EL VENDEDOR|EL COMPRADOR|INTERMEDIARIO|OBSERVACIONES|ANEXO DE VERIFICACIÓN)/i.test(texto);
+      doc.setFont("helvetica", esTitulo ? "bold" : "normal");
+      doc.setFontSize(esTitulo ? 10 : 9);
+      const lineas = doc.splitTextToSize(texto, ancho);
+      const altoTexto = lineas.length * (esTitulo ? 5.2 : 4.6);
+      if (y + altoTexto > alto - pie - 8) {
+        piePagina();
         doc.addPage();
-        y = 20;
+        pagina += 1;
+        encabezado();
+        y = 24;
       }
-
-      doc.text(palabras, margen, y);
-      y += palabras.length * 5 + 2;
+      doc.text(lineas, margen, y);
+      y += altoTexto + (esTitulo ? 2 : 1);
     }
-
-    if (y > 250) {
-      doc.addPage();
-      y = 25;
-    }
-
-    y += 15;
-
-    doc.line(20, y, 90, y);
-    doc.line(120, y, 190, y);
-
-    y += 7;
-
-    doc.text("Firma vendedor", 20, y);
-    doc.text("Firma comprador", 120, y);
-
-    y += 20;
-
-    doc.line(20, y, 90, y);
-    doc.line(120, y, 190, y);
-
-    y += 7;
-
-    doc.text("Aclaración", 20, y);
-    doc.text("Aclaración", 120, y);
-
-    doc.save(
-      `${contrato.numero_contrato}.pdf`
-    );
+    piePagina();
+    doc.save(`${contrato.numero_contrato || "contrato-F1"}.pdf`);
   }
 
   async function guardarIntermediarioOperacion(
@@ -1712,196 +1685,129 @@ export default function OperacionesPage() {
     vendedorId: string = vendedorSeleccionado,
     compradorId: string = compradorSeleccionado,
     numeroContrato: string = contrato.numero_contrato,
-    tipoContrato: "F1" = "F1"
+    tipoContrato: "F1" = "F1",
+    cuitVendedorOverride?: string,
+    cuitCompradorOverride?: string,
+    calidadOverride?: string
   ) {
     const vendedor = contactos.find((c) => c.id === vendedorId);
     const comprador = contactos.find((c) => c.id === compradorId);
+    if (!vendedor) throw new Error("Debe seleccionar el vendedor antes de generar el contrato.");
+    if (!comprador) throw new Error("Debe seleccionar el comprador antes de generar el contrato.");
 
-    const fecha = new Date().toLocaleDateString(
-      "es-AR"
-    );
+    const fecha = new Date().toLocaleDateString("es-AR");
+    const meta = operacionMeta[operacion.id];
+    const producto = meta?.producto && meta.producto !== "Producto registrado"
+      ? meta.producto
+      : "Producto pendiente de identificación en la publicación";
+    const cuitVendedor = (cuitVendedorOverride ?? vendedor.cuit ?? "").trim();
+    const cuitComprador = (cuitCompradorOverride ?? comprador.cuit ?? "").trim();
+    const calidad = (calidadOverride ?? acuerdoDatos.calidad ?? "").trim() || "Condición de calidad pendiente de especificación y aceptación por las partes";
+    const domicilio = (p: ContactoComercial) => [p.domicilio, p.localidad, p.provincia].filter(Boolean).join(", ") || "Domicilio pendiente de completar";
+    const cuitTexto = (v: string) => v ? v : "A VERIFICAR EN LEGAJO DIGITAL";
+    const moneda = monedaOperacion(operacion);
+    const monto = (Number(operacion.cantidad_tn || 0) * Number(operacion.precio_tn || 0));
+    const intermediario = "AgroComercio Santa Fe (plataforma AgroBrokerIA)";
+    const origen = acuerdoDatos.lugar_carga || meta?.origen || "Pendiente de completar";
+    const destino = acuerdoDatos.destino || meta?.destino || "Pendiente de completar";
+    const entrega = acuerdoDatos.condicion_entrega || "Según acuerdo comercial confirmado";
+    const pago = acuerdoDatos.forma_pago || "Transferencia bancaria directa entre las partes, según liquidación oficial";
+    const plazo = acuerdoDatos.plazo_pago || "Contra entrega física verificada, sujeto a liquidación acordada";
+    const flete = acuerdoDatos.flete || "A definir expresamente por las partes";
+    return `CONTRATO DE COMPRAVENTA DE GRANOS "MODELO F1"
 
-    if (!vendedor) {
-      throw new Error(
-        "Debe seleccionar el vendedor antes de generar el contrato."
-      );
-    }
+N° CONTRATO: ${numeroContrato}
+N° OPERACIÓN: ${operacion.codigo}
+FECHA DE EMISIÓN: ${fecha}
 
-    if (!comprador) {
-      throw new Error(
-        "Debe seleccionar el comprador antes de generar el contrato."
-      );
-    }
+PREÁMBULO: PARTES CONTRATANTES
 
-    const datosPersona = (
-      persona: ContactoComercial
-    ) => {
-      const identificacion = [
-        persona.dni
-          ? `DNI: ${persona.dni}`
-          : "",
-        persona.cuit
-          ? `CUIT: ${persona.cuit}`
-          : "",
-      ]
-        .filter(Boolean)
-        .join(" — ");
+En la localidad y provincia que surgen de los domicilios constituidos, República Argentina, se celebra el presente instrumento de compraventa de granos asociado a la operación identificada, entre las siguientes partes:
 
-      const domicilio = [
-        persona.domicilio,
-        persona.localidad,
-        persona.provincia,
-      ]
-        .filter(Boolean)
-        .join(", ");
+1. EL VENDEDOR: ${vendedor.nombre_razon_social}, CUIT/CUIL: ${cuitTexto(cuitVendedor)}, con domicilio en ${domicilio(vendedor)}.
+2. EL COMPRADOR: ${comprador.nombre_razon_social}, CUIT/CUIL: ${cuitTexto(cuitComprador)}, con domicilio en ${domicilio(comprador)}.
+3. EL INTERMEDIARIO / PLATAFORMA: ${intermediario}. Su intervención y alcance se limitan a los servicios efectivamente contratados y habilitados en la plataforma. Los datos fiscales y la representación legal deberán verificarse en el legajo correspondiente antes de la firma.
 
-      const representante =
-        persona.representante_nombre
-          ? `Representante: ${persona.representante_nombre}${
-              persona.representante_dni
-                ? ` — DNI ${persona.representante_dni}`
-                : ""
-            }${
-              persona.representante_cargo
-                ? ` — ${persona.representante_cargo}`
-                : ""
-            }`
-          : "";
+CLÁUSULA 1 — OBJETO Y MERCADERÍA
 
-      return [
-        persona.nombre_razon_social,
-        identificacion,
-        domicilio
-          ? `Domicilio: ${domicilio}`
-          : "",
-        representante,
-      ]
-        .filter(Boolean)
-        .join(String.fromCharCode(10));
-    };
+El VENDEDOR se obliga a transferir y entregar al COMPRADOR, quien se obliga a recibir y pagar, la mercadería individualizada a continuación, conforme a las condiciones comerciales aceptadas por ambas partes:
+- Producto: ${producto}.
+- Volumen total: ${formatoNumero(operacion.cantidad_tn)} tonelada(s) métrica(s) (${formatoNumero(Number(operacion.cantidad_tn) * 1000)} kg).
+- Tipo de contrato: compraventa de granos — Modelo F1.
+- Identificación de control: ${operacion.codigo}.
 
-    return `CONTRATO DE ABASTECIMIENTO DE GRANOS
+CLÁUSULA 2 — PRECIO Y LIQUIDACIÓN
 
-N.º ${numeroContrato}
+El precio pactado es de ${moneda} ${formatoNumero(operacion.precio_tn)} por tonelada métrica. El importe total estimado, sujeto a pesaje, calidad y liquidación definitiva, asciende a ${moneda} ${formatoNumero(monto)}. La liquidación se realizará conforme a la documentación comercial y fiscal aplicable y a las condiciones expresamente aceptadas por las partes. Los pagos entre comprador y vendedor se efectuarán por los canales bancarios acordados, fuera de cualquier custodia de fondos que no haya sido expresamente habilitada.
 
-FECHA: ${fecha}
+CLÁUSULA 3 — CONDICIONES DE LOGÍSTICA Y ENTREGA
 
-OPERACIÓN: ${operacion.codigo}
+- Lugar de carga (origen): ${origen}.
+- Destino de descarga: ${destino}.
+- Condición / modalidad de entrega: ${entrega}.
+- Forma de pago: ${pago}.
+- Plazo de pago: ${plazo}.
+- Responsabilidad del flete: ${flete}.
+Las partes deberán completar y respetar los turnos, cupos, datos de transporte y demás condiciones operativas antes del despacho.
 
-Entre:
+CLÁUSULA 4 — DOCUMENTACIÓN DE TRANSPORTE
 
-VENDEDOR
+El traslado deberá contar con la Carta de Porte Electrónica (CPE) y demás documentación exigible, emitida y autorizada por los organismos competentes. El dador de carga y el transportista serán responsables de la exactitud de los datos declarados y de la vigencia de la documentación. AgroBrokerIA solo informará una validación automática cuando la integración correspondiente se encuentre efectivamente habilitada y haya devuelto una respuesta verificable; este contrato no presume la existencia de webhooks, telemetría GPS ni monitoreo activo si no constan como servicios habilitados para esta operación.
 
-${datosPersona(vendedor)}
+CLÁUSULA 5 — CALIDAD Y CONDICIÓN DE LA MERCADERÍA
 
-y
+Condición de calidad pactada: ${calidad}
+Los parámetros de humedad, materias extrañas, granos dañados, merma, tolerancias y cualquier bonificación o descuento deberán consignarse de manera expresa en el acuerdo comercial o en el certificado de calidad aceptado por ambas partes. No se presumirán valores técnicos que no hayan sido informados y verificados.
 
-COMPRADOR
+CLÁUSULA 6 — SERVICIO DE INTERMEDIACIÓN Y COMISIÓN TECNOLÓGICA
 
-${datosPersona(comprador)}
+Las partes reconocen únicamente las comisiones que se encuentren expresamente informadas y aceptadas en el registro de la operación. La comisión propia de AgroBrokerIA se calcula según la tarifa vigente informada en la plataforma y se paga por transferencia bancaria a la cuenta corporativa que se encuentre verificada. Su estado de retención o liberación contable se regirá por los registros efectivos de la operación. Los honorarios de intermediarios terceros se acuerdan, facturan y liquidan externamente entre quienes correspondan. Esta cláusula no establece custodia de fondos del flete ni garantiza una transferencia automática de fondos de terceros.
 
-Las partes celebran el presente CONTRATO DE ABASTECIMIENTO DE GRANOS, sujeto a las siguientes cláusulas:
+CLÁUSULA 7 — ENTREGA, RECEPCIÓN Y CONSTANCIAS
 
-CLÁUSULA 1 — OBJETO
+La entrega se acreditará mediante la documentación de transporte, constancias de descarga, pesaje y recepción que correspondan. Las partes deberán revisar y registrar cualquier diferencia de kilos, calidad, faltante, rechazo o incidencia antes de dar por cumplida la entrega. La liberación de importes retenidos por la plataforma, si correspondiera, dependerá exclusivamente de las verificaciones registradas y de las reglas operativas efectivamente habilitadas.
 
-El VENDEDOR se obliga a entregar al COMPRADOR la mercadería indicada en el presente contrato, y el COMPRADOR se obliga a recibirla y abonar el precio convenido, conforme a las condiciones comerciales aquí establecidas.
+CLÁUSULA 8 — VIGENCIA Y MODIFICACIONES
 
-CLÁUSULA 2 — MERCADERÍA Y VOLUMEN
+El presente contrato regirá para la operación ${operacion.codigo} hasta el cumplimiento de las obligaciones aquí asumidas. Toda modificación de producto, volumen, precio, calidad, destino, forma de pago o logística deberá documentarse y contar con aceptación expresa de las partes.
 
-Producto: ${acuerdoDatos.calidad || "Grano conforme a las condiciones comerciales acordadas"}.
+CLÁUSULA 9 — INCUMPLIMIENTO Y FUERZA MAYOR
 
-Cantidad: ${formatoNumero(operacion.cantidad_tn)} TN.
+El incumplimiento será tratado conforme a las obligaciones expresamente asumidas y a la normativa aplicable. Ninguna parte responderá por imposibilidad de cumplimiento causada por hechos extraordinarios, imprevisibles e inevitables debidamente acreditados, sin perjuicio del deber de notificar y mitigar sus efectos.
 
-La cantidad corresponde a la operación comercial identificada como ${operacion.codigo}.
+CLÁUSULA 10 — LEGISLACIÓN Y JURISDICCIÓN
 
-CLÁUSULA 3 — PRECIO
+El contrato se interpretará conforme a las leyes de la República Argentina. La jurisdicción territorial deberá completarse y aceptarse expresamente por las partes antes de la firma: ${acuerdoDatos.observaciones?.trim() || "Jurisdicción y observaciones particulares: completar y validar por las partes."}
 
-Precio pactado: ${monedaOperacion(operacion)} ${formatoNumero(operacion.precio_tn)} por tonelada.
+CLÁUSULA 11 — CONFORMIDAD, FIRMA Y DOCUMENTACIÓN
 
-Importe total estimado de la operación: ${monedaOperacion(operacion)} ${formatoNumero(operacion.importe_total)}.
+Las partes declaran haber leído el contenido y deberán prestar su conformidad mediante firma manuscrita o mediante la carga en AgroBrokerIA de un ejemplar PDF firmado por los representantes autorizados. La plataforma registrará el archivo y sus datos de auditoría cuando la función de carga se encuentre habilitada. No se afirma que este documento tenga firma digital integrada.
 
-Cualquier modificación del precio o de las condiciones de fijación deberá constar por escrito y ser aceptada por las partes.
+DATOS DE FIRMA
 
-CLÁUSULA 4 — CONDICIONES COMERCIALES
+EL VENDEDOR
+Nombre / Razón social: ${vendedor.nombre_razon_social}
+CUIT/CUIL: ${cuitTexto(cuitVendedor)}
+Firma: ______________________________________
+Aclaración: __________________________________
+Fecha: _______________________________________
 
-Lugar de carga: ${acuerdoDatos.lugar_carga || "Según coordinación de las partes"}.
+EL COMPRADOR
+Nombre / Razón social: ${comprador.nombre_razon_social}
+CUIT/CUIL: ${cuitTexto(cuitComprador)}
+Firma: ______________________________________
+Aclaración: __________________________________
+Fecha: _______________________________________
 
-Destino: ${acuerdoDatos.destino || "Según coordinación de las partes"}.
-
-Condición de entrega: ${acuerdoDatos.condicion_entrega || "Según lo acordado comercialmente"}.
-
-CLÁUSULA 5 — FORMA Y PLAZO DE PAGO
-
-Forma de pago: ${acuerdoDatos.forma_pago || "Según acuerdo comercial"}.
-
-Plazo de pago: ${acuerdoDatos.plazo_pago || "Según acuerdo comercial"}.
-
-El pago deberá efectuarse conforme a las condiciones expresamente pactadas por las partes.
-
-CLÁUSULA 6 — FLETE Y LOGÍSTICA
-
-Flete: ${acuerdoDatos.flete || "Según acuerdo comercial"}.
-
-Las partes coordinarán la logística necesaria para la entrega y recepción de la mercadería, conforme a las condiciones de la operación.
-
-CLÁUSULA 7 — CALIDAD Y CONDICIÓN DE LA MERCADERÍA
-
-${acuerdoDatos.calidad || "La mercadería deberá responder a las condiciones de calidad pactadas entre las partes para la presente operación."}
-
-CLÁUSULA 8 — PLAZO Y VIGENCIA
-
-El presente contrato tendrá vigencia durante el período necesario para el cumplimiento de las obligaciones asumidas respecto de la operación ${operacion.codigo}, salvo modificación escrita acordada por las partes.
-
-CLÁUSULA 9 — ENTREGA
-
-La entrega se realizará en las condiciones indicadas en el presente contrato y conforme a la coordinación operativa establecida entre las partes.
-
-CLÁUSULA 10 — FUERZA MAYOR
-
-Ninguna de las partes será responsable por el incumplimiento derivado de acontecimientos extraordinarios, imprevisibles o inevitables que impidan temporalmente el cumplimiento de las obligaciones, en la medida en que tales circunstancias se encuentren debidamente acreditadas.
-
-CLÁUSULA 11 — INCUMPLIMIENTO
-
-El incumplimiento de las obligaciones asumidas en el presente contrato dará lugar a las consecuencias que correspondan conforme a las condiciones pactadas entre las partes y la normativa aplicable.
-
-CLÁUSULA 12 — CONFIDENCIALIDAD
-
-Las partes se comprometen a mantener la confidencialidad respecto de la información comercial, económica y contractual a la que tengan acceso con motivo de la presente operación, salvo cuando su divulgación resulte necesaria por obligación legal o requerimiento de autoridad competente.
-
-CLÁUSULA 13 — LEGISLACIÓN Y JURISDICCIÓN
-
-Las partes procurarán resolver de buena fe cualquier diferencia relacionada con la interpretación o cumplimiento del presente contrato.
-
-En caso de resultar necesaria la intervención judicial, las partes se someterán a la jurisdicción que corresponda conforme a la legislación aplicable y a los domicilios constituidos en el presente contrato.
-
-CLÁUSULA 14 — DISPOSICIONES GENERALES
-
-El presente contrato contiene las condiciones comerciales acordadas respecto de la operación identificada.
-
-Toda modificación, ampliación o aclaración deberá constar por escrito y ser aceptada por las partes.
+INTERMEDIARIO / CONSTANCIA DE PLATAFORMA
+${intermediario}
+La constancia de plataforma no sustituye la firma de las partes ni la documentación fiscal o de transporte exigible.
 
 OBSERVACIONES
+${acuerdoDatos.observaciones?.trim() || "Sin observaciones adicionales."}
 
-${acuerdoDatos.observaciones || "Sin observaciones adicionales."}
-
-Las partes declaran haber leído y aceptado las condiciones establecidas en el presente contrato, prestando su conformidad respecto de la operación identificada.
-
-FIRMA DEL VENDEDOR
-
-Nombre / Razón social: ${vendedor.nombre_razon_social}
-${vendedor.dni ? `DNI: ${vendedor.dni}` : ""}
-${vendedor.cuit ? `CUIT: ${vendedor.cuit}` : ""}
-
-Firma: ______________________________
-
-
-FIRMA DEL COMPRADOR
-
-Nombre / Razón social: ${comprador.nombre_razon_social}
-${comprador.dni ? `DNI: ${comprador.dni}` : ""}
-${comprador.cuit ? `CUIT: ${comprador.cuit}` : ""}
-
-Firma: ______________________________
+ANEXO DE VERIFICACIÓN
+Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y facultades de representación indicados como pendientes deberán verificarse y completarse antes de la firma. La huella criptográfica deberá calcularse sobre el archivo PDF final efectivamente generado y conservarse en el registro de auditoría; no se incorpora un hash de ejemplo o prefabricado.
 `;
   }
 
