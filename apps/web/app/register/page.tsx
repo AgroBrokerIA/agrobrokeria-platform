@@ -99,8 +99,10 @@ export default function RegisterPage() {
     }catch(e){
       if(requestId!==lookupSequence.current)return;
       const detail=e instanceof Error?e.message:"";
-      const friendly=detail==="SUPABASE_SERVER_KEYS_NOT_CONFIGURED"?"La consulta oficial no está configurada en el servidor. Completá los datos manualmente o avisá a Administración.":detail==="ARCA_CUIT_NO_CONFIGURADO"||detail.includes("credenciales X.509")?"Faltan las credenciales oficiales de ARCA en Vercel. Administración debe configurarlas.":detail==="PADRON_RATE_LIMIT_UNAVAILABLE"?"El control de consultas no está disponible temporalmente. Intentá nuevamente más tarde.":detail==="PADRON_LOOKUP_RATE_LIMIT_EXCEEDED"?"Se alcanzó el límite temporal de consultas. Esperá unos minutos y volvé a intentar.":detail==="CUIT_CUIL_MUST_HAVE_11_DIGITS"?"El CUIL/CUIT debe contener exactamente 11 dígitos.":"No se pudo completar la consulta de ARCA. Verificá el CUIL/CUIT e intentá nuevamente.";
-      setLookupStatus("error");setLookupMessage(friendly);
+      const invalidLength=detail==="CUIT_CUIL_MUST_HAVE_11_DIGITS";
+      const limited=detail==="PADRON_LOOKUP_RATE_LIMIT_EXCEEDED";
+      setLookupStatus(invalidLength?"error":"warning");
+      setLookupMessage(invalidLength?"El CUIL/CUIT debe contener exactamente 11 dígitos.":limited?"La consulta alcanzó el límite temporal. Esperá unos minutos o completá los datos manualmente.":"No pudimos consultar ARCA en este momento. Podés completar los datos manualmente y continuar con tu registro.");
     }finally{if(requestId===lookupSequence.current)setLookupLoading(false);}
   }
   const upload = async (userId:string,file:File,type:string) => {
@@ -167,6 +169,7 @@ export default function RegisterPage() {
           const {error:companySyncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
           if(companySyncError){router.replace("/perfil?empresa=pendiente");router.refresh();return;}
         }
+        try {
         if(isTransportista && driverPhoto && driverDniFront && driverDniBack){
           const stamp=Date.now();
           const ext=(file:File)=>file.name.split(".").pop()||"jpg";
@@ -185,6 +188,10 @@ export default function RegisterPage() {
         if(isCompany && authorityDoc) await upload(data.user.id,authorityDoc,"PODER_ACTA_AUTORIDADES");
         if(isCompany && arcaProof) await upload(data.user.id,arcaProof,"CONSTANCIA_ARCA");
         if(isCompany && sisaProof) await upload(data.user.id,sisaProof,"SISA_CONSTANCIA");
+        } catch {
+          setMessage("Tu cuenta fue creada, pero no se pudo cargar uno o más documentos. Podés volver a adjuntarlos desde Mi Perfil; la verificación seguirá pendiente.");
+          router.replace("/perfil?documentacion=pendiente"); router.refresh(); return;
+        }
         router.replace("/dashboard"); router.refresh(); return;
       }
       setMessage(isCompany
