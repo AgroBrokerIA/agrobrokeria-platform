@@ -168,7 +168,7 @@ export default function CartaPortePage(){
         </label>)}
       </div>
       <div style={{marginTop:18,padding:14,borderRadius:10,background:"#f7faf8",fontSize:13}}>
-        <strong>Integración oficial:</strong> los campos oficiales se almacenan solamente cuando provienen de la fuente externa autorizada. Hasta configurar esa integración, el sistema conserva el expediente como preparación/pending y no genera una Carta de Porte ficticia.
+        <strong>Emisión oficial:</strong> AgroBrokerIA envía la solicitud al servicio WSCPE de ARCA y sólo confirma la emisión cuando recibe un CTG válido. Si ARCA devuelve el PDF oficial, se archiva automáticamente en el viaje; si el servicio no lo adjunta, queda habilitada la carga manual del PDF original.
       </div>
       <div style={{marginTop:22,padding:16,borderRadius:12,border:"1px solid #dbe3ea"}}>
         <strong>Emisión oficial ARCA — WSCPE</strong>
