@@ -553,7 +553,7 @@ function PreviewCard({type,form,onDownload,active}:{type:"F1";form:FormState;onD
   <div className="contract-paper">
    <div className="paper-brand"><strong>AgroBroker<em>IA</em></strong><span>Conectando el mundo agro</span></div>
    <div className="paper-meta">CONTRATO F1 · {new Date().toLocaleDateString("es-AR")} · OPERACIÓN {form.operacionId||"PENDIENTE"}</div>
-   <h3>CONTRATO DE COMPRAVENTA DE GRANOS "MODELO F1"</h3>
+   <h3>CONTRATO DE COMPRAVENTA DE GRANOS MODELO F1</h3>
    <p>En la localidad de {form.ciudadArbitral||"Venado Tuerto"}, {form.jurisdiccion||"Provincia de Santa Fe"}, República Argentina, se celebra el presente instrumento entre las partes identificadas a continuación.</p>
    <section className="paper-parties">
     <h4>PREÁMBULO: PARTES CONTRATANTES</h4>
