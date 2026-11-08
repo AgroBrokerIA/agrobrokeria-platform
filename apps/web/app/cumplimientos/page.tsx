@@ -24,12 +24,26 @@ export default function CumplimientosPage(){
    const {data:profile,error:profileError}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
    if(profileError) throw profileError;
    const companyId=(profile as any)?.active_company_id;
-   if(!companyId) throw new Error("No se encontró una empresa activa.");
+   const loadPersonalCompliance=async()=>{
+    const {data:onboarding}=await supabase.from("account_onboarding").select("first_name,last_name,legal_name,review_status,is_verified,income_tax_status,vat_status").eq("user_id",user.id).maybeSingle();
+    const {data:personalDocs, error:personalDocsError}=await supabase.from("account_onboarding_documents").select("id,document_type,file_name,review_status,review_notes,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
+    if(personalDocsError)throw personalDocsError;
+    const fullName=[onboarding?.first_name,onboarding?.last_name].filter(Boolean).join(" ").trim();
+    setCompany({nombre:fullName||onboarding?.legal_name||"Cuenta personal"});
+    const mappedDocs=(personalDocs||[]).map((d:any)=>({id:d.id,nombre:d.file_name||d.document_type||"Documento personal",categoria:d.document_type||"Identidad",estado:/APPROV|VERIFIC|ACEPT/i.test(d.review_status||"")?"Verificado":/RECHAZ|OBSERV/i.test(d.review_status||"")?"Con observaciones":"Pendiente",vence:null,icon:iconFor(d.document_type||"identidad")}));
+    const taxStatus=[onboarding?.income_tax_status,onboarding?.vat_status].filter(Boolean).join(" · ");
+    if(taxStatus||onboarding){mappedDocs.push({id:"personal-fiscal",nombre:"Datos fiscales personales",categoria:"Fiscal",estado:taxStatus?"Registrado":"Pendiente",vence:null,icon:iconFor("fiscal")});}
+    setDocs(mappedDocs);
+    setReqs([{id:"personal-kyc",nombre:"Identidad y KYC personal",estado:onboarding?.is_verified?"VERIFICADO":onboarding?.review_status||"PENDIENTE",obligatorio:true,verificado_at:null}]);
+    setCerts([]);
+   };
+   if(!companyId){await loadPersonalCompliance();setLoading(false);return;}
    const {data:c}=await supabase.from("companies").select("id,nombre,razon_social").eq("id",companyId).maybeSingle();
    setCompany(c);
-   const {data:map}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).maybeSingle();
+   const {data:map,error:mapError}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).order("verified",{ascending:false}).limit(1).maybeSingle();
+   if(mapError)throw mapError;
    const empresaId=(map as any)?.empresa_id;
-   if(!empresaId){setLoading(false);return;}
+   if(!empresaId){await loadPersonalCompliance();setLoading(false);return;}
    const [{data:d,error:de},{data:r,error:re},{data:ce,error:cee}]=await Promise.all([
     supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,fecha_vencimiento,verificado,observaciones").eq("empresa_id",empresaId).order("fecha_vencimiento",{ascending:true,nullsFirst:false}),
     supabase.from("empresas_verificacion_requisitos").select("id,requisito_id,estado,verificado_at").eq("empresa_id",empresaId).order("actualizado_at",{ascending:false}),
