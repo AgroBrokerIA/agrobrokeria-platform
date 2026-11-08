@@ -20,9 +20,9 @@ export async function POST(req: NextRequest) {
     const {data:membership,error:membershipError}=await sb.from("company_users").select("rol").eq("company_id",companyId).eq("profile_id",user.id).eq("activo",true).maybeSingle();
     if(membershipError || !membership) return NextResponse.json({error:"COMPANY_MEMBERSHIP_REQUIRED"},{status:403});
     const {data:map}=await admin.from("company_empresa_map").select("empresa_id,verified").eq("company_id",companyId).maybeSingle();
-    if(!map?.empresa_id || map.verified !== true) return NextResponse.json({error:"COMPANY_MAPPING_NOT_VERIFIED",detail:"La vinculación comercial de la empresa debe estar verificada."},{status:409});
+    if(!map?.empresa_id || map.verified !== true) return NextResponse.json({ok:true,scheduled:true,provider_pending:true,detail:"La reunión quedó agendada en AgroBrokerIA. El enlace de Google Meet quedará disponible cuando se complete la verificación de la empresa."});
     const {data:cfg}=await admin.from("configuracion_empresa").select("google_meet_habilitado").eq("empresa_id",map.empresa_id).maybeSingle();
-    if(!cfg?.google_meet_habilitado) return NextResponse.json({error:"GOOGLE_MEET_NOT_AUTHORIZED",detail:"La integración de Google Meet no está habilitada para la empresa activa."},{status:409});
+    if(!cfg?.google_meet_habilitado) return NextResponse.json({ok:true,scheduled:true,provider_pending:true,detail:"La reunión quedó agendada en AgroBrokerIA. Falta habilitar Google Meet para generar el enlace externo."});
     if(v.operacion_id){
       const {data:participant}=await admin.from("operacion_participantes").select("id").eq("operacion_id",v.operacion_id).eq("empresa_id",map.empresa_id).limit(1).maybeSingle();
       if(!participant && v.creador_profile_id!==user.id) return NextResponse.json({error:"OPERATION_ACCESS_DENIED"},{status:403});
@@ -30,7 +30,7 @@ export async function POST(req: NextRequest) {
 
     const {data:stored}=await admin.from("google_oauth_tokens").select("refresh_token").eq("provider","google").eq("connected_by",user.id).eq("connected_company_id",companyId).is("revoked_at",null).maybeSingle();
     const clientId=process.env.GOOGLE_CLIENT_ID,clientSecret=process.env.GOOGLE_CLIENT_SECRET,refreshToken=stored?.refresh_token||process.env.GOOGLE_REFRESH_TOKEN;
-    if(!clientId||!clientSecret||!refreshToken) return NextResponse.json({error:"GOOGLE_CREDENTIALS_PENDING",detail:"Faltan credenciales OAuth de producción."},{status:409});
+    if(!clientId||!clientSecret||!refreshToken) return NextResponse.json({ok:true,scheduled:true,provider_pending:true,detail:"La reunión quedó agendada en AgroBrokerIA. El enlace de Google Meet está pendiente de configurar."});
 
     const tr=await fetch("https://oauth2.googleapis.com/token",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded"},body:new URLSearchParams({client_id:clientId,client_secret:clientSecret,refresh_token:refreshToken,grant_type:"refresh_token"})});
     const td=await tr.json().catch(()=>({}));
