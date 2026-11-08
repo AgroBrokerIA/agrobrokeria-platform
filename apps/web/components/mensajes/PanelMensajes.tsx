@@ -14,6 +14,7 @@ type Mensaje = {
   mensaje: string;
   idioma_origen: string | null;
   tipo_mensaje: string;
+  categoria_comercial?: string | null;
   estado: string;
   leido_at: string | null;
   creado_at: string;
@@ -505,34 +506,14 @@ export default function PanelMensajes({
         ) : (
           mensajes.map((m) => {
             const propio = m.remitente_profile_id === usuarioId;
+            const esSistema = m.tipo_mensaje === "SISTEMA";
+            const esAlerta = String(m.categoria_comercial || "").startsWith("ALERTA_");
 
             return (
-              <div
-                key={m.id}
-                style={{
-                  display: "flex",
-                  justifyContent: propio
-                    ? "flex-end"
-                    : "flex-start",
-                  marginBottom: 10,
-                }}
-              >
-                <div
-                  style={{
-                    maxWidth: "78%",
-                    padding: "10px 13px",
-                    borderRadius: 12,
-                    background: "#ffffff",
-                    border: "1px solid #e2e8f0",
-                  }}
-                >
-                  <div
-                    style={{
-                      fontSize: 14,
-                      whiteSpace: "pre-wrap",
-                      wordBreak: "break-word",
-                    }}
-                  >
+              <div key={m.id} style={{display:"flex",justifyContent:esSistema?"center":propio?"flex-end":"flex-start",marginBottom:10}}>
+                <div style={{maxWidth:esSistema?"94%":"78%",width:esSistema?"94%":"auto",padding:"10px 13px",borderRadius:12,background:esAlerta?"#fff1f2":esSistema?"#eff6ff":"#ffffff",border:esAlerta?"1px solid #fda4af":esSistema?"1px solid #bfdbfe":"1px solid #e2e8f0"}}>
+                  {esSistema && <div style={{fontSize:11,fontWeight:800,color:esAlerta?"#be123c":"#1d4ed8",marginBottom:5}}>{esAlerta?"ALERTA DE LOGÍSTICA":"AGROBROKERIA · MENSAJE DEL SISTEMA"}</div>}
+                  <div style={{fontSize:14,whiteSpace:"pre-wrap",wordBreak:"break-word"}}>
                     {redactContactData(traducciones[m.id] || m.mensaje)}
                   </div>
 
