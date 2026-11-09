@@ -127,7 +127,9 @@ export default function CartaPortePage(){
       if(!data?.ok)throw new Error(data?.error||"ARCA no confirmó el estado de la CPE.");
       setViajes(prev=>prev.map(x=>x.id===selectedViaje?{...x,carta_porte_estado_arca:String(data.estado_arca||""),carta_porte_descargada_at:data.descargada?(data.fecha_estado||new Date().toISOString()):x.carta_porte_descargada_at,carta_porte_estado:data.descargada?"DESCARGADA_CONFIRMADA":x.carta_porte_estado}:x));
       setMessage(data.descargada
-        ?"ARCA confirmó el estado DD (descargada en destino). El camión queda liberado; la comisión logística espera además la doble conformidad de entrega."
+        ?(data.cpe_pdf_evidence_missing
+          ?"ARCA confirmó DD y liberó el camión. Falta adjuntar el PDF oficial de la CPE para validar la evidencia; la comisión sigue bloqueada hasta completar la doble conformidad."
+          :"ARCA confirmó DD (descargada en destino). El camión queda liberado; la comisión logística espera además la doble conformidad de entrega.")
         :data.cpe_validada
           ?"ARCA verificó la CPE. La descarga todavía no figura como DD."
           :"ARCA informó "+String(data.estado_arca||"un estado pendiente")+". La descarga y la comisión siguen bloqueadas.");
