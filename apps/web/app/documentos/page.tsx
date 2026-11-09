@@ -134,7 +134,7 @@ export default function DocumentosPage(){
    const deliveryWindow=[pub?.fecha_disponible,pub?.fecha_vencimiento].filter(Boolean).join(" – ")||"To be agreed in the definitive contract";
    const originPort=pub?.puerto||pub?.puerto_origen_destino||"To be agreed";
    const destinationPort=pub?.pais_destino||pub?.puerto_origen_destino||"To be agreed";
-   const issuerHeader=headers||{};
+   const issuerHeader:any=headers||{};
    const companyName=issuerHeader.razon_social||company.razon_social;
    const taxId=issuerHeader.cuit_tax_id||company.cuit||"Not provided";
    const recipientName=counterparty.razon_social;
