@@ -17,7 +17,7 @@ export default function DestinosAdminPage(){
   setLoading(false);
  }
  useEffect(()=>{void load()},[]);
- function edit(id:number,key:keyof Destino,value:string|boolean){setRows(old=>old.map(row=>row.id_destino===id?{...row,[key]:value}:row));}
+ function edit(id:number,key:keyof Destino,value:string|boolean){setRows(old=>old.map(row=>row.id_destino===id?{...row,[key]:value,...(key!=="activo"?{verificado:false}:{})}:row));}
  async function save(row:Destino,verify:boolean){
   setBusy(row.id_destino);setError("");setMessage("");
   const cuit=(row.cuit_operador||"").replace(/\D/g,"");
