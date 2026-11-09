@@ -73,26 +73,39 @@ export default function RegisterPage() {
     const requestId=++lookupSequence.current;
     setLookupLoading(true);setLookupStatus("loading");setLookupMessage("Consultando el padrón oficial de ARCA…");
     try{
-      const response=await fetch("/api/arca/padron/consulta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cuit})});
+      const response=await fetch("/api/v1/padron/consulta",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({cuit})});
       const payload=await response.json().catch(()=>({}));
       if(requestId!==lookupSequence.current)return;
       if(!response.ok||!payload?.ok)throw new Error(payload?.error||"No se pudieron consultar los datos oficiales.");
       const d=payload.result;
       if(!d?.found){setLookupStatus("warning");setLookupMessage("ARCA no encontró datos para ese CUIL/CUIT. Revisá los 11 dígitos o completá los datos manualmente.");return;}
+      const domicilioFiscal=d.domicilioFiscal||{};
+      const nombre=d.nombre||"";
+      const apellido=d.apellido||"";
+      const razonSocial=d.razonSocial||[apellido,nombre].filter(Boolean).join(" ");
+      const domicilio=d.domicilio||domicilioFiscal.direccion||"";
+      const localidad=d.localidad||domicilioFiscal.localidad||"";
+      const provincia=d.provincia||domicilioFiscal.provincia||"";
+      const codigoPostal=d.codigoPostal||domicilioFiscal.codigoPostal||"";
+      const impuestos:string[]=Array.isArray(d.impuestos)?d.impuestos.map((x:unknown)=>typeof x==="string"?x:String((x as {descripcion?:string})?.descripcion||"")):[];
+      const actividades:string[]=Array.isArray(d.actividades)?d.actividades.map((x:unknown)=>typeof x==="string"?x:String((x as {descripcion?:string})?.descripcion||"")):[];
       setForm(prev=>({
         ...prev,
         ...(tipo==="empresa"?{
-          legalName:d.razonSocial||[d.apellido,d.nombre].filter(Boolean).join(" ")||prev.legalName,
-          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode,
-          economicActivity:d.actividades?.[0]||prev.economicActivity,
-          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
-          vatStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
+          legalName:razonSocial||prev.legalName,
+          street:domicilio||prev.street,city:localidad||prev.city,province:provincia||prev.province,postalCode:codigoPostal||prev.postalCode,
+          economicActivity:actividades[0]||prev.economicActivity,
+          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(impuestos.some(x=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
+          vatStatus:d.monotributoDetectado?"Monotributo":(impuestos.some(x=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
         }:{
-          firstName:d.nombre||prev.firstName,lastName:d.apellido||prev.lastName,
-          street:d.domicilio||prev.street,city:d.localidad||prev.city,province:d.provincia||prev.province,postalCode:d.codigoPostal||prev.postalCode,
-          economicActivity:d.actividades?.[0]||prev.economicActivity,
-          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
-          vatStatus:d.monotributoDetectado?"Monotributo":(d.impuestos?.some((x:string)=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
+          firstName:nombre||prev.firstName,lastName:apellido||prev.lastName,
+          birthDate:d.fechaNacimiento||prev.birthDate,
+          gender:d.genero==="FEMENINO"?"Femenino":d.genero==="MASCULINO"?"Masculino":prev.gender,
+          nationality:d.nacionalidad?String(d.nacionalidad).toLocaleLowerCase("es-AR").replace(/^./,x=>x.toLocaleUpperCase("es-AR")):prev.nationality,
+          street:domicilio||prev.street,city:localidad||prev.city,province:provincia||prev.province,postalCode:codigoPostal||prev.postalCode,
+          economicActivity:actividades[0]||prev.economicActivity,
+          incomeTaxStatus:d.monotributoDetectado?"Monotributo":(impuestos.some(x=>/GANANCIAS/i.test(x))?"Inscripto":prev.incomeTaxStatus),
+          vatStatus:d.monotributoDetectado?"Monotributo":(impuestos.some(x=>/IVA/i.test(x))?"Responsable Inscripto":prev.vatStatus)
         })
       }));
       setLookupStatus("success");
