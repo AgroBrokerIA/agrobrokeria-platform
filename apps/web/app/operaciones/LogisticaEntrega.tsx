@@ -14,6 +14,7 @@ type Viaje = {
   destino_nombre: string | null;
   patente_camion: string | null;
   patente_acoplado: string | null;
+  chofer_cuil?: string | null;
   kilos_cargados: number | null;
   kilos_entregados: number | null;
   carta_porte_ctg?: string | null;
@@ -39,6 +40,8 @@ type Transportista = {
   empresa_transporte: string | null;
   telefono: string | null;
   foto_perfil_path: string | null;
+  cuit: string | null;
+  empresa_id: string | null;
 };
 type VehiculoRegistrado={id:string;patente:string;tipo:string;capacidad_tn:number|null;habilitado:boolean};
 
@@ -112,6 +115,16 @@ const estadoLabel = (estado: string) =>
 
 const fecha = (value?: string | null) =>
   value ? new Date(value).toLocaleString("es-AR") : "—";
+
+const validarCuil = (value: string) => {
+  const digits=value.replace(/\\D/g,"");
+  if(digits.length!==11)return false;
+  const weights=[5,4,3,2,7,6,5,4,3,2];
+  const sum=weights.reduce((total,weight,index)=>total+Number(digits[index])*weight,0);
+  let check=11-(sum%11);
+  if(check===11)check=0;else if(check===10)check=9;
+  return Number(digits[10])===check;
+};
 
 const panel: CSSProperties = {
   border: "1px solid #dbe3ed",
@@ -187,6 +200,8 @@ export default function LogisticaEntrega({
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
   const [transportistaId, setTransportistaId] = useState("");
+  const [choferNombre,setChoferNombre]=useState("");
+  const [choferCuil,setChoferCuil]=useState("");
   const [origenNombre, setOrigenNombre] = useState("");
   const [origenDireccion, setOrigenDireccion] = useState("");
   const [destinoNombre, setDestinoNombre] = useState("");
@@ -199,7 +214,7 @@ export default function LogisticaEntrega({
     setError("");
     const [v, t, c, e, m, a] = await Promise.all([
       supabase.from("viajes").select("*").eq("operacion_id", operacionId).order("creado_en", { ascending: true }),
-      supabase.rpc("listar_transportistas_verificados", { p_operacion_id: operacionId }),
+      supabase.rpc("listar_transportistas_habilitados_por_comision", { p_operacion_id: operacionId }),
       supabase.from("viaje_cartas_porte").select("*").eq("operacion_id", operacionId).order("creada_at", { ascending: false }),
       supabase.from("viaje_eventos").select("*").eq("operacion_id", operacionId).order("registrado_at", { ascending: true }),
       supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId),
@@ -286,6 +301,9 @@ export default function LogisticaEntrega({
 
   async function seleccionarTransportista(id:string){
     setTransportistaId(id);setVehiculosDisponibles([]);setVehiculoCamionId("");setVehiculoAcopladoId("");setPatente("");setAcoplado("");
+    const selected=transportistas.find(t=>t.profile_id===id);
+    setChoferNombre(selected?.nombre_completo||"");
+    setChoferCuil(selected?.cuit||"");
     if(!id)return;
     const {data,error:vehicleError}=await supabase.rpc("listar_vehiculos_transportista",{p_operacion_id:operacionId,p_transportista_profile_id:id});
     if(vehicleError){setError("No se pudieron cargar los dominios registrados: "+vehicleError.message);return;}
@@ -299,12 +317,17 @@ export default function LogisticaEntrega({
   async function crearViaje() {
     setError("");
     setMensaje("");
+    const choferCuilDigits=choferCuil.replace(/\\D/g,"");
     if (!transportistaId || !vehiculoCamionId || !origenNombre.trim() || !destinoNombre.trim()) {
       setError("Seleccioná transportista, camión registrado, origen y destino.");
       return;
     }
+    if(!choferNombre.trim()||!validarCuil(choferCuilDigits)){
+      setError("Ingresá el nombre completo y un CUIL válido de 11 dígitos del chofer.");
+      return;
+    }
     setGuardando(true);
-    const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion_con_vehiculos", {
+    const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion_con_vehiculos_completo", {
       p_operacion_id: operacionId,
       p_transportista_profile_id: transportistaId,
       p_vehiculo_id: vehiculoCamionId,
@@ -313,11 +336,15 @@ export default function LogisticaEntrega({
       p_destino: destinoDireccion || destinoNombre,
       p_origen_nombre: origenNombre,
       p_destino_nombre: destinoNombre,
+      p_chofer_nombre: choferNombre.trim(),
+      p_chofer_cuil: choferCuilDigits,
     });
     if (rpcError) setError("No se pudo crear el viaje: " + rpcError.message);
     else {
       setMensaje("Viaje creado y transportista asignado correctamente.");
       setTransportistaId("");
+      setChoferNombre("");
+      setChoferCuil("");
       setVehiculosDisponibles([]);
       setVehiculoCamionId("");
       setVehiculoAcopladoId("");
@@ -610,8 +637,14 @@ export default function LogisticaEntrega({
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Transportista
             <select value={transportistaId} onChange={(e) => void seleccionarTransportista(e.target.value)} style={input}>
               <option value="">Seleccionar transportista verificado</option>
-              {transportistas.map((t) => <option key={t.profile_id} value={t.profile_id}>{t.nombre_completo}{t.empresa_transporte ? " — " + t.empresa_transporte : ""}</option>)}
+              {transportistas.map((t) => <option key={t.profile_id} value={t.profile_id}>{t.nombre_completo}{t.empresa_transporte ? " — " + t.empresa_transporte : ""}{t.cuit ? " · CUIL " + t.cuit : " · CUIL pendiente"}</option>)}
             </select>
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Nombre completo del chofer
+            <input value={choferNombre} onChange={e=>setChoferNombre(e.target.value)} placeholder="Nombre y apellido del conductor" style={input} />
+          </label>
+          <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>CUIL del chofer
+            <input value={choferCuil} onChange={e=>setChoferCuil(e.target.value)} placeholder="11 dígitos, sin guiones o con guiones" style={input} inputMode="numeric" />
           </label>
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Camión registrado
             <select value={vehiculoCamionId} onChange={e=>{setVehiculoCamionId(e.target.value);setPatente(vehiculosDisponibles.find(v=>v.id===e.target.value)?.patente||"")}} style={input} disabled={!transportistaId}>
@@ -660,7 +693,7 @@ export default function LogisticaEntrega({
               <div>
                 <div style={{ fontSize: 15, fontWeight: 850 }}>Camión {index + 1} · {viaje.patente_camion || "Patente pendiente"}</div>
                 <div style={{ fontSize: 12, color: "#64748b", marginTop: 4 }}>{viaje.origen_nombre || viaje.origen || "Origen pendiente"} → {viaje.destino_nombre || viaje.destino || "Destino pendiente"}</div>
-                <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Identidad: transportista verificado</div>
+                <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Transportista: {transportista?.nombre_completo || (viaje.transportista_profile_id ? "Asignado" : "Sin asignar")} · Chofer: {viaje.chofer_nombre || transportista?.nombre_completo || "Pendiente"} · CUIL: {viaje.chofer_cuil || transportista?.cuit || "Pendiente"}</div>
                 {viaje.carta_porte_ctg&&<div style={{fontSize:12,color:"#047857",marginTop:4,fontWeight:750}}>CTG ARCA: {viaje.carta_porte_ctg} · Volumen declarado: {Number(viaje.carta_porte_tn||0).toLocaleString("es-AR",{maximumFractionDigits:3})} TN</div>}
                 {(()=>{const tn=Number(viaje.carta_porte_tn||0);const asignada=comisionViaje?Number(comisionViaje.importe_asignado||0):tn*COMISION_PLATAFORMA_USD_POR_TN;const liberada=Number(comisionViaje?.importe_liberado||0);const pendiente=Math.max(asignada-liberada,0);return <div style={{fontSize:12,color:"#334155",marginTop:5,padding:"8px 10px",borderRadius:8,background:"#f8fafc",border:"1px solid #e2e8f0"}}><strong>Comisión de operación de granos (USD 1/TN):</strong> {Number(comisionViaje?.toneladas_entregadas||tn).toLocaleString("es-AR",{maximumFractionDigits:3})} TN · Asignada / estimada USD {asignada.toLocaleString("es-AR",{maximumFractionDigits:2})} · Liberada USD {liberada.toLocaleString("es-AR",{maximumFractionDigits:2})} · Por liberar USD {pendiente.toLocaleString("es-AR",{maximumFractionDigits:2})} · {comisionViaje?.estado||"ESTIMADA · PENDIENTE DE VALIDACIÓN"}</div>})()}
                 {transportista?.foto_perfil_path && <button type="button" style={{ ...secondary, marginTop: 7 }} onClick={() => void verFotoTransportista(transportista.foto_perfil_path)}>Ver fotografía del conductor</button>}
