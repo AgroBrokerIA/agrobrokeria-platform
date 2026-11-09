@@ -6,7 +6,7 @@ import { jsPDF } from "jspdf";
 import { supabase } from "@/lib/supabase/client";
 import "./reference.css";
 
-type C={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;creado_en?:string};
+type C={id:string;operacion_id:string;numero_contrato:string;estado:string;fecha_firma:string|null;cantidad_tn:number|null;precio_tn:number|null;importe_total:number|null;contenido:string|null;categoria_destino:FormState["categoriaDestino"];destino_homologado_id:number|null;nombre_establecimiento_destino:string|null;localidad_destino:string|null;provincia_destino:string|null;creado_en?:string};
 type V={id:string;contrato_id:string;version:number;estado:string;motivo:string|null;documento_hash:string|null;creado_en:string};
 
 const IDIOMAS=[["es","Español"],["en","English"],["pt","Português"],["zh","中文"],["fr","Français"],["it","Italiano"],["ru","Русский"],["hi","हिन्दी"],["de","Deutsch"]];
@@ -162,7 +162,7 @@ export default function ContratosPage(){
    if(sessionUser){const {data:adminRow}=await supabase.from("platform_admins").select("user_id").eq("user_id",sessionUser.id).maybeSingle();const admin=!!adminRow;setIsPlatformAdmin(admin);if(admin){const {data:requests,error:requestsError}=await supabase.from("cancelaciones_contrato").select("id,operacion_id,contrato_id,motivo,justificativo,evidencia_url,estado_revision,created_at,observaciones_revision").order("created_at",{ascending:false});if(requestsError)setError(requestsError.message);setCancelRows(requests||[]);}else setCancelRows([]);}
    const selectedOperationId=selected?.operacion_id||form.operacionId||null;
    const [c,v,p,port,term,op,ext,conf]=await Promise.all([
-     supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,creado_en").order("creado_en",{ascending:false}),
+     supabase.from("contratos").select("id,operacion_id,numero_contrato,estado,fecha_firma,cantidad_tn,precio_tn,importe_total,contenido,categoria_destino,destino_homologado_id,nombre_establecimiento_destino,localidad_destino,provincia_destino,creado_en").order("creado_en",{ascending:false}),
      supabase.from("contrato_versiones").select("id,contrato_id,version,estado,motivo,documento_hash,creado_en").order("creado_en",{ascending:false}),
      supabase.from("productos").select("nombre").eq("activo",true).order("nombre"),
      supabase.from("catalogo_puertos").select("nombre").eq("activo",true).order("orden"),
@@ -180,7 +180,7 @@ export default function ContratosPage(){
      const contratoDestino=contratosCargados.find(x=>x.operacion_id===requestedOperation);
      if(contratoDestino){
        setSelected(contratoDestino);setTab(params.get("tab")==="firmas"?"firmas":"mis");
-       setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:"F1"}));
+       setForm(x=>({...x,operacionId:contratoDestino.operacion_id,precio:String(contratoDestino.precio_tn||x.precio),cantidad:String(contratoDestino.cantidad_tn||x.cantidad),tipo:"F1",categoriaDestino:contratoDestino.categoria_destino||"puerto_exportacion",destinoId:contratoDestino.destino_homologado_id?String(contratoDestino.destino_homologado_id):"",puerto:contratoDestino.nombre_establecimiento_destino||"",localidadDestino:contratoDestino.localidad_destino||"",provinciaDestino:contratoDestino.provincia_destino||""}));
        const {data:estadoConf,error:confError}=await supabase.rpc("estado_confidencialidad_operacion",{p_operacion_id:requestedOperation});
        if(confError)setError(confError.message);else setConfidentiality((estadoConf||[]) as ConfidentialityStatus[]);
        void cargarPartesOperacion(contratoDestino.operacion_id);
@@ -417,7 +417,7 @@ export default function ContratosPage(){
    setBusy(false);
  }
  function contractContent(f:FormState){
-   return JSON.stringify({tipo:f.tipo,tipo_operacion:f.tipoOperacion,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion_precio:f.condicion,puerto:f.puerto,categoria_destino:f.categoriaDestino,destino_homologado_id:f.destinoId||null,terminal_id:f.terminalId||null,plazo_entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,procedencia:f.procedencia,partes:{vendedor:{empresa_id:f.vendedorEmpresaId||null,razon_social:f.vendedor,cuit:f.vendedorCuit,sisa_categoria:f.vendedorSisa},comprador:{empresa_id:f.compradorEmpresaId||null,razon_social:f.comprador,cuit:f.compradorCuit,sisa_categoria:f.compradorSisa},intermediario:{empresa_id:f.intermediarioEmpresaId||null,razon_social:f.intermediario,cuit:f.intermediarioCuit,sisa_categoria:f.intermediarioSisa}},pacto_comision_externa_declarada:Boolean(f.intermediario.trim()),comision_externa_fuera_de_plataforma:Boolean(f.intermediario.trim()),comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
+   return JSON.stringify({tipo:f.tipo,tipo_operacion:f.tipoOperacion,producto:f.producto,campania:f.campania,cantidad_tn:Number(f.cantidad)||0,precio_tn:Number(f.precio)||0,moneda:f.moneda||null,condicion_precio:f.condicion,puerto:f.puerto,categoria_destino:f.categoriaDestino,destino_homologado_id:f.destinoId||null,nombre_establecimiento_destino:f.puerto,localidad_destino:f.localidadDestino,provincia_destino:f.provinciaDestino,terminal_id:f.terminalId||null,plazo_entrega:f.entrega,pago:f.pago,observaciones:f.observaciones,procedencia:f.procedencia,partes:{vendedor:{empresa_id:f.vendedorEmpresaId||null,razon_social:f.vendedor,cuit:f.vendedorCuit,sisa_categoria:f.vendedorSisa},comprador:{empresa_id:f.compradorEmpresaId||null,razon_social:f.comprador,cuit:f.compradorCuit,sisa_categoria:f.compradorSisa},intermediario:{empresa_id:f.intermediarioEmpresaId||null,razon_social:f.intermediario,cuit:f.intermediarioCuit,sisa_categoria:f.intermediarioSisa}},pacto_comision_externa_declarada:Boolean(f.intermediario.trim()),comision_externa_fuera_de_plataforma:Boolean(f.intermediario.trim()),comision:f.comision,jurisdiccion:f.jurisdiccion,ciudadArbitral:f.ciudadArbitral});
  }
 
  const destinosFiltrados=destinos.filter(d=>d.tipo===form.categoriaDestino);
