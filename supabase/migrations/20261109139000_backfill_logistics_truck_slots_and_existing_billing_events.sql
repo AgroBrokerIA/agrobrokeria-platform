@@ -32,9 +32,13 @@ linked AS (
   UPDATE public.cierres_logistica_camiones s
   SET viaje_id = t.viaje_id,
       estado = CASE
-        WHEN v.carta_porte_estado = 'DESCARGADA_CONFIRMADA' THEN 'DESCARGA_CONFIRMADA'
-        WHEN v.carta_porte_estado IS NOT NULL
-             AND v.carta_porte_estado NOT IN ('PENDIENTE','NO_EMITIDA') THEN 'CPE_VALIDADA'
+        WHEN upper(trim(coalesce(v.carta_porte_estado_arca, ''))) = 'DD'
+             AND v.carta_porte_descargada_at IS NOT NULL
+             AND v.transportista_entrega_confirmada_at IS NOT NULL
+             AND v.productor_recepcion_confirmada_at IS NOT NULL
+             AND v.estado = 'ENTREGADO_CONFIRMADO'
+             AND v.productor_recepcion_observada_at IS NULL THEN 'DESCARGA_CONFIRMADA'
+        WHEN v.carta_porte_estado_arca IS NOT NULL THEN 'CPE_VALIDADA'
         ELSE 'VIAJE_ASIGNADO'
       END,
       actualizado_at = now()
