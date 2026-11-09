@@ -232,11 +232,15 @@ begin
  select * into c from public.cierres_logistica where id=p_cierre_id;
  if not found or not public.usuario_es_miembro_empresa(c.empresa_transportista_id) then raise exception 'NO_AUTORIZADO'; end if;
  if p_monto_ars<=0 or p_porcentaje<=0 or p_porcentaje>100 or p_monto_ars>c.total_flete_pactado_ars*p_porcentaje/100 then raise exception 'ADELANTO_INVALIDO'; end if;
- if not exists(select 1 from public.demandas_logistica d join public.cierres_logistica x on x.id=p_cierre_id where d.id=x.id_demanda_flete and d.permite_adelanto_combustible=true) then raise exception 'ADELANTO_NO_PERMITIDO'; end if;
+ if not exists(select 1 from public.demandas_logistica d where d.id=c.id_demanda_flete and d.permite_adelanto_combustible=true) then raise exception 'ADELANTO_NO_PERMITIDO'; end if;
  insert into public.logistica_adelantos_combustible(cierre_logistica_id,solicitado_por,monto_solicitado_ars,porcentaje_flete)
  values(p_cierre_id,auth.uid(),p_monto_ars,p_porcentaje) returning id into rid;
  insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje)
- select cf.id,null,true,'El transportista solicitó un adelanto para combustible y viáticos por (uuid,numeric,numeric) from public,anon;
+ select cf.id,null,true,'El transportista solicitó un adelanto para combustible y viáticos por $'||to_char(p_monto_ars,'FM999G999G990D00')||' ARS ('||p_porcentaje||'% del flete). El dador debe responder desde el expediente y, si acepta, transferir externamente y adjuntar el comprobante.'
+ from public.conversaciones_fletes cf where cf.cierre_logistica_id=p_cierre_id;
+ return rid;
+end $$;
+revoke all on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) from public,anon;
 grant execute on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) to authenticated;
 
 -- Commercial document RPCs: the issuer must match the proper side of the transaction.
