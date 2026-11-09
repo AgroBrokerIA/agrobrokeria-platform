@@ -33,6 +33,7 @@ type Formulario = {
   nombre_establecimiento_destino: string;
   localidad_destino: string;
   provincia_destino: string;
+  direccion_destino: string;
   calidad: string;
   humedad: string;
   proteina: string;
@@ -74,7 +75,7 @@ type LugarRecepcion = {
 };
 
 type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null };
-type DestinoHomologado = { id_destino:number; tipo:Exclude<Formulario["categoria_destino"],"">; nombre_establecimiento:string; localidad:string; provincia:string; verificado:boolean };
+type DestinoHomologado = { id_destino:number; tipo:Exclude<Formulario["categoria_destino"],"">; nombre_establecimiento:string; localidad:string; provincia:string; direccion:string|null; verificado:boolean };
 
 async function obtenerEmpresaDelUsuario(): Promise<string | null> {
   const {
@@ -187,6 +188,7 @@ export default function NuevaPublicacionForm() {
     nombre_establecimiento_destino: "",
     localidad_destino: "",
     provincia_destino: "",
+    direccion_destino: "",
     calidad: "",
     humedad: "",
     proteina: "",
@@ -301,7 +303,7 @@ export default function NuevaPublicacionForm() {
           .eq("activo", true)
           .order("orden")
           .order("nombre"),
-        supabase.from("destinos_homologados").select("id_destino,tipo,nombre_establecimiento,localidad,provincia,verificado").eq("activo",true).order("nombre_establecimiento"),
+        supabase.from("destinos_homologados").select("id_destino,tipo,nombre_establecimiento,localidad,provincia,direccion,verificado").eq("activo",true).order("nombre_establecimiento"),
       ]);
 
       const productosData = (p.data as Producto[]) ?? [];
@@ -321,7 +323,7 @@ export default function NuevaPublicacionForm() {
 
       const { data: publicacion, error: errorPublicacion } = await supabase
         .from("publicaciones")
-        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,categoria_destino,destino_homologado_id,nombre_establecimiento_destino,localidad_destino,provincia_destino,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones,representado_razon_social,representado_cuit,representado_sisa_categoria,base_precio_cbot,premium_cbot,humedad_maxima,materia_extrana_maxima,aflatoxinas_max_ppb,proteina_minima,granos_danados_maximos,granos_quebrados_maximos,instrumentos_pago_internacional,tipo_buque,cantidad_envios,toneladas_por_envio,puerto_origen_destino,pais_destino")
+        .select("id,tipo,producto_id,cantidad_tn,precio_tn,moneda_id,incoterm_id,pais_id,provincia,localidad,puerto,categoria_destino,destino_homologado_id,nombre_establecimiento_destino,localidad_destino,provincia_destino,direccion_destino,puertos,lugares_recepcion,calidad,humedad,proteina,observaciones,representado_razon_social,representado_cuit,representado_sisa_categoria,base_precio_cbot,premium_cbot,humedad_maxima,materia_extrana_maxima,aflatoxinas_max_ppb,proteina_minima,granos_danados_maximos,granos_quebrados_maximos,instrumentos_pago_internacional,tipo_buque,cantidad_envios,toneladas_por_envio,puerto_origen_destino,pais_destino")
         .eq("id", id)
         .single();
 
@@ -383,6 +385,7 @@ export default function NuevaPublicacionForm() {
         nombre_establecimiento_destino: (publicacion as any).nombre_establecimiento_destino ?? "",
         localidad_destino: (publicacion as any).localidad_destino ?? "",
         provincia_destino: (publicacion as any).provincia_destino ?? "",
+        direccion_destino: (publicacion as any).direccion_destino ?? "",
         calidad: publicacion.calidad ?? "",
         humedad: publicacion.humedad != null ? String(publicacion.humedad) : "",
         proteina: publicacion.proteina != null ? String(publicacion.proteina) : "",
@@ -471,6 +474,7 @@ export default function NuevaPublicacionForm() {
         nombre_establecimiento_destino: form.nombre_establecimiento_destino || null,
         localidad_destino: form.localidad_destino || null,
         provincia_destino: form.provincia_destino || null,
+        direccion_destino: form.direccion_destino || null,
         puertos: puertosSeleccionados,
         lugares_recepcion: lugaresSeleccionados,
         calidad: form.calidad.trim(),
@@ -540,7 +544,8 @@ export default function NuevaPublicacionForm() {
         nombre_establecimiento_destino: "",
         localidad_destino: "",
         provincia_destino: "",
-        calidad: "",
+        direccion_destino: "",
+        calidad: ""
         humedad: "",
         proteina: "",
         observaciones: "",
@@ -725,13 +730,13 @@ export default function NuevaPublicacionForm() {
             </select>
           </label>
           <label className="font-semibold">Establecimiento / Terminal
-            <select className="mt-2 w-full rounded-lg border p-3" value={form.destino_homologado_id} disabled={!form.categoria_destino} onChange={e=>{const d=destinosHomologados.find(x=>String(x.id_destino)===e.target.value);setForm(x=>({...x,destino_homologado_id:e.target.value,nombre_establecimiento_destino:d?.nombre_establecimiento||"",localidad_destino:d?.localidad||"",provincia_destino:d?.provincia||""}));}}>
+            <select className="mt-2 w-full rounded-lg border p-3" value={form.destino_homologado_id} disabled={!form.categoria_destino} onChange={e=>{const d=destinosHomologados.find(x=>String(x.id_destino)===e.target.value);setForm(x=>({...x,destino_homologado_id:e.target.value,nombre_establecimiento_destino:d?.nombre_establecimiento||"",localidad_destino:d?.localidad||"",provincia_destino:d?.provincia||"",direccion_destino:d?.direccion||""}));}}>
               <option value="">{form.categoria_destino?"Seleccionar establecimiento...":"Primero seleccioná el tipo de destino"}</option>
               {destinosHomologados.filter(d=>d.tipo===form.categoria_destino).map(d=><option key={d.id_destino} value={d.id_destino}>{d.nombre_establecimiento} · {d.localidad}, {d.provincia}{d.verificado?"":" · Pendiente de verificación"}</option>)}
             </select>
           </label>
           <label className="font-semibold md:col-span-2">Dirección / Localidad de descarga
-            <input className="mt-2 w-full rounded-lg border p-3" readOnly value={form.destino_homologado_id?form.localidad_destino+", "+form.provincia_destino:"Se completa automáticamente al seleccionar un establecimiento"} />
+            <input className="mt-2 w-full rounded-lg border p-3" readOnly value={form.destino_homologado_id?(form.direccion_destino?form.direccion_destino+" · ":"")+form.localidad_destino+", "+form.provincia_destino:"Se completa automáticamente al seleccionar un establecimiento"} />
           </label>
         </div>
         {form.destino_homologado_id&&!destinosHomologados.find(d=>String(d.id_destino)===form.destino_homologado_id)?.verificado&&<p className="text-sm text-amber-700 mt-2">Este destino está en el catálogo inicial, pero aún no fue verificado por Administración. Confirmá su razón social, localidad y condiciones antes de cerrar una operación.</p>}
