@@ -35,7 +35,6 @@ function f1ContractSections(f:FormState):[string,string][]{
  const commission=tn*1;
  const moneyLabel=(value:number)=>value.toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});
  const origin=f.procedencia||"A completar por las partes";
- const destination=f.puerto||"A completar por las partes";
  const payment=f.pago||"A definir por las partes";
  const paymentTerm=f.plazoPago||"A definir por las partes";
  const freight=f.responsableFlete||"A definir por las partes";
