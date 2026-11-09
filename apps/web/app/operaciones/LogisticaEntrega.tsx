@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "../../lib/supabase";
+import LogisticaAsignacionRecursos from "@/components/logistica/LogisticaAsignacionRecursos";
 
 type Viaje = {
   id: string;
@@ -720,6 +721,8 @@ export default function LogisticaEntrega({
               </div>
               <span style={{ padding: "6px 10px", borderRadius: 99, background: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#dcfce7" : "#eaf2ff", color: viaje.estado === "ENTREGADO_CONFIRMADO" ? "#166534" : "#1d4ed8", fontSize: 11, fontWeight: 800 }}>{estadoLabel(viaje.estado)}</span>
             </div>
+
+            <LogisticaAsignacionRecursos viajeId={viaje.id} />
 
             <div style={{ display: "grid", gap: 8 }}>
               <div style={{ fontSize: 13, fontWeight: 800 }}>Cartas de Porte del camión</div>
