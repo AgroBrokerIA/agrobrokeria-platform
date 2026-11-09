@@ -137,7 +137,8 @@ export default function DocumentosPage(){
    const incoterm=incotermsCatalog.find(x=>x.id===selectedIncoterm);
    if(!incoterm)throw new Error("El Incoterm seleccionado no existe en el catálogo.");
    if(op.incoterm_id!==selectedIncoterm){const {error:updateError}=await supabase.rpc("establecer_incoterm_operacion",{p_operacion_id:op.id,p_incoterm_id:selectedIncoterm});if(updateError)throw new Error("No se pudo guardar el Incoterm en la operación: "+updateError.message);}
-   const currencyCode=(currency as any)?.codigo||"USD";
+   const currencyCode=String((currency as any)?.codigo||"").toUpperCase();
+   if(currencyCode!=="USD")throw new Error("Los documentos COMEX LOI/SCO/FCO aprobados se emiten en USD. Configurá la operación en USD antes de generar el PDF.");
    const qty=Number(op.cantidad_tn).toLocaleString("en-US",{maximumFractionDigits:3});
    const unitPrice=Number(op.precio_tn).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
    const total=Number(op.importe_total||op.cantidad_tn*op.precio_tn).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -150,7 +151,7 @@ export default function DocumentosPage(){
    const taxId=issuerHeader.cuit_tax_id||company.cuit||"Not provided";
    const recipientName=counterparty.razon_social;
    const signer=issuerHeader.representante_nombre||"Authorized representative not configured";
-   const technicalQuality=pub?.calidad||"Moisture max 14.5%, foreign matter max 3.0%, damaged grains max 5.0%.";
+   const technicalQuality=[String(pub?.calidad||"").trim(),`Moisture max ${pub?.humedad_maxima??14.5}%`,`Foreign matter max ${pub?.materia_extrana_maxima??3.0}%`,`Damaged grains max ${pub?.granos_danados_maximos??5.0}%`].filter(Boolean).join("; ");
    const contentLines:string[]=[];
    const add=(...x:string[])=>contentLines.push(...x);
    add(tipo==="LOI"?"LETTER OF INTENT (LOI)":tipo==="SCO"?"SOFT CORPORATE OFFER (SCO)":"FIRM CORPORATE OFFER (FCO)");
