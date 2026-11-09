@@ -349,7 +349,7 @@ language plpgsql security definer set search_path=public,auth,pg_temp as $$
 begin
  if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
  return query select p.id,p.bank_name,p.account_holder,p.holder_tax_id,p.account_type,p.currency,p.cbu,p.alias,p.notes
- from public.platform_payment_accounts p where p.active=true order by p.bank_name,p.currency;
+ from public.platform_payment_accounts p where p.active=true and lower(p.account_holder) like '%agrocomercio santa fe%' order by p.bank_name,p.currency;
 end $$;
 revoke all on function public.listar_cuentas_pago_logistica() from public,anon;
 grant execute on function public.listar_cuentas_pago_logistica() to authenticated;
