@@ -18,7 +18,7 @@ export async function POST(request:NextRequest){
     const mock=arcaPadronMock;
     const g=mock.datosGenerales;
     return NextResponse.json({ok:true,result:{
-      configured:true,found:true,source:mock.source,status:mock.status,
+      configured:true,found:true,environment:arcaConfig.environment,source:mock.source,status:mock.status,
       estadoClave:g.estadoClave,tipoPersona:g.tipoPersona,nombre:g.nombre,apellido:g.apellido,razonSocial:g.razonSocial,
       fechaNacimiento:g.fechaNacimiento,genero:g.genero,nacionalidad:g.nacionalidad,
       domicilio:mock.domicilioFiscal.direccion,localidad:mock.domicilioFiscal.localidad,
@@ -39,7 +39,7 @@ export async function POST(request:NextRequest){
   if(limitError)return fail("PADRON_RATE_LIMIT_UNAVAILABLE",503);
   if(allowed!==true)return fail("PADRON_LOOKUP_RATE_LIMIT_EXCEEDED",429);
   const result=await consultarPersonaPadron(cuit);
-  return NextResponse.json({ok:true,result},{headers:{"Cache-Control":"no-store","Vary":"Authorization"}});
+  return NextResponse.json({ok:true,result:{...result,environment:arcaConfig.environment}},{headers:{"Cache-Control":"no-store","Vary":"Authorization"}});
  }catch(error){
   const detail=error instanceof Error?error.message:"ARCA_PADRON_LOOKUP_FAILED";
   return fail(detail,502);
