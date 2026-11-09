@@ -127,7 +127,7 @@ export default function MercadoFletesPage(){
   const {error:up}=await supabase.storage.from("logistica-comprobantes").upload(path,comprobante,{contentType:comprobante.type,upsert:false});
   if(up){setError(up.message);setBusy(false);return;}
   const {error:e}=await supabase.rpc("registrar_comprobante_comision_logistica",{p_cierre_id:selectedClosure.id,p_storage_path:path,p_referencia:referencia||null});
-  if(e)setError(e.message);else{setNotice("Comprobante enviado. La comisión sigue pendiente hasta que Administración contraste el ingreso en su homebanking.");setComprobante(null);await load();}
+  if(e)setError(e.message);else{setNotice("Comprobante enviado. La comisión sigue pendiente hasta que Administración contraste el ingreso en su homebanking.");setComprobante(null);await load();await openChat(selectedClosure);}
   setBusy(false);
  }
  async function openCommissionProof(c:Closure){
@@ -138,7 +138,7 @@ export default function MercadoFletesPage(){
  }
  async function reviewCommission(c:Closure,approve:boolean){
   const {error:e}=await supabase.rpc("revisar_comision_logistica",{p_cierre_id:c.id,p_aprobar:approve,p_motivo:approve?null:"Comprobante no conciliado con el ingreso bancario."});
-  if(e)setError(e.message);else{setNotice(approve?"Comisión de flete aprobada manualmente.":"Comprobante rechazado.");await load();}
+  if(e)setError(e.message);else{setNotice(approve?"Comisión de flete aprobada manualmente.":"Comprobante rechazado.");await load();await openChat(c);}
  }
  async function calculateDistance(){
   if(!demandForm.origen.trim()||!demandForm.destino.trim()){setError("Ingresá origen y destino para calcular la distancia.");return;}
@@ -157,7 +157,7 @@ export default function MercadoFletesPage(){
  }
  async function respondAdvance(a:Advance,accept:boolean){
   const {error:e}=await supabase.rpc("responder_adelanto_combustible_logistica",{p_adelanto_id:a.id,p_aceptar:accept});
-  if(e)setError(e.message);else{setNotice(accept?"Adelanto aceptado. El dador debe transferir y subir el comprobante.":"Solicitud de adelanto rechazada.");await load();}
+  if(e)setError(e.message);else{setNotice(accept?"Adelanto aceptado. El dador debe transferir y subir el comprobante.":"Solicitud de adelanto rechazada.");await load();if(selectedClosure?.id===a.cierre_logistica_id)await openChat(selectedClosure);}
  }
  async function uploadAdvanceProof(a:Advance){
   const file=advanceFiles[a.id];if(!file){setError("Seleccioná el comprobante de transferencia del adelanto.");return;}
@@ -165,11 +165,11 @@ export default function MercadoFletesPage(){
   const safe=file.name.replace(/[^a-zA-Z0-9._-]/g,"_"),path=a.cierre_logistica_id+"/adelantos/"+crypto.randomUUID()+"-"+safe;
   const {error:up}=await supabase.storage.from("logistica-comprobantes").upload(path,file,{contentType:file.type,upsert:false});if(up){setError(up.message);return;}
   const {error:e}=await supabase.rpc("registrar_comprobante_adelanto_logistica",{p_adelanto_id:a.id,p_storage_path:path,p_referencia:advanceRefs[a.id]||null});
-  if(e)setError(e.message);else{setNotice("Comprobante del adelanto cargado; pendiente de verificación manual.");await load();}
+  if(e)setError(e.message);else{setNotice("Comprobante del adelanto cargado; pendiente de verificación manual.");await load();if(selectedClosure?.id===a.cierre_logistica_id)await openChat(selectedClosure);}
  }
  async function reviewAdvance(a:Advance,approve:boolean){
   const {error:e}=await supabase.rpc("revisar_adelanto_combustible_logistica",{p_adelanto_id:a.id,p_aprobar:approve,p_motivo:approve?null:"Comprobante no conciliado."});
-  if(e)setError(e.message);else{setNotice(approve?"Adelanto verificado por Administración.":"Comprobante de adelanto rechazado.");await load();}
+  if(e)setError(e.message);else{setNotice(approve?"Adelanto verificado por Administración.":"Comprobante de adelanto rechazado.");await load();if(selectedClosure?.id===a.cierre_logistica_id)await openChat(selectedClosure);}
  }
  async function sendCatacToChat(){
   if(!selectedClosure||!conversationId||!catac)return;
@@ -178,7 +178,7 @@ export default function MercadoFletesPage(){
  }
  async function requestAdvance(c:Closure){
   const amount=Number(advanceAmount),pct=Number(advancePct);const {data,error:e}=await supabase.rpc("solicitar_adelanto_combustible_logistica",{p_cierre_id:c.id,p_monto_ars:amount,p_porcentaje:pct});
-  if(e)setError(e.message);else{setNotice("Solicitud de adelanto registrada con estado pendiente. El dador debe confirmar y transferir externamente; cargará el comprobante antes de habilitar el viaje.");await load();}
+  if(e)setError(e.message);else{setNotice("Solicitud de adelanto registrada con estado pendiente. El dador debe confirmar y transferir externamente; cargará el comprobante antes de habilitar el viaje.");await load();await openChat(c);}
  }
 
  return <main style={{maxWidth:1440,margin:"0 auto",padding:"24px 18px 60px",display:"grid",gap:16,color:"#142033"}}>
