@@ -92,8 +92,6 @@ begin
   end if;
   return cid;
 end;
-$function$
-
-
+$function$;
 revoke all on function public.cerrar_operacion_logistica_market(uuid, uuid, numeric) from public, anon;
 grant execute on function public.cerrar_operacion_logistica_market(uuid, uuid, numeric) to authenticated;
