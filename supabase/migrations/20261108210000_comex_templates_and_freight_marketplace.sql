@@ -338,3 +338,15 @@ language sql stable security invoker set search_path=public,pg_temp as $$
 $$;
 revoke all on function public.buscar_tarifa_referencia_catac(integer) from public,anon;
 grant execute on function public.buscar_tarifa_referencia_catac(integer) to authenticated;
+
+-- Expose only active public remittance coordinates to signed-in participants.
+create or replace function public.listar_cuentas_pago_logistica()
+returns table(id uuid,bank_name text,account_holder text,holder_tax_id text,account_type text,currency text,cbu text,alias text,notes text)
+language plpgsql security definer set search_path=public,auth,pg_temp as $$
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ return query select p.id,p.bank_name,p.account_holder,p.holder_tax_id,p.account_type,p.currency,p.cbu,p.alias,p.notes
+ from public.platform_payment_accounts p where p.active=true order by p.bank_name,p.currency;
+end $$;
+revoke all on function public.listar_cuentas_pago_logistica() from public,anon;
+grant execute on function public.listar_cuentas_pago_logistica() to authenticated;
