@@ -34,7 +34,7 @@ export const arcaConfig = {
 
   wsaaUrl: isProduction
     ? "https://wsaa.arca.gov.ar/ws/services/LoginCms"
-    : "https://wsaa.homo.arca.gov.ar/ws/services/LoginCms",
+    : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
 
   wscpeUrl: isProduction
     ? "https://cpea-ws.arca.gob.ar/wscpe/services/soap"
