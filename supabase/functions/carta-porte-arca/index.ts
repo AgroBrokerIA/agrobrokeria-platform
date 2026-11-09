@@ -218,9 +218,9 @@ Deno.serve(async req=>{
       const verification={service:"wscpe",method:"ConsultarCPEAutomotor",environment,tipo_cpe:tipoCpe,sucursal,nro_orden:nroOrden,nro_ctg:String(viaje.carta_porte_ctg),ctg_consultado:ctgConsultado||null,estado:estadoArca,fecha_estado:fechaEstado,consultado_at:consultadoAt,response:consulta};
       const {data:cpeDoc,error:cpeDocError}=await db.from("viaje_cartas_porte").select("id,numero_carta_porte").eq("viaje_id",viajeId).order("creada_at",{ascending:false}).limit(1).maybeSingle();
       if(cpeDocError)return json({error:"CPE_EVIDENCE_LOOKUP_FAILED"},500);
-      if(!cpeDoc || String(cpeDoc.numero_carta_porte)!==String(viaje.carta_porte_ctg))
-        return json({ok:false,error:"CPE_PDF_EVIDENCE_REQUIRED",estado_arca:estadoArca},409);
-      if(cpeValidada){
+      const cpePdfCoincide=Boolean(cpeDoc && String(cpeDoc.numero_carta_porte)===String(viaje.carta_porte_ctg));
+      const cpeEvidenciaValidada=cpeValidada && cpePdfCoincide;
+      if(cpeEvidenciaValidada && cpeDoc){
         const {error:docSaveError}=await db.from("viaje_cartas_porte").update({estado_verificacion:"VALIDADA",validada_por:user.id,validada_at:consultadoAt,observaciones:"Validación automática contra consulta oficial ARCA WSCPE; CTG coincidente y estado "+estadoArca+"."}).eq("id",cpeDoc.id);
         if(docSaveError)return json({error:"CPE_EVIDENCE_VALIDATION_SAVE_FAILED"},500);
       }
@@ -228,7 +228,7 @@ Deno.serve(async req=>{
       if(descargada){update.carta_porte_estado="DESCARGADA_CONFIRMADA";update.carta_porte_descargada_at=fechaEstado||consultadoAt;}
       const {error:saveError}=await db.from("viajes").update(update).eq("id",viajeId).eq("operacion_id",operationId);
       if(saveError)return json({error:"ARCA_CPE_STATUS_SAVE_FAILED",estado_arca:estadoArca},500);
-      return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:viaje.carta_porte_ctg,estado_arca:estadoArca,cpe_validada:cpeValidada,descargada,camion_liberado:descargada,fecha_estado:fechaEstado,message:descargada?"ARCA confirmó DD: descarga en destino. La flota se libera y la comisión queda sujeta a doble conformidad.":cpeValidada?"CPE verificada por ARCA. Descarga todavía pendiente.":"ARCA informó un estado que requiere revisión; la CPE no se valida para liberar comisiones."});
+      return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:viaje.carta_porte_ctg,estado_arca:estadoArca,cpe_validada:cpeEvidenciaValidada,cpe_pdf_evidence_missing:!cpePdfCoincide,descargada,camion_liberado:descargada,fecha_estado:fechaEstado,message:descargada?(cpePdfCoincide?"ARCA confirmó DD: descarga en destino. La flota se libera y la comisión espera la doble conformidad.":"ARCA confirmó DD y liberó la flota; falta adjuntar el PDF oficial para validar la evidencia y habilitar la recepción conforme."):cpeEvidenciaValidada?"CPE verificada por ARCA. Descarga todavía pendiente.":"ARCA informó el estado "+estadoArca+". La evidencia PDF del CTG debe estar adjunta para validar la CPE."});
     }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
