@@ -53,6 +53,7 @@ export interface Publicacion {
   nombre_establecimiento_destino?: string | null;
   localidad_destino?: string | null;
   provincia_destino?: string | null;
+  direccion_destino?: string | null;
 
   /** Puertos alternativos donde puede realizarse la recepción/entrega. */
   puertos?: string[];
