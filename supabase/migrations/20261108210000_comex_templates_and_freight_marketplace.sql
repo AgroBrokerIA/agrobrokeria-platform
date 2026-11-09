@@ -292,3 +292,49 @@ begin
 end $$;
 revoke all on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
 grant execute on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+-- Private proof bucket: a participant can upload only under the closure they belong to.
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values('logistica-comprobantes','logistica-comprobantes',false,10485760,array['application/pdf','image/jpeg','image/png'])
+on conflict(id) do update set public=false,file_size_limit=10485760,allowed_mime_types=array['application/pdf','image/jpeg','image/png'];
+
+drop policy if exists logistica_proof_upload_participant on storage.objects;
+create policy logistica_proof_upload_participant on storage.objects for insert to authenticated
+with check(bucket_id='logistica-comprobantes' and exists(
+ select 1 from public.cierres_logistica c where c.id::text=(storage.foldername(name))[1]
+ and public.usuario_es_miembro_empresa(c.empresa_transportista_id) and owner_id::text=auth.uid()::text
+));
+drop policy if exists logistica_proof_read_participant on storage.objects;
+create policy logistica_proof_read_participant on storage.objects for select to authenticated
+using(bucket_id='logistica-comprobantes' and exists(
+ select 1 from public.cierres_logistica c where c.id::text=(storage.foldername(name))[1]
+ and (public.usuario_es_miembro_empresa(c.empresa_transportista_id) or public.usuario_es_miembro_empresa(c.empresa_dadora_id)
+ or exists(select 1 from public.platform_admins a where a.user_id=auth.uid()))
+));
+
+create or replace function public.registrar_comprobante_comision_logistica(p_cierre_id uuid,p_storage_path text,p_referencia text default null)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare c public.cierres_logistica%rowtype;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ select * into c from public.cierres_logistica where id=p_cierre_id for update;
+ if not found or not public.usuario_es_miembro_empresa(c.empresa_transportista_id) then raise exception 'NO_AUTORIZADO'; end if;
+ if c.estado_cierre<>'cerrado_formal' then raise exception 'CIERRE_NO_ACTIVO'; end if;
+ if p_storage_path is null or length(p_storage_path)>500 or p_storage_path not like p_cierre_id::text||'/%' then raise exception 'COMPROBANTE_INVALIDO'; end if;
+ if not exists(select 1 from storage.objects o where o.bucket_id='logistica-comprobantes' and o.name=p_storage_path and o.owner_id::text=auth.uid()::text) then raise exception 'COMPROBANTE_NO_ENCONTRADO'; end if;
+ update public.cierres_logistica set url_comprobante_logistica=p_storage_path,referencia_pago=nullif(trim(p_referencia),''),estado_pago_comision_logistica='comprobante_enviado' where id=p_cierre_id;
+end $$;
+revoke all on function public.registrar_comprobante_comision_logistica(uuid,text,text) from public,anon;
+grant execute on function public.registrar_comprobante_comision_logistica(uuid,text,text) to authenticated;
+
+create or replace function public.buscar_tarifa_referencia_catac(p_distancia_km integer)
+returns table(id uuid,distancia_km_desde integer,distancia_km_hasta integer,valor_tonelada_ars numeric,fuente text,vigencia_desde date)
+language sql stable security invoker set search_path=public,pg_temp as $$
+ select t.id,t.distancia_km_desde,t.distancia_km_hasta,t.valor_tonelada_ars,t.fuente,t.vigencia_desde
+ from public.tarifas_referencia_catac t
+ where t.activa=true and p_distancia_km between t.distancia_km_desde and t.distancia_km_hasta
+ and t.vigencia_desde<=current_date and (t.vigencia_hasta is null or t.vigencia_hasta>=current_date)
+ order by t.vigencia_desde desc,t.actualizado_at desc limit 1
+$$;
+revoke all on function public.buscar_tarifa_referencia_catac(integer) from public,anon;
+grant execute on function public.buscar_tarifa_referencia_catac(integer) to authenticated;
