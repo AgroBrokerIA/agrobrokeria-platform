@@ -123,7 +123,7 @@ export default function RegisterPage() {
       const limited=detail==="PADRON_LOOKUP_RATE_LIMIT_EXCEEDED";
       setLookupStatus(invalidLength?"error":"warning");
       const credentialsMissing=/Faltan las credenciales X\.509 de ARCA/i.test(detail);
-      const configurationMissing=/ARCA_CUIT_NO_CONFIGURADO|SUPABASE_SERVER_KEYS_NOT_CONFIGURED|PADRON_RATE_LIMIT_UNAVAILABLE/.test(detail);
+      const configurationMissing=/ARCA_CUIT_NO_CONFIGURADO|Falta ARCA_CUIT|SUPABASE_SERVER_KEYS_NOT_CONFIGURED|PADRON_RATE_LIMIT_UNAVAILABLE/.test(detail);
       setLookupMessage(invalidLength
         ?"El CUIL/CUIT debe contener exactamente 11 dígitos."
         :limited
