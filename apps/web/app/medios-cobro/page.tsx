@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 import Link from "next/link";
 
-type Medio={id:string;empresa_id:string;tipo:"BANCO"|"FINANCIERA";nombre:string;titular:string|null;cuit_cuil:string|null;banco:string|null;cbu:string|null;alias:string|null;moneda_id:number|null;es_predeterminado:boolean;estado:string};
+type Medio={id:string;empresa_id:string;tipo:"BANCO";nombre:string;titular:string|null;cuit_cuil:string|null;banco:string|null;cbu:string|null;alias:string|null;moneda_id:number|null;es_predeterminado:boolean;estado:string};
 type Currency={id:number;codigo:string;nombre:string|null};
 
 const methods=[
@@ -15,22 +15,11 @@ export default function MediosCobroPage(){
  const[medios,setMedios]=useState<Medio[]>([]),[curr,setCurr]=useState<Currency[]>([]),[selected,setSelected]=useState<Medio|null>(null),[loading,setLoading]=useState(true),[error,setError]=useState(""),[open,setOpen]=useState(false),[query,setQuery]=useState("");
  const[nombre,setNombre]=useState(""),[titular,setTitular]=useState(""),[cuit,setCuit]=useState(""),[banco,setBanco]=useState(""),[cbu,setCbu]=useState(""),[alias,setAlias]=useState(""),[moneda,setMoneda]=useState("");
 
- async function load(){setLoading(true);setError("");try{const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const{data:p,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(pe||!p?.active_company_id)throw new Error(pe?.message||"No se encontró una empresa activa.");const[{data:m,error:me},{data:c,error:ce}]=await Promise.all([supabase.from("medios_cobro").select("*").eq("empresa_id",p.active_company_id).neq("estado","INACTIVO").order("es_predeterminado",{ascending:false}),supabase.from("monedas").select("id,codigo,nombre").order("codigo")]);if(me)throw new Error(me.message);if(ce)throw new Error(ce.message);setMedios((m||[]) as Medio[]);setCurr((c||[]) as Currency[]);if(!selected&&m?.length)setSelected(m[0] as Medio);if(!moneda&&c?.length)setMoneda(String(c[0].id));}catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los métodos.");}finally{setLoading(false)}}useEffect(()=>{void load()},[]);
+ async function load(){setLoading(true);setError("");try{const{data:{user}}=await supabase.auth.getUser();if(!user)throw new Error("Necesitás iniciar sesión.");const{data:p,error:pe}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).single();if(pe||!p?.active_company_id)throw new Error(pe?.message||"No se encontró una empresa activa.");const[{data:m,error:me},{data:c,error:ce}]=await Promise.all([supabase.from("medios_cobro").select("*").eq("empresa_id",p.active_company_id).eq("tipo","BANCO").neq("estado","INACTIVO").order("es_predeterminado",{ascending:false}),supabase.from("monedas").select("id,codigo,nombre").order("codigo")]);if(me)throw new Error(me.message);if(ce)throw new Error(ce.message);setMedios((m||[]) as Medio[]);setCurr((c||[]) as Currency[]);if(!selected&&m?.length)setSelected(m[0] as Medio);if(!moneda&&c?.length)setMoneda(String(c[0].id));}catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los métodos.");}finally{setLoading(false)}}useEffect(()=>{void load()},[]);
 
  
- const matchesMethod=(medio:Medio,methodName:string)=>{
-  const n=medio.nombre.toLowerCase().trim();
-  const m=methodName.toLowerCase();
-  if(m==="transferencia bancaria") return /transferencia bancaria|transferencia local|transferencia/.test(n) && !/swift/.test(n);
-  if(m==="transferencia swift") return /swift/.test(n);
-  if(m==="carta de crédito (lc)") return /carta de crédito|carta de credito|\blc\b/.test(n);
-  if(m==="financiera") return medio.tipo==="FINANCIERA" || /financiera/.test(n);
-  if(m==="cuenta de garantía (escrow)") return /escrow|garantía|garantia/.test(n);
-  if(m==="criptomonedas") return /crypto|cripto|usdt|btc|eth/.test(n);
-  if(m==="paypal") return /paypal/.test(n);
-  return false;
- };
- const filtered=useMemo(()=>medios.filter(m=>[m.nombre,m.banco,m.titular,m.alias].join(" ").toLowerCase().includes(query.toLowerCase())),[medios,query]);
+ const matchesMethod=(medio:Medio,methodName:string)=>medio.tipo==="BANCO"&&methodName.toLowerCase()==="transferencia bancaria"&&/transferencia/i.test(medio.nombre);
+ const filtered=useMemo(()=>medios.filter(m=>m.tipo==="BANCO"&&[m.nombre,m.banco,m.titular,m.alias].join(" ").toLowerCase().includes(query.toLowerCase())),[medios,query]);
  const currency=(id:number|null)=>curr.find(x=>x.id===id)?.codigo||"—";
  async function guardar(){try{if(!nombre||!titular||!cuit||!moneda){setError("Completá nombre, titular, CUIT/CUIL y moneda.");return}const{data:id,error:e}=await supabase.rpc("crear_medio_cobro",{p_datos:{tipo:"BANCO",nombre:nombre.trim(),titular:titular.trim(),cuit_cuil:cuit.trim(),banco:banco.trim()||null,cbu:cbu.trim()||null,alias:alias.trim()||null,moneda_id:Number(moneda)}});if(e||!id)throw new Error(e?.message||"No se pudo registrar el método.");setOpen(false);setNombre("");setTitular("");setCuit("");setBanco("");setCbu("");setAlias("");await load()}catch(e){setError(e instanceof Error?e.message:"No se pudo registrar el método.")}}
  return <main className="payment-methods-reference">
