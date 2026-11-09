@@ -5,7 +5,7 @@ import {supabase} from "@/lib/supabase/client";
 
 type Listing={id:string;cantidad_camiones:number;ubicacion_actual:string;destino_solicitado:string|null;fecha_disponibilidad:string;tipo_carroceria:string;observaciones:string|null;empresa_transportista_id:string;transportista_id:string;estado:string;};
 type Demand={id:string;cantidad_camiones_necesitados:number;origen_carga:string;destino_carga:string;tarifa_estimada_ars:number|null;distancia_estimada_km:number|null;permite_adelanto_combustible:boolean;fecha_requerida:string|null;tipo_carroceria:string;observaciones:string|null;empresa_dadora_id:string;estado:string;};
-type Closure={id:string;codigo_operacion:string;total_flete_pactado_ars:number;valor_flete_por_camion_ars:number;comision_logistica_pct:number;comision_logistica_por_camion_ars:number;comision_logistica_ars:number;estado_pago_comision_logistica:string;url_comprobante_logistica:string|null;id_oferta_flete:string;id_demanda_flete:string;empresa_transportista_id:string;empresa_dadora_id:string;operacion_id:string|null;};
+type Closure={id:string;codigo_operacion:string;cantidad_camiones:number;total_flete_pactado_ars:number;valor_flete_por_camion_ars:number;comision_logistica_pct:number;comision_logistica_por_camion_ars:number;comision_logistica_ars:number;estado_pago_comision_logistica:string;url_comprobante_logistica:string|null;id_oferta_flete:string;id_demanda_flete:string;empresa_transportista_id:string;empresa_dadora_id:string;operacion_id:string|null;};
 type Advance={id:string;cierre_logistica_id:string;solicitado_por:string;monto_solicitado_ars:number;porcentaje_flete:number;estado:string;comprobante_path:string|null;referencia_transferencia:string|null;};
 type Postulation={id:string;id_demanda_flete:string;id_oferta_flete:string;empresa_transportista_id:string;estado:string;};
 type Company={id:string;razon_social:string;agrobroker_score:number|null};
@@ -41,7 +41,7 @@ export default function MercadoFletesPage(){
     supabase.from("platform_admins").select("user_id").eq("user_id",user.id).maybeSingle(),
     supabase.from("ofertas_logistica").select("*").order("creado_at",{ascending:false}).limit(100),
     supabase.from("demandas_logistica").select("*").order("creado_at",{ascending:false}).limit(100),
-    supabase.from("cierres_logistica").select("id,codigo_operacion,total_flete_pactado_ars,valor_flete_por_camion_ars,comision_logistica_pct,comision_logistica_por_camion_ars,comision_logistica_ars,estado_pago_comision_logistica,url_comprobante_logistica,id_oferta_flete,id_demanda_flete,empresa_transportista_id,empresa_dadora_id,operacion_id").order("fecha_cierre",{ascending:false}).limit(100),
+    supabase.from("cierres_logistica").select("id,codigo_operacion,cantidad_camiones,total_flete_pactado_ars,valor_flete_por_camion_ars,comision_logistica_pct,comision_logistica_por_camion_ars,comision_logistica_ars,estado_pago_comision_logistica,url_comprobante_logistica,id_oferta_flete,id_demanda_flete,empresa_transportista_id,empresa_dadora_id,operacion_id").order("fecha_cierre",{ascending:false}).limit(100),
     supabase.from("logistica_adelantos_combustible").select("id,cierre_logistica_id,solicitado_por,monto_solicitado_ars,porcentaje_flete,estado,comprobante_path,referencia_transferencia").order("creado_at",{ascending:false}).limit(100),
     supabase.from("postulaciones_logistica").select("id,id_demanda_flete,id_oferta_flete,empresa_transportista_id,estado").order("creado_at",{ascending:false}).limit(200)
    ]);
