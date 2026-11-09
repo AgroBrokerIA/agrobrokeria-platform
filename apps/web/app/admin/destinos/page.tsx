@@ -3,7 +3,7 @@ import {useEffect,useState} from "react";
 import {supabase} from "@/lib/supabase/client";
 
 type Categoria="puerto_exportacion"|"molino_industrial"|"acopio_cooperativa"|"consumo_feedlot";
-type Destino={id_destino:number;tipo:Categoria;nombre_establecimiento:string;localidad:string;provincia:string;cuit_operador:string|null;verificado:boolean;activo:boolean;fuente_datos:string};
+type Destino={id_destino:number;tipo:Categoria;nombre_establecimiento:string;localidad:string;provincia:string;direccion:string|null;cuit_operador:string|null;verificado:boolean;activo:boolean;fuente_datos:string};
 const labels:Record<Categoria,string>={puerto_exportacion:"Puerto de exportación",molino_industrial:"Molino industrial",acopio_cooperativa:"Acopio / Cooperativa",consumo_feedlot:"Feedlot / Consumo animal"};
 export default function DestinosAdminPage(){
  const[rows,setRows]=useState<Destino[]>([]),[admin,setAdmin]=useState(false),[loading,setLoading]=useState(true),[busy,setBusy]=useState<number|null>(null),[error,setError]=useState(""),[message,setMessage]=useState("");
@@ -12,7 +12,7 @@ export default function DestinosAdminPage(){
   const{data:ok,error:authError}=await supabase.rpc("es_administrador_plataforma");
   if(authError||ok!==true){setAdmin(false);setLoading(false);return;}
   setAdmin(true);
-  const{data,error}=await supabase.from("destinos_homologados").select("id_destino,tipo,nombre_establecimiento,localidad,provincia,cuit_operador,verificado,activo,fuente_datos").order("tipo").order("nombre_establecimiento");
+  const{data,error}=await supabase.from("destinos_homologados").select("id_destino,tipo,nombre_establecimiento,localidad,provincia,direccion,cuit_operador,verificado,activo,fuente_datos").order("tipo").order("nombre_establecimiento");
   if(error)setError(error.message);else setRows((data||[]) as Destino[]);
   setLoading(false);
  }
@@ -25,7 +25,7 @@ export default function DestinosAdminPage(){
   if(!row.nombre_establecimiento.trim()||!row.localidad.trim()||!row.provincia.trim()){setError("Completá establecimiento, localidad y provincia.");setBusy(null);return;}
   if(verify&&!window.confirm("Confirmás que verificaste la identidad del establecimiento, su domicilio y que recibe el producto/categoría correspondiente?")){setBusy(null);return;}
   const{error}=await supabase.from("destinos_homologados").update({
-   nombre_establecimiento:row.nombre_establecimiento.trim(),localidad:row.localidad.trim(),provincia:row.provincia.trim(),
+   nombre_establecimiento:row.nombre_establecimiento.trim(),localidad:row.localidad.trim(),provincia:row.provincia.trim(),direccion:(row.direccion||"").trim()||null,
    cuit_operador:cuit||null,verificado:verify?true:row.verificado,activo:row.activo,actualizado_en:new Date().toISOString()
   }).eq("id_destino",row.id_destino);
   if(error)setError(error.message);else{setMessage(verify?"Destino actualizado y marcado como verificado.":"Cambios guardados.");await load();}
@@ -47,6 +47,7 @@ export default function DestinosAdminPage(){
      <label>Establecimiento<input style={field} value={row.nombre_establecimiento} onChange={e=>edit(row.id_destino,"nombre_establecimiento",e.target.value)}/></label>
      <label>Localidad<input style={field} value={row.localidad} onChange={e=>edit(row.id_destino,"localidad",e.target.value)}/></label>
      <label>Provincia<input style={field} value={row.provincia} onChange={e=>edit(row.id_destino,"provincia",e.target.value)}/></label>
+     <label>Dirección exacta (opcional)<input style={field} value={row.direccion||""} onChange={e=>edit(row.id_destino,"direccion",e.target.value)}/></label>
      <label>CUIT operador (opcional)<input style={field} value={row.cuit_operador||""} maxLength={11} inputMode="numeric" onChange={e=>edit(row.id_destino,"cuit_operador",e.target.value.replace(/\D/g,"").slice(0,11))}/></label>
     </div>
     <small style={{color:"#64748b"}}>Origen: {row.fuente_datos||"—"} · ID {row.id_destino}</small>
