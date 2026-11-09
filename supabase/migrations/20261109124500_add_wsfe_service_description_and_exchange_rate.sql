@@ -14,6 +14,6 @@ ALTER TABLE public.facturas
   CHECK (moneda_cotizacion IS NULL OR moneda_cotizacion > 0);
 
 COMMENT ON COLUMN public.facturas.concepto_descripcion IS
-  'Detalle textual enviado en DetDesc de WSFEv1; se genera con datos de la operación o del viaje.';
+  'Detalle textual para renderizar en el PDF del comprobante; WSFEv1 no admite una descripción libre de ítem.';
 COMMENT ON COLUMN public.facturas.moneda_cotizacion IS
   'Cotización ARS por unidad de moneda extranjera usada como snapshot en WSFEv1. Obligatoria para DOL/EUR.';
