@@ -201,7 +201,7 @@ export default function DocumentosPage(){
    const useRaster=idiomaDocumento==="zh-CN";
    if(useRaster){
     const scale=3, printableWidth=right-left;
-    let contentTop=y, canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D, cy=0, contentHeight=0;
+    let contentTop=y, canvas:HTMLCanvasElement, ctx=null as unknown as CanvasRenderingContext2D, cy=0, contentHeight=0;
     const beginRasterPage=()=>{
      contentHeight=pageH-contentTop-20;
      canvas=document.createElement("canvas");
