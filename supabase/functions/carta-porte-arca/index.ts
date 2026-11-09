@@ -232,12 +232,12 @@ Deno.serve(async req=>{
     const destinoProvincia=requiredString(b.destino_provincia,"DESTINO_PROVINCIA");
     const destinoLocalidad=requiredString(b.destino_localidad,"DESTINO_LOCALIDAD");
     const destinatarioCuit=cuitDigits(b.destinatario_cuit,"DESTINATARIO");
-    const transportistaCuit=cuitDigits(b.transportista_cuit||transportista.cuit,"TRANSPORTISTA");
+    const transportistaCuit=cuitDigits(transportista.cuit,"TRANSPORTISTA");
     const dominio=requiredString(b.dominio_camion||viaje.patente_camion,"DOMINIO_CAMION");
     const dominioAcoplado=String(b.dominio_acoplado||viaje.patente_acoplado||"").trim();
     const fechaPartidaRaw=requiredString(b.fecha_hora_partida,"FECHA_HORA_PARTIDA"); const fechaPartida=fechaPartidaRaw.length===16?fechaPartidaRaw+":00":fechaPartidaRaw;
     const km=requiredString(b.km_recorrer,"KM_RECORRER");
-    const choferCuit=cuitDigits(viaje.chofer_cuil||b.chofer_cuit||transportista.cuit,"CHOFER");
+    const choferCuit=cuitDigits(viaje.chofer_cuil,"CHOFER");
     if(!validarCuitCuil(choferCuit))return json({error:"CHOFER_CUIL_INVALIDO"},422);
     const pagadorFlete=cuitDigits(b.cuit_pagador_flete,"PAGADOR_FLETE");
     const intermediarioFlete=cuitDigits(b.cuit_intermediario_flete,"INTERMEDIARIO_FLETE",true);
