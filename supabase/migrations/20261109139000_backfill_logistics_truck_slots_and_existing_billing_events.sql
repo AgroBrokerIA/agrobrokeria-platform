@@ -38,7 +38,7 @@ linked AS (
              AND v.productor_recepcion_confirmada_at IS NOT NULL
              AND v.estado = 'ENTREGADO_CONFIRMADO'
              AND v.productor_recepcion_observada_at IS NULL THEN 'DESCARGA_CONFIRMADA'
-        WHEN v.carta_porte_estado_arca IS NOT NULL THEN 'CPE_VALIDADA'
+        WHEN upper(trim(coalesce(v.carta_porte_estado_arca, ''))) IN ('AC','CF','CN','DD') THEN 'CPE_VALIDADA'
         ELSE 'VIAJE_ASIGNADO'
       END,
       actualizado_at = now()
