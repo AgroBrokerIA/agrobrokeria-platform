@@ -117,7 +117,7 @@ const fecha = (value?: string | null) =>
   value ? new Date(value).toLocaleString("es-AR") : "—";
 
 const validarCuil = (value: string) => {
-  const digits=value.replace(/\\D/g,"");
+  const digits=value.replace(/\D/g,"");
   if(digits.length!==11)return false;
   const weights=[5,4,3,2,7,6,5,4,3,2];
   const sum=weights.reduce((total,weight,index)=>total+Number(digits[index])*weight,0);
@@ -317,7 +317,7 @@ export default function LogisticaEntrega({
   async function crearViaje() {
     setError("");
     setMensaje("");
-    const choferCuilDigits=choferCuil.replace(/\\D/g,"");
+    const choferCuilDigits=choferCuil.replace(/\D/g,"");
     if (!transportistaId || !vehiculoCamionId || !origenNombre.trim() || !destinoNombre.trim()) {
       setError("Seleccioná transportista, camión registrado, origen y destino.");
       return;
