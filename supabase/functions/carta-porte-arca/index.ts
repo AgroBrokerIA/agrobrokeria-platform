@@ -67,10 +67,10 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
 }
 
 async function soap(environment:string,method:string,inner:string,auth:{token:string,sign:string,cuit:string}){
-  const url=environment==="production"?"https://cpea-ws.afip.gob.ar/wscpe/services/soap":"https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap";
-  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="https://serviciosjava.afip.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuitRepresentada>'+esc(auth.cuit)+'</cuitRepresentada></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
+  const url=environment==="production"?"https://cpea-ws.arca.gob.ar/wscpe/services/soap":"https://cpea-ws-qaext.arca.gob.ar/wscpe/services/soap";
+  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="https://serviciosjava.arca.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuit>'+esc(auth.cuit)+'</cuit></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
   const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),30000); let r:Response;
-  try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"\"https://serviciosjava.afip.gob.ar/wscpe/"+method+"\""},body,signal:ac.signal})}
+  try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"\"https://serviciosjava.arca.gob.ar/wscpe/"+method+"\""},body,signal:ac.signal})}
   catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSCPE_TIMEOUT");throw e}
   finally{clearTimeout(timer)}
   const raw=new Uint8Array(await r.arrayBuffer());
