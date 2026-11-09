@@ -164,13 +164,13 @@ Deno.serve(async req=>{
       const operationId=requiredString(b.operation_id,"OPERATION_ID");
       const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
       const {data:viaje,error:viajeError}=await db.from("viajes")
-        .select("id,operacion_id,carta_porte_ctg,carta_porte_estado,carta_porte_environment,carta_porte_nro_orden")
+        .select("id,operacion_id,carta_porte_ctg,carta_porte_estado,carta_porte_environment,carta_porte_nro_orden,carta_porte_tipo_cpe,carta_porte_sucursal,carta_porte_estado_arca,carta_porte_descargada_at")
         .eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
       if(viajeError)return json({error:"TRIP_LOOKUP_FAILED"},500);
       if(!viaje)return json({error:"TRIP_NOT_FOUND_FOR_OPERATION"},404);
       if(!viaje.carta_porte_ctg)return json({error:"TRIP_WITHOUT_ARCA_CTG"},409);
-      if(String(viaje.carta_porte_estado||"").toUpperCase().replace(/\\s+/g,"_")==="DESCARGADA_CONFIRMADA")
-        return json({ok:true,descargada:true,estado_arca:"DD",message:"La descarga ya está confirmada y el camión fue liberado."});
+      if(String(viaje.carta_porte_estado_arca||"").trim().toUpperCase()==="DD" && viaje.carta_porte_descargada_at)
+        return json({ok:true,descargada:true,estado_arca:"DD",fecha_estado:viaje.carta_porte_descargada_at,message:"ARCA ya había confirmado la descarga en destino."});
 
       const {data:profile,error:profileError}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
       if(profileError)return json({error:"PROFILE_LOOKUP_FAILED"},500);
@@ -199,21 +199,39 @@ Deno.serve(async req=>{
       const cert=envPem(certSecretName,certSecretName),key=envPem(keySecretName,keySecretName);
       if(!cert||!key)return json({error:environment==="production"?"ARCA_WSCPE_PRODUCTION_CREDENTIALS_NOT_CONFIGURED":"ARCA_WSCPE_HOMOLOGATION_CREDENTIALS_NOT_CONFIGURED"},409);
       const ticket=await getToken(environment,cuit,cert,key);
+      const tipoCpe=String(viaje.carta_porte_tipo_cpe||"").trim();
+      const sucursal=Number(viaje.carta_porte_sucursal||0);
+      const nroOrden=Number(viaje.carta_porte_nro_orden||0);
+      if(!tipoCpe||!Number.isInteger(sucursal)||sucursal<1||!Number.isInteger(nroOrden)||nroOrden<1)
+        return json({error:"CPE_QUERY_IDENTIFIERS_NOT_PERSISTED"},409);
       const consulta=await soap(environment,"ConsultarCPEAutomotorReq",
-        "<solicitud><nroCTG>"+esc(viaje.carta_porte_ctg)+"</nroCTG></solicitud>",
+        "<solicitud><cuitSolicitante>"+esc(cuit)+"</cuitSolicitante><cartaPorte><tipoCPE>"+esc(tipoCpe)+"</tipoCPE><sucursal>"+sucursal+"</sucursal><nroOrden>"+nroOrden+"</nroOrden></cartaPorte><nroCTG>"+esc(viaje.carta_porte_ctg)+"</nroCTG></solicitud>",
         {token:ticket.token,sign:ticket.sign,cuit});
       const errors=allErrors(consulta);
       if(errors.length)return json({ok:false,error:"ARCA_CPE_STATUS_QUERY_REJECTED",errors},502);
       const estadoArca=String(nodeText(consulta,"estado")||"").trim().toUpperCase();
       if(!estadoArca)return json({ok:false,error:"ARCA_CPE_STATUS_MISSING",response:consulta},502);
+      const ctgConsultado=String(nodeText(consulta,"nroCTG")||"").trim();
+      if(ctgConsultado && ctgConsultado!==String(viaje.carta_porte_ctg))
+        return json({ok:false,error:"ARCA_CTG_MISMATCH",ctg_guardado:viaje.carta_porte_ctg,ctg_arca:ctgConsultado},409);
       const descargada=estadoArca==="DD";
+      const cpeValidada=["AC","CF","CN","DD"].includes(estadoArca) && (!ctgConsultado||ctgConsultado===String(viaje.carta_porte_ctg));
       const fechaEstado=nodeText(consulta,"fechaInicioEstado")||nodeText(consulta,"fechaHora")||null;
-      const verification={service:"wscpe",method:"ConsultarCPEAutomotor",environment,nro_ctg:String(viaje.carta_porte_ctg),estado:estadoArca,fecha_estado:fechaEstado,consultado_at:new Date().toISOString(),response:consulta};
-      const update:Record<string,unknown>={carta_porte_estado_arca:estadoArca,carta_porte_ultima_consulta_arca:new Date().toISOString(),carta_porte_verificacion_arca:verification,actualizado_at:new Date().toISOString()};
-      if(descargada){update.carta_porte_estado="DESCARGADA_CONFIRMADA";update.carta_porte_descargada_at=fechaEstado||new Date().toISOString();}
+      const consultadoAt=new Date().toISOString();
+      const verification={service:"wscpe",method:"ConsultarCPEAutomotor",environment,tipo_cpe:tipoCpe,sucursal,nro_orden:nroOrden,nro_ctg:String(viaje.carta_porte_ctg),ctg_consultado:ctgConsultado||null,estado:estadoArca,fecha_estado:fechaEstado,consultado_at:consultadoAt,response:consulta};
+      const {data:cpeDoc,error:cpeDocError}=await db.from("viaje_cartas_porte").select("id,numero_carta_porte").eq("viaje_id",viajeId).order("creada_at",{ascending:false}).limit(1).maybeSingle();
+      if(cpeDocError)return json({error:"CPE_EVIDENCE_LOOKUP_FAILED"},500);
+      if(!cpeDoc || String(cpeDoc.numero_carta_porte)!==String(viaje.carta_porte_ctg))
+        return json({ok:false,error:"CPE_PDF_EVIDENCE_REQUIRED",estado_arca:estadoArca},409);
+      if(cpeValidada){
+        const {error:docSaveError}=await db.from("viaje_cartas_porte").update({estado_verificacion:"VALIDADA",validada_por:user.id,validada_at:consultadoAt,observaciones:"Validación automática contra consulta oficial ARCA WSCPE; CTG coincidente y estado "+estadoArca+"."}).eq("id",cpeDoc.id);
+        if(docSaveError)return json({error:"CPE_EVIDENCE_VALIDATION_SAVE_FAILED"},500);
+      }
+      const update:Record<string,unknown>={carta_porte_estado_arca:estadoArca,carta_porte_ultima_consulta_arca:consultadoAt,carta_porte_verificacion_arca:verification,actualizado_at:consultadoAt};
+      if(descargada){update.carta_porte_estado="DESCARGADA_CONFIRMADA";update.carta_porte_descargada_at=fechaEstado||consultadoAt;}
       const {error:saveError}=await db.from("viajes").update(update).eq("id",viajeId).eq("operacion_id",operationId);
       if(saveError)return json({error:"ARCA_CPE_STATUS_SAVE_FAILED",estado_arca:estadoArca},500);
-      return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:viaje.carta_porte_ctg,estado_arca:estadoArca,descargada,camion_liberado:descargada,fecha_estado:fechaEstado,message:descargada?"ARCA confirmó DD: descarga en destino. El camión quedó liberado automáticamente.":"ARCA todavía no confirmó la descarga. El camión permanece bloqueado."});
+      return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:viaje.carta_porte_ctg,estado_arca:estadoArca,cpe_validada:cpeValidada,descargada,camion_liberado:descargada,fecha_estado:fechaEstado,message:descargada?"ARCA confirmó DD: descarga en destino. La flota se libera y la comisión queda sujeta a doble conformidad.":cpeValidada?"CPE verificada por ARCA. Descarga todavía pendiente.":"ARCA informó un estado que requiere revisión; la CPE no se valida para liberar comisiones."});
     }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
@@ -345,7 +363,7 @@ Deno.serve(async req=>{
           pdfDisponible=true;
         }catch(e){pdfError=String(e);}
       }else pdfError="ARCA_NO_INCLUYO_PDF_EN_LA_RESPUESTA";
-      const {error:tripSaveError}=await db.from("viajes").update({carta_porte_ctg:ctg,carta_porte_nro_orden:nroOrden,carta_porte_estado:"EMITIDA",carta_porte_emitida_at:fechaEmision||new Date().toISOString(),carta_porte_environment:environment,carta_porte_response:{service:"wscpe",environment,request:inner,response:responseForStorage,errors,pdf_path:pdfPath},carta_porte_tn:kilosNetos===null?null:kilosNetos/1000,kilos_cargados:kilosNetos,actualizado_at:new Date().toISOString()}).eq("id",viajeId).eq("operacion_id",operationId);
+      const {error:tripSaveError}=await db.from("viajes").update({carta_porte_ctg:ctg,carta_porte_nro_orden:nroOrden,carta_porte_tipo_cpe:tipoCP,carta_porte_sucursal:sucursal,carta_porte_estado:"EMITIDA",carta_porte_emitida_at:fechaEmision||new Date().toISOString(),carta_porte_environment:environment,carta_porte_response:{service:"wscpe",environment,request:inner,response:responseForStorage,errors,pdf_path:pdfPath},carta_porte_tn:kilosNetos===null?null:kilosNetos/1000,kilos_cargados:kilosNetos,actualizado_at:new Date().toISOString()}).eq("id",viajeId).eq("operacion_id",operationId);
       if(tripSaveError)return json({error:"ARCA_EMITIDA_BUT_TRIP_SAVE_FAILED",nro_ctg:ctg,nro_orden:nroOrden},500);
     }
     const {error:logSaveError}=await db.from("operacion_logistica").update({carta_porte_numero:ctg||null,carta_porte_estado:ok?"EMITIDA":"OBSERVADA",carta_porte_origen:"ARCA_WSCPE",carta_porte_codigo:String(nroOrden),carta_porte_fecha_emision:fechaEmision||null,carta_porte_fecha_vencimiento:fechaVto||null,carta_porte_response:{service:"wscpe",environment,request:inner,response:responseForStorage,errors},updated_at:new Date().toISOString(),actualizado_por:user.id}).eq("operacion_id",operationId);
