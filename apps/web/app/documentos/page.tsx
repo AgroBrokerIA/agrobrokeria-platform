@@ -127,7 +127,9 @@ export default function DocumentosPage(){
    if(companiesError||headersError)throw new Error((companiesError||headersError)?.message||"No se pudieron cargar los membretes.");
    const company=(companies||[]).find((x:any)=>x.id===issuer.empresa_id),counterparty=(companies||[]).find((x:any)=>x.id===recipient.empresa_id);
    if(!company||!counterparty)throw new Error("No se encontraron los datos legales de ambas empresas.");
-   const pub=(publications||[]).find((x:any)=>x.id===op.publicacion_venta_id)||publications?.[0];
+   const buyerPub=(publications||[]).find((x:any)=>x.id===op.publicacion_compra_id)||null;
+   const sellerPub=(publications||[]).find((x:any)=>x.id===op.publicacion_venta_id)||null;
+   const pub=sellerPub||buyerPub;
    let productName="Producto no especificado";
    if(pub?.producto_id){const {data:product}=await supabase.from("productos").select("nombre").eq("id",pub.producto_id).maybeSingle();productName=product?.nombre||productName;}
    const selectedIncoterm=incotermDocumento?Number(incotermDocumento):(op.incoterm_id||pub?.incoterm_id||null);
@@ -139,10 +141,10 @@ export default function DocumentosPage(){
    const qty=Number(op.cantidad_tn).toLocaleString("en-US",{maximumFractionDigits:3});
    const unitPrice=Number(op.precio_tn).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
    const total=Number(op.importe_total||op.cantidad_tn*op.precio_tn).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
-   const date=new Date(op.fecha_operacion||Date.now()).toLocaleDateString("en-GB");
+   const date=new Date().toLocaleDateString("en-GB");
    const deliveryWindow=[pub?.fecha_disponible,pub?.fecha_vencimiento].filter(Boolean).join(" – ")||"To be agreed in the definitive contract";
-   const originPort=pub?.puerto||pub?.puerto_origen_destino||"To be agreed";
-   const destinationPort=pub?.pais_destino||pub?.puerto_origen_destino||"To be agreed";
+   const originPort=sellerPub?.puerto||sellerPub?.puerto_origen_destino||"To be agreed";
+   const destinationPort=buyerPub?.puerto||buyerPub?.puerto_origen_destino||buyerPub?.pais_destino||"To be agreed";
    const issuerHeader:any=headers||{};
    const companyName=issuerHeader.razon_social||company.razon_social;
    const taxId=issuerHeader.cuit_tax_id||company.cuit||"Not provided";
@@ -153,7 +155,7 @@ export default function DocumentosPage(){
    const add=(...x:string[])=>contentLines.push(...x);
    add(tipo==="LOI"?"LETTER OF INTENT (LOI)":tipo==="SCO"?"SOFT CORPORATE OFFER (SCO)":"FIRM CORPORATE OFFER (FCO)");
    add("Document Ref: AgroBrokerIA-"+tipo+"-"+op.codigo,"Date of Issuance: "+date,"");
-   add("To: "+(tipo==="LOI"?"Whom It May Concern / Seller's Compliance Department":tipo==="SCO"?"Prospective Buyer / Buying Lead":recipientName+" (Buyer Client)"),"Through: AgroBrokerIA Global Platform","");
+   add("To: "+(tipo==="LOI"?recipientName+" (Seller / Supplier)":tipo==="SCO"?recipientName+" (Buyer / Buying Lead)":recipientName+" (Buyer Client)"),"Through: AgroBrokerIA Global Platform","");
    if(tipo==="LOI"){
     add("We, "+companyName+", with Tax Registration Number "+taxId+", hereby confirm with full corporate responsibility that we are ready, willing, and able to enter into a formal agreement to purchase the commodity specified below under the following terms and banking procedures:","");
     add("1. PRODUCT & QUALITY SPECIFICATIONS","Commodity: "+productName,"Quantity: "+qty+" MT (Metric Tons)","Technical Standards: "+technicalQuality+" Fit for Human/Animal consumption, certified by SGS/Bureau Veritas at loading port.","");
