@@ -78,7 +78,13 @@ export default function RegisterPage() {
       if(requestId!==lookupSequence.current)return;
       if(!response.ok||!payload?.ok)throw new Error(payload?.error||"No se pudieron consultar los datos oficiales.");
       const d=payload.result;
-      if(!d?.found){setLookupStatus("warning");setLookupMessage("ARCA no encontró datos para ese CUIL/CUIT. Revisá los 11 dígitos o completá los datos manualmente.");return;}
+      if(!d?.found){
+        setLookupStatus("warning");
+        setLookupMessage(d?.environment==="HOMOLOGACION"
+          ?"Estás consultando el padrón de homologación de ARCA, que contiene CUIT ficticios de prueba y no devuelve datos reales. Para consultar un CUIT real se requiere habilitar el ambiente de producción con autorización y credenciales oficiales. Podés completar tus datos manualmente."
+          :"ARCA no encontró datos para ese CUIL/CUIT. Revisá los 11 dígitos o completá los datos manualmente.");
+        return;
+      }
       const domicilioFiscal=d.domicilioFiscal||{};
       const nombre=d.nombre||"";
       const apellido=d.apellido||"";
