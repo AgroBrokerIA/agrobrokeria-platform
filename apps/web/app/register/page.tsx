@@ -109,7 +109,7 @@ export default function RegisterPage() {
         })
       }));
       setLookupStatus("success");
-      setLookupMessage("Datos encontrados en ARCA. Se completaron los campos disponibles; revisalos antes de confirmar.");
+      setLookupMessage(d.source==="ARCA_MOCK_HOMOLOGACION"?"Datos de prueba simulados (homologación). El autocompletado funciona; estos datos no son una constancia real de ARCA.":"Datos encontrados en el padrón ARCA. Se completaron los campos disponibles; revisalos antes de confirmar.");
     }catch(e){
       if(requestId!==lookupSequence.current)return;
       const detail=e instanceof Error?e.message:"";
