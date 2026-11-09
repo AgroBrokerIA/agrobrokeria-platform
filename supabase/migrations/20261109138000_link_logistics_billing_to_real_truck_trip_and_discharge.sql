@@ -182,13 +182,15 @@ AS $$
 DECLARE
   v_slot public.cierres_logistica_camiones%rowtype;
 BEGIN
-  IF upper(replace(trim(coalesce(NEW.carta_porte_estado, '')), ' ', '_')) = 'DESCARGADA_CONFIRMADA'
-     AND upper(replace(trim(coalesce(OLD.carta_porte_estado, '')), ' ', '_')) <> 'DESCARGADA_CONFIRMADA' THEN
-    IF NULLIF(trim(COALESCE(NEW.carta_porte_ctg, '')), '') IS NULL
-       OR NEW.carta_porte_nro_orden IS NULL
-       OR COALESCE(NEW.carta_porte_environment, '') NOT IN ('PRODUCCION','HOMOLOGACION') THEN
-      RAISE EXCEPTION 'CPE_VALIDADA_REQUERIDA_ANTES_DE_CONFIRMAR_DESCARGA';
-    END IF;
+  IF upper(trim(coalesce(NEW.carta_porte_estado_arca, ''))) = 'DD'
+     AND NEW.carta_porte_descargada_at IS NOT NULL
+     AND NEW.transportista_entrega_confirmada_at IS NOT NULL
+     AND NEW.productor_recepcion_confirmada_at IS NOT NULL
+     AND NEW.estado = 'ENTREGADO_CONFIRMADO'
+     AND NEW.productor_recepcion_observada_at IS NULL
+     AND NULLIF(trim(COALESCE(NEW.carta_porte_ctg, '')), '') IS NOT NULL
+     AND NEW.carta_porte_nro_orden IS NOT NULL
+     AND lower(COALESCE(NEW.carta_porte_environment, '')) IN ('production','homologacion') THEN
 
     UPDATE public.cierres_logistica_camiones
     SET estado = 'DESCARGA_CONFIRMADA', actualizado_at = now()
@@ -201,6 +203,10 @@ BEGIN
             'cpe_ctg', NEW.carta_porte_ctg,
             'cpe_nro_orden', NEW.carta_porte_nro_orden,
             'cpe_environment', NEW.carta_porte_environment,
+            'cpe_estado_arca', NEW.carta_porte_estado_arca,
+            'cpe_descargada_at', NEW.carta_porte_descargada_at,
+            'transportista_entrega_confirmada_at', NEW.transportista_entrega_confirmada_at,
+            'productor_recepcion_confirmada_at', NEW.productor_recepcion_confirmada_at,
             'descarga_confirmada_at', now()
           ),
           actualizado_at = now()
@@ -218,7 +224,7 @@ REVOKE ALL ON FUNCTION public.actualizar_estado_facturacion_logistica_por_descar
 DROP TRIGGER IF EXISTS trg_actualizar_estado_facturacion_logistica_por_descarga
   ON public.viajes;
 CREATE TRIGGER trg_actualizar_estado_facturacion_logistica_por_descarga
-AFTER UPDATE OF carta_porte_estado ON public.viajes
+AFTER UPDATE OF carta_porte_estado_arca, carta_porte_descargada_at, transportista_entrega_confirmada_at, productor_recepcion_confirmada_at, estado ON public.viajes
 FOR EACH ROW
 EXECUTE FUNCTION public.actualizar_estado_facturacion_logistica_por_descarga();
 
