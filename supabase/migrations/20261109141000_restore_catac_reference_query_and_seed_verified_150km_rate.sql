@@ -4,6 +4,9 @@
 -- Exact 150 km row: ARS 33,974.73 per metric ton.
 -- Only this exact distance is seeded; other distances remain unavailable until
 -- the full official table is imported. No interpolation or invented price is used.
+-- The original schema disallowed exact-kilometer rows, which made one-km CATAC data impossible to store.
+ALTER TABLE public.tarifas_referencia_catac DROP CONSTRAINT IF EXISTS tarifas_referencia_catac_check;
+ALTER TABLE public.tarifas_referencia_catac ADD CONSTRAINT tarifas_referencia_catac_check CHECK (distancia_km_hasta >= distancia_km_desde);
 INSERT INTO public.tarifas_referencia_catac (
   distancia_km_desde, distancia_km_hasta, valor_tonelada_ars,
   fuente, vigencia_desde, vigencia_hasta, activa
