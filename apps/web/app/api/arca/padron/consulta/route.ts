@@ -10,10 +10,6 @@ export const dynamic = "force-dynamic";
 const fail=(error:string,status:number)=>NextResponse.json({ok:false,error},{status,headers:{"Cache-Control":"no-store"}});
 export async function POST(request:NextRequest){
  try{
-  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SECRET_KEY;
-  if(!url||!serviceKey)return fail("SUPABASE_SERVER_KEYS_NOT_CONFIGURED",503);
-  const admin=createClient(url,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
   const body=await request.json().catch(()=>({}));
   const cuit=String(body?.cuit||"").replace(/\D/g,"");
   if(!/^\d{11}$/.test(cuit))return fail("CUIT_CUIL_MUST_HAVE_11_DIGITS",422);
@@ -32,6 +28,10 @@ export async function POST(request:NextRequest){
       domicilioFiscal:mock.domicilioFiscal
     }},{headers:{"Cache-Control":"no-store"}});
   }
+  const url=process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const serviceKey=process.env.SUPABASE_SERVICE_ROLE_KEY??process.env.SUPABASE_SECRET_KEY;
+  if(!url||!serviceKey)return fail("SUPABASE_SERVER_KEYS_NOT_CONFIGURED",503);
+  const admin=createClient(url,serviceKey,{auth:{autoRefreshToken:false,persistSession:false}});
   const ip=request.headers.get("x-real-ip")||request.headers.get("x-forwarded-for")?.split(",")[0]?.trim()||"unknown";
   const digest=await crypto.subtle.digest("SHA-256",new TextEncoder().encode("agrobrokeria-padron:"+ip));
   const ipHash=Array.from(new Uint8Array(digest)).map(b=>b.toString(16).padStart(2,"0")).join("");
