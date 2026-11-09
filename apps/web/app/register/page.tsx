@@ -116,7 +116,15 @@ export default function RegisterPage() {
       const invalidLength=detail==="CUIT_CUIL_MUST_HAVE_11_DIGITS";
       const limited=detail==="PADRON_LOOKUP_RATE_LIMIT_EXCEEDED";
       setLookupStatus(invalidLength?"error":"warning");
-      setLookupMessage(invalidLength?"El CUIL/CUIT debe contener exactamente 11 dígitos.":limited?"La consulta alcanzó el límite temporal. Esperá unos minutos o completá los datos manualmente.":"No pudimos consultar ARCA en este momento. Podés completar los datos manualmente y continuar con tu registro.");
+      const credentialsMissing=/Faltan las credenciales X\.509 de ARCA/i.test(detail);
+      const configurationMissing=/ARCA_CUIT_NO_CONFIGURADO|SUPABASE_SERVER_KEYS_NOT_CONFIGURED|PADRON_RATE_LIMIT_UNAVAILABLE/.test(detail);
+      setLookupMessage(invalidLength
+        ?"El CUIL/CUIT debe contener exactamente 11 dígitos."
+        :limited
+          ?"La consulta alcanzó el límite temporal. Esperá unos minutos o completá los datos manualmente."
+          :credentialsMissing||configurationMissing
+            ?"La consulta automática de ARCA está pendiente de configuración del servidor. Podés completar tus datos manualmente y continuar; no se cargarán datos supuestos."
+            :"ARCA no respondió o rechazó la consulta. Podés completar tus datos manualmente y continuar; verificá la información antes de confirmar.");
     }finally{if(requestId===lookupSequence.current)setLookupLoading(false);}
   }
   const upload = async (userId:string,file:File,type:string) => {
