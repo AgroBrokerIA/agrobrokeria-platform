@@ -56,8 +56,10 @@ export function getArcaCertificateMaterial() {
 
 
 
+  const certificateVariable = arcaConfig.environment === "PRODUCCION" ? "ARCA_CERTIFICATE_BASE64" : "ARCA_CERTIFICATE_HOMO_BASE64";
+  const privateKeyVariable = arcaConfig.environment === "PRODUCCION" ? "ARCA_PRIVATE_KEY_BASE64" : "ARCA_PRIVATE_KEY_HOMO_BASE64";
   throw new Error(
-    "Faltan las credenciales X.509 de ARCA. Configurá ARCA_CERTIFICATE_BASE64 y ARCA_PRIVATE_KEY_BASE64 en el servidor."
+    `Faltan las credenciales X.509 de ARCA para el ambiente ${arcaConfig.environment}. Configurá ${certificateVariable} y ${privateKeyVariable} en las variables de entorno del proyecto Vercel.`
   );
 }
 
