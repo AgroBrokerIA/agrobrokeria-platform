@@ -200,10 +200,39 @@ export default function DocumentosPage(){
    y+=10;pdf.setDrawColor(160,170,180);pdf.line(left,y,right,y);y+=9;
    const useRaster=idiomaDocumento==="zh-CN";
    if(useRaster){
-    const canvas=document.createElement("canvas"),ctx=canvas.getContext("2d");if(!ctx)throw new Error("No se pudo preparar la fuente para el documento en chino.");
-    const lines=finalLines;const scale=3;canvas.width=510*scale;canvas.height=720*scale;ctx.scale(scale,scale);ctx.fillStyle="#ffffff";ctx.fillRect(0,0,510,720);ctx.fillStyle="#17212b";ctx.font='16px "Microsoft YaHei","Noto Sans SC","SimHei",sans-serif';let cy=26;
-    for(const line of lines){if(cy>690){pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pageW,pageH);pdf.addPage();ctx.fillStyle="#ffffff";ctx.fillRect(0,0,510,720);cy=26;}const words=Array.from(line);let row="";for(const ch of words){if(ctx.measureText(row+ch).width>460){ctx.fillText(row,24,cy);cy+=23;row=ch;}else row+=ch;}ctx.fillText(row,24,cy);cy+=line?25:12;}
-    ctx.fillStyle="#344054";ctx.font='10px "Microsoft YaHei","Noto Sans SC","SimHei",sans-serif';ctx.fillText("SHA-256 content fingerprint: "+hash,24,690);pdf.addImage(canvas.toDataURL("image/png"),"PNG",0,0,pageW,pageH);
+    const scale=3, printableWidth=right-left;
+    let contentTop=y, canvas:HTMLCanvasElement, ctx:CanvasRenderingContext2D, cy=0, contentHeight=0;
+    const beginRasterPage=()=>{
+     contentHeight=pageH-contentTop-20;
+     canvas=document.createElement("canvas");
+     canvas.width=Math.round(printableWidth*scale);
+     canvas.height=Math.max(1,Math.round(contentHeight*scale));
+     const context=canvas.getContext("2d");
+     if(!context)throw new Error("No se pudo preparar la fuente para el documento en chino.");
+     ctx=context;ctx.scale(scale,scale);ctx.fillStyle="#17212b";
+     ctx.font='14px "Microsoft YaHei","Noto Sans SC","SimHei",sans-serif';cy=7;
+    };
+    const flushRasterPage=()=>{
+     pdf.addImage(canvas.toDataURL("image/png"),"PNG",left,contentTop,printableWidth,contentHeight);
+    };
+    beginRasterPage();
+    for(const line of finalLines){
+     const chars=Array.from(line);let row="";
+     for(const ch of chars){
+      if(ctx.measureText(row+ch).width>printableWidth-8){
+       if(cy>contentHeight-10){flushRasterPage();pdf.addPage();contentTop=20;beginRasterPage();}
+       ctx.fillText(row,4,cy);cy+=7;row=ch;
+      }else row+=ch;
+     }
+     if(row){
+      if(cy>contentHeight-10){flushRasterPage();pdf.addPage();contentTop=20;beginRasterPage();}
+      ctx.fillText(row,4,cy);cy+=7;
+     }else cy+=4;
+    }
+    if(cy>contentHeight-10){flushRasterPage();pdf.addPage();contentTop=20;beginRasterPage();}
+    ctx.font='9px "Microsoft YaHei","Noto Sans SC","SimHei",sans-serif';
+    ctx.fillStyle="#344054";ctx.fillText("SHA-256 content fingerprint (not an electronic signature): "+hash,4,cy+2);
+    flushRasterPage();
    }else{
     pdf.setFont("helvetica","normal");pdf.setFontSize(9.5);
     for(const line of finalLines){const isHeading=/^(LETTER OF INTENT|SOFT CORPORATE OFFER|FIRM CORPORATE OFFER|[1-3]\. |[12]\. |Authorized Representative Signature)/.test(line);pdf.setFont("helvetica",isHeading?"bold":"normal");pdf.setFontSize(isHeading?10.5:9.5);const wrapped=pdf.splitTextToSize(line||" ",right-left);for(const part of wrapped){if(y>pageH-28){pdf.addPage();y=20;}pdf.text(part,left,y);y+=5;}if(!line)y+=1;}
