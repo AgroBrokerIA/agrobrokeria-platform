@@ -161,14 +161,27 @@ Deno.serve(async req=>{
     }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
-    const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
+    const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg,cierre_logistica_id").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
     if(viajeError)return json({error:"TRIP_LOOKUP_FAILED"},500);
     if(!viaje)return json({error:"TRIP_NOT_FOUND_FOR_OPERATION"},404);
+    if(!viaje.cierre_logistica_id)return json({error:"LOGISTICS_CLOSURE_REQUIRED"},409);
+    const {data:logisticsClosure,error:closureError}=await db.from("cierres_logistica")
+      .select("id,operacion_id,empresa_transportista_id,estado_pago_comision_logistica")
+      .eq("id",viaje.cierre_logistica_id).maybeSingle();
+    if(closureError)return json({error:"LOGISTICS_CLOSURE_LOOKUP_FAILED"},500);
+    if(!logisticsClosure||logisticsClosure.operacion_id!==operationId)return json({error:"LOGISTICS_CLOSURE_OPERATION_MISMATCH"},409);
+    if(logisticsClosure.estado_pago_comision_logistica!=="aprobado")return json({error:"LOGISTICS_COMMISSION_NOT_APPROVED"},423);
+    const {data:pendingAdvance,error:advanceError}=await db.from("logistica_adelantos_combustible")
+      .select("id,estado").eq("cierre_logistica_id",logisticsClosure.id)
+      .in("estado",["ACEPTADO_POR_DADOR","COMPROBANTE_CARGADO"]).limit(1);
+    if(advanceError)return json({error:"FUEL_ADVANCE_LOOKUP_FAILED"},500);
+    if(pendingAdvance?.length)return json({error:"FUEL_ADVANCE_PENDING_MANUAL_VALIDATION"},423);
     if(viaje.carta_porte_ctg)return json({error:"TRIP_ALREADY_HAS_CTG",nro_ctg:viaje.carta_porte_ctg},409);
     if(!viaje.transportista_profile_id)return json({error:"TRIP_WITHOUT_ASSIGNED_TRANSPORTISTA"},409);
-    const {data:transportista,error:transportistaError}=await db.from("transportistas").select("profile_id,cuit,nombre_completo,verificacion_estado").eq("profile_id",viaje.transportista_profile_id).maybeSingle();
+    const {data:transportista,error:transportistaError}=await db.from("transportistas").select("profile_id,cuit,nombre_completo,verificacion_estado,empresa_id").eq("profile_id",viaje.transportista_profile_id).maybeSingle();
     if(transportistaError)return json({error:"TRANSPORTISTA_LOOKUP_FAILED"},500);
     if(!transportista||transportista.verificacion_estado!=="VERIFICADO")return json({error:"TRANSPORTISTA_NOT_VERIFIED"},409);
+    if(transportista.empresa_id!==logisticsClosure.empresa_transportista_id)return json({error:"TRANSPORTISTA_COMPANY_MISMATCH"},409);
     const {data:profile}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
     const companyId=profile?.active_company_id;
     if(!companyId)return json({error:"NO_ACTIVE_COMPANY"},409);
