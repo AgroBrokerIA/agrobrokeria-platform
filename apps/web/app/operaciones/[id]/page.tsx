@@ -55,9 +55,6 @@ export default function DetalleOperacion() {
   const [pricing, setPricing] = useState<any[]>([]);
   const [comexDocs, setComexDocs] = useState<any[]>([]);
   const [comexLanguage, setComexLanguage] = useState("en");
-  const [comexLetterhead, setComexLetterhead] = useState("empresa");
-  const [comexBusy, setComexBusy] = useState(false);
-  const [comexMessage, setComexMessage] = useState("");
 
   async function cargarDatos() {
     setCargando(true);
@@ -140,14 +137,23 @@ export default function DetalleOperacion() {
       supabase.from("contratos").select("id,numero_contrato,estado,fecha_firma").eq("operacion_id", id).order("creado_en", { ascending:false }),
       supabase.from("documentos_operacion").select("id,nombre_archivo,tipo_documento,aprobado,obligatorio,observaciones,creado_en").eq("operacion_id", id).order("creado_en", { ascending:false }).limit(20),
       supabase.from("pricing_calculations").select("id,base_price,premium,discount,freight,taxes,commission,other_costs,final_price,currency,unit,price_type,formula,created_at").eq("operation_id", id).order("created_at",{ascending:false}).limit(10),
-      supabase.from("documentos_comex").select("id,tipo_documento,idioma_generado,estado,hash_sha256,creado_en").eq("operacion_id",id).order("creado_en",{ascending:false}).limit(10)
+      Promise.all([
+        supabase.from("loi").select("id,idioma_documento,estado,hash_sha256,creado_en").eq("operacion_id",id).order("creado_en",{ascending:false}),
+        supabase.from("sco").select("id,idioma_documento,estado,hash_sha256,creado_en").eq("operacion_id",id).order("creado_en",{ascending:false}),
+        supabase.from("fco").select("id,idioma_documento,estado,hash_sha256,creado_en").eq("operacion_id",id).order("creado_en",{ascending:false})
+      ])
     ]);
     setExpediente(expedienteRes.data);
     setFacturas(facturasRes.data || []);
     setContratos(contratosRes.data || []);
     setDocumentos(documentosRes.data || []);
     setPricing((pricingRes.data || []));
-    setComexDocs(comexRes.data || []);
+    const [loiRows,scoRows,fcoRows] = comexRes;
+    setComexDocs([
+      ...(loiRows.data||[]).map((d:any)=>({...d,tipo_documento:"LOI",idioma_generado:d.idioma_documento})),
+      ...(scoRows.data||[]).map((d:any)=>({...d,tipo_documento:"SCO",idioma_generado:d.idioma_documento})),
+      ...(fcoRows.data||[]).map((d:any)=>({...d,tipo_documento:"FCO",idioma_generado:d.idioma_documento}))
+    ].sort((a:any,b:any)=>new Date(b.creado_en||0).getTime()-new Date(a.creado_en||0).getTime()));
 
     const { data: historialData, error: historialError } = await supabase
       .from("workflow_historial")
@@ -339,37 +345,17 @@ export default function DetalleOperacion() {
 
 
       <section style={{ border: "1px solid #d8e6dc", borderRadius: 12, padding: 20, marginTop: 20, background: "#fbfefb" }}>
-        <div><span className="eyebrow">COMERCIO EXTERIOR · LOI / KYC</span><h2>Documentación internacional</h2><p style={{color:"#64748b",marginTop:4}}>Generá documentos desde el snapshot de la operación, seleccioná idioma y membrete, y descargá el PDF con hash SHA-256.</p></div>
+        <div><span className="eyebrow">COMERCIO EXTERIOR · LOI / SCO / FCO</span><h2>Documentación internacional</h2><p style={{color:"#64748b",marginTop:4}}>Generá las tres plantillas oficiales desde el generador COMEX. El LOI utiliza el membrete del comprador; SCO y FCO utilizan el del vendedor. Si no hay logotipo, se aplica el encabezado neutro de AgroBrokerIA.</p></div>
         <div style={{display:"flex",gap:10,flexWrap:"wrap",alignItems:"end",marginTop:14}}>
           <label style={{display:"grid",gap:5,fontSize:13}}>Idioma del documento
             <select value={comexLanguage} onChange={e=>setComexLanguage(e.target.value)} style={{padding:10,border:"1px solid #cbd5e1",borderRadius:8}}>
-              <option value="es">Español (ES)</option><option value="en">English (EN)</option><option value="pt">Português (PT)</option><option value="zh">中文 (ZH)</option><option value="fr">Français (FR)</option><option value="it">Italiano (IT)</option><option value="ru">Русский (RU)</option><option value="hi">हिन्दी (HI)</option>
+              <option value="es">Español (ES)</option><option value="en">English (EN)</option><option value="pt">Português (PT)</option><option value="zh-CN">中文（简体）</option>
             </select>
           </label>
-          <label style={{display:"grid",gap:5,fontSize:13}}>Membrete
-            <select value={comexLetterhead} onChange={e=>setComexLetterhead(e.target.value)} style={{padding:10,border:"1px solid #cbd5e1",borderRadius:8}}>
-              <option value="empresa">Membrete de mi empresa</option><option value="neutro">Membrete neutro de AgroBrokerIA</option>
-            </select>
-          </label>
-          <button type="button" disabled={comexBusy} onClick={async()=>{
-            setComexBusy(true);setComexMessage("");
-            try{
-              const {data:docId,error:createError}=await supabase.rpc("crear_documento_comex_borrador",{p_operacion_id:id,p_tipo_documento:"LOI",p_idioma:comexLanguage,p_membrete:comexLetterhead});
-              if(createError||!docId)throw createError||new Error("No se pudo crear el borrador COMEX.");
-              const {data:exported,error:exportError}=await supabase.functions.invoke("exportar-documento-comex",{body:{document_id:docId,language:comexLanguage,letterhead:comexLetterhead}});
-              if(exportError)throw exportError;
-              if(!exported?.download_url)throw new Error(exported?.error||"El PDF no devolvió un enlace de descarga.");
-              setComexMessage("Documento generado. Se inicia la descarga del PDF.");
-              window.location.assign(exported.download_url);
-              const {data:rows}=await supabase.from("documentos_comex").select("id,tipo_documento,idioma_generado,estado,hash_sha256,creado_en").eq("operacion_id",id).order("creado_en",{ascending:false}).limit(10);
-              setComexDocs(rows||[]);
-            }catch(e){setComexMessage(e instanceof Error?e.message:"No se pudo generar el documento.");}
-            finally{setComexBusy(false);}
-          }} style={{padding:"11px 16px",border:0,borderRadius:8,background:comexBusy?"#94a3b8":"#176b3a",color:"#fff",fontWeight:700,cursor:comexBusy?"wait":"pointer"}}>
-            {comexBusy?"Generando PDF…":"Crear y descargar LOI oficial"}
-          </button>
+          <a href={"/documentos?operation_id="+encodeURIComponent(id)+"&language="+encodeURIComponent(comexLanguage)+"#docs-commercial"} style={{display:"inline-flex",alignItems:"center",padding:"11px 16px",borderRadius:8,background:"#176b3a",color:"#fff",fontWeight:700,textDecoration:"none"}}>
+            Abrir generador completo LOI / SCO / FCO
+          </a>
         </div>
-        {comexMessage&&<p role="status" style={{marginTop:12,color:"#334155"}}>{comexMessage}</p>}
         {comexDocs.length>0&&<div style={{marginTop:16}}><strong>Documentos COMEX de esta operación</strong>{comexDocs.map(d=><div key={d.id} style={{padding:"8px 0",borderBottom:"1px solid #e2e8f0",fontSize:13}}>{d.tipo_documento} · {String(d.idioma_generado||"es").toUpperCase()} · {d.estado}{d.hash_sha256?" · SHA-256 "+String(d.hash_sha256).slice(0,16)+"…":""}</div>)}</div>}
       </section>
 
