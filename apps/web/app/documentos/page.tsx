@@ -125,7 +125,7 @@ export default function DocumentosPage(){
    if(!selectedIncoterm)throw new Error("El Incoterm es obligatorio para emitir documentos COMEX. Seleccioná FOB, CIF u otro término en el formulario.");
    const incoterm=incotermsCatalog.find(x=>x.id===selectedIncoterm);
    if(!incoterm)throw new Error("El Incoterm seleccionado no existe en el catálogo.");
-   if(op.incoterm_id!==selectedIncoterm){const {error:updateError}=await supabase.from("operaciones").update({incoterm_id:selectedIncoterm}).eq("id",op.id);if(updateError)throw new Error("No se pudo guardar el Incoterm en la operación: "+updateError.message);}
+   if(op.incoterm_id!==selectedIncoterm){const {error:updateError}=await supabase.rpc("establecer_incoterm_operacion",{p_operacion_id:op.id,p_incoterm_id:selectedIncoterm});if(updateError)throw new Error("No se pudo guardar el Incoterm en la operación: "+updateError.message);}
    const currencyCode=(currency as any)?.codigo||"USD";
    const qty=Number(op.cantidad_tn).toLocaleString("en-US",{maximumFractionDigits:3});
    const unitPrice=Number(op.precio_tn).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2});
@@ -183,7 +183,7 @@ export default function DocumentosPage(){
    }
    pdf.setFont("helvetica","bold");pdf.setFontSize(12);pdf.text(issuerHeader.nombre_comercial||companyName,left,y);
    pdf.setFont("helvetica","normal");pdf.setFontSize(8);
-   const headerParts=[issuerHeader.domicilio||company.direccion,[issuerHeader.ciudad||company.localidad,issuerHeader.provincia_estado||company.provincia,issuerHeader.pais||company.pais].filter(Boolean).join(", "),issuerHeader.telefono,issuerHeader.email,issuerHeader.sitio_web||company.sitio_web].filter(Boolean);
+   const headerParts=[issuerHeader.domicilio||company.direccion,[issuerHeader.ciudad||company.localidad,issuerHeader.provincia_estado||company.provincia,issuerHeader.pais||company.pais].filter(Boolean).join(", "),issuerHeader.telefono,issuerHeader.email,issuerHeader.sitio_web||company.sitio_web,issuerHeader.membrete_texto,issuerHeader.encabezado_texto].filter(Boolean);
    headerParts.forEach((x)=>{y+=4;pdf.text(String(x),left,y)});
    if(!issuerHeader.logo_url){y+=5;pdf.setFontSize(8);pdf.text("AGROBROKERIA GLOBAL PLATFORM · STANDARD DOCUMENT HEADER",left,y);}
    y+=10;pdf.setDrawColor(160,170,180);pdf.line(left,y,right,y);y+=9;
