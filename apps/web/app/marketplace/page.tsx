@@ -43,9 +43,9 @@ function MarketplaceContent(){
   return p.tipo===(isDemand?"COMPRA":"VENTA")
     &&productoCoincide(p.productos?.nombre,producto)
     &&(!pais||p.paises?.codigo_iso===pais||(pais==="AR"&&ARGENTINA_PROVINCE_NAMES.some(n=>n.toLocaleLowerCase("es")===String(p.provincia||"").toLocaleLowerCase("es"))))
-    &&(!provincia||p.provincias?.codigo===provincia||p.provincia===provincias.find((x:any)=>x.iso2===provincia)?.name)
-    &&(!ciudad||p.localidades?.nombre===ciudad||p.localidad===ciudad)
-    &&(!puerto||[...(Array.isArray(p.puertos)?p.puertos:[]),p.puerto].filter(Boolean).some((x:any)=>String(x).toLocaleLowerCase("es").includes(puerto.toLocaleLowerCase("es"))))
+    &&(!provincia||p.provincias?.codigo===provincia||p.provincia===provincias.find((x:any)=>x.iso2===provincia)?.name||p.provincia_destino===provincias.find((x:any)=>x.iso2===provincia)?.name)
+    &&(!ciudad||p.localidades?.nombre===ciudad||p.localidad===ciudad||p.localidad_destino===ciudad)
+    &&(!puerto||[...(Array.isArray(p.puertos)?p.puertos:[]),p.puerto,p.nombre_establecimiento_destino,p.direccion_destino,p.localidad_destino,p.provincia_destino].filter(Boolean).some((x:any)=>String(x).toLocaleLowerCase("es").includes(puerto.toLocaleLowerCase("es"))))
     &&(!condicion||p.incoterms?.codigo===condicion)
     &&(min===null||(!Number.isNaN(min)&&price>=min))
     &&(max===null||(!Number.isNaN(max)&&price<=max));
