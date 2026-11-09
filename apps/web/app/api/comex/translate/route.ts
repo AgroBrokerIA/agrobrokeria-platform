@@ -9,6 +9,7 @@ export async function POST(request: NextRequest) {
     if (!token) return NextResponse.json({ error: "Autenticación requerida." }, { status: 401 });
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
     const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (!supabaseUrl || !anonKey) return NextResponse.json({ error: "Servicio de traducción no configurado." }, { status: 503 });
     const body = await request.json();
     const target = String(body?.target || "");
     const texts = body?.texts;
