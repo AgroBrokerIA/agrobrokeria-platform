@@ -191,7 +191,7 @@ begin
  values(code,o.id,d.id,o.empresa_transportista_id,d.empresa_dadora_id,qty,p_total_flete_ars,pct,round(p_total_flete_ars*pct/100,2),'cerrado_formal',uid) returning id into cid;
  insert into public.conversaciones_fletes(cierre_logistica_id,empresa_transportista_id,empresa_dadora_id) values(cid,o.empresa_transportista_id,d.empresa_dadora_id) returning id into conv;
  insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje)
- values(conv,null,true,'¡Operación de flete cerrada con éxito! La empresa de transporte comprometió '||qty||' camión(es) con origen en '||o.ubicacion_actual||' hacia '||coalesce(o.destino_solicitado,d.destino_carga)||'. La comisión tecnológica de la plataforma es del '||pct||'% del flete pactado y debe ser abonada por la empresa de transporte. El comprobante será revisado manualmente por Administración antes de habilitar la asignación de unidades y la prevalidación documental.');
+ values(conv,null,true,'¡Operación de flete cerrada con éxito! La empresa de transporte comprometió '||qty||' camión(es) con origen en '||o.ubicacion_actual||' hacia '||coalesce(o.destino_solicitado,d.destino_carga)||'. La comisión tecnológica de la plataforma es del '||pct||'% del flete pactado y debe ser abonada por la empresa de transporte. El comprobante del 1% de servicio tecnológico debe transferirse a las cuentas oficiales de AgroComercio Santa Fe. Administración verificará manualmente el ingreso bancario antes de habilitar la asignación de patentes y choferes y la prevalidación documental de la CPE ante ARCA.');
  update public.ofertas_logistica set estado='ASIGNADA',actualizado_at=now() where id=o.id;
  update public.demandas_logistica set estado=case when d.cantidad_camiones_necesitados<=qty then 'CUBIERTA' else 'PARCIAL' end,actualizado_at=now() where id=d.id;
  return cid;
@@ -235,8 +235,247 @@ begin
  if not exists(select 1 from public.demandas_logistica d join public.cierres_logistica x on x.id=p_cierre_id where d.id=x.id_demanda_flete and d.permite_adelanto_combustible=true) then raise exception 'ADELANTO_NO_PERMITIDO'; end if;
  insert into public.logistica_adelantos_combustible(cierre_logistica_id,solicitado_por,monto_solicitado_ars,porcentaje_flete)
  values(p_cierre_id,auth.uid(),p_monto_ars,p_porcentaje) returning id into rid;
+ insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje)
+ select cf.id,null,true,'El transportista solicitó un adelanto para combustible y viáticos por (uuid,numeric,numeric) from public,anon;
+grant execute on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) to authenticated;
+
+-- Commercial document RPCs: the issuer must match the proper side of the transaction.
+create or replace function public.crear_loi_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO';
+ end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'EL_EMISOR_LOI_DEBE_SER_COMPRADOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'CONTRAPARTE_LOI_INVALIDA'; end if;
+ insert into public.loi(operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,p_empresa_receptora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
  return rid;
 end $$;
+revoke all on function public.crear_loi_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_loi_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+create or replace function public.crear_sco_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO'; end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'EL_EMISOR_SCO_DEBE_SER_VENDEDOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'CONTRAPARTE_SCO_INVALIDA'; end if;
+ insert into public.sco(operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
+ return rid;
+end $$;
+revoke all on function public.crear_sco_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_sco_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+create or replace function public.crear_fco_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO'; end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'EL_EMISOR_FCO_DEBE_SER_VENDEDOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'CONTRAPARTE_FCO_INVALIDA'; end if;
+ insert into public.fco(operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,p_empresa_receptora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
+ return rid;
+end $$;
+revoke all on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+-- Private proof bucket: a participant can upload only under the closure they belong to.
+insert into storage.buckets(id,name,public,file_size_limit,allowed_mime_types)
+values('logistica-comprobantes','logistica-comprobantes',false,10485760,array['application/pdf','image/jpeg','image/png'])
+on conflict(id) do update set public=false,file_size_limit=10485760,allowed_mime_types=array['application/pdf','image/jpeg','image/png'];
+
+drop policy if exists logistica_proof_upload_participant on storage.objects;
+create policy logistica_proof_upload_participant on storage.objects for insert to authenticated
+with check(bucket_id='logistica-comprobantes' and exists(
+ select 1 from public.cierres_logistica c where c.id::text=(storage.foldername(name))[1]
+ and public.usuario_es_miembro_empresa(c.empresa_transportista_id) and owner_id::text=auth.uid()::text
+));
+drop policy if exists logistica_proof_read_participant on storage.objects;
+create policy logistica_proof_read_participant on storage.objects for select to authenticated
+using(bucket_id='logistica-comprobantes' and exists(
+ select 1 from public.cierres_logistica c where c.id::text=(storage.foldername(name))[1]
+ and (public.usuario_es_miembro_empresa(c.empresa_transportista_id) or public.usuario_es_miembro_empresa(c.empresa_dadora_id)
+ or exists(select 1 from public.platform_admins a where a.user_id=auth.uid()))
+));
+
+create or replace function public.registrar_comprobante_comision_logistica(p_cierre_id uuid,p_storage_path text,p_referencia text default null)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare c public.cierres_logistica%rowtype;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ select * into c from public.cierres_logistica where id=p_cierre_id for update;
+ if not found or not public.usuario_es_miembro_empresa(c.empresa_transportista_id) then raise exception 'NO_AUTORIZADO'; end if;
+ if c.estado_cierre<>'cerrado_formal' then raise exception 'CIERRE_NO_ACTIVO'; end if;
+ if p_storage_path is null or length(p_storage_path)>500 or p_storage_path not like p_cierre_id::text||'/%' then raise exception 'COMPROBANTE_INVALIDO'; end if;
+ if not exists(select 1 from storage.objects o where o.bucket_id='logistica-comprobantes' and o.name=p_storage_path and o.owner_id::text=auth.uid()::text) then raise exception 'COMPROBANTE_NO_ENCONTRADO'; end if;
+ update public.cierres_logistica set url_comprobante_logistica=p_storage_path,referencia_pago=nullif(trim(p_referencia),''),estado_pago_comision_logistica='comprobante_enviado' where id=p_cierre_id;
+end $$;
+revoke all on function public.registrar_comprobante_comision_logistica(uuid,text,text) from public,anon;
+grant execute on function public.registrar_comprobante_comision_logistica(uuid,text,text) to authenticated;
+
+create or replace function public.buscar_tarifa_referencia_catac(p_distancia_km integer)
+returns table(id uuid,distancia_km_desde integer,distancia_km_hasta integer,valor_tonelada_ars numeric,fuente text,vigencia_desde date)
+language sql stable security invoker set search_path=public,pg_temp as $$
+ select t.id,t.distancia_km_desde,t.distancia_km_hasta,t.valor_tonelada_ars,t.fuente,t.vigencia_desde
+ from public.tarifas_referencia_catac t
+ where t.activa=true and p_distancia_km between t.distancia_km_desde and t.distancia_km_hasta
+ and t.vigencia_desde<=current_date and (t.vigencia_hasta is null or t.vigencia_hasta>=current_date)
+ order by t.vigencia_desde desc,t.actualizado_at desc limit 1
+$$;
+revoke all on function public.buscar_tarifa_referencia_catac(integer) from public,anon;
+grant execute on function public.buscar_tarifa_referencia_catac(integer) to authenticated;
+
+-- Expose only active public remittance coordinates to signed-in participants.
+create or replace function public.listar_cuentas_pago_logistica()
+returns table(id uuid,bank_name text,account_holder text,holder_tax_id text,account_type text,currency text,cbu text,alias text,notes text)
+language plpgsql security definer set search_path=public,auth,pg_temp as $$
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ return query select p.id,p.bank_name,p.account_holder,p.holder_tax_id,p.account_type,p.currency,p.cbu,p.alias,p.notes
+ from public.platform_payment_accounts p where p.active=true order by p.bank_name,p.currency;
+end $$;
+revoke all on function public.listar_cuentas_pago_logistica() from public,anon;
+grant execute on function public.listar_cuentas_pago_logistica() to authenticated;
+
+create or replace function public.establecer_incoterm_operacion(p_operacion_id uuid,p_incoterm_id integer)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if not public.usuario_participa_operacion(p_operacion_id) then raise exception 'OPERACION_NO_AUTORIZADA'; end if;
+ if not exists(select 1 from public.incoterms where id=p_incoterm_id) then raise exception 'INCOTERM_INVALIDO'; end if;
+ update public.operaciones set incoterm_id=p_incoterm_id,actualizada_en=now() where id=p_operacion_id;
+ if not found then raise exception 'OPERACION_NO_ENCONTRADA'; end if;
+end $$;
+revoke all on function public.establecer_incoterm_operacion(uuid,integer) from public,anon;
+grant execute on function public.establecer_incoterm_operacion(uuid,integer) to authenticated;
+
+-- Link freight closures to an optional grain operation and gate vehicle assignment on manual commission approval.
+alter table public.cierres_logistica add column if not exists operacion_id uuid references public.operaciones(id);
+alter table public.viajes add column if not exists cierre_logistica_id uuid references public.cierres_logistica(id);
+
+create or replace function public.completar_operacion_en_cierre_flete()
+returns trigger language plpgsql set search_path=public,pg_temp as $$
+begin
+ if new.operacion_id is null then select d.operacion_id into new.operacion_id from public.demandas_logistica d where d.id=new.id_demanda_flete; end if;
+ return new;
+end $$;
+drop trigger if exists trg_completar_operacion_cierre_flete on public.cierres_logistica;
+create trigger trg_completar_operacion_cierre_flete before insert on public.cierres_logistica for each row execute function public.completar_operacion_en_cierre_flete();
+
+create or replace function public.validar_comision_flete_antes_de_asignar_camion()
+returns trigger language plpgsql set search_path=public,pg_temp as $$
+declare c public.cierres_logistica%rowtype;
+begin
+ if new.cierre_logistica_id is null then return new; end if;
+ select * into c from public.cierres_logistica where id=new.cierre_logistica_id;
+ if not found or c.estado_cierre<>'cerrado_formal' or c.estado_pago_comision_logistica<>'aprobado' then
+  raise exception 'COMISION_LOGISTICA_PENDIENTE_VALIDACION_MANUAL';
+ end if;
+ if c.operacion_id is not null and c.operacion_id<>new.operacion_id then raise exception 'CIERRE_FLETE_OPERACION_NO_COINCIDE'; end if;
+ return new;
+end $$;
+drop trigger if exists trg_validar_comision_flete_antes_de_asignar_camion on public.viajes;
+create trigger trg_validar_comision_flete_antes_de_asignar_camion
+before insert or update of cierre_logistica_id,vehiculo_id,transportista_profile_id,patente_camion,patente_acoplado,chofer_nombre
+on public.viajes for each row execute function public.validar_comision_flete_antes_de_asignar_camion();
+
+create or replace function public.vincular_viaje_cierre_logistica(p_cierre_id uuid,p_viaje_id uuid)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare c public.cierres_logistica%rowtype; v public.viajes%rowtype;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ select * into c from public.cierres_logistica where id=p_cierre_id;
+ select * into v from public.viajes where id=p_viaje_id;
+ if not found or (not public.usuario_es_miembro_empresa(c.empresa_transportista_id) and not public.usuario_es_miembro_empresa(c.empresa_dadora_id)) then raise exception 'NO_AUTORIZADO'; end if;
+ if c.estado_pago_comision_logistica<>'aprobado' then raise exception 'COMISION_LOGISTICA_PENDIENTE_VALIDACION_MANUAL'; end if;
+ if c.operacion_id is not null and c.operacion_id<>v.operacion_id then raise exception 'OPERACION_NO_COINCIDE'; end if;
+ update public.viajes set cierre_logistica_id=p_cierre_id,actualizado_at=now() where id=p_viaje_id;
+end $$;
+revoke all on function public.vincular_viaje_cierre_logistica(uuid,uuid) from public,anon;
+grant execute on function public.vincular_viaje_cierre_logistica(uuid,uuid) to authenticated;
+
+create or replace function public.responder_adelanto_combustible_logistica(p_adelanto_id uuid,p_aceptar boolean)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare a public.logistica_adelantos_combustible%rowtype; c public.cierres_logistica%rowtype;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ select * into a from public.logistica_adelantos_combustible where id=p_adelanto_id for update;
+ select * into c from public.cierres_logistica where id=a.cierre_logistica_id;
+ if not found or not public.usuario_es_miembro_empresa(c.empresa_dadora_id) then raise exception 'SOLO_EL_DADOR_PUEDE_RESPONDER'; end if;
+ if a.estado<>'SOLICITADO' then raise exception 'ADELANTO_NO_PENDIENTE'; end if;
+ update public.logistica_adelantos_combustible set estado=case when p_aceptar then 'ACEPTADO_POR_DADOR' else 'RECHAZADO' end where id=p_adelanto_id;
+ insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje)
+ select cf.id,null,true,case when p_aceptar then 'El dador de carga aceptó el adelanto de combustible. Debe realizar la transferencia bancaria externa y adjuntar el comprobante para revisión.' else 'El dador de carga rechazó la solicitud de adelanto de combustible.' end
+ from public.conversaciones_fletes cf where cf.cierre_logistica_id=c.id;
+end $;
+revoke all on function public.responder_adelanto_combustible_logistica(uuid,boolean) from public,anon;
+grant execute on function public.responder_adelanto_combustible_logistica(uuid,boolean) to authenticated;
+
+create or replace function public.registrar_comprobante_adelanto_logistica(p_adelanto_id uuid,p_storage_path text,p_referencia text default null)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare a public.logistica_adelantos_combustible%rowtype; c public.cierres_logistica%rowtype;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ select * into a from public.logistica_adelantos_combustible where id=p_adelanto_id for update;
+ select * into c from public.cierres_logistica where id=a.cierre_logistica_id;
+ if not found or not public.usuario_es_miembro_empresa(c.empresa_dadora_id) then raise exception 'SOLO_EL_DADOR_PUEDE_SUBIR_COMPROBANTE'; end if;
+ if a.estado<>'ACEPTADO_POR_DADOR' then raise exception 'ADELANTO_NO_ACEPTADO'; end if;
+ if p_storage_path not like c.id::text||'/adelantos/%' or not exists(select 1 from storage.objects where bucket_id='logistica-comprobantes' and name=p_storage_path and owner_id::text=auth.uid()::text) then raise exception 'COMPROBANTE_ADELANTO_INVALIDO'; end if;
+ update public.logistica_adelantos_combustible set comprobante_path=p_storage_path,referencia_transferencia=nullif(trim(p_referencia),''),estado='COMPROBANTE_CARGADO' where id=p_adelanto_id;
+ insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje,adjunto_path)
+ select cf.id,null,true,'El dador de carga adjuntó el comprobante de transferencia del adelanto. Queda pendiente de validación manual por Administración.',p_storage_path
+ from public.conversaciones_fletes cf where cf.cierre_logistica_id=c.id;
+end $;
+revoke all on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) from public,anon;
+grant execute on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) to authenticated;
+
+
+create or replace function public.revisar_adelanto_combustible_logistica(p_adelanto_id uuid,p_aprobar boolean,p_motivo text default null)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+begin
+ if auth.uid() is null or not exists(select 1 from public.platform_admins a where a.user_id=auth.uid()) then raise exception 'ADMIN_REQUIRED'; end if;
+ update public.logistica_adelantos_combustible set estado=case when p_aprobar then 'APROBADO' else 'RECHAZADO' end,revisado_por=auth.uid(),revisado_at=now(),motivo_rechazo=case when p_aprobar then null else nullif(trim(p_motivo),'') end
+ where id=p_adelanto_id and estado='COMPROBANTE_CARGADO';
+ if not found then raise exception 'COMPROBANTE_ADELANTO_NO_PENDIENTE'; end if;
+end $$;
+revoke all on function public.revisar_adelanto_combustible_logistica(uuid,boolean,text) from public,anon;
+grant execute on function public.revisar_adelanto_combustible_logistica(uuid,boolean,text) to authenticated;
+
+-- The driver's load event is mirrored into the private freight chat as an auditable system message.
+create or replace function public.notificar_carga_en_chat_flete()
+returns trigger language plpgsql security definer set search_path=public,pg_temp as $$
+declare v public.viajes%rowtype; conv uuid; msg text;
+begin
+ if new.estado<>'CARGA_FINALIZADA' then return new; end if;
+ select * into v from public.viajes where id=new.viaje_id;
+ if v.cierre_logistica_id is null then return new; end if;
+ select id into conv from public.conversaciones_fletes where cierre_logistica_id=v.cierre_logistica_id and estado='ACTIVA';
+ if conv is null then return new; end if;
+ msg:='¡Carga reportada en origen! Patente: '||coalesce(v.patente_camion,'Pendiente')||'. Origen: '||coalesce(v.origen_nombre,v.origen,'No informado')||'. CPE: '||coalesce(v.carta_porte_ctg,v.carta_porte_numero,'Pendiente de vinculación')||' (estado registrado: '||coalesce(v.carta_porte_estado,'PENDIENTE')||'). Destino: '||coalesce(v.destino_nombre,v.destino,'No informado')||'. El monitoreo del viaje se continuará desde el expediente logístico.';
+ insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje) values(conv,null,true,msg);
+ return new;
+end $$;
+drop trigger if exists trg_notificar_carga_en_chat_flete on public.viaje_eventos;
+create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_eventos for each row execute function public.notificar_carga_en_chat_flete();
+
+alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
+||to_char(p_monto_ars,'FM999G999G990D00')||' ARS ('||p_porcentaje||'% del flete). El dador debe responder desde el expediente y, si acepta, transferir externamente y adjuntar el comprobante.';
+ from public.conversaciones_fletes cf where cf.cierre_logistica_id=p_cierre_id;
+ return rid;
+end $;
 revoke all on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) from public,anon;
 grant execute on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) to authenticated;
 
@@ -437,6 +676,8 @@ end $$;
 revoke all on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) from public,anon;
 grant execute on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) to authenticated;
 
+alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
+
 create or replace function public.revisar_adelanto_combustible_logistica(p_adelanto_id uuid,p_aprobar boolean,p_motivo text default null)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
 begin
@@ -464,5 +705,7 @@ begin
 end $$;
 drop trigger if exists trg_notificar_carga_en_chat_flete on public.viaje_eventos;
 create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_eventos for each row execute function public.notificar_carga_en_chat_flete();
+
+alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
 
 alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
