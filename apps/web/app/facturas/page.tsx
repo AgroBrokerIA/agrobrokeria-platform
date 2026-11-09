@@ -30,7 +30,7 @@ export default function FacturasPage(){
      supabase.from("facturacion_eventos_outbox").select("id,tipo_evento,operacion_id,estado,moneda_origen,importe_origen,cantidad_tn,payload,intentos,ultimo_error_codigo,ultimo_error_mensaje,creado_at").order("creado_at",{ascending:false}).limit(30),
      supabase.from("factura_arca_incidentes").select("id,factura_id,categoria,codigos_arca,mensajes_arca,detalle_tecnico,intento,creado_at").order("creado_at",{ascending:false}).limit(30)
    ]);
-   if(fe||oe||me||bee||aie)setErr((fe||oe||me||bee||aie)?.message||"Error");
+   if(fe||oe||me)setErr((fe||oe||me)?.message||"Error");
    setRows((f||[]) as Factura[]);setOps((o||[]) as Op[]);setBillingEvents((be||[]) as BillingEvent[]);setIncidents((ai||[]) as ArcaIncident[]); const productIds=[...new Set((f||[]).map((x:any)=>x.producto_id).filter(Boolean))]; if(productIds.length){const {data:ps}=await supabase.from("productos").select("id,nombre").in("id",productIds);setProducts(Object.fromEntries((ps||[]).map((x:any)=>[String(x.id),String(x.nombre)])));} else setProducts({});
    setCurrencies(Object.fromEntries(((m||[]) as any[]).map(x=>[String(x.id),String(x.codigo)])));
    setLoading(false);
