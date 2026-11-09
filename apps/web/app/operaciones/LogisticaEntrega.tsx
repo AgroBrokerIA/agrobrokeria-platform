@@ -200,6 +200,8 @@ export default function LogisticaEntrega({
   const [guardando, setGuardando] = useState(false);
   const [error, setError] = useState("");
   const [mensaje, setMensaje] = useState("");
+  const [arcaCheckBusy,setArcaCheckBusy]=useState(false);
+  const [arcaCheckResult,setArcaCheckResult]=useState("");
   const [transportistaId, setTransportistaId] = useState("");
   const [choferNombre,setChoferNombre]=useState("");
   const [choferCuil,setChoferCuil]=useState("");
@@ -269,6 +271,19 @@ export default function LogisticaEntrega({
       return n+(v.carta_porte_ctg?Number(v.carta_porte_tn||0)*COMISION_PLATAFORMA_USD_POR_TN:0);
     },0),
   }), [viajes, comisiones]);
+
+  async function verificarConexionArca() {
+    setArcaCheckBusy(true);setArcaCheckResult("");setError("");setMensaje("");
+    const {data,error:invokeError}=await supabase.functions.invoke("carta-porte-arca",{body:{action:"health"}});
+    if(invokeError){
+      setArcaCheckResult("No se pudo completar el diagnóstico ARCA: "+invokeError.message);
+    }else if(data?.ok){
+      setArcaCheckResult("Conexión ARCA verificada · Ambiente: "+String(data.environment||"sin informar")+" · WSAA: "+String(data.wsaa||"—")+" · WSCPE: "+String(data.wscpe||"—")+". "+String(data.message||"No se emitió ninguna CPE."));
+    }else{
+      setArcaCheckResult("Diagnóstico ARCA pendiente: "+String(data?.error||"Respuesta no válida")+(data?.environment?" · Ambiente: "+data.environment:""));
+    }
+    setArcaCheckBusy(false);
+  }
 
   async function buscarCorredores() {
     const { data, error: rpcError } = await supabase.rpc("buscar_corredores_para_autorizar", { p_operacion_id: operacionId, p_texto: busquedaCorredor || null });
@@ -590,7 +605,10 @@ export default function LogisticaEntrega({
             <div style={{ fontWeight: 850, fontSize: 16 }}>🚚 Transporte y seguimiento por camión</div>
             <div style={{ color: "#64748b", fontSize: 12, marginTop: 4 }}>Cada camión tiene su propio viaje, carta de porte, eventos y liquidación parcial.</div>
           </div>
-          <button type="button" style={secondary} disabled={guardando} onClick={() => void cargar()}>Actualizar</button>
+          <div style={{display:"flex",gap:7,flexWrap:"wrap"}}>
+            {esAdminPlataforma&&<button type="button" style={secondary} disabled={arcaCheckBusy} onClick={()=>void verificarConexionArca()}>{arcaCheckBusy?"Verificando ARCA…":"Diagnosticar conexión ARCA (sin emitir CPE)"}</button>}
+            <button type="button" style={secondary} disabled={guardando} onClick={() => void cargar()}>Actualizar</button>
+          </div>
         </div>
         <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(140px,1fr))", gap: 8 }}>
           {[
@@ -607,6 +625,7 @@ export default function LogisticaEntrega({
           ))}
         </div>
       </section>
+      {esAdminPlataforma&&arcaCheckResult&&<div role="status" style={{padding:11,borderRadius:9,border:"1px solid #cbd5e1",background:"#f8fafc",color:"#334155",fontSize:12}}>{arcaCheckResult}</div>}
 
       {!esTransportista && <section style={panel}>
         <div>
