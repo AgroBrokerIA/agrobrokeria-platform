@@ -239,3 +239,56 @@ begin
 end $$;
 revoke all on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) from public,anon;
 grant execute on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) to authenticated;
+
+-- Commercial document RPCs: the issuer must match the proper side of the transaction.
+create or replace function public.crear_loi_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO';
+ end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'EL_EMISOR_LOI_DEBE_SER_COMPRADOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'CONTRAPARTE_LOI_INVALIDA'; end if;
+ insert into public.loi(operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,p_empresa_receptora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
+ return rid;
+end $$;
+revoke all on function public.crear_loi_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_loi_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+create or replace function public.crear_sco_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO'; end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'EL_EMISOR_SCO_DEBE_SER_VENDEDOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'CONTRAPARTE_SCO_INVALIDA'; end if;
+ insert into public.sco(operacion_id,empresa_emisora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
+ return rid;
+end $$;
+revoke all on function public.crear_sco_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_sco_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
+
+create or replace function public.crear_fco_comercial(p_operacion_id uuid,p_archivo_pdf text,p_hash_sha256 text,p_idioma text,p_empresa_emisora uuid,p_empresa_receptora uuid)
+returns uuid language plpgsql security definer set search_path=public,auth,pg_temp as $$
+declare rid uuid;
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if p_idioma not in ('es','en','pt','zh-CN') then raise exception 'IDIOMA_NO_ADMITIDO'; end if;
+ if p_hash_sha256 !~ '^[a-f0-9]{64}$' then raise exception 'HASH_SHA256_INVALIDO'; end if;
+ if p_archivo_pdf is null or length(p_archivo_pdf)>1000000 or p_archivo_pdf !~ '^data:application/pdf;base64,' then raise exception 'PDF_INVALIDO'; end if;
+ if not public.usuario_es_miembro_empresa(p_empresa_emisora) or not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_emisora and upper(rol) in ('VENDEDOR','SELLER')) then raise exception 'EL_EMISOR_FCO_DEBE_SER_VENDEDOR'; end if;
+ if not exists(select 1 from public.operacion_participantes where operacion_id=p_operacion_id and empresa_id=p_empresa_receptora and upper(rol) in ('COMPRADOR','BUYER')) then raise exception 'CONTRAPARTE_FCO_INVALIDA'; end if;
+ insert into public.fco(operacion_id,empresa_emisora,empresa_receptora,fecha_emision,estado,archivo_pdf,hash_sha256,idioma_documento)
+ values(p_operacion_id,p_empresa_emisora,p_empresa_receptora,current_date,'EMITIDO',p_archivo_pdf,p_hash_sha256,p_idioma) returning id into rid;
+ return rid;
+end $$;
+revoke all on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) from public,anon;
+grant execute on function public.crear_fco_comercial(uuid,text,text,text,uuid,uuid) to authenticated;
