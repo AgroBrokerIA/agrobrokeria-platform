@@ -350,3 +350,15 @@ begin
 end $$;
 revoke all on function public.listar_cuentas_pago_logistica() from public,anon;
 grant execute on function public.listar_cuentas_pago_logistica() to authenticated;
+
+create or replace function public.establecer_incoterm_operacion(p_operacion_id uuid,p_incoterm_id integer)
+returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
+begin
+ if auth.uid() is null then raise exception 'AUTH_REQUIRED'; end if;
+ if not public.usuario_participa_operacion(p_operacion_id) then raise exception 'OPERACION_NO_AUTORIZADA'; end if;
+ if not exists(select 1 from public.incoterms where id=p_incoterm_id) then raise exception 'INCOTERM_INVALIDO'; end if;
+ update public.operaciones set incoterm_id=p_incoterm_id,actualizada_en=now() where id=p_operacion_id;
+ if not found then raise exception 'OPERACION_NO_ENCONTRADA'; end if;
+end $$;
+revoke all on function public.establecer_incoterm_operacion(uuid,integer) from public,anon;
+grant execute on function public.establecer_incoterm_operacion(uuid,integer) to authenticated;
