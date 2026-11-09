@@ -47,8 +47,8 @@ export async function consultarPersonaPadron(cuitInput:string):Promise<PadronRes
   if(!arcaConfig.cuit)throw new Error("ARCA_CUIT_NO_CONFIGURADO");
   const ticket=await getTicket();
   const endpoint=arcaConfig.environment==="PRODUCCION"
-    ?"https://aws.afip.gov.ar/sr-padron/webservices/personaServiceA5"
-    :"https://awshomo.afip.gov.ar/sr-padron/webservices/personaServiceA5";
+    ?"https://aws.arca.gob.ar/sr-padron/webservices/personaServiceA5"
+    :"https://awshomo.arca.gob.ar/sr-padron/webservices/personaServiceA5";
   const soap=`<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:a5="http://a5.soap.ws.server.puc.sr/">
   <soapenv:Header/>
