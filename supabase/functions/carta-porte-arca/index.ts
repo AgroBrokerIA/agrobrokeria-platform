@@ -169,9 +169,6 @@ Deno.serve(async req=>{
       if(viajeError)return json({error:"TRIP_LOOKUP_FAILED"},500);
       if(!viaje)return json({error:"TRIP_NOT_FOUND_FOR_OPERATION"},404);
       if(!viaje.carta_porte_ctg)return json({error:"TRIP_WITHOUT_ARCA_CTG"},409);
-      if(String(viaje.carta_porte_estado_arca||"").trim().toUpperCase()==="DD" && viaje.carta_porte_descargada_at)
-        return json({ok:true,descargada:true,estado_arca:"DD",fecha_estado:viaje.carta_porte_descargada_at,message:"ARCA ya había confirmado la descarga en destino."});
-
       const {data:profile,error:profileError}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
       if(profileError)return json({error:"PROFILE_LOOKUP_FAILED"},500);
       const companyId=profile?.active_company_id;
