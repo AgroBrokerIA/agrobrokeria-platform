@@ -1,9 +1,9 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
+const WSCPE_NS = "https://serviciosjava.afip.gob.ar/wscpe/";
 
-function enviarSOAP(soap: string, soapAction?: string): Promise<{
+function enviarSOAP(soap: string): Promise<{
   status: number;
   contentType: string | null;
   body: string;
@@ -20,6 +20,7 @@ function enviarSOAP(soap: string, soapAction?: string): Promise<{
         headers: {
           "Content-Type": "text/xml; charset=utf-8",
           Accept: "text/xml",
+          SOAPAction: '\"\"',
           "User-Agent": "AgroBrokerIA/1.0",
           "Content-Length": Buffer.byteLength(soap, "utf8"),
         },
@@ -81,7 +82,7 @@ function validarRespuesta(
 
     throw new Error(
       `${operacion}: HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
-      `Respuesta: ${cuerpo || "[vacía]"}`
+      `Respuesta: ${cuerpo || "[vacía]"}; bytes=${Buffer.byteLength(response.body, "utf8")}`
     );
   }
 
@@ -94,7 +95,7 @@ function validarRespuesta(
     throw new Error(
       `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
       `HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
-      `Respuesta: ${cuerpo || "[vacía]"}`
+      `Respuesta: ${cuerpo || "[vacía]"}; bytes=${Buffer.byteLength(response.body, "utf8")}`
     );
   }
 }
