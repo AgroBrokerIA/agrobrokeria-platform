@@ -33,7 +33,7 @@ export const arcaConfig = {
     : process.env.ARCA_PRIVATE_KEY_HOMO_BASE64 ?? null,
 
   wsaaUrl: isProduction
-    ? "https://wsaa.arca.gov.ar/ws/services/LoginCms"
+    ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
     : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
 
   wscpeUrl: isProduction
