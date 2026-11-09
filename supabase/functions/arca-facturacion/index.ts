@@ -1,4 +1,4 @@
-import { createClient, corsHeaders } from "https://esm.sh/@supabase/supabase-js@2.112.1";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.1";
 import forge from "npm:node-forge@1.3.1";
 
 const URL=Deno.env.get("SUPABASE_URL")!, ANON=Deno.env.get("SUPABASE_ANON_KEY")!, SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
@@ -25,7 +25,7 @@ function envPem(pemName:string,base64Name:string){
  if(pem)return pem;
  const b64=Deno.env.get(base64Name)||"";
  if(!b64)return "";
- try{return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\\s/g,"")),c=>c.charCodeAt(0)))}catch{return ""}
+ try{return new TextDecoder().decode(Uint8Array.from(atob(b64.replace(/\s/g,"")),c=>c.charCodeAt(0)))}catch{return ""}
 }
 const GLOBAL_ARCA_CUIT=envText("ARCA_CUIT");
 const GLOBAL_CERT=envPem("ARCA_CERT_PEM","ARCA_CERTIFICATE_BASE64");
