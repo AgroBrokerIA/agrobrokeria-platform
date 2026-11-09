@@ -129,7 +129,8 @@ export default function RegisterPage() {
         :limited
           ?"La consulta alcanzó el límite temporal. Esperá unos minutos o completá los datos manualmente."
           :credentialsMissing||configurationMissing
-            ?"La consulta automática de ARCA está pendiente de configuración del servidor. Podés completar tus datos manualmente y continuar; no se cargarán datos supuestos."
+            ?"La consulta real de CUIT todavía no está habilitada en este Preview: faltan ARCA_CUIT y/o el certificado y la clave privada X.509 de homologación (ARCA_CERTIFICATE_HOMO_BASE64 y ARCA_PRIVATE_KEY_HOMO_BASE64) en Vercel. Además, el certificado debe estar autorizado para ws_sr_constancia_inscripcion. No es un error del CUIT ingresado. Podés completar los datos manualmente mientras se configura."
+
             :"ARCA no respondió o rechazó la consulta. Podés completar tus datos manualmente y continuar; verificá la información antes de confirmar.");
     }finally{if(requestId===lookupSequence.current)setLookupLoading(false);}
   }
