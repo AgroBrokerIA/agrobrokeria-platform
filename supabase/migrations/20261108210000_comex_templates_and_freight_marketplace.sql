@@ -424,7 +424,7 @@ begin
  insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje)
  select cf.id,null,true,case when p_aceptar then 'El dador de carga aceptó el adelanto de combustible. Debe realizar la transferencia bancaria externa y adjuntar el comprobante para revisión.' else 'El dador de carga rechazó la solicitud de adelanto de combustible.' end
  from public.conversaciones_fletes cf where cf.cierre_logistica_id=c.id;
-end $;
+end $$;
 revoke all on function public.responder_adelanto_combustible_logistica(uuid,boolean) from public,anon;
 grant execute on function public.responder_adelanto_combustible_logistica(uuid,boolean) to authenticated;
 
@@ -442,7 +442,7 @@ begin
  insert into public.mensajes_fletes(conversacion_id,emisor_profile_id,es_sistema,mensaje,adjunto_path)
  select cf.id,null,true,'El dador de carga adjuntó el comprobante de transferencia del adelanto. Queda pendiente de validación manual por Administración.',p_storage_path
  from public.conversaciones_fletes cf where cf.cierre_logistica_id=c.id;
-end $;
+end $$;
 revoke all on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) from public,anon;
 grant execute on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) to authenticated;
 
@@ -480,7 +480,7 @@ create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_ev
 ||to_char(p_monto_ars,'FM999G999G990D00')||' ARS ('||p_porcentaje||'% del flete). El dador debe responder desde el expediente y, si acepta, transferir externamente y adjuntar el comprobante.';
  from public.conversaciones_fletes cf where cf.cierre_logistica_id=p_cierre_id;
  return rid;
-end $;
+end $$;
 revoke all on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) from public,anon;
 grant execute on function public.solicitar_adelanto_combustible_logistica(uuid,numeric,numeric) to authenticated;
 
