@@ -352,7 +352,7 @@ export default function DetalleOperacion() {
               <option value="es">Español (ES)</option><option value="en">English (EN)</option><option value="pt">Português (PT)</option><option value="zh-CN">中文（简体）</option>
             </select>
           </label>
-          <a href={"/documentos?operation_id="+encodeURIComponent(id)+"&language="+encodeURIComponent(comexLanguage)+"&tab=Plantillas#docs-commercial"} style={{display:"inline-flex",alignItems:"center",padding:"11px 16px",borderRadius:8,background:"#176b3a",color:"#fff",fontWeight:700,textDecoration:"none"}}>
+          <a href={"/documentos?operation_id="+encodeURIComponent(id)+"&language="+encodeURIComponent(comexLanguage)+"&tab=Comerciales#docs-commercial"} style={{display:"inline-flex",alignItems:"center",padding:"11px 16px",borderRadius:8,background:"#176b3a",color:"#fff",fontWeight:700,textDecoration:"none"}}>
             Abrir generador completo LOI / SCO / FCO
           </a>
         </div>
