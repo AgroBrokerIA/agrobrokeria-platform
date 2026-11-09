@@ -182,8 +182,8 @@ AS $$
 DECLARE
   v_slot public.cierres_logistica_camiones%rowtype;
 BEGIN
-  IF NEW.carta_porte_estado = 'DESCARGADA_CONFIRMADA'
-     AND OLD.carta_porte_estado IS DISTINCT FROM NEW.carta_porte_estado THEN
+  IF upper(replace(trim(coalesce(NEW.carta_porte_estado, '')), ' ', '_')) = 'DESCARGADA_CONFIRMADA'
+     AND upper(replace(trim(coalesce(OLD.carta_porte_estado, '')), ' ', '_')) <> 'DESCARGADA_CONFIRMADA' THEN
     IF NULLIF(trim(COALESCE(NEW.carta_porte_ctg, '')), '') IS NULL
        OR NEW.carta_porte_nro_orden IS NULL
        OR COALESCE(NEW.carta_porte_environment, '') NOT IN ('PRODUCCION','HOMOLOGACION') THEN
