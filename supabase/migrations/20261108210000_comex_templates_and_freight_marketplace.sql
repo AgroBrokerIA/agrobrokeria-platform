@@ -443,6 +443,8 @@ revoke all on function public.registrar_comprobante_adelanto_logistica(uuid,text
 grant execute on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) to authenticated;
 
 
+alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
+
 create or replace function public.revisar_adelanto_combustible_logistica(p_adelanto_id uuid,p_aprobar boolean,p_motivo text default null)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
 begin
@@ -471,7 +473,6 @@ end $$;
 drop trigger if exists trg_notificar_carga_en_chat_flete on public.viaje_eventos;
 create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_eventos for each row execute function public.notificar_carga_en_chat_flete();
 
-alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
 ||to_char(p_monto_ars,'FM999G999G990D00')||' ARS ('||p_porcentaje||'% del flete). El dador debe responder desde el expediente y, si acepta, transferir externamente y adjuntar el comprobante.';
  from public.conversaciones_fletes cf where cf.cierre_logistica_id=p_cierre_id;
  return rid;
@@ -676,7 +677,6 @@ end $$;
 revoke all on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) from public,anon;
 grant execute on function public.registrar_comprobante_adelanto_logistica(uuid,text,text) to authenticated;
 
-alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
 
 create or replace function public.revisar_adelanto_combustible_logistica(p_adelanto_id uuid,p_aprobar boolean,p_motivo text default null)
 returns void language plpgsql security definer set search_path=public,auth,pg_temp as $$
@@ -706,6 +706,4 @@ end $$;
 drop trigger if exists trg_notificar_carga_en_chat_flete on public.viaje_eventos;
 create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_eventos for each row execute function public.notificar_carga_en_chat_flete();
 
-alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
 
-alter table public.logistica_adelantos_combustible add column if not exists motivo_rechazo text;
