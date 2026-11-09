@@ -160,6 +160,61 @@ Deno.serve(async req=>{
         return json({ok:true,environment,certificate_valid:true,private_key_matches:true,wsaa:"OK",wscpe:"OK",message:"Autenticación y consulta de provincias WSCPE completadas. No se emitió ninguna Carta de Porte."});
       }catch(e){return json({ok:false,environment,error:e instanceof Error?e.message:"ARCA_HOMOLOGATION_DIAGNOSTIC_FAILED"},502);}
     }
+    if(b.action==="check_download_status"){
+      const operationId=requiredString(b.operation_id,"OPERATION_ID");
+      const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
+      const {data:viaje,error:viajeError}=await db.from("viajes")
+        .select("id,operacion_id,carta_porte_ctg,carta_porte_estado,carta_porte_environment,carta_porte_nro_orden")
+        .eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
+      if(viajeError)return json({error:"TRIP_LOOKUP_FAILED"},500);
+      if(!viaje)return json({error:"TRIP_NOT_FOUND_FOR_OPERATION"},404);
+      if(!viaje.carta_porte_ctg)return json({error:"TRIP_WITHOUT_ARCA_CTG"},409);
+      if(String(viaje.carta_porte_estado||"").toUpperCase().replace(/\\s+/g,"_")==="DESCARGADA_CONFIRMADA")
+        return json({ok:true,descargada:true,estado_arca:"DD",message:"La descarga ya está confirmada y el camión fue liberado."});
+
+      const {data:profile,error:profileError}=await db.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
+      if(profileError)return json({error:"PROFILE_LOOKUP_FAILED"},500);
+      const companyId=profile?.active_company_id;
+      if(!companyId)return json({error:"NO_ACTIVE_COMPANY"},409);
+      const {data:companyMap,error:mapError}=await db.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).order("verified",{ascending:false}).limit(1).maybeSingle();
+      if(mapError)return json({error:"COMPANY_MAPPING_LOOKUP_FAILED"},500);
+      const empresaId=companyMap?.empresa_id||companyId;
+      const {data:participant,error:participantError}=await db.from("operacion_participantes").select("id").eq("operacion_id",operationId).eq("empresa_id",empresaId).limit(1);
+      if(participantError)return json({error:"OPERATION_PARTICIPANT_LOOKUP_FAILED"},500);
+      if(!participant?.length)return json({error:"FORBIDDEN_OPERATION"},403);
+
+      const {data:company,error:companyError}=await db.from("empresas").select("id,cuit").eq("id",empresaId).maybeSingle();
+      if(companyError)return json({error:"COMPANY_LOOKUP_FAILED"},500);
+      if(!company?.cuit)return json({error:"ARCA_COMPANY_CUIT_NOT_CONFIGURED"},409);
+      const {data:cfg,error:cfgError}=await db.from("arca_company_config")
+        .select("environment,enabled,production_enabled,cert_secret_name,private_key_secret_name,cuit_secret_name")
+        .eq("company_id",companyId).maybeSingle();
+      if(cfgError)return json({error:"ARCA_CONFIG_LOOKUP_FAILED"},500);
+      if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
+      const environment=viaje.carta_porte_environment==="production"?"production":(cfg.environment==="production"?"production":"homologacion");
+      if(environment==="production"&&!cfg.production_enabled)return json({error:"ARCA_PRODUCTION_LOCKED_UNTIL_EXPLICIT_APPROVAL"},423);
+      const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
+      const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):"ARCA_CERTIFICATE_HOMO_BASE64";
+      const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):"ARCA_PRIVATE_KEY_HOMO_BASE64";
+      const cert=envPem(certSecretName,certSecretName),key=envPem(keySecretName,keySecretName);
+      if(!cert||!key)return json({error:environment==="production"?"ARCA_WSCPE_PRODUCTION_CREDENTIALS_NOT_CONFIGURED":"ARCA_WSCPE_HOMOLOGATION_CREDENTIALS_NOT_CONFIGURED"},409);
+      const ticket=await getToken(environment,cuit,cert,key);
+      const consulta=await soap(environment,"ConsultarCPEAutomotorReq",
+        "<solicitud><nroCTG>"+esc(viaje.carta_porte_ctg)+"</nroCTG></solicitud>",
+        {token:ticket.token,sign:ticket.sign,cuit});
+      const errors=allErrors(consulta);
+      if(errors.length)return json({ok:false,error:"ARCA_CPE_STATUS_QUERY_REJECTED",errors},502);
+      const estadoArca=String(nodeText(consulta,"estado")||"").trim().toUpperCase();
+      if(!estadoArca)return json({ok:false,error:"ARCA_CPE_STATUS_MISSING",response:consulta},502);
+      const descargada=estadoArca==="DD";
+      const fechaEstado=nodeText(consulta,"fechaInicioEstado")||nodeText(consulta,"fechaHora")||null;
+      const verification={service:"wscpe",method:"ConsultarCPEAutomotor",environment,nro_ctg:String(viaje.carta_porte_ctg),estado:estadoArca,fecha_estado:fechaEstado,consultado_at:new Date().toISOString(),response:consulta};
+      const update:Record<string,unknown>={carta_porte_estado_arca:estadoArca,carta_porte_ultima_consulta_arca:new Date().toISOString(),carta_porte_verificacion_arca:verification,actualizado_at:new Date().toISOString()};
+      if(descargada){update.carta_porte_estado="DESCARGADA_CONFIRMADA";update.carta_porte_descargada_at=fechaEstado||new Date().toISOString();}
+      const {error:saveError}=await db.from("viajes").update(update).eq("id",viajeId).eq("operacion_id",operationId);
+      if(saveError)return json({error:"ARCA_CPE_STATUS_SAVE_FAILED",estado_arca:estadoArca},500);
+      return json({ok:true,operation_id:operationId,viaje_id:viajeId,nro_ctg:viaje.carta_porte_ctg,estado_arca:estadoArca,descargada,camion_liberado:descargada,fecha_estado:fechaEstado,message:descargada?"ARCA confirmó DD: descarga en destino. El camión quedó liberado automáticamente.":"ARCA todavía no confirmó la descarga. El camión permanece bloqueado."});
+    }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
     const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg,cierre_logistica_id,chofer_nombre,chofer_cuil").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
