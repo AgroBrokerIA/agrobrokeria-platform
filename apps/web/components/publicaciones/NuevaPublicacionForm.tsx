@@ -712,6 +712,31 @@ export default function NuevaPublicacionForm() {
         </div>}
       </section>
 
+      <section className="publication-logistics publication-delivery">
+        <div className="publication-section-heading"><div><span className="publication-kicker">DESTINO FÍSICO DE GRANOS</span><h2>Establecimiento de descarga (opcional)</h2><p>Para ofertas y demandas con destino nacional, seleccioná primero la categoría y luego el establecimiento. El destino se guarda en la publicación y se puede reutilizar al generar el contrato F1.</p></div></div>
+        <div className="grid grid-cols-1 gap-5 md:grid-cols-2">
+          <label className="font-semibold">Tipo de destino
+            <select className="mt-2 w-full rounded-lg border p-3" value={form.categoria_destino} onChange={e=>setForm(x=>({...x,categoria_destino:e.target.value as Formulario["categoria_destino"],destino_homologado_id:"",nombre_establecimiento_destino:"",localidad_destino:"",provincia_destino:""}))}>
+              <option value="">Sin especificar / destino internacional</option>
+              <option value="puerto_exportacion">Puerto de exportación</option>
+              <option value="molino_industrial">Molino industrial</option>
+              <option value="acopio_cooperativa">Acopio / Cooperativa</option>
+              <option value="consumo_feedlot">Feedlot / Consumo animal</option>
+            </select>
+          </label>
+          <label className="font-semibold">Establecimiento / Terminal
+            <select className="mt-2 w-full rounded-lg border p-3" value={form.destino_homologado_id} disabled={!form.categoria_destino} onChange={e=>{const d=destinosHomologados.find(x=>String(x.id_destino)===e.target.value);setForm(x=>({...x,destino_homologado_id:e.target.value,nombre_establecimiento_destino:d?.nombre_establecimiento||"",localidad_destino:d?.localidad||"",provincia_destino:d?.provincia||""}));}}>
+              <option value="">{form.categoria_destino?"Seleccionar establecimiento...":"Primero seleccioná el tipo de destino"}</option>
+              {destinosHomologados.filter(d=>d.tipo===form.categoria_destino).map(d=><option key={d.id_destino} value={d.id_destino}>{d.nombre_establecimiento} · {d.localidad}, {d.provincia}{d.verificado?"":" · Pendiente de verificación"}</option>)}
+            </select>
+          </label>
+          <label className="font-semibold md:col-span-2">Dirección / Localidad de descarga
+            <input className="mt-2 w-full rounded-lg border p-3" readOnly value={form.destino_homologado_id?form.localidad_destino+", "+form.provincia_destino:"Se completa automáticamente al seleccionar un establecimiento"} />
+          </label>
+        </div>
+        {form.destino_homologado_id&&!destinosHomologados.find(d=>String(d.id_destino)===form.destino_homologado_id)?.verificado&&<p className="text-sm text-amber-700 mt-2">Este destino está en el catálogo inicial, pero aún no fue verificado por Administración. Confirmá su razón social, localidad y condiciones antes de cerrar una operación.</p>}
+      </section>
+
       <details className="publication-optional-comex">
         <summary><span><strong>Condiciones internacionales (opcional)</strong><small>CBOT, calidad, instrumentos de pago y embarques. Completá solo lo que corresponda.</small></span><b>＋</b></summary>
         <div className="publication-optional-comex-body">
