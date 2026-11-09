@@ -45,7 +45,7 @@ export default function LogisticaAsignacionRecursos({viajeId}:{viajeId:string}){
   <strong style={{fontSize:13}}>🚚 Recursos de la empresa logística</strong>
   {assigned?<p style={{fontSize:12,color:"#166534",fontWeight:700}}>Recursos de flota asignados a este viaje. El camión permanece no disponible hasta la confirmación de descarga.</p>:<>
    <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(180px,1fr))",gap:8}}>
-    <label style={{display:"grid",gap:4,fontSize:12,fontWeight:700}}>Camión disponible<select style={field} value={truckId} onChange={e=>setTruckId(e.target.value)}><option value="">Seleccionar de mi flota</option>{trucks.map(x=><option key={x.id} value={x.id}>{x.patente_chasis}{x.patente_acoplado?" / "+x.patente_acoplado:""} · "+(x.marca_modelo||"Camión")}</option>)}</select></label>
+    <label style={{display:"grid",gap:4,fontSize:12,fontWeight:700}}>Camión disponible<select style={field} value={truckId} onChange={e=>setTruckId(e.target.value)}><option value="">Seleccionar de mi flota</option>{trucks.map(x=><option key={x.id} value={x.id}>{x.patente_chasis}{x.patente_acoplado?" / "+x.patente_acoplado:""} · {x.marca_modelo||"Camión"}}</option>)}</select></label>
     <label style={{display:"grid",gap:4,fontSize:12,fontWeight:700}}>Chofer responsable<select style={field} value={driverId} onChange={e=>setDriverId(e.target.value)}><option value="">Seleccionar de mis choferes</option>{drivers.map(x=><option key={x.id} value={x.id}>{x.nombre_apellido} · CUIL {x.cuil_chofer}</option>)}</select></label>
    </div>
    {!trucks.length&&<small style={{color:"#92400e"}}>No hay camiones disponibles. Revisá Mi flota.</small>}
