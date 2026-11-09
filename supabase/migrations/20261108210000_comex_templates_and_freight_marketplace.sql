@@ -476,3 +476,4 @@ begin
 end $$;
 drop trigger if exists trg_notificar_carga_en_chat_flete on public.viaje_eventos;
 create trigger trg_notificar_carga_en_chat_flete after insert on public.viaje_eventos for each row execute function public.notificar_carga_en_chat_flete();
+revoke all on function public.notificar_carga_en_chat_flete() from public,anon,authenticated;
