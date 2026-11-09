@@ -14,6 +14,7 @@ type Viaje = {
   destino_nombre: string | null;
   patente_camion: string | null;
   patente_acoplado: string | null;
+  chofer_nombre?: string | null;
   chofer_cuil?: string | null;
   kilos_cargados: number | null;
   kilos_entregados: number | null;
