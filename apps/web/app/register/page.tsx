@@ -5,13 +5,13 @@ import { useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
 
-const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Corredor oficial","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario independiente","intermediario"],["Comisionista independiente","comisionista"],["Productor","productor"]];
+const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Logística","logistica"],["Corredor oficial","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario independiente","intermediario"],["Comisionista independiente","comisionista"],["Productor","productor"]];
 const intermediaryRoles = ["corredor","intermediario","comisionista"];
 const operatorTypeForRole = (role:string):string|null => ({
   productor:"productor", acopio:"acopio", cooperativa:"cooperativa",
   corredor:"corredor_oficial", intermediario:"comisionista_intermediario",
   comisionista:"comisionista_intermediario", exportador:"exportador",
-  transportista:"transportista"
+  transportista:"transportista", logistica:"logistica"
 } as Record<string,string>)[role] || null;
 const initial = {
   accountType:"PERSONA", role:"comprador", documentType:"DNI", documentNumber:"", cuilCuit:"", companyCuit:"", representativeCuil:"",
@@ -50,6 +50,7 @@ export default function RegisterPage() {
   const tipoOperador = operatorTypeForRole(form.role);
   const isCompany = form.accountType === "EMPRESA";
   const isTransportista = form.role === "transportista";
+  const isLogistica = form.role === "logistica";
   const update = (key:keyof FormState,value:string) => setForm(p=>({...p,[key]:value}));
   const handleCuilChange=(value:string)=>{
     update("cuilCuit",value);
@@ -119,7 +120,7 @@ export default function RegisterPage() {
     if(form.password.length<8||form.password!==form.confirmPassword){setError("Revisá la contraseña: debe tener 8 caracteres como mínimo y coincidir.");return;}
     if(!form.documentNumber.trim()||(!isCompany&&!form.cuilCuit.trim())||!form.email.trim()||!form.phone.trim()){setError("Completá DNI, CUIL/CUIT, correo y teléfono.");return;}
     if(!isCompany && form.cuilCuit.replace(/[^0-9]/g,"").length!==11){setError("El CUIL/CUIT debe tener exactamente 11 dígitos. Podés completar los datos manualmente si ARCA no responde.");return;}
-    if(isIntermediaryRole && !isCompany){setError("Para operar como corredor oficial, comisionista o intermediario independiente necesitás registrar una empresa/organización con CUIT y completar la verificación del legajo.");return;}
+    if((isIntermediaryRole || isLogistica) && !isCompany){setError(isLogistica?"Para registrarte como empresa de Logística, seleccioná Empresa / organización y completá razón social y CUIT.":"Para operar como corredor oficial, comisionista o intermediario independiente necesitás registrar una empresa/organización con CUIT y completar la verificación del legajo.");return;}
     
     if(isTransportista && driverPhoto && (!["image/jpeg","image/png","image/webp"].includes(driverPhoto.type)||driverPhoto.size>5*1024*1024)){setError("La foto de perfil debe ser JPG, PNG o WEBP.");return;}
     if(isCompany && (!form.legalName.trim()||form.companyCuit.replace(/\D/g,"").length!==11||!form.documentNumber.trim()||!form.representativePosition.trim()||form.representativeCuil.replace(/\D/g,"").length!==11)){setError("Completá razón social, CUIT, DNI y CUIL de la persona representante y su cargo. Los documentos respaldatorios pueden agregarse luego desde Mi Perfil.");return;}
