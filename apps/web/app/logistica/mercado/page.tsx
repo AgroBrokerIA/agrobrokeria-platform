@@ -173,13 +173,12 @@ export default function MercadoFletesPage(){
  }
  async function sendCatacToChat(){
   if(!selectedClosure||!conversationId||!catac)return;
-  const message="Referencia CATAC para el trayecto: "+distanceKm+" km. Tarifa vigente: "+new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS"}).format(catac.valor_tonelada_ars)+" por tonelada. Para "+catac.tonnes+" TN, total referencial "+new Intl.NumberFormat("es-AR",{style:"currency",currency:"ARS"}).format(catac.total)+". Es una referencia editable; el valor final debe ser acordado por las partes.";
-  const {error:e}=await supabase.from("mensajes_fletes").insert({conversacion_id:conversationId,emisor_profile_id:profileId,mensaje:message,es_sistema:false});
-  if(e)setError(e.message);else{setNotice("Referencia CATAC enviada al chat privado.");await openChat(selectedClosure);}
+  const {error:e}=await supabase.rpc("enviar_referencia_catac_al_chat",{p_conversacion_id:conversationId,p_distancia_km:Math.round(Number(distanceKm)),p_toneladas:Number(catac.tonnes)});
+  if(e)setError(e.message);else{setNotice("Referencia CATAC y comisión estimada por camión enviadas al chat privado.");await openChat(selectedClosure);}
  }
  async function requestAdvance(c:Closure){
   const amount=Number(advanceAmount),pct=Number(advancePct);const {data,error:e}=await supabase.rpc("solicitar_adelanto_combustible_logistica",{p_cierre_id:c.id,p_monto_ars:amount,p_porcentaje:pct});
-  if(e)setError(e.message);else setNotice("Solicitud de adelanto registrada con estado pendiente. El dador debe confirmar y transferir externamente; cargará el comprobante antes de habilitar el viaje.");
+  if(e)setError(e.message);else{setNotice("Solicitud de adelanto registrada con estado pendiente. El dador debe confirmar y transferir externamente; cargará el comprobante antes de habilitar el viaje.");await load();}
  }
 
  return <main style={{maxWidth:1440,margin:"0 auto",padding:"24px 18px 60px",display:"grid",gap:16,color:"#142033"}}>
