@@ -33,12 +33,12 @@ export const arcaConfig = {
     : process.env.ARCA_PRIVATE_KEY_HOMO_BASE64 ?? null,
 
   wsaaUrl: isProduction
-    ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
-    : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+    ? "https://wsaa.arca.gov.ar/ws/services/LoginCms"
+    : "https://wsaa.homo.arca.gov.ar/ws/services/LoginCms",
 
   wscpeUrl: isProduction
-    ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"
-    : "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
+    ? "https://cpea-ws.arca.gob.ar/wscpe/services/soap"
+    : "https://cpea-ws-qaext.arca.gob.ar/wscpe/services/soap",
 };
 
 export function getArcaCertificateMaterial() {
