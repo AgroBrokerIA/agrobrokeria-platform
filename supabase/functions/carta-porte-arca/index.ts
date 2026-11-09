@@ -116,6 +116,7 @@ async function soap(environment:string,method:string,inner:string,auth:{token:st
 function requiredString(v:unknown,name:string){const s=String(v??"").trim();if(!s)throw new Error("WSCPE_REQUIRED_"+name);return s}
 function optionalXml(name:string,v:unknown){const s=String(v??"").trim();return s?"<"+name+">"+esc(s)+"</"+name+">":""}
 function cuitDigits(v:unknown,name:string,optional=false){const s=String(v??"").replace(/\D/g,"");if(optional&&!s)return "";if(s.length!==11)throw new Error("WSCPE_INVALID_CUIT_"+name);return s}
+function validarCuitCuil(value:string){const d=value.replace(/\D/g,"");if(d.length!==11)return false;const w=[5,4,3,2,7,6,5,4,3,2];const sum=w.reduce((n,x,i)=>n+Number(d[i])*x,0);let check=11-(sum%11);if(check===11)check=0;else if(check===10)check=9;return Number(d[10])===check}
 function optionalCuitXml(name:string,v:unknown){const s=String(v??"").trim();return s?optionalXml(name,cuitDigits(s,name,true)):""}
 
 Deno.serve(async req=>{
@@ -161,7 +162,7 @@ Deno.serve(async req=>{
     }
     const operationId=requiredString(b.operation_id,"OPERATION_ID");
     const viajeId=requiredString(b.viaje_id,"VIAJE_ID");
-    const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg,cierre_logistica_id").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
+    const {data:viaje,error:viajeError}=await db.from("viajes").select("id,operacion_id,transportista_profile_id,patente_camion,patente_acoplado,carta_porte_ctg,cierre_logistica_id,chofer_nombre,chofer_cuil").eq("id",viajeId).eq("operacion_id",operationId).maybeSingle();
     if(viajeError)return json({error:"TRIP_LOOKUP_FAILED"},500);
     if(!viaje)return json({error:"TRIP_NOT_FOUND_FOR_OPERATION"},404);
     if(!viaje.cierre_logistica_id)return json({error:"LOGISTICS_CLOSURE_REQUIRED"},409);
@@ -236,7 +237,8 @@ Deno.serve(async req=>{
     const dominioAcoplado=String(b.dominio_acoplado||viaje.patente_acoplado||"").trim();
     const fechaPartidaRaw=requiredString(b.fecha_hora_partida,"FECHA_HORA_PARTIDA"); const fechaPartida=fechaPartidaRaw.length===16?fechaPartidaRaw+":00":fechaPartidaRaw;
     const km=requiredString(b.km_recorrer,"KM_RECORRER");
-    const choferCuit=cuitDigits(b.chofer_cuit||transportista.cuit,"CHOFER");
+    const choferCuit=cuitDigits(viaje.chofer_cuil||b.chofer_cuit||transportista.cuit,"CHOFER");
+    if(!validarCuitCuil(choferCuit))return json({error:"CHOFER_CUIL_INVALIDO"},422);
     const pagadorFlete=cuitDigits(b.cuit_pagador_flete,"PAGADOR_FLETE");
     const intermediarioFlete=cuitDigits(b.cuit_intermediario_flete,"INTERMEDIARIO_FLETE",true);
     const fumigada=String(b.mercaderia_fumigada??"false");
