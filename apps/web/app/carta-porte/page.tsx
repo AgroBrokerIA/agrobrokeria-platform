@@ -5,7 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/lib/supabase/client";
 
 type Op = { id:string; codigo:string|null; cantidad_tn:number|null; estado:string|null };
-type Viaje = {id:string;transportista_profile_id:string|null;patente_camion:string|null;patente_acoplado:string|null;estado:string|null;carta_porte_ctg:string|null};
+type Viaje = {id:string;transportista_profile_id:string|null;patente_camion:string|null;patente_acoplado:string|null;estado:string|null;carta_porte_ctg:string|null;carta_porte_estado_arca?:string|null;carta_porte_descargada_at?:string|null;carta_porte_estado?:string|null};
 type Transportista = {profile_id:string;cuit:string|null;nombre_completo:string|null;verificacion_estado:string};
 type Log = {
   id:string; operacion_id:string; estado:string|null; carta_porte_numero:string|null;
@@ -34,7 +34,7 @@ export default function CartaPortePage(){
   const [ops,setOps]=useState<Op[]>([]), [logs,setLogs]=useState<Log[]>([]);
   const [viajes,setViajes]=useState<Viaje[]>([]),[transportistas,setTransportistas]=useState<Transportista[]>([]);
   const [selected,setSelected]=useState(""),[selectedViaje,setSelectedViaje]=useState(""),[form,setForm]=useState(empty);
-  const [loading,setLoading]=useState(true), [saving,setSaving]=useState(false), [emitting,setEmitting]=useState(false), [message,setMessage]=useState(""), [error,setError]=useState("");
+  const [loading,setLoading]=useState(true), [saving,setSaving]=useState(false), [emitting,setEmitting]=useState(false), [checkingStatus,setCheckingStatus]=useState(false), [message,setMessage]=useState(""), [error,setError]=useState("");
 
   const logMap=useMemo(()=>new Map(logs.map(x=>[x.operacion_id,x])),[logs]);
   const current=selected?logMap.get(selected):undefined;
@@ -60,7 +60,7 @@ export default function CartaPortePage(){
     if(!selected) return;
     setSelectedViaje("");
     void (async()=>{
-      const {data:trips,error:tripError}=await supabase.from("viajes").select("id,transportista_profile_id,patente_camion,patente_acoplado,estado,carta_porte_ctg").eq("operacion_id",selected).order("creado_en",{ascending:true});
+      const {data:trips,error:tripError}=await supabase.from("viajes").select("id,transportista_profile_id,patente_camion,patente_acoplado,estado,carta_porte_ctg,carta_porte_estado_arca,carta_porte_descargada_at,carta_porte_estado").eq("operacion_id",selected).order("creado_en",{ascending:true});
       if(tripError){setError("No se pudieron cargar los camiones asignados: "+tripError.message);setViajes([]);setTransportistas([]);return;}
       const rows=(trips||[]) as Viaje[];setViajes(rows);
       if(rows.length){
@@ -116,6 +116,25 @@ export default function CartaPortePage(){
     await load();setEmitting(false);
   }
 
+  async function consultarEstadoArca(){
+    if(!selected||!selectedViaje){setError("Seleccioná una operación y un viaje.");return;}
+    const trip=viajes.find(x=>x.id===selectedViaje);
+    if(!trip?.carta_porte_ctg){setError("El viaje todavía no tiene un CTG emitido por ARCA.");return;}
+    setCheckingStatus(true);setError("");setMessage("");
+    try{
+      const {data,error:invokeError}=await supabase.functions.invoke("carta-porte-arca",{body:{action:"check_download_status",operation_id:selected,viaje_id:selectedViaje}});
+      if(invokeError)throw new Error(invokeError.message||"No se pudo consultar ARCA.");
+      if(!data?.ok)throw new Error(data?.error||"ARCA no confirmó el estado de la CPE.");
+      setViajes(prev=>prev.map(x=>x.id===selectedViaje?{...x,carta_porte_estado_arca:String(data.estado_arca||""),carta_porte_descargada_at:data.descargada?(data.fecha_estado||new Date().toISOString()):x.carta_porte_descargada_at,carta_porte_estado:data.descargada?"DESCARGADA_CONFIRMADA":x.carta_porte_estado}:x));
+      setMessage(data.descargada
+        ?"ARCA confirmó el estado DD (descargada en destino). El camión queda liberado; la comisión logística espera además la doble conformidad de entrega."
+        :data.cpe_validada
+          ?"ARCA verificó la CPE. La descarga todavía no figura como DD."
+          :"ARCA informó "+String(data.estado_arca||"un estado pendiente")+". La descarga y la comisión siguen bloqueadas.");
+    }catch(e){setError(e instanceof Error?e.message:"No se pudo consultar el estado ARCA.");}
+    finally{setCheckingStatus(false);}
+  }
+
   async function save(){
     if(!selected){setError("Seleccioná una operación.");return}
     setSaving(true);setError("");setMessage("");
@@ -150,6 +169,7 @@ export default function CartaPortePage(){
       </select>
       {selectedViaje&&(()=>{const v=viajes.find(x=>x.id===selectedViaje);const t=transportistas.find(x=>x.profile_id===v?.transportista_profile_id);return <p style={{fontSize:12,color:"#475569",marginTop:8}}>Datos precargados: {t?.nombre_completo||"Transportista"} · CUIT {t?.cuit||"pendiente"} · Camión {v?.patente_camion||"patente pendiente"} · Acoplado {v?.patente_acoplado||"no registrado"}. Estado de identidad: {t?.verificacion_estado||"no disponible"}.</p>})()}
       {viajes.length===0&&<p style={{fontSize:13,color:"#b45309"}}>Todavía no hay camiones asignados. Volvé a la operación y asigná los transportistas antes de emitir.</p>}
+      {selectedViaje&&(()=>{const v=viajes.find(x=>x.id===selectedViaje);return v?.carta_porte_ctg?<div style={{display:"flex",gap:10,alignItems:"center",flexWrap:"wrap",marginTop:10,padding:12,borderRadius:10,background:"#f8fafc",border:"1px solid #dbe3ea"}}><span style={{fontSize:13}}>CTG {v.carta_porte_ctg} · Estado ARCA: <strong>{v.carta_porte_estado_arca||"Sin consultar"}</strong>{v.carta_porte_descargada_at?" · Descarga: "+new Date(v.carta_porte_descargada_at).toLocaleString("es-AR"):""}</span><button type="button" className="module-pill" disabled={checkingStatus} onClick={()=>void consultarEstadoArca()}>{checkingStatus?"Consultando ARCA…":"Consultar estado oficial en ARCA"}</button></div>:null})()}
     </section>}
     {loading?<section className="company-card">Cargando…</section>:selected&&<section className="company-card">
       <div style={{display:"grid",gridTemplateColumns:"repeat(3,minmax(0,1fr))",gap:16}}>
