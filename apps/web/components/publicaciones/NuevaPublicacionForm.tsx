@@ -545,7 +545,7 @@ export default function NuevaPublicacionForm() {
         localidad_destino: "",
         provincia_destino: "",
         direccion_destino: "",
-        calidad: ""
+        calidad: "",
         humedad: "",
         proteina: "",
         observaciones: "",
