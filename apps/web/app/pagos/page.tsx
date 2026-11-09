@@ -10,7 +10,7 @@ type PaymentOperation={id:string;codigo:string;importe_total:number;moneda_id:nu
 const money=(n:number,c:string)=>`${c} ${Number(n||0).toLocaleString("es-AR",{maximumFractionDigits:0})}`;
 const label=(s:string|null)=>/RECIB|PAGAD|CONFIRM/i.test(s||"")?"Recibido":/PROCES|PEND/i.test(s||"")?"En proceso":s||"Pendiente";
 const tone=(s:string|null)=>/RECIB|PAGAD|CONFIRM/i.test(s||"")?"ok":/PROCES|PEND/i.test(s||"")?"process":"process";
-const iconFor=(name:string)=>/transfer|banc/i.test(name)?"🏦":/usdt|crypto/i.test(name)?"₮":/mercado/i.test(name)?"◉":/wise/i.test(name)?"W":"•";
+
 
 export default function PagosPage(){
  const[isAdmin,setIsAdmin]=useState(false),[rows,setRows]=useState<Payment[]>([]),[methods,setMethods]=useState<Method[]>([]),[withdrawals,setWithdrawals]=useState<Withdrawal[]>([]),[curr,setCurr]=useState<Record<number,string>>({}),[commissionAvailable,setCommissionAvailable]=useState(0),[loading,setLoading]=useState(true),[error,setError]=useState(""),[msg,setMsg]=useState("");
@@ -43,7 +43,7 @@ export default function PagosPage(){
    }else{setPaymentOps([]);setSelectedPaymentOp("");}
    const [p,m,mon,w,c]=await Promise.all([
     supabase.from("pagos").select("id,operacion_id,importe,moneda_id,metodo_pago,estado,fecha_pago,creado_en").order("creado_en",{ascending:false}).limit(100),
-    admin?supabase.from("medios_cobro").select("id,nombre,tipo,estado,alias,banco,cbu,moneda_id").eq("empresa_id",profile.active_company_id).order("es_predeterminado",{ascending:false}):Promise.resolve({data:[],error:null}),
+    admin?supabase.from("medios_cobro").select("id,nombre,tipo,estado,alias,banco,cbu,moneda_id").eq("empresa_id",profile.active_company_id).eq("tipo","BANCO").order("es_predeterminado",{ascending:false}):Promise.resolve({data:[],error:null}),
     supabase.from("monedas").select("id,codigo"),
     admin?supabase.from("retiros_comisiones").select("id,importe,estado,fecha_solicitud,medio_cobro_id,moneda_id").eq("empresa_id",profile.active_company_id).order("fecha_solicitud",{ascending:false}).limit(50):Promise.resolve({data:[],error:null}),
     admin?supabase.from("operacion_comisiones").select("saldo_pagado,saldo_reservado,estado,moneda_id").eq("empresa_id",profile.active_company_id):Promise.resolve({data:[],error:null})
@@ -52,7 +52,7 @@ export default function PagosPage(){
    setRows((p.data||[]) as Payment[]);setMethods((m.data||[]) as Method[]);setWithdrawals((w.data||[]) as Withdrawal[]);setCurr(Object.fromEntries((mon.data||[]).map((x:any)=>[x.id,x.codigo])));
    setCommissionAvailable((c.data||[]).filter((x:any)=>x.estado==="ABONADA").reduce((s:any,x:any)=>s+Math.max(Number(x.saldo_pagado||0)-Number(x.saldo_reservado||0),0),0));
    const active=(m.data||[]).find((x:any)=>x.tipo==="BANCO"&&x.estado!=="INACTIVO");if(active&&!bankId)setBankId(active.id);
-   const first=(m.data||[]).find((x:any)=>x.tipo!=="BANCO"&&x.estado!=="INACTIVO");void first;
+
   }catch(e){setError(e instanceof Error?e.message:"No se pudieron cargar los pagos.")}finally{setLoading(false)}
  }
  useEffect(()=>{void load()},[]);
@@ -62,7 +62,7 @@ export default function PagosPage(){
  const withdrawnMap=withdrawals.filter(r=>/COMPLET|PAGAD|APROB/i.test(r.estado||"")).reduce((m,r)=>{const id=r.moneda_id||0;m.set(id,(m.get(id)||0)+Number(r.importe||0));return m},new Map<number,number>()); const withdrawn=withdrawnMap.size===1?[...withdrawnMap.values()][0]:0; const commissionCurrencyIds=[...new Set((withdrawals.map(r=>r.moneda_id).filter(Boolean) as number[]).concat(rows.map(r=>r.moneda_id).filter(Boolean) as number[]))]; const displayCurrency=commissionCurrencyIds.length===1?(curr[commissionCurrencyIds[0]]||"Moneda"):"";
  const balance=Math.max(0,commissionAvailable);
  const banks=methods.filter(m=>m.tipo==="BANCO"&&m.estado!=="INACTIVO");
- const payoutMethods=methods.filter(m=>m.tipo!=="BANCO"&&m.estado!=="INACTIVO");
+
  const months=useMemo(()=>{const now=new Date();return Array.from({length:6},(_,i)=>{const d=new Date(now.getFullYear(),now.getMonth()-5+i,1);const key=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}`;const monthRows=rows.filter(r=>(r.fecha_pago||r.creado_en||"").slice(0,7)===key);const totals=new Map<number,number>();for(const r of monthRows)totals.set(r.moneda_id||0,(totals.get(r.moneda_id||0)||0)+Number(r.importe||0));const amount=totals.size===1?Number([...totals.values()][0]||0):0;return{label:d.toLocaleDateString("es-AR",{month:"short"}).replace(".",""),value:aggregate(monthRows),amount}})},[rows,curr]);
  const monthAmounts=months.map(m=>m.amount);
  const maxMonth=Math.max(1,...monthAmounts);
@@ -115,7 +115,7 @@ export default function PagosPage(){
    {isAdmin&&<section className="payments-panel withdrawal-panel"><h2>Solicitar retiro</h2><p className="withdrawal-balance">Saldo disponible <strong>{commissionCurrencyIds.length===1?money(balance,displayCurrency):"Varias monedas"}</strong></p><div className="withdrawal-amount">{commissionCurrencyIds.length===1?money(Number(amount||0),displayCurrency):"—"}</div><label>Monto a retirar</label><div className="withdrawal-input"><input type="number" min="0" max={balance} value={amount} onChange={e=>setAmount(e.target.value)} placeholder="0,00"/><span>{displayCurrency||"Seleccioná una moneda"}</span></div><p className="withdrawal-method-note">El retiro se procesa mediante la cuenta bancaria seleccionada y su medio de cobro validado.</p><label>Cuenta bancaria</label><select value={bankId} onChange={e=>setBankId(e.target.value)}><option value="">Seleccionar cuenta</option>{banks.map(b=><option key={b.id} value={b.id}>{b.banco||b.nombre} · ****{b.cbu?.slice(-4)||"—"}</option>)}</select><button className="withdrawal-submit" disabled={busy||!amount||!bankId||commissionCurrencyIds.length!==1} onClick={requestWithdrawal}>{busy?"Procesando…":"Solicitar retiro →"}</button><div className="withdrawal-info"><span>ⓘ</span><div><strong>Procesamiento seguro</strong><p>La solicitud queda pendiente de validación y retenciones correspondientes.</p></div></div></section>}
   </section>
   {isAdmin&&<section className="payments-bottom-grid">
-   <section className="payments-panel methods-panel"><div className="payments-panel-title"><h2>Métodos de pago disponibles</h2><Link href="/medios-cobro">Configurar →</Link></div><div className="methods-grid">{[...payoutMethods.slice(0,5)].map((m,i)=><div key={m.id}><div className={`method-icon m${i}`}>{iconFor(m.nombre||m.tipo)}</div><strong>{m.nombre||m.tipo}</strong></div>)}{!payoutMethods.length&&<div className="bank-empty">Configurá métodos en Métodos de pago.</div>}</div></section>
+   <section className="payments-panel methods-panel"><div className="payments-panel-title"><h2>Medio de pago habilitado</h2><Link href="/medios-cobro">Configurar →</Link></div><div className="methods-grid"><div><div className="method-icon m0">🏦</div><strong>Transferencia bancaria</strong><small>Conciliación administrativa obligatoria</small></div></div><p className="bank-empty">No se habilitan pasarelas externas, eCheq ni medios financieros.</p></section>
    <section className="payments-panel banks-panel"><div className="payments-panel-title"><h2>Cuentas bancarias</h2><Link href="/cuentas-bancarias">Ver todas →</Link></div>{banks.slice(0,4).map(b=><div className="bank-row" key={b.id}><span className="bank-icon">🏦</span><div><strong>{b.banco||b.nombre}</strong><small>{b.alias||("****"+(b.cbu?.slice(-4)||"—"))}</small></div><em>Activa</em><Link className="payment-action" href="/cuentas-bancarias">→</Link></div>)}{!banks.length&&<div className="bank-empty">No hay cuentas bancarias configuradas.</div>}</section>
    <section className="payments-panel chart-panel"><div className="payments-panel-title"><h2>Evolución de pagos</h2><span>Datos reales</span></div><div className="payment-chart-legend"><span><i/>Pagos registrados</span></div><div className="payment-bars">{months.map((m,i)=><div className="payment-month" key={m.label}><div className="bars"><i style={{height:`${Math.max(5,monthAmounts[i]/maxMonth*100)}%`}}/></div><small>{m.label}</small><strong>{m.value}</strong></div>)}</div></section>
   </section>}
