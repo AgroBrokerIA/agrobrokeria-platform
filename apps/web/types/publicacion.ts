@@ -47,6 +47,13 @@ export interface Publicacion {
 
   puerto: string | null;
 
+  /** Destino físico homologado para recepción/descarga de granos. */
+  categoria_destino?: "puerto_exportacion" | "molino_industrial" | "acopio_cooperativa" | "consumo_feedlot" | null;
+  destino_homologado_id?: number | null;
+  nombre_establecimiento_destino?: string | null;
+  localidad_destino?: string | null;
+  provincia_destino?: string | null;
+
   /** Puertos alternativos donde puede realizarse la recepción/entrega. */
   puertos?: string[];
 
