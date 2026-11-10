@@ -9,10 +9,6 @@ import {
   obtenerIncoterms,
 } from "@/app/nueva-publicacion/services/publicaciones";
 import { supabase } from "@/lib/supabase/client";
-import {
-  crearPublicacion,
-  actualizarPublicacion,
-} from "@/app/nueva-publicacion/services/publicaciones";
 import { Publicacion } from "@/types/publicacion";
 import { Producto } from "@/types/producto";
 import { Moneda } from "@/types/moneda";
@@ -69,86 +65,6 @@ type LugarRecepcion = {
 };
 
 type GeoPais = { id: number; codigo_iso: string; nombre: string; region?: string | null };
-
-async function obtenerEmpresaDelUsuario(): Promise<string | null> {
-  const {
-    data: { user },
-    error: userError,
-  } = await supabase.auth.getUser();
-
-  if (userError || !user) {
-    throw new Error("No hay un usuario autenticado.");
-  }
-
-  const { data: profile, error: profileError } = await supabase
-    .from("profiles")
-    .select("active_company_id,tipo_usuario")
-    .eq("id", user.id)
-    .maybeSingle();
-
-  if (profileError) throw new Error(`No se pudo obtener el perfil: ${profileError.message}`);
-
-  // El rol intermediario publica con su identidad personal, aunque exista
-  // un contexto interno de plataforma asociado al perfil.
-  const rol = String(profile?.tipo_usuario ?? "").trim().toLowerCase();
-  if (rol.includes("comisionista") || rol.includes("intermediario")) return null;
-
-  if (profile?.active_company_id) {
-    // El perfil guarda el ID del directorio global (companies), mientras que
-    // las publicaciones referencian el catálogo comercial legado (empresas).
-    const { data: mapping, error: mappingError } = await supabase
-      .from("company_empresa_map")
-      .select("empresa_id")
-      .eq("company_id", profile.active_company_id)
-      .maybeSingle();
-
-    if (mappingError) throw new Error(`No se pudo validar la empresa activa: ${mappingError.message}`);
-    if (mapping?.empresa_id) {
-      const { data: activeCompany, error: activeCompanyError } = await supabase
-        .from("empresas")
-        .select("id")
-        .eq("id", mapping.empresa_id)
-        .eq("activa", true)
-        .maybeSingle();
-
-      if (activeCompanyError) throw new Error(`No se pudo validar el contexto comercial: ${activeCompanyError.message}`);
-      if (activeCompany?.id) return activeCompany.id;
-    }
-  }
-
-  // Compatibilidad para perfiles antiguos cuyo active_company_id ya apunte
-  // directamente a empresas.
-  if (profile?.active_company_id) {
-    const { data: legacyCompany } = await supabase
-      .from("empresas")
-      .select("id")
-      .eq("id", profile.active_company_id)
-      .eq("activa", true)
-      .maybeSingle();
-    if (legacyCompany?.id) return legacyCompany.id;
-  }
-
-  const { data: account } = await supabase
-    .from("cuentas")
-    .select("id")
-    .eq("email", user.email ?? "")
-    .maybeSingle();
-
-  if (account?.id) {
-    const { data, error } = await supabase
-      .from("empresas")
-      .select("id")
-      .eq("cuenta_id", account.id)
-      .eq("activa", true)
-      .limit(1)
-      .maybeSingle();
-
-    if (error) throw new Error(`No se pudo obtener la empresa: ${error.message}`);
-    if (data?.id) return data.id;
-  }
-
-  throw new Error("Tu usuario no tiene una empresa activa vinculada.");
-}
 
 export default function NuevaPublicacionForm() {
   const router = useRouter();
@@ -472,32 +388,23 @@ export default function NuevaPublicacionForm() {
         pais_destino: form.pais_destino.trim() || null,
       };
 
-      if (modoEdicion && publicacionId) {
-        const { error: errorActualizacion } = await actualizarPublicacion(publicacionId, datos);
-        if (errorActualizacion) {
-          setError(`No se pudieron guardar los cambios: ${errorActualizacion.message}`);
-          return;
-        }
+      const { data: publicacionGuardada, error: errorGuardar } = await supabase.rpc("guardar_publicacion", {
+        p_publicacion_id: modoEdicion ? publicacionId : null,
+        p_datos: datos,
+      });
+
+      if (errorGuardar) {
+        setError(`${modoEdicion ? "No se pudieron guardar los cambios" : "No se pudo publicar"}: ${errorGuardar.message}`);
+        return;
+      }
+
+      if (modoEdicion) {
         setMensaje("✅ Publicación actualizada correctamente.");
         setTimeout(() => router.push("/mis-publicaciones"), 700);
         return;
       }
 
-      const empresaId = await obtenerEmpresaDelUsuario();
-      const nuevaPublicacion: Publicacion = {
-        empresa_id: empresaId,
-        ...(datos as Omit<Publicacion, "empresa_id">),
-        estado: "PUBLICADA",
-      };
-
-      const { data, error: errorInsertar } = await crearPublicacion(nuevaPublicacion);
-
-      if (errorInsertar) {
-        setError(`No se pudo publicar: ${errorInsertar.message}`);
-        return;
-      }
-
-      console.log("Publicación creada:", data);
+      console.log("Publicación creada:", publicacionGuardada);
       setMensaje("✅ Publicación creada correctamente.");
 
       setForm({
