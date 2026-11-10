@@ -27,7 +27,6 @@ export interface Publicacion {
 
   tipo: "COMPRA" | "VENTA";
 
-  tipo_contrato?: "F1" | null;
 
   producto_id: number;
 
