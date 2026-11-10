@@ -651,7 +651,7 @@ export default function OperacionesPage() {
           continue;
         }
         workflowsActualizados = workflowsActualizados.map((item) => item.operacion_id === workflow.operacion_id
-          ? {...item, orden:4, etapa_actual:"Retención de comisión AgroBrokerIA", etapa_actual_id:avance?.etapa_destino_id || item.etapa_actual_id}
+          ? {...item, orden:4, etapa_actual:"Retención de comisión AgroBrokerIA", etapa_actual_id: avance && typeof avance === "object" && !Array.isArray(avance) && typeof avance.etapa_destino_id === "string" ? avance.etapa_destino_id : item.etapa_actual_id}
           : item);
       }
       setWorkflows(workflowsActualizados);
@@ -681,7 +681,7 @@ export default function OperacionesPage() {
           console.error("No se pudo avanzar automáticamente a Logística / Entrega:", syncError);
           continue;
         }
-        if (syncResult?.avanzada) {
+        if (syncResult && typeof syncResult === "object" && !Array.isArray(syncResult) && syncResult.avanzada === true) {
           try {
             await notificarParticipantesOperacion({
               operacionId: workflow.operacion_id,
