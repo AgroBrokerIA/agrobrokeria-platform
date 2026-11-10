@@ -36,7 +36,7 @@ export default function Videollamadas(){
   if(new Date(startAt).getTime()<=Date.now())return setError("La fecha y hora debe ser futura. Elegí al menos unos minutos después de la hora actual.");
   setBusy(true);setError("");
   try{const {data:{session}}=await supabase.auth.getSession();if(!session?.access_token)throw new Error("AUTH_REQUIRED");
-   const {data,error:rpcError}=await supabase.rpc("crear_videollamada_comercial",{p_operacion_id:operationId||null,p_negociacion_id:null,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"});
+   const {data,error:rpcError}=await supabase.rpc("crear_videollamada_comercial",{p_operacion_id:(operationId||null) as string,p_negociacion_id:null as unknown as string,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"});
    if(rpcError)throw rpcError;
    const response=await fetch("/api/videollamadas/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({videollamada_id:data})});
    const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo crear Google Meet.");
