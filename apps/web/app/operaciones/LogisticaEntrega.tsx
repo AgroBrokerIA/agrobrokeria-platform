@@ -513,7 +513,7 @@ export default function LogisticaEntrega({
       if (uploadError) throw uploadError;
       const { data: resultadoRecepcion, error: rpcError } = await supabase.rpc("confirmar_recepcion_productor", {
         p_viaje_id: viaje.id, p_kilos_recibidos: Number(kilos),
-        p_confirmar: aceptar, p_observaciones: observaciones || null, p_evidencia_path: evidencePath
+        p_confirmar: aceptar, p_observaciones: observaciones || "", p_evidencia_path: evidencePath
       });
       if (rpcError) throw rpcError;
       const recepcionData = asJsonRecord(resultadoRecepcion);
