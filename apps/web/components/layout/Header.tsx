@@ -34,7 +34,7 @@ export default function Header() {
       supabase.from("company_users").select("company_id").eq("profile_id", user.id).eq("activo", true),
     ]);
     setMensajes(m || 0); setNotificaciones(n || 0);
-    const companyIds = (memberships || []).map((x: any) => x.company_id).filter(Boolean);
+    const companyIds = (memberships || []).map((x: any) => x.company_id).filter((id: unknown): id is string => typeof id === "string" && id.length > 0);
     if (companyIds.length) {
       const { data: verifications } = await supabase.from("empresas_verificaciones").select("empresa_id,estado,consultado_at").in("empresa_id", companyIds).order("consultado_at", { ascending: false }).limit(companyIds.length * 2);
       const latest = new Map<string, string>();
