@@ -50,7 +50,7 @@ export default function RegistroTransportistaPage() {
     setMensajeVehiculo("");
     if(nuevaPatente.replace(/[^A-Z0-9]/gi,"").length<6){setMensajeVehiculo("Ingresá una patente válida.");return;}
     setAgregandoVehiculo(true);
-    const {error:vehicleError}=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:nuevaPatente,p_tipo:nuevoTipo,p_capacidad_tn:nuevoTipo==="CAMION"&&nuevaCapacidad?Number(nuevaCapacidad):null});
+    const {error:vehicleError}=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:nuevaPatente,p_tipo:nuevoTipo,p_capacidad_tn:(nuevoTipo==="CAMION"&&nuevaCapacidad?Number(nuevaCapacidad):null) as number});
     if(vehicleError)setMensajeVehiculo("No se pudo registrar el dominio: "+vehicleError.message);
     else{
       setMensajeVehiculo("Dominio registrado correctamente.");
@@ -108,10 +108,10 @@ export default function RegistroTransportistaPage() {
     const { error: rpcError } = await supabase.rpc("registrar_transportista", {
       p_nombre: nombre,
       p_dni: dni,
-      p_cuit: cuit || null,
-      p_empresa: empresa || null,
-      p_telefono: telefono || null,
-      p_dni_path: dniPath,
+      p_cuit: (cuit || null) as string,
+      p_empresa: (empresa || null) as string,
+      p_telefono: (telefono || null) as string,
+      p_dni_path: dniPath as string,
       p_foto_path: fotoPath,
     });
     if (rpcError) {
