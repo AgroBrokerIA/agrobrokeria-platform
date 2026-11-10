@@ -221,30 +221,36 @@ export default function Liquidacion({
     }
 
     const nueva = resultado.data;
+    if (!nueva || typeof nueva !== "object" || Array.isArray(nueva)) {
+      setError("La respuesta de la liquidación no tiene el formato esperado.");
+      setGuardando(false);
+      return;
+    }
+    const liquidacionGuardada = nueva as Record<string, unknown>;
 
     setDatos((actual) => ({
       ...actual,
-      ...nueva,
+      ...liquidacionGuardada,
       cantidad_contractual_tn:
-        Number(nueva.cantidad_contractual_tn) || 0,
+        Number(liquidacionGuardada.cantidad_contractual_tn) || 0,
       kilos_entregados:
-        Number(nueva.kilos_entregados) || 0,
+        Number(liquidacionGuardada.kilos_entregados) || 0,
       cantidad_entregada_tn:
-        Number(nueva.cantidad_entregada_tn) || 0,
+        Number(liquidacionGuardada.cantidad_entregada_tn) || 0,
       diferencia_tn:
-        Number(nueva.diferencia_tn) || 0,
+        Number(liquidacionGuardada.diferencia_tn) || 0,
       precio_tn:
-        Number(nueva.precio_tn) || 0,
+        Number(liquidacionGuardada.precio_tn) || 0,
       importe_bruto_usd:
-        Number(nueva.importe_bruto_usd) || 0,
+        Number(liquidacionGuardada.importe_bruto_usd) || 0,
       ajustes_usd:
-        Number(nueva.ajustes_usd) || 0,
+        Number(liquidacionGuardada.ajustes_usd) || 0,
       deducciones_usd:
-        Number(nueva.deducciones_usd) || 0,
+        Number(liquidacionGuardada.deducciones_usd) || 0,
       comision_agrobroker_usd:
         calculos.entregadaTn,
       importe_neto_usd:
-        Number(nueva.importe_neto_usd) || 0,
+        Number(liquidacionGuardada.importe_neto_usd) || 0,
     }));
 
     if (estado === "PRELIQUIDADA") {
