@@ -15,21 +15,21 @@ type Producto = {
   id: number;
   codigo: string;
   nombre: string;
-  categoria?: string;
-  activo?: boolean;
+  categoria?: string | null;
+  activo?: boolean | null;
 };
 
 type Moneda = {
   id: number;
-  codigo: string;
-  nombre: string;
-  simbolo: string;
+  codigo: string | null;
+  nombre: string | null;
+  simbolo: string | null;
 };
 
 type Incoterm = {
   id: number;
-  codigo: string;
-  descripcion: string;
+  codigo: string | null;
+  descripcion: string | null;
 };
 
 type Formulario = {
@@ -104,7 +104,7 @@ export default function PublicationForm(props: any) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
-  const [provincias, setProvincias] = useState<{id:number;nombre:string;codigo:string}[]>([]);
+  const [provincias, setProvincias] = useState<{id:number;nombre:string}[]>([]);
   const [localidades, setLocalidades] = useState<{id:number;nombre:string;provincia_id:number}[]>([]);
   const [puertos, setPuertos] = useState<{id:number;nombre:string;codigo:string}[]>([]);
 
@@ -167,12 +167,12 @@ export default function PublicationForm(props: any) {
       setIncoterms(incotermsData);
       const [{data:provData,error:provError},{data:portData,error:portError}]=await Promise.all([
         supabase.from("provincias").select("id,nombre,codigo").order("nombre"),
-        supabase.from("puertos").select("id,nombre,codigo").order("nombre")
+        supabase.from("puertos").select("id,nombre").order("nombre")
       ]);
       if(provError) throw provError;
       if(portError) throw portError;
       setProvincias((provData||[]) as {id:number;nombre:string;codigo:string}[]);
-      setPuertos((portData||[]) as {id:number;nombre:string;codigo:string}[]);
+      setPuertos(portData || []);
 
       const contexto = await obtenerContextoDelUsuario();
       setIsIntermediary(contexto.isIntermediary);
