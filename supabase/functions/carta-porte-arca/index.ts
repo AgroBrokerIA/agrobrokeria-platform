@@ -52,7 +52,9 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
     const homo=environment!=="production";
     const url=homo?"https://wsaahomo.afip.gov.ar/ws/services/LoginCms":"https://wsaa.afip.gov.ar/ws/services/LoginCms";
     const cms=makeCms(cert,key);
-    const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.afip.gov.ar/ws/services/LoginCms"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';
+    const operation=method.replace(/Req$/, "");
+  const soapAction="https://serviciosjava.afip.gob.ar/wscpe/"+operation.charAt(0).toLowerCase()+operation.slice(1);
+  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.afip.gov.ar/ws/services/LoginCms"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';
     const ac=new AbortController(), timer=setTimeout(()=>ac.abort(),30000);
     let r:Response;
     try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8"},body,signal:ac.signal})}
@@ -68,13 +70,14 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
 
 async function soap(environment:string,method:string,inner:string,auth:{token:string,sign:string,cuit:string}){
   const url=environment==="production"?"https://cpea-ws.afip.gob.ar/wscpe/services/soap":"https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap";
-  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="http://serviciosjava.afip.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuit>'+esc(auth.cuit)+'</cuit></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
+  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="https://serviciosjava.afip.gob.ar/wscpe/"><soapenv:Header/><soapenv:Body><wsc:'+method+'><auth><token>'+esc(auth.token)+'</token><sign>'+esc(auth.sign)+'</sign><cuit>'+esc(auth.cuit)+'</cuit></auth>'+inner+'</wsc:'+method+'></soapenv:Body></soapenv:Envelope>';
   const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),30000); let r:Response;
-    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","accept":"text/xml","SOAPAction":'""'},body,signal:ac.signal})}
+    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","accept":"text/xml","SOAPAction":'"'+soapAction+'"'},body,signal:ac.signal})}
   catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSCPE_TIMEOUT");throw e}
   finally{clearTimeout(timer)}
   const raw=new Uint8Array(await r.arrayBuffer());
   const contentType=r.headers.get("content-type")||"";
+  if(raw.length===0) throw new Error("ARCA_WSCPE_EMPTY_RESPONSE_HTTP_"+r.status+"_CONTENT_TYPE_"+(contentType||"MISSING"));
   let xml=new TextDecoder().decode(raw);
   if(contentType.toLowerCase().includes("multipart/related")){
     const boundary=contentType.match(/boundary="?([^";]+)"?/i)?.[1];
