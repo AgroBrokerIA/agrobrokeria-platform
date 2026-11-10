@@ -128,13 +128,13 @@ export default function AdminRetirosPage() {
 
     const [{ data: adminDB, error: adminError }, { data: monedasDB, error: monedasError }] = await Promise.all([
       supabase.rpc("admin_listar_retiros_comisiones"),
-      supabase.from("monedas").select("id,codigo").eq("activo", true),
+      supabase.from("monedas").select("id,codigo"),
     ]);
 
     if (monedasError) {
       setError(`No se pudieron cargar las monedas: ${monedasError.message}`);
     } else {
-      setMonedas(Object.fromEntries((monedasDB || []).map((m: { id: number; codigo: string }) => [m.id, m.codigo])));
+      setMonedas(Object.fromEntries((monedasDB || []).filter((m) => m.codigo !== null).map((m) => [m.id, m.codigo])));
     }
 
     if (adminError) {
