@@ -38,7 +38,7 @@ export default function Header() {
     if (companyIds.length) {
       const { data: verifications } = await supabase.from("empresas_verificaciones").select("empresa_id,estado,consultado_at").in("empresa_id", companyIds).order("consultado_at", { ascending: false }).limit(companyIds.length * 2);
       const latest = new Map<string, string>();
-      for (const row of verifications || []) if (!latest.has(row.empresa_id)) latest.set(row.empresa_id, row.estado);
+      for (const row of verifications || []) if (row.empresa_id && !latest.has(row.empresa_id)) latest.set(row.empresa_id, row.estado);
       setEmpresaVerificada(companyIds.some((id: string) => latest.get(id) === "VERIFICADA"));
     }
   }
