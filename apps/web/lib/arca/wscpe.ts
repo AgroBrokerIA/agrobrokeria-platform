@@ -2,7 +2,6 @@ import https from "node:https";
 import { arcaConfig } from "./config";
 
 const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
-const WSCPE_SOAP_ACTION_BASE = WSCPE_NS;
 
 function enviarSOAP(soap: string, soapAction?: string): Promise<{
   status: number;
@@ -133,7 +132,7 @@ export async function probarWSCPEAutenticado() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap, `${WSCPE_SOAP_ACTION_BASE}consultarProvincias`);
+  const response = await enviarSOAP(soap, "");
   validarRespuesta(response, "WSCPE ConsultarProvincias autenticado");
   return { ok: true, respuestaXml: response.body };
 }
