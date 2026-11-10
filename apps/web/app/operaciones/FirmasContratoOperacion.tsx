@@ -152,7 +152,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
     if (!window.confirm(result === "APROBADA" ? "¿Verificaste que esta copia corresponde al contrato y está firmada por la parte indicada?" : "¿Confirmás el rechazo de esta copia?")) return;
     setReviewing(copy.id); setError(""); setMessage("");
     const { error: rpcError } = await supabase.rpc("revisar_copia_firmada_contrato", {
-      p_copia_id: copy.id, p_resultado: result, p_observaciones: observations
+      p_copia_id: copy.id, p_resultado: result, p_observaciones: observations as string
     });
     if (rpcError) {
       setError("No se pudo revisar la copia: " + rpcError.message);
@@ -169,12 +169,16 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
         const buyerApproved = (versionCopies || []).some((item:any)=>item.rol==="COMPRADOR" && item.estado==="APROBADA");
         if (sellerApproved && buyerApproved) {
           const { data: syncResult, error: syncError } = await supabase.rpc("sincronizar_workflow_firmas_contrato", { p_contrato_id: contractId });
+          const syncData = typeof syncResult === "object" && syncResult !== null && !Array.isArray(syncResult)
+            ? syncResult as Record<string, unknown>
+            : null;
+          const advanced = syncData?.avanzada === true || syncData?.ya_avanzada === true;
           setMessage(syncError
             ? "Las dos copias están aprobadas, pero no se pudo avanzar el workflow: " + syncError.message
-            : syncResult?.avanzada
+            : advanced
               ? "Las dos copias firmadas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega."
               : "Las dos copias están aprobadas. El workflow verificó las condiciones y permanece pendiente de otro requisito.");
-          if (!syncError && syncResult?.avanzada && onWorkflowAdvanced) await onWorkflowAdvanced();
+          if (!syncError && advanced && onWorkflowAdvanced) await onWorkflowAdvanced();
         } else {
           setMessage("Copia validada por Administración. Falta aprobar la copia de la otra parte.");
         }
