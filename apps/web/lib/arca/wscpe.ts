@@ -1,7 +1,7 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "http://serviciosjava.arca.gob.ar/wscpe/";
+const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
 const WSCPE_SOAP_ACTION_BASE = WSCPE_NS;
 
 function enviarSOAP(soap: string, soapAction?: string): Promise<{
@@ -105,11 +105,9 @@ function validarRespuesta(
 
 export async function probarWSCPE() {
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
   <soapenv:Header/>
-  <soapenv:Body>
-    <wsc:dummy/>
-  </soapenv:Body>
+  <soapenv:Body/>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
@@ -152,7 +150,7 @@ export async function consultarProvinciasWSCPE() {
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
+        <cuit>${arcaConfig.cuit}</cuit>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
