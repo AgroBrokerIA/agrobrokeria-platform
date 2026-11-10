@@ -13132,7 +13132,7 @@ export type Database = {
         Returns: boolean
       }
       guardar_publicacion: {
-        Args: { p_datos: Json; p_publicacion_id: string }
+        Args: { p_datos: Json; p_publicacion_id: string | null }
         Returns: string
       }
       inicializar_control_comercial_contrato: {
