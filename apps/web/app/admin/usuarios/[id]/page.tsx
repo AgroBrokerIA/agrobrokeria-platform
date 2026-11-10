@@ -71,7 +71,7 @@ export default function AdminUserDetailPage(){
         p_sisa_status:sisaStatus,p_sisa_categoria:sisaCategoria||"",
         p_actividad_agro_validada:actividadAgroValidada,
         p_arca_verificada:verified&&arcaVerificada,
-        p_arca_vencimiento:verified&&arcaVerificada?(expiry||""):"",
+        p_arca_vencimiento:(verified&&arcaVerificada?expiry:null) as string,
         p_arca_observaciones:arcaObservaciones.trim()||notes.trim()||""
       });
       if(reviewError)throw reviewError;
