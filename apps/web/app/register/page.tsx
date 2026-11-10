@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { supabase } from "@/lib/supabase/client";
+import type { Database } from "@/types/database";
 
 const roles = [["Comprador","comprador"],["Vendedor","vendedor"],["Transportista","transportista"],["Corredor oficial","corredor"],["Exportador","exportador"],["Acopio","acopio"],["Cooperativa","cooperativa"],["Industria","industria"],["Intermediario independiente","intermediario"],["Comisionista independiente","comisionista"],["Productor","productor"]];
 const intermediaryRoles = ["corredor","intermediario","comisionista"];
@@ -138,7 +139,7 @@ export default function RegisterPage() {
         terms_accepted_at:new Date().toISOString(),registration_completed:true,review_status:isCompany?"PENDIENTE":"NO_VERIFICADO",is_verified:false
       };
       if(data.session){
-        const {error:saveError}=await supabase.from("account_onboarding").upsert(draft);
+        const {error:saveError}=await supabase.from("account_onboarding").upsert(draft as Database["public"]["Tables"]["account_onboarding"]["Insert"]);
         if(saveError) throw saveError;
         if(isCompany){
           const {error:companySyncError}=await supabase.rpc("sincronizar_empresa_desde_onboarding");
@@ -153,7 +154,7 @@ export default function RegisterPage() {
           const bucket=supabase.storage.from("agrobroker-private");
           const uploaded:string[]=[];
           for(const [path,file] of [[fotoPath,driverPhoto],[dniFrontPath,driverDniFront],[dniBackPath,driverDniBack]] as [string,File][]){const result=await bucket.upload(path,file,{contentType:file.type,upsert:false});if(result.error){await bucket.remove(uploaded);throw result.error;}uploaded.push(path);}
-          const {error:transportistaError}=await supabase.rpc("registrar_transportista",{p_nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),p_dni:form.documentNumber.replace(/\D/g,""),p_cuit:form.cuilCuit.replace(/\D/g,"")||null,p_empresa:isCompany?normalize(form.legalName):null,p_telefono:form.phone.trim()||null,p_dni_path:dniFrontPath,p_dni_dorso_path:dniBackPath,p_foto_path:fotoPath});
+          const {error:transportistaError}=await supabase.rpc("registrar_transportista",{p_nombre:normalize([form.firstName,form.middleName,form.lastName].filter(Boolean).join(" ")),p_dni:form.documentNumber.replace(/\D/g,""),p_cuit:(form.cuilCuit.replace(/\D/g,"")||null) as string,p_empresa:(isCompany?normalize(form.legalName):null) as string,p_telefono:(form.phone.trim()||null) as string,p_dni_path:dniFrontPath,p_dni_dorso_path:dniBackPath,p_foto_path:fotoPath});
           if(transportistaError){await bucket.remove(uploaded);throw transportistaError;}
         }
         if(!isTransportista && dniFront) await upload(data.user.id,dniFront,"DNI_FRENTE");
