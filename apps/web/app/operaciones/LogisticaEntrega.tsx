@@ -251,7 +251,7 @@ export default function LogisticaEntrega({
   }), [viajes, comisiones]);
 
   async function buscarCorredores() {
-    const { data, error: rpcError } = await supabase.rpc("buscar_corredores_para_autorizar", { p_operacion_id: operacionId, p_texto: busquedaCorredor || null });
+    const { data, error: rpcError } = await supabase.rpc("buscar_corredores_para_autorizar", { p_operacion_id: operacionId, p_texto: busquedaCorredor || undefined });
     if (rpcError) setError("No se pudieron buscar corredores: " + rpcError.message);
     else setCorredores((data || []) as Corredor[]);
   }
@@ -303,8 +303,8 @@ export default function LogisticaEntrega({
     const { data, error: rpcError } = await supabase.rpc("crear_viaje_operacion_con_vehiculos", {
       p_operacion_id: operacionId,
       p_transportista_profile_id: transportistaId,
-      p_vehiculo_id: vehiculoCamionId,
-      p_acoplado_vehiculo_id: vehiculoAcopladoId || null,
+      p_vehiculo_id: vehiculoCamionId || "",
+      p_acoplado_vehiculo_id: vehiculoAcopladoId || undefined,
       p_origen: origenDireccion || origenNombre,
       p_destino: destinoDireccion || destinoNombre,
       p_origen_nombre: origenNombre,
@@ -409,8 +409,6 @@ export default function LogisticaEntrega({
       p_estado: estado,
       p_lugar: lugar,
       p_empresa_nombre: empresa,
-      p_toneladas: null,
-      p_observaciones: null,
     });
     if (rpcError) setError("No se pudo actualizar el seguimiento: " + rpcError.message);
     else setMensaje("Seguimiento actualizado: " + estadoLabel(estado));
@@ -530,7 +528,7 @@ export default function LogisticaEntrega({
           if (todosConfirmados && onEntregaConfirmada) {
             const avanzada = await onEntregaConfirmada();
             setMensaje(avanzada
-              ? (resultadoRecepcion?.comision_liberada
+              ? (resultadoRecepcion && typeof resultadoRecepcion === "object" && !Array.isArray(resultadoRecepcion) && resultadoRecepcion.comision_liberada === true
                 ? "Doble conformidad completa. La operación pasó a Liquidación y la comisión quedó liberada contablemente."
                 : "Doble conformidad completa. La operación pasó a Liquidación; la comisión permanece retenida hasta verificar la transferencia.")
               : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
