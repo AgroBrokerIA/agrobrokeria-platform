@@ -1,7 +1,7 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "https://serviciosjava.afip.gob.ar/wscpe/";
+const WSCPE_NS = "http://serviciosjava.arca.gob.ar/wscpe/";
 const WSCPE_SOAP_ACTION_BASE = WSCPE_NS;
 
 function enviarSOAP(soap: string, soapAction?: string): Promise<{
@@ -92,10 +92,12 @@ function validarRespuesta(
       (texto, tag) => redactarXmlTag(texto, tag),
       response.body
     ).slice(0, 1200);
+    const bytes = Buffer.byteLength(response.body, "utf8");
 
     throw new Error(
       `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
       `HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
+      `bytes=${bytes}; endpoint=${arcaConfig.wscpeUrl}; ` +
       `Respuesta: ${cuerpo || "[vacía]"}`
     );
   }
@@ -127,7 +129,7 @@ export async function probarWSCPEAutenticado() {
       <auth>
         <token>${credenciales.token}</token>
         <sign>${credenciales.sign}</sign>
-        <cuitRepresentada>${arcaConfig.cuit}</cuitRepresentada>
+        <cuit>${arcaConfig.cuit}</cuit>
       </auth>
     </wsc:ConsultarProvinciasReq>
   </soapenv:Body>
