@@ -1,7 +1,8 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
+const WSCPE_NS = "https://serviciosjava.afip.gob.ar/wscpe/";
+const WSCPE_SOAP_ACTION_BASE = WSCPE_NS;
 
 function enviarSOAP(soap: string, soapAction?: string): Promise<{
   status: number;
@@ -21,7 +22,7 @@ function enviarSOAP(soap: string, soapAction?: string): Promise<{
           "Content-Type": "text/xml; charset=utf-8",
           Accept: "text/xml",
           "User-Agent": "AgroBrokerIA/1.0",
-          ...(soapAction !== undefined ? { SOAPAction: soapAction } : {}),
+          ...(soapAction !== undefined ? { SOAPAction: `"${soapAction}"` } : {}),
           "Content-Length": Buffer.byteLength(soap, "utf8"),
         },
       },
@@ -132,7 +133,7 @@ export async function probarWSCPEAutenticado() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap, '""');
+  const response = await enviarSOAP(soap, `${WSCPE_SOAP_ACTION_BASE}consultarProvincias`);
   validarRespuesta(response, "WSCPE ConsultarProvincias autenticado");
   return { ok: true, respuestaXml: response.body };
 }
@@ -155,7 +156,7 @@ export async function consultarProvinciasWSCPE() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap, '""');
+  const response = await enviarSOAP(soap, `${WSCPE_SOAP_ACTION_BASE}consultarProvincias`);
   validarRespuesta(response, "WSCPE ConsultarProvincias");
   return { ok: true, respuestaXml: response.body };
 }
