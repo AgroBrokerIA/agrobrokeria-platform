@@ -1,7 +1,7 @@
 import https from "node:https";
 import { arcaConfig } from "./config";
 
-const WSCPE_NS = "http://serviciosjava.arca.gob.ar/wscpe/";
+const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
 
 function enviarSOAP(soap: string): Promise<{
   status: number;
@@ -101,7 +101,6 @@ function validarRespuesta(
 }
 
 export async function probarWSCPE() {
-  // ARCA WSCPE 2.2.1: dummy is an empty SOAP Body (no <dummy/> operation node).
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
   <soapenv:Header/>
