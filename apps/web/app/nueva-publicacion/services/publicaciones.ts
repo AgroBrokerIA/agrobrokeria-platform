@@ -1,5 +1,6 @@
 import { supabase } from "@/lib/supabase/client";
 import { Publicacion } from "@/types/publicacion";
+import type { Json } from "@/types/database";
 
 export async function obtenerProductos() {
   return supabase
@@ -26,7 +27,7 @@ export async function obtenerIncoterms() {
 export async function crearPublicacion(publicacion: Publicacion) {
   const { data, error } = await supabase.rpc("guardar_publicacion", {
     p_publicacion_id: null,
-    p_datos: publicacion,
+    p_datos: publicacion as unknown as Json,
   });
   if (error || !data) return { data, error };
   void (async () => {
@@ -44,7 +45,7 @@ export async function crearPublicacion(publicacion: Publicacion) {
 export async function actualizarPublicacion(publicacionId: string, datos: Partial<Publicacion>) {
   const { data, error } = await supabase.rpc("guardar_publicacion", {
     p_publicacion_id: publicacionId,
-    p_datos: datos,
+    p_datos: datos as unknown as Json,
   });
   return { data, error };
 }
