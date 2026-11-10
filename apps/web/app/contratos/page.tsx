@@ -229,7 +229,7 @@ export default function ContratosPage(){
    if(bothApproved){
      const {data:syncResult,error:syncError}=await supabase.rpc("sincronizar_workflow_firmas_contrato",{p_contrato_id:contractId});
      if(syncError){console.error("No se pudo avanzar automáticamente a Logística / Entrega:",syncError);setError("Las dos firmas están aprobadas, pero no se pudo avanzar la operación: "+syncError.message);}
-     else if(syncResult?.avanzada){setMessage("Las dos firmas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega.");}
+     else if(syncResult && typeof syncResult === "object" && !Array.isArray(syncResult) && syncResult.avanzada === true){setMessage("Las dos firmas fueron aprobadas. La operación avanzó automáticamente a Logística / Entrega.");}
    }
    const {data:{user}}=await supabase.auth.getUser();
    if(user){
