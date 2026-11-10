@@ -538,7 +538,7 @@ export default function OperacionesPage() {
           cantidad_tn: Number(item.cantidad_tn),
           importe_total: Number(item.importe_total ?? Number(item.precio_tn) * Number(item.cantidad_tn)),
           moneda_id: item.moneda_id ?? null,
-          fecha_operacion: item.fecha_operacion ?? item.creada_en ?? new Date().toISOString(),
+          fecha_operacion: item.fecha_operacion ?? new Date().toISOString(),
           publicacion_compra_id: item.publicacion_compra_id ?? null,
           publicacion_venta_id: item.publicacion_venta_id ?? null,
         }));
@@ -1114,8 +1114,9 @@ export default function OperacionesPage() {
       return;
     }
 
-    const comisiones = (data || []).map((item) => ({
+    const comisiones: ComisionIntermediario[] = (data || []).map((item) => ({
       ...item,
+      tipo_comision: item.tipo_comision as ComisionIntermediario["tipo_comision"],
       valor_comision:
         item.valor_comision !== null &&
         item.valor_comision !== undefined
