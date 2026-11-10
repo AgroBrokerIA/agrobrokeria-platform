@@ -189,7 +189,7 @@ export async function GET(request: NextRequest) {
       try {
         // Separate transport/service availability from authenticated business calls.
         // The official WSCPE dummy method requires an empty SOAP Body.
-        const dummy = await probarWSCPE();
+        await probarWSCPE();
         await consultarProvinciasWSCPE();
         checks.arca_connectivity = { ok: true, detail: "WSCPE dummy y ConsultarProvincias respondieron correctamente." };
       } catch (error) {
