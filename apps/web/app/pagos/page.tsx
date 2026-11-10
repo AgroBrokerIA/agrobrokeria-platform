@@ -36,7 +36,7 @@ export default function PagosPage(){
  useEffect(()=>{void load()},[]);
  const aggregate=(items:Payment[])=>{const totals=new Map<number,number>();for(const r of items)totals.set(r.moneda_id||0,(totals.get(r.moneda_id||0)||0)+Number(r.importe||0));if(!totals.size)return "0";if(totals.size===1){const [id,value]=[...totals.entries()][0];return money(value,curr[id]||"Moneda");}return "Varias monedas"};
  const received=aggregate(rows.filter(r=>/RECIB|PAGAD|CONFIRM/i.test(r.estado||"")));
- const process=aggregate(rows.filter(r=>/PROCES|PEND/i.test(r.estado||"")));
+ const pendingPayments=aggregate(rows.filter(r=>/PROCES|PEND/i.test(r.estado||"")));
  const withdrawnMap=withdrawals.filter(r=>/COMPLET|PAGAD|APROB/i.test(r.estado||"")).reduce((m,r)=>{const id=r.moneda_id||0;m.set(id,(m.get(id)||0)+Number(r.importe||0));return m},new Map<number,number>()); const withdrawn=withdrawnMap.size===1?[...withdrawnMap.values()][0]:0; const commissionCurrencyIds=[...new Set((withdrawals.map(r=>r.moneda_id).filter(Boolean) as number[]).concat(rows.map(r=>r.moneda_id).filter(Boolean) as number[]))]; const displayCurrency=commissionCurrencyIds.length===1?(curr[commissionCurrencyIds[0]]||"Moneda"):"";
  const balance=Math.max(0,commissionAvailable);
  const banks=methods.filter(m=>m.tipo==="BANCO"&&m.estado!=="INACTIVO");
@@ -54,7 +54,7 @@ export default function PagosPage(){
   {error&&<div className="module-alert module-alert-error">{error}</div>}{msg&&<div className="module-alert">{msg}</div>}
   <section className="payment-kpis">
    <div className="payment-kpi green"><div className="payment-kpi-icon">✓</div><div><small>Pagos recibidos</small><strong>{received}</strong><em>Total de pagos registrados</em></div></div>
-   <div className="payment-kpi amber"><div className="payment-kpi-icon">◷</div><div><small>En proceso</small><strong>{process}</strong><em>En operaciones activas</em></div></div>
+   <div className="payment-kpi amber"><div className="payment-kpi-icon">◷</div><div><small>En proceso</small><strong>{pendingPayments}</strong><em>En operaciones activas</em></div></div>
    <div className="payment-kpi blue"><div className="payment-kpi-icon">▣</div><div><small>Saldo para retirar</small><strong>{commissionCurrencyIds.length===1?money(balance,displayCurrency):commissionCurrencyIds.length>1?"Varias monedas":"Sin moneda"}</strong><em>Comisiones disponibles</em></div></div>
    <div className="payment-kpi purple"><div className="payment-kpi-icon">↗</div><div><small>Total retirado</small><strong>{commissionCurrencyIds.length===1?money(withdrawn,displayCurrency):commissionCurrencyIds.length>1?"Varias monedas":"Sin moneda"}</strong><em>Retiros completados</em></div></div>
    <Link className="payment-history-btn" href="/retiros-comisiones">Historial</Link>
