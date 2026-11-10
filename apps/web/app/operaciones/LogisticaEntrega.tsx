@@ -3,6 +3,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { supabase } from "../../lib/supabase";
 
+function asJsonRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 type Viaje = {
   id: string;
   operacion_id: string;
@@ -304,7 +310,7 @@ export default function LogisticaEntrega({
       p_operacion_id: operacionId,
       p_transportista_profile_id: transportistaId,
       p_vehiculo_id: vehiculoCamionId || "",
-      p_acoplado_vehiculo_id: vehiculoAcopladoId || undefined,
+      p_acoplado_vehiculo_id: vehiculoAcopladoId || "",
       p_origen: origenDireccion || origenNombre,
       p_destino: destinoDireccion || destinoNombre,
       p_origen_nombre: origenNombre,
@@ -510,6 +516,7 @@ export default function LogisticaEntrega({
         p_confirmar: aceptar, p_observaciones: observaciones || null, p_evidencia_path: evidencePath
       });
       if (rpcError) throw rpcError;
+      const recepcionData = asJsonRecord(resultadoRecepcion);
       setEvidenciasProductor((current)=>({...current,[viaje.id]:null}));
       if (!aceptar) {
         setMensaje("Incidencia registrada con evidencia. La operación y la comisión permanecen bloqueadas hasta su resolución.");
@@ -528,12 +535,12 @@ export default function LogisticaEntrega({
           if (todosConfirmados && onEntregaConfirmada) {
             const avanzada = await onEntregaConfirmada();
             setMensaje(avanzada
-              ? (resultadoRecepcion && typeof resultadoRecepcion === "object" && !Array.isArray(resultadoRecepcion) && resultadoRecepcion.comision_liberada === true
+              ? (recepcionData?.comision_liberada === true
                 ? "Doble conformidad completa. La operación pasó a Liquidación y la comisión quedó liberada contablemente."
                 : "Doble conformidad completa. La operación pasó a Liquidación; la comisión permanece retenida hasta verificar la transferencia.")
               : "Doble conformidad registrada. La operación requiere revisar el avance de etapa desde Administración.");
           } else {
-            setMensaje(resultadoRecepcion?.comision_liberada
+            setMensaje(recepcionData?.comision_liberada === true
               ? "Recepción confirmada. La comisión quedó liberada contablemente."
               : "Recepción del productor confirmada. Quedan otros viajes pendientes de doble conformidad; la comisión permanece retenida.");
           }
