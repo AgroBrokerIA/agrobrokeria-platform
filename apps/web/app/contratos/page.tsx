@@ -376,7 +376,7 @@ export default function ContratosPage(){
      const {data:{session}}=await supabase.auth.getSession();
      const ua=typeof navigator!=="undefined"?navigator.userAgent:null;
      const ip=null;
-     const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip as string,p_user_agent:ua as string});
+     const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip as unknown as string,p_user_agent:ua as unknown as string});
      if(error)throw error;
      setMessage("Confidencialidad aceptada y registrada para "+rol+". Esta aceptación queda auditada y es obligatoria para cerrar la operación.");
      await cargarConfidencialidad(form.operacionId);
