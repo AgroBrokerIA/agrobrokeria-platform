@@ -398,8 +398,8 @@ export default function OperacionesPage() {
     setRevisandoRetencionComision(true); setError(""); setMensaje("");
     try {
       const { data: resultadoRevision, error } = resultado === "RETENIDA"
-        ? await supabase.rpc("validar_comprobante_comision_bancaria", { p_retencion_id: retencionId, p_numero_operacion_bancaria: referenciaBancaria, p_observaciones: observaciones })
-        : await supabase.rpc("rechazar_comprobante_comision_plataforma", { p_retencion_id: retencionId, p_motivo: observaciones });
+        ? await supabase.rpc("validar_comprobante_comision_bancaria", { p_retencion_id: retencionId, p_numero_operacion_bancaria: referenciaBancaria as string, p_observaciones: observaciones as string })
+        : await supabase.rpc("rechazar_comprobante_comision_plataforma", { p_retencion_id: retencionId, p_motivo: observaciones as string });
       if (error) throw error;
       setMensaje(resultado === "RETENIDA"
         ? "Ingreso bancario validado. La comisión se distribuyó por viaje y cada tramo se liberará al confirmar CPE validada y doble conformidad de entrega."
@@ -473,7 +473,7 @@ export default function OperacionesPage() {
     return supabase.rpc("avanzar_operacion_workflow", {
       p_workflow_id: workflowId,
       p_etapa_destino_id: etapaDestinoId,
-      p_estado: estado ?? null,
+      p_estado: estado,
     });
   }
 
