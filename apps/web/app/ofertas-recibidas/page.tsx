@@ -273,7 +273,7 @@ export default function OfertasRecibidasPage() {
       } = await supabase
         .from("publicaciones")
         .select(
-          "id, empresa_id, tipo, cantidad_tn, precio_tn, moneda_id, provincia, localidad, puerto, empresas(id, razon_social, nombre_comercial, cuit)"
+          "id, empresa_id, tipo, cantidad_tn, precio_tn, moneda_id, provincia, localidad, puerto, empresas!publicaciones_empresa_id_fkey(id, razon_social, nombre_comercial, cuit)"
         )
         .eq("empresa_id", empresaId);
 
