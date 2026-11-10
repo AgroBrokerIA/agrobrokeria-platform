@@ -48,12 +48,13 @@ export default function AdministracionTransportistasPage() {
   async function verificar(item: Solicitud, estado: "VERIFICADO" | "OBSERVADO") {
     const observaciones = estado === "OBSERVADO" ? window.prompt("Indicá qué debe corregir el transportista:") : "Identidad y documentación revisadas por Administración.";
     if (estado === "OBSERVADO" && !observaciones?.trim()) return;
+    if (!item.profile_id) { setError("La solicitud no tiene un perfil de transportista asociado."); return; }
     setBusy(item.profile_id || item.id);
     setError("");
     const { error: rpcError } = await supabase.rpc("verificar_transportista", {
       p_profile_id: item.profile_id,
       p_estado: estado,
-      p_observaciones: observaciones,
+      p_observaciones: observaciones || "",
     });
     if (rpcError) setError("No se pudo actualizar la verificación: " + rpcError.message);
     else setMensaje(estado === "VERIFICADO" ? "Transportista verificado. Ya puede recibir asignaciones." : "Solicitud observada y devuelta para corrección.");
