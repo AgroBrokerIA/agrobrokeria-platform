@@ -37,7 +37,7 @@ export default function MisPublicacionesPage() {
     setLoading(true);
     try {
       const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
-      setMonedas(Object.fromEntries((monedaData || []).filter((m) => m.codigo !== null).map((m) => [m.id, m.codigo])));
+      setMonedas(Object.fromEntries((monedaData || []).reduce<Array<[number, string]>>((acc, m) => { if (m.codigo !== null) acc.push([m.id, m.codigo]); return acc; }, [])));
 
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { setPublicaciones([]); return; }
