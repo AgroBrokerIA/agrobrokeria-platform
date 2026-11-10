@@ -21,7 +21,7 @@ function enviarSOAP(soap: string, soapAction?: string): Promise<{
           "Content-Type": "text/xml; charset=utf-8",
           Accept: "text/xml",
           "User-Agent": "AgroBrokerIA/1.0",
-          ...(soapAction ? { SOAPAction: `"${soapAction}"` } : {}),
+          ...(soapAction !== undefined ? { SOAPAction: soapAction } : {}),
           "Content-Length": Buffer.byteLength(soap, "utf8"),
         },
       },
@@ -132,7 +132,7 @@ export async function probarWSCPEAutenticado() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap, "");
+  const response = await enviarSOAP(soap, '""');
   validarRespuesta(response, "WSCPE ConsultarProvincias autenticado");
   return { ok: true, respuestaXml: response.body };
 }
@@ -155,7 +155,7 @@ export async function consultarProvinciasWSCPE() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap, `${WSCPE_SOAP_ACTION_BASE}consultarProvincias`);
+  const response = await enviarSOAP(soap, '""');
   validarRespuesta(response, "WSCPE ConsultarProvincias");
   return { ok: true, respuestaXml: response.body };
 }
