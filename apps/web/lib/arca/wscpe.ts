@@ -3,7 +3,7 @@ import { arcaConfig } from "./config";
 
 const WSCPE_NS = "http://serviciosjava.afip.gob.ar/wscpe/";
 
-function enviarSOAP(soap: string): Promise<{
+function enviarSOAP(soap: string, soapAction?: string): Promise<{
   status: number;
   contentType: string | null;
   body: string;
@@ -130,7 +130,7 @@ export async function probarWSCPEAutenticado() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap);
+  const response = await enviarSOAP(soap, '""');
   validarRespuesta(response, "WSCPE ConsultarProvincias autenticado");
   return { ok: true, respuestaXml: response.body };
 }
@@ -153,7 +153,7 @@ export async function consultarProvinciasWSCPE() {
   </soapenv:Body>
 </soapenv:Envelope>`;
 
-  const response = await enviarSOAP(soap);
+  const response = await enviarSOAP(soap, '""');
   validarRespuesta(response, "WSCPE ConsultarProvincias");
   return { ok: true, respuestaXml: response.body };
 }
