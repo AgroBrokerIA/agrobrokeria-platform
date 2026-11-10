@@ -1117,6 +1117,7 @@ export default function OperacionesPage() {
     const comisiones: ComisionIntermediario[] = (data || []).map((item) => ({
       ...item,
       tipo_comision: item.tipo_comision as ComisionIntermediario["tipo_comision"],
+      quien_abona: item.quien_abona as ComisionIntermediario["quien_abona"],
       valor_comision:
         item.valor_comision !== null &&
         item.valor_comision !== undefined
