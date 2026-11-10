@@ -1,5 +1,5 @@
+import { createClient } from "@supabase/supabase-js";
 import { NextRequest, NextResponse } from "next/server";
-import { supabase } from "@/lib/supabase/server";
 import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
 
 export async function GET(request: NextRequest) {
@@ -15,6 +15,23 @@ export async function GET(request: NextRequest) {
         { status: 401 }
       );
     }
+
+    // Create the Supabase client only when the endpoint is invoked.
+    // Next.js evaluates route modules during build, when runtime secrets may not exist.
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+
+    if (!supabaseUrl || !supabaseAnonKey) {
+      console.error("ARCA WSCPE auth-test: faltan variables NEXT_PUBLIC_SUPABASE_URL o NEXT_PUBLIC_SUPABASE_ANON_KEY.");
+      return NextResponse.json(
+        { ok: false, error: "El servicio de autenticación no está configurado en el entorno de ejecución." },
+        { status: 503 }
+      );
+    }
+
+    const supabase = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: { persistSession: false, autoRefreshToken: false },
+    });
 
     const {
       data: { user },
