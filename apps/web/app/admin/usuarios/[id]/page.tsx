@@ -67,15 +67,16 @@ export default function AdminUserDetailPage(){
     if(onboarding?.account_type==="EMPRESA"){
       const expiry=arcaVencimiento?new Date(arcaVencimiento+"T23:59:59-03:00").toISOString():null;
       const {data:result,error:reviewError}=await supabase.rpc("admin_aprobar_empresa_compliance",{
-        p_user_id:id,p_review_status:status,p_review_notes:notes||null,
-        p_sisa_status:sisaStatus,p_sisa_categoria:sisaCategoria||null,
+        p_user_id:id,p_review_status:status,p_review_notes:notes||"",
+        p_sisa_status:sisaStatus,p_sisa_categoria:sisaCategoria||"",
         p_actividad_agro_validada:actividadAgroValidada,
         p_arca_verificada:verified&&arcaVerificada,
-        p_arca_vencimiento:verified&&arcaVerificada?expiry:null,
-        p_arca_observaciones:arcaObservaciones.trim()||notes.trim()||null
+        p_arca_vencimiento:verified&&arcaVerificada?(expiry||""):"",
+        p_arca_observaciones:arcaObservaciones.trim()||notes.trim()||""
       });
       if(reviewError)throw reviewError;
-      if(verified&&result?.mapa_verificado!==true)throw new Error("La revisión se guardó, pero no se pudo activar el vínculo empresarial verificado.");
+      const resultData = typeof result === "object" && result !== null && !Array.isArray(result) ? result as Record<string, unknown> : null;
+      if(verified&&resultData?.mapa_verificado!==true)throw new Error("La revisión se guardó, pero no se pudo activar el vínculo empresarial verificado.");
       setNotice(verified?"Revisión documental y fiscal aprobada. La empresa quedó vinculada y verificada.":"Revisión empresarial guardada. La cuenta conserva acceso, pero la empresa no está habilitada como verificada.");
       await load();
       return;
