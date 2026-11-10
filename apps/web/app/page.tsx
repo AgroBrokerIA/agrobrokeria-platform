@@ -173,11 +173,11 @@ export default function Home(){
   <section id="contacto" className={styles.publicSection}>
    <div className={styles.sectionTitle}><span>CONTACTO</span><h2>Conectemos tu negocio con el mundo agro</h2><p>Consultas comerciales, soporte de la plataforma y alianzas estratégicas.</p></div>
    <div className={styles.contactGrid}>
-    <article className={styles.contactCard}><span>✉</span><div><strong>Correo de contacto</strong><a href="mailto:soporte@agrobrokeria.online">soporte@agrobrokeria.online</a><small>Escribinos para recibir asistencia o información.</small></div></article>
+    <article className={styles.contactCard}><span>✉</span><div><strong>Correo de contacto</strong><Link href="/soporte">Abrir centro de soporte</Link><small>Escribinos para recibir asistencia o información.</small></div></article>
     <article className={styles.contactCard}><span>🌎</span><div><strong>Alcance internacional</strong><p>Productores, acopios, compradores, traders y operadores logísticos.</p><small>Una plataforma para conectar oportunidades agrocomerciales.</small></div></article>
     <article className={styles.contactCta}><div><strong>¿Listo para operar?</strong><p>Creá tu cuenta para publicar, negociar y gestionar operaciones.</p></div><Link href="/register">Crear cuenta gratis →</Link></article>
    </div>
   </section>
-  <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><div style={{display:"flex",gap:"16px",alignItems:"center",flexWrap:"wrap"}}><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><a href="mailto:soporte@agrobrokeria.online">Contacto</a><Link href="/register">Crear cuenta →</Link></div></footer>
+  <footer className={styles.footer}><div><strong>AgroBrokerIA</strong><span>Mercado · IA · Negociación · Operaciones · Finanzas</span></div><div style={{display:"flex",gap:"16px",alignItems:"center",flexWrap:"wrap"}}><Link href="/terminos">Términos y Condiciones</Link><Link href="/privacidad">Política de Privacidad</Link><Link href="/soporte">Contacto</Link><Link href="/register">Crear cuenta →</Link></div></footer>
  </main>
 }
