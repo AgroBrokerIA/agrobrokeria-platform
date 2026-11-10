@@ -21,8 +21,8 @@ function enviarSOAP(soap: string, soapAction?: string): Promise<{
         headers: {
           "Content-Type": "text/xml; charset=utf-8",
           Accept: "text/xml",
-          ...(soapAction !== undefined ? { SOAPAction: `"${soapAction}"` } : {}),
           "User-Agent": "AgroBrokerIA/1.0",
+          ...(soapAction !== undefined ? { SOAPAction: `"${soapAction}"` } : {}),
           "Content-Length": Buffer.byteLength(soap, "utf8"),
         },
       },
@@ -83,7 +83,7 @@ function validarRespuesta(
 
     throw new Error(
       `${operacion}: HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
-      `Respuesta: ${cuerpo || "[vacía]"}; bytes=${Buffer.byteLength(response.body, "utf8")}`
+      `Respuesta: ${cuerpo || "[vacía]"}`
     );
   }
 
@@ -92,11 +92,13 @@ function validarRespuesta(
       (texto, tag) => redactarXmlTag(texto, tag),
       response.body
     ).slice(0, 1200);
+    const bytes = Buffer.byteLength(response.body, "utf8");
 
     throw new Error(
       `${operacion}: ARCA no devolvió una respuesta SOAP válida. ` +
       `HTTP ${response.status}; Content-Type ${response.contentType ?? "desconocido"}; ` +
-      `Respuesta: ${cuerpo || "[vacía]"}; bytes=${Buffer.byteLength(response.body, "utf8")}`
+      `bytes=${bytes}; endpoint=${arcaConfig.wscpeUrl}; ` +
+      `Respuesta: ${cuerpo || "[vacía]"}`
     );
   }
 }
