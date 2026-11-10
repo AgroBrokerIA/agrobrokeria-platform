@@ -104,9 +104,9 @@ export default function PublicationForm(props: any) {
   const [productos, setProductos] = useState<Producto[]>([]);
   const [monedas, setMonedas] = useState<Moneda[]>([]);
   const [incoterms, setIncoterms] = useState<Incoterm[]>([]);
-  const [provincias, setProvincias] = useState<{id:number;nombre:string}[]>([]);
+  const [provincias, setProvincias] = useState<{id:number;nombre:string;codigo:string}[]>([]);
   const [localidades, setLocalidades] = useState<{id:number;nombre:string;provincia_id:number}[]>([]);
-  const [puertos, setPuertos] = useState<{id:number;nombre:string;codigo:string}[]>([]);
+  const [puertos, setPuertos] = useState<{id:number;nombre:string}[]>([]);
 
   const [form, setForm] = useState<Formulario>({
     tipo: "VENTA",
