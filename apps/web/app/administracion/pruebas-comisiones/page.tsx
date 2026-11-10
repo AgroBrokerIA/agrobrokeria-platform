@@ -15,7 +15,7 @@ export default function PruebasComisionesPage(){
  useEffect(()=>{void load()},[load]);
  async function review(row:Prueba,result:"SIMULACION_REVISADA"|"SIMULACION_RECHAZADA"){
   setBusy(row.id);setError("");setMessage("");
-  const {error:e}=await supabase.rpc("revisar_simulacion_comision_plataforma",{p_prueba_id:row.id,p_resultado:result,p_observaciones:notes[row.id]||null});
+  const {error:e}=await supabase.rpc("revisar_simulacion_comision_plataforma",{p_prueba_id:row.id,p_resultado:result,p_observaciones:notes[row.id]||""});
   if(e)setError(e.message);else{setMessage(result==="SIMULACION_REVISADA"?"Prueba aprobada. No se registró un pago real ni se modificó la operación.":"Prueba rechazada. No se registró un pago real ni se modificó la operación.");await load();}
   setBusy("");
  }
