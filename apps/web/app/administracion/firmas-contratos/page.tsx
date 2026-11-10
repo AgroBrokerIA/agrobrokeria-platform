@@ -18,7 +18,7 @@ export default function RevisarFirmasPage(){
   const note=(notes[r.id]||"").trim();if(result==="RECHAZADA"&&!note){setError("Para rechazar, indicá el motivo.");return;}
   if(!window.confirm(result==="APROBADA"?"Confirmás que revisaste el PDF y validás esta copia firmada?":"Confirmás el rechazo de esta copia?"))return;
   setBusy(r.id);setError("");setMessage("");
-  const {error:e}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:r.id,p_resultado:result,p_observaciones:note||null});
+  const {error:e}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:r.id,p_resultado:result,p_observaciones:note||""});
   if(e)setError(e.message);else{setMessage(result==="APROBADA"?"Copia validada. La firma de esta parte quedó registrada.":"Copia rechazada. La parte deberá cargar una nueva versión firmada.");await load();}
   setBusy("");
  }
