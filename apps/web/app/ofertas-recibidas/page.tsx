@@ -119,7 +119,7 @@ export default function OfertasRecibidasPage() {
       setLoading(true);
       setError("");
       const { data: monedaData } = await supabase.from("monedas").select("id,codigo");
-      setMonedas(Object.fromEntries((monedaData || []).filter((m) => m.codigo !== null).map((m) => [m.id, m.codigo])));
+      setMonedas(Object.fromEntries((monedaData || []).reduce<Array<[number, string]>>((acc, m) => { if (m.codigo !== null) acc.push([m.id, m.codigo]); return acc; }, [])));
 
       // =====================================================
       // 1. USUARIO AUTENTICADO
