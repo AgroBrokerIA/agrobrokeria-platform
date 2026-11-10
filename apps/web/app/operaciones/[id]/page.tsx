@@ -101,7 +101,7 @@ export default function DetalleOperacion() {
     }
 
     if (!wf) {
-      setOperacion(op);
+      setOperacion({ ...op, estado: op.estado ?? "PENDIENTE", importe_total: op.importe_total ?? 0 });
       setWorkflow({ id: "", etapa_actual_id: "", estado: "SIN_WORKFLOW", orden: 0, etapa_actual: "Workflow pendiente de configuración" });
       setEtapas([]);
       setHistorial([]);
@@ -171,17 +171,17 @@ export default function DetalleOperacion() {
       return;
     }
 
-    setOperacion(op);
+    setOperacion({ ...op, estado: op.estado ?? "PENDIENTE", importe_total: op.importe_total ?? 0 });
 
     setWorkflow({
       id: wf.id,
-      etapa_actual_id: wf.etapa_actual_id,
-      estado: wf.estado,
+      etapa_actual_id: wf.etapa_actual_id ?? "",
+      estado: wf.estado ?? "PENDIENTE",
       orden: etapaActual?.orden ?? 1,
       etapa_actual: etapaActual?.nombre ?? "Sin etapa",
     });
 
-    setEtapas(etapasData ?? []);
+    setEtapas((etapasData ?? []).map((etapa) => ({ ...etapa, descripcion: etapa.descripcion ?? "" })));
 
     setHistorial(
       (historialData ?? []).map((item: any) => ({
