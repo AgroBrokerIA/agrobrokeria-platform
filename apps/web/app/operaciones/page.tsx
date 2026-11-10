@@ -2333,7 +2333,7 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
       ...actual,
       [operacionId]: {
         ...actual[operacionId],
-        ...controlGuardado,
+        ...controlGuardado as Partial<ControlComercialData>,
       },
     }));
 
