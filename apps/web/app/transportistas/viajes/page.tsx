@@ -60,8 +60,8 @@ export default function MisViajesTransportistaPage(){
   setBusy(true);setError("");setMensaje("");
   const origen=["ARRIBO_ORIGEN","INICIO_CARGA","CARGA_FINALIZADA","SALIDA_ORIGEN"].includes(estado);
   const {error:e}=await supabase.rpc("registrar_evento_viaje",{
-   p_viaje_id:v.id,p_estado:estado,p_lugar:origen?(v.origen||v.origen_nombre):(v.destino||v.destino_nombre),
-   p_empresa_nombre:origen?(v.origen_nombre||""):(v.destino_nombre||""),p_toneladas:null,p_observaciones:null
+   p_viaje_id:v.id,p_estado:estado,p_lugar:(origen?(v.origen||v.origen_nombre):(v.destino||v.destino_nombre))||"",
+   p_empresa_nombre:origen?(v.origen_nombre||""):(v.destino_nombre||""),p_toneladas:null as unknown as number,p_observaciones:""
   });
   if(e)setError("No se pudo actualizar el viaje: "+e.message);
   else setMensaje("Seguimiento actualizado: "+label(estado));
