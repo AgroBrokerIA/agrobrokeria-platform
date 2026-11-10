@@ -196,7 +196,7 @@ export default function ContratosPage(){
    if(cancelJustification.trim().length<10){setError("El justificativo debe tener al menos 10 caracteres.");return;}
    setCancelBusy(true);setError("");setMessage("");
    try{
-     const {data,error}=await supabase.rpc("solicitar_cancelacion_contrato",{p_operacion_id:selected.operacion_id,p_motivo:cancelReason.trim(),p_justificativo:cancelJustification.trim(),p_evidencia_url:cancelEvidence.trim()||null});
+     const {data,error}=await supabase.rpc("solicitar_cancelacion_contrato",{p_operacion_id:selected.operacion_id,p_motivo:cancelReason.trim(),p_justificativo:cancelJustification.trim(),p_evidencia_url:cancelEvidence.trim()||""});
      if(error)throw error;
      setMessage("Solicitud de cancelación registrada y enviada a revisión. El contrato sigue vigente hasta que se apruebe.");
      setCancelReason("");setCancelJustification("");setCancelEvidence("");
@@ -212,7 +212,7 @@ export default function ContratosPage(){
    if(extensionJustification.trim().length<10){setError("El justificativo debe explicar con detalle por qué necesitás más tiempo.");return;}
    setExtensionBusy(true);setError("");setMessage("");
    try{
-     const {error}=await supabase.rpc("solicitar_prorroga_contrato",{p_operacion_id:selected.operacion_id,p_dias_solicitados:days,p_motivo:extensionReason.trim(),p_justificativo:extensionJustification.trim(),p_evidencia_url:extensionEvidence.trim()||null,p_datos_adicionales:{detalle_necesidad:extensionDetails.trim()||null}});
+     const {error}=await supabase.rpc("solicitar_prorroga_contrato",{p_operacion_id:selected.operacion_id,p_dias_solicitados:days,p_motivo:extensionReason.trim(),p_justificativo:extensionJustification.trim(),p_evidencia_url:extensionEvidence.trim()||"",p_datos_adicionales:{detalle_necesidad:extensionDetails.trim()||null}});
      if(error) throw error;
      setMessage("Solicitud de prórroga enviada para auditoría. El plazo no cambia hasta que sea aprobada.");
      setExtensionReason("");setExtensionJustification("");setExtensionEvidence("");setExtensionDetails("");setExtensionDays("1"); await load();
@@ -376,7 +376,7 @@ export default function ContratosPage(){
      const {data:{session}}=await supabase.auth.getSession();
      const ua=typeof navigator!=="undefined"?navigator.userAgent:null;
      const ip=null;
-     const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip,p_user_agent:ua});
+     const {error}=await supabase.rpc("aceptar_confidencialidad_operacion",{p_operacion_id:form.operacionId,p_rol:rol,p_ip:ip as string,p_user_agent:ua as string});
      if(error)throw error;
      setMessage("Confidencialidad aceptada y registrada para "+rol+". Esta aceptación queda auditada y es obligatoria para cerrar la operación.");
      await cargarConfidencialidad(form.operacionId);
