@@ -39,7 +39,7 @@ export default function Videollamadas(){
    const {data,error:rpcError}=await supabase.rpc("crear_videollamada_comercial",{p_operacion_id:operationId||null,p_negociacion_id:null,p_inicio:new Date(startAt).toISOString(),p_titulo:title.trim()||"Reunión comercial AgroBrokerIA"});
    if(rpcError)throw rpcError;
    const response=await fetch("/api/videollamadas/google",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({videollamada_id:data})});
-   const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo crear Google Meet.");
+   const result=await response.json();if(!response.ok)throw new Error(result.detail||result.error||"No se pudo crear Google Meet.");if(result.provider_pending)setNotice(result.detail||"La reunión quedó agendada; el enlace externo está pendiente.");
    setOperationId("");setStartAt("");setView("reuniones");await load();
   }catch(e){setError(e instanceof Error?e.message:"No se pudo crear la videollamada.")}finally{setBusy(false)}
  }

@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 import { arcaConfig, getArcaCertificateMaterial } from "@/lib/arca/config";
-import { consultarProvinciasWSCPE } from "@/lib/arca/wscpe";
+import { consultarProvinciasWSCPE, probarWSCPE } from "@/lib/arca/wscpe";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -187,8 +187,11 @@ export async function GET(request: NextRequest) {
 
     if (checks.arca_environment.ok && checks.arca_credentials.ok) {
       try {
+        // Separate transport/service availability from authenticated business calls.
+        // The official WSCPE dummy method requires an empty SOAP Body.
+        await probarWSCPE();
         await consultarProvinciasWSCPE();
-        checks.arca_connectivity = { ok: true, detail: "WSCPE respondió correctamente." };
+        checks.arca_connectivity = { ok: true, detail: "WSCPE dummy y ConsultarProvincias respondieron correctamente." };
       } catch (error) {
         const raw = error instanceof Error ? error.message : "No fue posible verificar WSCPE.";
         const detail = raw.includes("Computador no autorizado a acceder al servicio")

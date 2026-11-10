@@ -24,12 +24,26 @@ export default function CumplimientosPage(){
    const {data:profile,error:profileError}=await supabase.from("profiles").select("active_company_id").eq("id",user.id).maybeSingle();
    if(profileError) throw profileError;
    const companyId=(profile as any)?.active_company_id;
-   if(!companyId) throw new Error("No se encontró una empresa activa.");
+   const loadPersonalCompliance=async()=>{
+    const {data:onboarding}=await supabase.from("account_onboarding").select("first_name,last_name,legal_name,review_status,is_verified,income_tax_status,vat_status").eq("user_id",user.id).maybeSingle();
+    const {data:personalDocs, error:personalDocsError}=await supabase.from("account_onboarding_documents").select("id,document_type,file_name,review_status,review_notes,created_at").eq("user_id",user.id).order("created_at",{ascending:false});
+    if(personalDocsError)throw personalDocsError;
+    const fullName=[onboarding?.first_name,onboarding?.last_name].filter(Boolean).join(" ").trim();
+    setCompany({nombre:fullName||onboarding?.legal_name||"Cuenta personal"});
+    const mappedDocs=(personalDocs||[]).map((d:any)=>({id:d.id,nombre:d.file_name||d.document_type||"Documento personal",categoria:d.document_type||"Identidad",estado:/APPROV|VERIFIC|ACEPT/i.test(d.review_status||"")?"Verificado":/RECHAZ|OBSERV/i.test(d.review_status||"")?"Con observaciones":"Pendiente",vence:null,icon:iconFor(d.document_type||"identidad")}));
+    const taxStatus=[onboarding?.income_tax_status,onboarding?.vat_status].filter(Boolean).join(" · ");
+    if(taxStatus||onboarding){mappedDocs.push({id:"personal-fiscal",nombre:"Datos fiscales personales",categoria:"Fiscal",estado:taxStatus?"Registrado":"Pendiente",vence:null,icon:iconFor("fiscal")});}
+    setDocs(mappedDocs);
+    setReqs([{id:"personal-kyc",nombre:"Identidad y KYC personal",estado:onboarding?.is_verified?"VERIFICADO":onboarding?.review_status||"PENDIENTE",obligatorio:true,verificado_at:null}]);
+    setCerts([]);
+   };
+   if(!companyId){await loadPersonalCompliance();setLoading(false);return;}
    const {data:c}=await supabase.from("companies").select("id,nombre,razon_social").eq("id",companyId).maybeSingle();
    setCompany(c);
-   const {data:map}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).maybeSingle();
+   const {data:map,error:mapError}=await supabase.from("company_empresa_map").select("empresa_id").eq("company_id",companyId).order("verified",{ascending:false}).limit(1).maybeSingle();
+   if(mapError)throw mapError;
    const empresaId=(map as any)?.empresa_id;
-   if(!empresaId){setLoading(false);return;}
+   if(!empresaId){await loadPersonalCompliance();setLoading(false);return;}
    const [{data:d,error:de},{data:r,error:re},{data:ce,error:cee}]=await Promise.all([
     supabase.from("empresas_documentos").select("id,tipo_documento,nombre_archivo,fecha_vencimiento,verificado,observaciones").eq("empresa_id",empresaId).order("fecha_vencimiento",{ascending:true,nullsFirst:false}),
     supabase.from("empresas_verificacion_requisitos").select("id,requisito_id,estado,verificado_at").eq("empresa_id",empresaId).order("actualizado_at",{ascending:false}),
@@ -57,7 +71,7 @@ export default function CumplimientosPage(){
  return <main className="compliance-page">
   <header className="compliance-hero"><div><h1>Cumplimientos</h1><p>{companyName} · seguimiento normativo, fiscal, legal y documental basado en registros reales.</p></div><Link className="compliance-download" href="/reportes">⇩ &nbsp; Ir a reportes</Link></header>
   {error&&<div className="module-alert module-alert-error">{error}</div>}
-  <nav className="compliance-tabs"><Link className="active" href="/cumplimientos">▣ &nbsp; Resumen</Link><Link href="/documentos">▤ &nbsp; Documentación</Link><Link href="/verificaciones">▣ &nbsp; KYC</Link><Link href="/facturas">▣ &nbsp; Cumplimiento fiscal</Link><Link href="/terminos">▣ &nbsp; Normativas</Link><Link href="/notificaciones">△ &nbsp; Alertas</Link><Link href="/historial">▤ &nbsp; Historial</Link></nav>
+  <nav className="compliance-tabs"><Link className="active" href="/cumplimientos">▣ &nbsp; Resumen</Link><Link href="/documentos">▤ &nbsp; Documentación</Link><Link href="#kyc">▣ &nbsp; KYC</Link><Link href="#fiscal">▣ &nbsp; Cumplimiento fiscal</Link><Link href="/terminos">▣ &nbsp; Normativas</Link><Link href="/notificaciones">△ &nbsp; Alertas</Link><Link href="/historial">▤ &nbsp; Historial</Link></nav>
   {loading?<div className="module-empty"><div className="module-empty-icon">◷</div><h2>Cargando cumplimiento…</h2></div>:<>
   <section className="compliance-kpis">
    <article className="ckpi green"><I>♢</I><div><small>Estado general</small><strong>{compliancePct}%</strong><div className="progress"><b style={{width:compliancePct+"%"}}/></div><em>Calculado con requisitos registrados</em></div></article>
@@ -66,7 +80,7 @@ export default function CumplimientosPage(){
    <article className="ckpi red"><I>△</I><div><small>Alertas derivadas de datos</small><strong>{expiredDocs}</strong><div className="progress"><b style={{width:(docs.length?expiredDocs/docs.length*100:0)+"%"}}/></div><em>Documentos vencidos</em></div></article>
   </section>
   <div className="compliance-main">
-   <section className="compliance-panel compliance-docs"><div className="cp-title"><h2>Documentación registrada</h2><Link className="outline-blue" href="/documentos">⇧ &nbsp; Gestionar documentos</Link></div>
+   <section id="fiscal" className="compliance-panel compliance-docs"><div className="cp-title"><h2>Documentación registrada</h2><Link className="outline-blue" href="/documentos">⇧ &nbsp; Gestionar documentos</Link></div>
     <div className="doc-filters"><b>Todos <i>{docs.length}</i></b><span>Verificados <i>{validDocs}</i></span><span>Pendientes <i className="yellow">{dueDocs}</i></span><span>Vencidos <i className="red">{expiredDocs}</i></span></div>
     <div className="doc-table"><div className="doc-head"><span>Documento</span><span>Categoría</span><span>Estado</span><span>Vencimiento</span><span>Acciones</span></div>{docs.length?docs.map(d=><div className="doc-row" key={d.id}><I>{d.icon}</I><div><strong>{d.nombre}</strong></div><span>{d.categoria}</span><b className={"doc-status "+(d.estado==="Verificado"?"ok":d.estado==="Vencido"?"bad":"soon")}>{d.estado}</b><span>{dateLabel(d.vence)}</span><div><Link href="/documentos">Ver</Link><button className="dots" onClick={()=>{window.location.href="/documentos"}} title="Gestionar documento">⋮</button></div></div>):<div className="module-empty">No hay documentación registrada para esta empresa.</div>}</div>
    </section>
@@ -76,7 +90,7 @@ export default function CumplimientosPage(){
    </aside>
   </div>
   <div className="compliance-bottom">
-   <section className="compliance-panel categories"><h2>Requisitos por estado</h2>{["VERIFICADO","PRESENTADO","PENDIENTE","RECHAZADO","NO_APLICA"].map(s=>{const n=reqs.filter(r=>r.estado===s).length;return <div className="cat-row" key={s}><span>{s}</span><div><b className={s==="VERIFICADO"?"green":s==="RECHAZADO"?"orange":"blue"} style={{width:(reqs.length?n/reqs.length*100:0)+"%"}}/></div><strong>{n}</strong></div>})}</section>
+   <section id="kyc" className="compliance-panel categories"><h2>Requisitos por estado</h2>{["VERIFICADO","PRESENTADO","PENDIENTE","RECHAZADO","NO_APLICA"].map(s=>{const n=reqs.filter(r=>r.estado===s).length;return <div className="cat-row" key={s}><span>{s}</span><div><b className={s==="VERIFICADO"?"green":s==="RECHAZADO"?"orange":"blue"} style={{width:(reqs.length?n/reqs.length*100:0)+"%"}}/></div><strong>{n}</strong></div>})}</section>
    <section className="compliance-panel alerts"><div className="cp-title"><h2>Alertas y pendientes</h2><Link href="/notificaciones">Ver todas</Link></div>{expiredDocs?docs.filter(d=>d.estado==="Vencido").map(d=><div className="alert-row" key={d.id}><I>△</I><div><strong>{d.nombre}</strong><span>El documento figura como vencido.</span></div><time>{dateLabel(d.vence)}</time><b className="bad">Vencido</b></div>):<div className="module-empty">No hay alertas derivadas de documentos vencidos.</div>}</section>
    <section className="compliance-panel history"><div className="cp-title"><h2>Requisitos recientes</h2><Link href="/historial">Ver todos</Link></div>{reqs.slice(0,5).map(r=><div className="history-item" key={r.id}><i>✓</i><strong>{r.nombre}</strong><span>{r.estado}{r.verificado_at?" · "+new Date(r.verificado_at).toLocaleString("es-AR"):""}</span></div>)}{!reqs.length&&<div className="module-empty">No hay requisitos de verificación registrados.</div>}</section>
   </div></>}

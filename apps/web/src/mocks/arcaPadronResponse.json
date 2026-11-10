@@ -1,0 +1,41 @@
+{
+  "status": "success",
+  "source": "ARCA_MOCK_HOMOLOGACION",
+  "timestamp": "2026-11-09T11:00:00Z",
+  "datosGenerales": {
+    "cuitCuil": "27134987001",
+    "razonSocial": "SEQUEIRA SAMA_MOCK_TEST",
+    "apellido": "SEQUEIRA",
+    "nombre": "SAMA_MOCK_TEST",
+    "tipoPersona": "FISICA",
+    "estadoClave": "ACTIVO",
+    "fechaNacimiento": "1988-05-14",
+    "genero": "FEMENINO",
+    "nacionalidad": "ARGENTINA"
+  },
+  "datosRegimenGeneral": {
+    "impuestos": [
+      {"idImpuesto": 20, "descripcion": "GANANCIAS SOCIEDADES"},
+      {"idImpuesto": 30, "descripcion": "IVA RESPONSABLE INSCRIPTO"}
+    ],
+    "actividades": [
+      {
+        "idActividad": 661121,
+        "descripcion": "Servicios de mercados de futuros y opciones y corretaje de granos",
+        "periodo": 2026
+      },
+      {
+        "idActividad": 620100,
+        "descripcion": "Servicios de consultoría, diseño y desarrollo de software",
+        "periodo": 2026
+      }
+    ]
+  },
+  "domicilioFiscal": {
+    "direccion": "Mitre 800",
+    "localidad": "Venado Tuerto",
+    "provincia": "Santa Fe",
+    "codigoPostal": "S2600",
+    "pais": "ARGENTINA"
+  }
+}

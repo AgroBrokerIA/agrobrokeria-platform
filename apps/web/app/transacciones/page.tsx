@@ -28,8 +28,8 @@ function rowIcon(t:string){if(t==="Cobro")return"down";if(t==="Comisión")return
 function rowClass(t:string){if(t==="Cobro")return"green";if(t==="Comisión")return"orange";if(t==="Transferencia"||t==="Retiro")return"red";return"blue"}
 
 export default function TransaccionesPage(){
- const[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[actionMenu,setActionMenu]=useState<{id:string;top:number;left:number}|null>(null),[detailModal,setDetailModal]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
- useEffect(()=>{(async()=>{setLoading(true);
+ const[isAdmin,setIsAdmin]=useState(false),[rows,setRows]=useState<Tx[]>([]),[selected,setSelected]=useState<Tx|null>(null),[actionMenu,setActionMenu]=useState<{id:string;top:number;left:number}|null>(null),[detailModal,setDetailModal]=useState<Tx|null>(null),[query,setQuery]=useState(""),[type,setType]=useState("Todos"),[status,setStatus]=useState("Todos"),[currency,setCurrency]=useState("Todas"),[loading,setLoading]=useState(true),[txTab,setTxTab]=useState("Todas"),[page,setPage]=useState(1),[pageSize,setPageSize]=useState(10);
+ useEffect(()=>{(async()=>{setLoading(true);const{data:adminFlag}=await supabase.rpc("es_administrador_plataforma");setIsAdmin(adminFlag===true);
   const {data:ops}=await supabase.from("operaciones").select("id,codigo,importe_total,estado,fecha_operacion,creada_en,moneda_id").order("creada_en",{ascending:false}).limit(80);
   const operationIds=(ops||[]).map((x:any)=>x.id).filter(Boolean);
   const [pay,com]=operationIds.length?await Promise.all([
@@ -45,7 +45,7 @@ export default function TransaccionesPage(){
   for(const x of ops||[]) out.push({id:"o-"+x.id,date:x.fecha_operacion||x.creada_en,type:"Liquidación",description:"Liquidación de operación",ref:x.codigo||"OP-"+String(x.id).slice(0,8).toUpperCase(),company:"Cuenta vinculada",currency:mc[x.moneda_id]||"",amount:Number(x.importe_total||0),status:x.estado||"Completada",operationId:x.id});
   out.sort((a,b)=>+new Date(b.date)-+new Date(a.date));setRows(out);setSelected(out[0]||null);setLoading(false);
  })()},[]);
- const filtered=useMemo(()=>rows.filter(r=>(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,query,type,status,currency]);
+ const filtered=useMemo(()=>rows.filter(r=>(isAdmin||r.type!=="Comisión")&&(!query||[r.type,r.description,r.ref,r.company].join(" ").toLowerCase().includes(query.toLowerCase()))&&(type==="Todos"||r.type===type)&&(status==="Todos"||r.status===status)&&(currency==="Todas"||r.currency===currency)),[rows,isAdmin,query,type,status,currency]);
  const totals=useMemo(()=>{const sum=(predicate:(r:Tx)=>boolean)=>rows.filter(predicate).reduce((m,r)=>{m[r.currency]=(m[r.currency]||0)+Math.abs(r.amount);return m},{} as Record<string,number>);return {in:sum(r=>r.amount>0&&r.type!=="Comisión"),out:sum(r=>r.amount<0),comm:sum(r=>r.type==="Comisión")}},[rows]);
  const formatTotals=(values:Record<string,number>)=>Object.entries(values).length?Object.entries(values).map(([c,v])=>money(v,c)).join(" · "):"Sin movimientos registrados";
  const currencies=Array.from(new Set(rows.map(r=>r.currency)));
@@ -56,13 +56,13 @@ export default function TransaccionesPage(){
  function exportCsv(){const header=["Fecha","Tipo","Descripción","Referencia","Empresa","Moneda","Monto","Estado"];const lines=filtered.map(r=>[r.date,r.type,r.description,r.ref,r.company,r.currency,String(r.amount),r.status].map(v=>JSON.stringify(String(v))).join(","));const blob=new Blob([header.join(",")+"\n"+lines.join("\n")],{type:"text/csv;charset=utf-8"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="agrobrokeria-transacciones.csv";a.click();URL.revokeObjectURL(a.href)}
  useEffect(()=>{setPage(1)},[query,type,status,currency,pageSize]);
  return <main className="transactions-page">
-  <header className="transactions-hero"><div><h1>Transacciones</h1><p>Gestiona todas las transacciones financieras de tus operaciones, pagos, comisiones y retiros.</p></div><Link className="new-transaction" href="/pagos">＋ Gestionar pagos</Link></header>
-  <nav className="transactions-tabs">{[["Todas","Todos los tipos"],["Pagos","Pago"],["Cobros","Cobro"],["Comisiones","Comisión"],["Retiros","Retiro"],["Transferencias","Transferencia"],["Liquidaciones","Liquidación"]].map(([x,v])=><button key={x} className={txTab===x?"active":""} onClick={()=>{setTxTab(x);setType(x==="Todas"?"Todos":v)}}>{x}</button>)}</nav>
+  <header className="transactions-hero"><div><h1>Transacciones</h1><p>Gestiona todas las pagos y liquidaciones de tus operaciones.</p></div><Link className="new-transaction" href="/pagos">＋ Gestionar pagos</Link></header>
+  <nav className="transactions-tabs">{[["Todas","Todos los tipos"],["Pagos","Pago"],["Liquidaciones","Liquidación"]].map(([x,v])=><button key={x} className={txTab===x?"active":""} onClick={()=>{setTxTab(x);setType(x==="Todas"?"Todos":v)}}>{x}</button>)}</nav>
   <section className="transactions-kpis">
    <article className="tk green"><span><Icon name="wallet" size={25}/></span><div><small>Saldo disponible</small><strong>—</strong><em>Saldo no sincronizado</em></div></article>
    <article className="tk blue"><span><Icon name="down" size={25}/></span><div><small>Total ingresado</small><strong>{formatTotals(totals.in)}</strong><em>Ingresos registrados</em></div></article>
    <article className="tk pink"><span><Icon name="up" size={25}/></span><div><small>Total egresado</small><strong>{formatTotals(totals.out)}</strong><em>Egresos registrados</em></div></article>
-   <article className="tk amber"><span><Icon name="percent" size={25}/></span><div><small>Comisiones generadas</small><strong>{formatTotals(totals.comm)}</strong><em>Comisiones registradas</em></div></article>
+   {isAdmin&&<article className="tk amber"><span><Icon name="percent" size={25}/></span><div><small>Comisiones generadas</small><strong>{formatTotals(totals.comm)}</strong><em>Comisiones registradas</em></div></article>}
   </section>
   <div className="transactions-layout" onClick={()=>{if(actionMenu)setActionMenu(null)}}>
    <section className="transactions-main">
