@@ -13,7 +13,7 @@ export default function ReprogramacionesPage(){
   supabase.from("viajes").select("id,operacion_id,estado,destino,patente_camion").eq("transportista_profile_id",user.id).not("estado","in","(ENTREGADO_CONFIRMADO,CANCELADO)").order("creado_at",{ascending:false}),
   supabase.from("congestion_puertos").select("terminal_id,nivel,camiones_activos_en_espera,tiempo_espera_promedio_minutos,terminales_puerto(id,nombre,puerto)").in("nivel",["ALTA","CRITICA"]),
   supabase.from("terminales_puerto").select("id,nombre").eq("activa",true).order("nombre"),
-  supabase.from("solicitudes_reprogramacion_puerto").select("id,viaje_id,terminal_id,terminal_alternativa_id,tipo_solicitud,motivo,estado,creado_at,viajes(patente_camion,destino),terminales_puerto(nombre)").order("creado_at",{ascending:false})
+  supabase.from("solicitudes_reprogramacion_puerto").select("id,viaje_id,terminal_id,terminal_alternativa_id,tipo_solicitud,motivo,estado,creado_at,viajes(patente_camion,destino),terminales_puerto!solicitudes_reprogramacion_puerto_terminal_id_fkey(nombre)").order("creado_at",{ascending:false})
  ]);
  if(t.error||c.error||a.error||r.error)setError(t.error?.message||c.error?.message||a.error?.message||r.error?.message||"No se pudieron cargar los datos.");
  setTrips(t.data||[]);setTerminals((c.data||[]).map((x:any)=>({id:x.terminal_id,nombre:x.terminales_puerto?.nombre||x.terminales_puerto?.puerto||"Terminal",puerto:x.terminales_puerto?.puerto||"",nivel:x.nivel,camiones_activos_en_espera:x.camiones_activos_en_espera,tiempo_espera_promedio_minutos:x.tiempo_espera_promedio_minutos})));
