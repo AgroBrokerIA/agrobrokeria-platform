@@ -77,7 +77,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   const q=Number(cantidad.replace(",","."));
   if(!Number.isFinite(p)||p<=0||!Number.isFinite(q)||q<=0){setError("Ingresá un precio y una cantidad mayores a cero.");return;}
   setAccionando(true);setError("");
-  const {error}=await supabase.rpc("crear_propuesta_publicacion",{p_conversacion_id:conversacionId,p_precio_tn:p,p_cantidad_tn:q,p_moneda_id:monedaId?Number(monedaId):null,p_observaciones:observaciones.trim()||null});
+  const {error}=await supabase.rpc("crear_propuesta_publicacion",{p_conversacion_id:conversacionId,p_precio_tn:p,p_cantidad_tn:q,p_moneda_id:(monedaId?Number(monedaId):null) as number,p_observaciones:observaciones.trim()||""});
   if(error)setError("No se pudo enviar la oferta: "+error.message);
   else {setMostrarOferta(false);setContraoferta(false);setObservaciones("");await cargarPropuestas();}
   setAccionando(false);
@@ -87,7 +87,7 @@ export default function PanelMensajesPublicacion({conversacionId,productoTitulo}
   setAccionando(true);setError("");
   const {data,error}=await supabase.rpc("responder_propuesta_publicacion",{p_propuesta_id:id,p_accion:accion});
   if(error)setError("No se pudo responder la oferta: "+error.message);
-  else if(accion==="ACEPTAR" && data?.operacion_id){window.location.assign("/operaciones");}
+  else if(accion==="ACEPTAR" && typeof data === "object" && data !== null && !Array.isArray(data) && "operacion_id" in data && typeof data.operacion_id === "string"){window.location.assign("/operaciones");}
   await cargarPropuestas();setAccionando(false);
  }
  const time=(s:string)=>new Date(s).toLocaleString("es-AR",{day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
