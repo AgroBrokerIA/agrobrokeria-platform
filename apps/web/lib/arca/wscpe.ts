@@ -101,12 +101,11 @@ function validarRespuesta(
 }
 
 export async function probarWSCPE() {
+  // ARCA WSCPE 2.2.1: dummy is an empty SOAP Body (no <dummy/> operation node).
   const soap = `<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsc="${WSCPE_NS}">
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/">
   <soapenv:Header/>
-  <soapenv:Body>
-    <wsc:dummy/>
-  </soapenv:Body>
+  <soapenv:Body/>
 </soapenv:Envelope>`;
 
   const response = await enviarSOAP(soap);
