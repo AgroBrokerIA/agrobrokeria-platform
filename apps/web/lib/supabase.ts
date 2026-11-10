@@ -1,6 +1,7 @@
+import type { Database } from "@/types/database";
 import { createClient } from "@supabase/supabase-js";
 
-type SupabaseInstance = ReturnType<typeof createClient>;
+type SupabaseInstance = ReturnType<typeof createClient<Database>>;
 
 let instance: SupabaseInstance | undefined;
 
@@ -16,7 +17,7 @@ function getSupabase(): SupabaseInstance {
     );
   }
 
-  instance = createClient(url, anonKey, {
+  instance = createClient<Database>(url, anonKey, {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
