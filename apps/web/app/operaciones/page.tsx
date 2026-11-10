@@ -11,6 +11,12 @@ import PanelMensajes from "@/components/mensajes/PanelMensajes";
 import { notificarParticipantesOperacion } from "@/lib/notificaciones/notificarParticipantesOperacion";
 import { sincronizarComisionIntermediario } from "@/lib/comisiones/sincronizarComisionIntermediario";
 
+function asJsonRecord(value: unknown): Record<string, unknown> | null {
+  return typeof value === "object" && value !== null && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
 type Operacion = {
   id: string;
   codigo: string;
@@ -179,7 +185,7 @@ type ComisionIntermediario = {
   contacto_id?: string | null;
   parte_operacion_id?: string | null;
 
-  lado: "VENDEDOR" | "COMPRADOR";
+  lado: string;
 
   tipo_comision:
     | "USD_TN"
@@ -522,17 +528,17 @@ export default function OperacionesPage() {
 
       const { data: monedaRows, error: monedaError } = await supabase.from("monedas").select("id,codigo");
       if (monedaError) console.error("No se pudieron cargar las monedas:", monedaError);
-      setMonedas(Object.fromEntries((monedaRows || []).map((m) => [m.id, m.codigo])));
+      setMonedas(Object.fromEntries((monedaRows || []).filter((m) => m.codigo !== null).map((m) => [m.id, m.codigo as string])));
 
       const operacionesNormalizadas = (operacionesDB || []).map((item) => ({
           id: item.id,
           codigo: item.codigo,
-          estado: item.estado,
+          estado: item.estado ?? "PENDIENTE",
           precio_tn: Number(item.precio_tn),
           cantidad_tn: Number(item.cantidad_tn),
-          importe_total: Number(item.importe_total),
+          importe_total: Number(item.importe_total ?? Number(item.precio_tn) * Number(item.cantidad_tn)),
           moneda_id: item.moneda_id ?? null,
-          fecha_operacion: item.fecha_operacion,
+          fecha_operacion: item.fecha_operacion ?? item.creada_en ?? new Date().toISOString(),
           publicacion_compra_id: item.publicacion_compra_id ?? null,
           publicacion_venta_id: item.publicacion_venta_id ?? null,
         }));
@@ -1158,20 +1164,32 @@ export default function OperacionesPage() {
       return;
     }
 
+    // guardar_contacto_comercial devuelve el UUID del registro, no el objeto.
+    if (typeof data !== "string" || !data) {
+      setError("El contacto se guardó sin devolver un identificador válido.");
+      return;
+    }
+    const { data: contactoGuardado, error: contactoError } = await supabase
+      .from("contactos_comerciales")
+      .select("*")
+      .eq("id", data)
+      .single();
+    if (contactoError || !contactoGuardado) {
+      setError("El contacto fue creado, pero no se pudo recuperar su ficha: " + (contactoError?.message || "registro no encontrado"));
+      return;
+    }
     setContactos((actuales) =>
-      [...actuales, data].sort((a, b) =>
-        a.nombre_razon_social.localeCompare(
-          b.nombre_razon_social
-        )
+      [...actuales, contactoGuardado].sort((a, b) =>
+        a.nombre_razon_social.localeCompare(b.nombre_razon_social)
       )
     );
 
     if (mostrarNuevoContacto === "VENDEDOR") {
-      setVendedorSeleccionado(data.id);
+      setVendedorSeleccionado(contactoGuardado.id);
     }
 
     if (mostrarNuevoContacto === "COMPRADOR") {
-      setCompradorSeleccionado(data.id);
+      setCompradorSeleccionado(contactoGuardado.id);
     }
 
     setMostrarNuevoContacto(null);
@@ -1944,9 +1962,15 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         return;
       }
 
+      const contratoGuardadoData = asJsonRecord(contratoGuardado);
+      const contratoGuardadoId = contratoGuardadoData?.id;
+      if (typeof contratoGuardadoId !== "string") {
+        setError("La base de datos guardó el contrato sin devolver un identificador válido.");
+        return;
+      }
       setContrato((actual) => ({
         ...actual,
-        id: contratoGuardado.id,
+        id: contratoGuardadoId,
         estado,
         contenido: contenidoContrato,
       }));
@@ -2126,9 +2150,15 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         acuerdoGuardado
       );
 
+      const acuerdoGuardadoData = asJsonRecord(acuerdoGuardado);
+      const acuerdoGuardadoId = acuerdoGuardadoData?.id;
+      if (typeof acuerdoGuardadoId !== "string") {
+        setError("La base de datos guardó el acuerdo sin devolver un identificador válido.");
+        return;
+      }
       setAcuerdo((actual) => ({
         ...actual,
-        id: acuerdoGuardado.id,
+        id: acuerdoGuardadoId,
         estado,
       }));
 
@@ -2294,11 +2324,16 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
       return false;
     }
 
+    const controlGuardado = asJsonRecord(data);
+    if (!controlGuardado) {
+      setError("La base de datos no devolvió el control comercial actualizado.");
+      return false;
+    }
     setControlesComerciales((actual) => ({
       ...actual,
       [operacionId]: {
         ...actual[operacionId],
-        ...data,
+        ...controlGuardado,
       },
     }));
 
@@ -2321,7 +2356,8 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         return false;
       }
       setVisadoAbierto(null);
-      setMensaje(avance?.ya_estaba_avanzada
+      const avanceData = asJsonRecord(avance);
+      setMensaje(avanceData?.ya_estaba_avanzada === true
         ? "Visado APROBADO. La operación ya estaba en Retención de comisión AgroBrokerIA."
         : "Visado APROBADO. La operación avanzó automáticamente a Retención de comisión AgroBrokerIA. Ahora corresponde cargar y verificar el comprobante bancario.");
       await cargarOperaciones();
@@ -2346,15 +2382,16 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
       cambios.intermediario_firma_estado !== undefined;
 
     if (esCambioDeFirma) {
+      const controlActualizado = asJsonRecord(data);
       const vendedorFirmado =
-        data.vendedor_firma_estado === "FIRMADO";
+        controlActualizado?.vendedor_firma_estado === "FIRMADO";
 
       const compradorFirmado =
-        data.comprador_firma_estado === "FIRMADO";
+        controlActualizado?.comprador_firma_estado === "FIRMADO";
 
       const intermediarioCumplido =
-        data.intermediario_firma_estado === "FIRMADO" ||
-        data.intermediario_firma_estado === "NO_CORRESPONDE";
+        controlActualizado?.intermediario_firma_estado === "FIRMADO" ||
+        controlActualizado?.intermediario_firma_estado === "NO_CORRESPONDE";
 
       if (
         vendedorFirmado &&
@@ -2735,7 +2772,8 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
               setError("No se pudo avanzar a Logística / Entrega: " + syncError.message);
               return;
             }
-            if (syncResult?.avanzada || syncResult?.ya_avanzada) {
+            const syncData = asJsonRecord(syncResult);
+            if (syncData?.avanzada === true || syncData?.ya_avanzada === true) {
               setMensaje("Las dos copias firmadas están aprobadas. La operación pasó a Logística / Entrega.");
               await cargarOperaciones();
               setDetalleOperacion(null);
@@ -2743,11 +2781,11 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
             }
             setMensaje("");
             const pendientes = [
-              syncResult?.copias_aprobadas !== undefined ? `copias aprobadas: ${syncResult.copias_aprobadas}/2` : null,
-              syncResult?.roles_requeridos !== undefined ? `partes requeridas: ${syncResult.roles_requeridos}/2` : null,
-              syncResult?.firmas_registradas !== undefined ? `firmas registradas: ${syncResult.firmas_registradas}/2` : null,
+              typeof syncData?.copias_aprobadas === "number" ? `copias aprobadas: ${syncData.copias_aprobadas}/2` : null,
+              typeof syncData?.roles_requeridos === "number" ? `partes requeridas: ${syncData.roles_requeridos}/2` : null,
+              typeof syncData?.firmas_registradas === "number" ? `firmas registradas: ${syncData.firmas_registradas}/2` : null,
             ].filter(Boolean).join(" · ");
-            setError("La base de datos todavía no autorizó el avance. " + (pendientes || "Revisá que ambas copias estén aprobadas para la misma versión del contrato.") + (syncResult?.orden ? ` · etapa actual: ${syncResult.orden}` : ""));
+            setError("La base de datos todavía no autorizó el avance. " + (pendientes || "Revisá que ambas copias estén aprobadas para la misma versión del contrato.") + (typeof syncData?.orden === "number" ? ` · etapa actual: ${syncData.orden}` : ""));
             return;
           } else if (ordenDetalle === 7) {
             return;
