@@ -118,10 +118,10 @@ export default function RegistroTransportistaPage() {
       await supabase.storage.from("agrobroker-private").remove(dniPath ? [fotoPath, dniPath] : [fotoPath]);
       setError("No se pudo registrar el perfil: " + rpcError.message);
     } else {
-      const truckResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteCamion,p_tipo:"CAMION",p_capacidad_tn:capacidadTn?Number(capacidadTn):null});
+      const truckResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteCamion,p_tipo:"CAMION",p_capacidad_tn:(capacidadTn?Number(capacidadTn):null) as number});
       let vehicleError=truckResult.error;
       if(!vehicleError && patenteAcoplado.trim()){
-        const trailerResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteAcoplado,p_tipo:"ACOPLADO",p_capacidad_tn:null});
+        const trailerResult=await supabase.rpc("registrar_vehiculo_transportista",{p_patente:patenteAcoplado,p_tipo:"ACOPLADO",p_capacidad_tn:null as unknown as number});
         vehicleError=trailerResult.error;
       }
       setOk(true);
