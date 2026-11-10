@@ -63,7 +63,7 @@ export default function MensajesPage(){
   const ids=[...new Set((comerciales.data||[]).map(m=>m.operacion_id).filter((id): id is string => typeof id === "string" && id.length > 0))];
   const opsResult=ids.length?await supabase.from("operaciones").select("id,codigo,estado,cantidad_tn,precio_tn,importe_total,modalidad_comercial,publicacion_compra_id,publicacion_venta_id").in("id",ids):{data:[],error:null};
   if(opsResult.error){setError(opsResult.error.message);setCargando(false);return}
-  const pubIds=[...new Set((opsResult.data||[]).flatMap(o=>[o.publicacion_compra_id,o.publicacion_venta_id]).filter(Boolean))];
+  const pubIds=[...new Set((opsResult.data||[]).flatMap(o=>[o.publicacion_compra_id,o.publicacion_venta_id]).filter((id): id is string => typeof id === "string" && id.length > 0))];
   const productsResult=pubIds.length?await supabase.from("publicaciones").select("id,producto_id,productos(nombre)").in("id",pubIds):{data:[],error:null};
   if(productsResult.error){setError(productsResult.error.message);setCargando(false);return}
   const productMap=new Map((productsResult.data||[]).map((p:any)=>[p.id,Array.isArray(p.productos)?p.productos[0]?.nombre:p.productos?.nombre]));
