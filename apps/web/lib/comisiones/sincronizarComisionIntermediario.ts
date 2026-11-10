@@ -37,7 +37,7 @@ export async function sincronizarComisionIntermediario({
     p_quien_abona: quienAbona,
     p_estado: estado,
     p_acuerdo_previo: acuerdoPrevio,
-    p_detalle: detalle,
+    p_detalle: detalle as string,
   });
 
   if (error) {
