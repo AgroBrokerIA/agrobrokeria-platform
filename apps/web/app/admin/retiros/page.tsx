@@ -134,7 +134,7 @@ export default function AdminRetirosPage() {
     if (monedasError) {
       setError(`No se pudieron cargar las monedas: ${monedasError.message}`);
     } else {
-      setMonedas(Object.fromEntries((monedasDB || []).filter((m) => m.codigo !== null).map((m) => [m.id, m.codigo])));
+      setMonedas(Object.fromEntries((monedasDB || []).reduce<Array<[number, string]>>((acc, m) => { if (m.codigo !== null) acc.push([m.id, m.codigo]); return acc; }, [])));
     }
 
     if (adminError) {
@@ -320,10 +320,10 @@ export default function AdminRetirosPage() {
         p_retiro_id: retiroSeleccionado.id,
         p_nuevo_estado: nuevoEstado,
         p_profile_id: user.id,
-        p_referencia: referencia || null,
-        p_comprobante_url: comprobanteUrl || null,
-        p_observaciones: observaciones || null,
-        p_motivo_rechazo: motivoRechazo.trim() || null,
+        p_referencia: referencia || "",
+        p_comprobante_url: comprobanteUrl || "",
+        p_observaciones: observaciones || "",
+        p_motivo_rechazo: motivoRechazo.trim() || "",
       }
     );
 
@@ -359,7 +359,7 @@ export default function AdminRetirosPage() {
       {
         p_medio_id: medioSeleccionado.id,
         p_estado: nuevoEstado,
-        p_motivo_rechazo: motivoRechazoMedio.trim() || null,
+        p_motivo_rechazo: motivoRechazoMedio.trim() || "",
       }
     );
 
