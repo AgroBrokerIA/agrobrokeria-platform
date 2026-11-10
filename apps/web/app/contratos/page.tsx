@@ -185,7 +185,7 @@ export default function ContratosPage(){
  async function revisarCancelacion(id:string,resultado:"APROBADA"|"RECHAZADA"){
    const observaciones=window.prompt(resultado==="APROBADA"?"Observación administrativa (opcional):":"Motivo del rechazo:");
    if(resultado==="RECHAZADA"&&!observaciones?.trim()){setError("Para rechazar, ingresá el motivo.");return;}
-   const {error}=await supabase.rpc("revisar_cancelacion_contrato",{p_cancelacion_id:id,p_resultado:resultado,p_observaciones:observaciones?.trim()||null});
+   const {error}=await supabase.rpc("revisar_cancelacion_contrato",{p_cancelacion_id:id,p_resultado:resultado,p_observaciones:observaciones?.trim()||""});
    if(error){setError(error.message);return;}
    setMessage(resultado==="APROBADA"?"Cancelación aprobada y registrada.":"Solicitud de cancelación rechazada.");
    await load();
@@ -265,7 +265,7 @@ export default function ContratosPage(){
    let reason:string|null=null;
    if(result==="RECHAZADA"){reason=window.prompt("Indicá el motivo del rechazo para que la parte pueda corregirlo:")?.trim()||null;if(!reason){setError("Para rechazar una firma tenés que indicar el motivo.");return;}}
    setError("");setMessage("");
-   const {error}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:id,p_resultado:result,p_observaciones:reason});
+   const {error}=await supabase.rpc("revisar_copia_firmada_contrato",{p_copia_id:id,p_resultado:result,p_observaciones:reason as string});
    if(error){setError(error.message);return;}
    setMessage(result==="APROBADA"?"Firma aprobada. Se verificará automáticamente la segunda firma para avanzar a Logística / Entrega.":"Firma rechazada. El motivo queda registrado para que la parte corrija y vuelva a cargar el PDF.");
    if(selected?.id)await loadSignedCopies(selected.id);
@@ -302,7 +302,7 @@ export default function ContratosPage(){
    if(!/^[0-9a-fA-F]{64}$/.test(externalSha.trim())){setError("Ingresá el SHA-256 de 64 caracteres hexadecimales del PDF firmado.");return;}
    setExternalBusy(true);setError("");setMessage("");
    try{
-     const {data,error}=await supabase.rpc("confirmar_firma_externa",{p_contrato_id:selected.id,p_documento_id:externalDocId,p_sha256:externalSha.trim(),p_nombre_archivo:externalDocs.find(d=>d.id===externalDocId)?.nombre_archivo||null});
+     const {data,error}=await supabase.rpc("confirmar_firma_externa",{p_contrato_id:selected.id,p_documento_id:externalDocId,p_sha256:externalSha.trim(),p_nombre_archivo:externalDocs.find(d=>d.id===externalDocId)?.nombre_archivo||""});
      if(error)throw error;
      setMessage("Firma externa confirmada. El contrato quedó registrado con evidencia EXTERNA_MANUAL y SHA-256.");
      setExternalSha(""); await load();
