@@ -54,7 +54,7 @@ export default function DocumentosPage(){
  async function aprobarDocumento(id:string){
    setError("");setMensaje("");
    try{
-     const {error}=await supabase.rpc("aprobar_documento_operacion",{p_documento_id:id,p_aprobado:true,p_observaciones:null});
+     const {error}=await supabase.rpc("aprobar_documento_operacion",{p_documento_id:id,p_aprobado:true,p_observaciones:""});
      if(error)throw error;
      setDocs(prev=>prev.map(d=>d.id===id?{...d,aprobado:true}:d));
      setMensaje("Documento aprobado correctamente. Ya puede utilizarse como evidencia documental del flujo.");
