@@ -72,7 +72,7 @@ export default function ComisionesPage(){
  const productSummary=useMemo(()=>Object.entries(filtered.reduce<Record<string,number>>((a,x)=>{const k=x.concepto||"Sin producto";a[k]=(a[k]||0)+n(x.total);return a},{})).sort((a,b)=>b[1]-a[1]).slice(0,6),[filtered]);
  async function pay(){
   if(!selected)return;const v=Number(amount);if(!Number.isFinite(v)||v<=0||v>n(selected.saldo_pendiente)||!method){setError("Verificá importe, saldo y medio de pago.");return}
-  setSaving(true);setError("");const {error:e}=await supabase.rpc("registrar_pago_comision",{p_comision_id:selected.id,p_importe:v,p_medio_pago:method,p_referencia_pago:reference.trim()||null});setSaving(false);
+  setSaving(true);setError("");const {error:e}=await supabase.rpc("registrar_pago_comision",{p_comision_id:selected.id,p_importe:v,p_medio_pago:method,p_referencia_pago:reference.trim()||""});setSaving(false);
   if(e){setError(e.message);return}setSelected(null);setAmount("");setMethod("");setReference("");void load();
  }
  function clearFilters(){setEstado("");setPago("");setProducto("");setIntermediario("");setMonedaFiltro("");setFromDate("");setToDate("");setMinVol("");setMaxVol("");setMinRate("");setMaxRate("")}
