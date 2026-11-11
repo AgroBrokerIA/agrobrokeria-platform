@@ -25,6 +25,10 @@ export async function POST(request:NextRequest){
   return NextResponse.json({ok:true,result},{headers:{"Cache-Control":"no-store","Vary":"Authorization"}});
  }catch(error){
   const detail=error instanceof Error?error.message:"ARCA_PADRON_LOOKUP_FAILED";
-  return fail(detail,502);
+  if(detail==="ARCA_WSAA_SERVICE_NOT_AUTHORIZED")return fail("ARCA_HOMOLOGACION_SERVICE_NOT_AUTHORIZED",424);
+  if(detail==="ARCA_CUIT_NO_CONFIGURADO")return fail("ARCA_CUIT_NOT_CONFIGURED",503);
+  if(detail.includes("Faltan las credenciales X.509"))return fail("ARCA_CREDENTIALS_NOT_CONFIGURED",503);
+  console.error("ARCA padrón: consulta no disponible",detail);
+  return fail("ARCA_PADRON_LOOKUP_UNAVAILABLE",502);
  }
 }
