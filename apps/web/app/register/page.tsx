@@ -78,7 +78,16 @@ export default function RegisterPage() {
         })
       }));
       setLookupMessage("Datos encontrados en el padrón de ARCA. Revisalos antes de confirmar el registro.");
-    }catch(e){setLookupMessage(e instanceof Error?e.message:"No se pudo consultar el padrón de ARCA.");}
+    }catch(e){
+      const reason=e instanceof Error?e.message:"ARCA_PADRON_LOOKUP_UNAVAILABLE";
+      if(reason==="ARCA_HOMOLOGACION_SERVICE_NOT_AUTHORIZED"){
+        setLookupMessage("ARCA todavía no autorizó el certificado de homologación para el servicio de consulta de padrón (ws_sr_constancia_inscripcion). El autocompletado se habilitará cuando se autorice ese servicio en Administrador de Relaciones de Clave Fiscal. Podés continuar el registro completando los datos manualmente.");
+      }else if(reason==="ARCA_CREDENTIALS_NOT_CONFIGURED"||reason==="ARCA_CUIT_NOT_CONFIGURED"){
+        setLookupMessage("La conexión de consulta con ARCA está incompleta. Podés continuar el registro completando los datos manualmente.");
+      }else{
+        setLookupMessage("No se pudo consultar el padrón de ARCA en este momento. Podés continuar el registro completando los datos manualmente.");
+      }
+    }
     finally{setLookupLoading(false);}
   }
   const upload = async (userId:string,file:File,type:string) => {
