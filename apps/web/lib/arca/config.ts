@@ -1,45 +1,68 @@
 import path from "node:path";
 
-const ARCA_DIR = path.join(process.cwd(), ".secrets", "arca");
-const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").trim().toUpperCase();
-const isProduction = ["PRODUCCION", "PRODUCTION", "PROD"].includes(environment);
-
-export const arcaConfig = {
-  cuit: process.env.ARCA_CUIT ?? "",
-  environment: isProduction ? "PRODUCCION" : "HOMOLOGACION",
-
-  certificatePath: path.join(
-    ARCA_DIR,
-    isProduction ? "agrobrokeria-wscpe.crt" : "agrobrokeria-wscpe-homo.crt"
-  ),
-
-  privateKeyPath: path.join(
-    ARCA_DIR,
-    isProduction ? "agrobrokeria-wscpe.key" : "agrobrokeria-wscpe-homo.key"
-  ),
-
-  // Homologation must never fall back to production credentials.
-  certificatePem: isProduction
-    ? process.env.ARCA_CERTIFICATE_PEM ?? null
-    : process.env.ARCA_CERTIFICATE_HOMO_PEM ?? null,
-  privateKeyPem: isProduction
-    ? process.env.ARCA_PRIVATE_KEY_PEM ?? null
-    : process.env.ARCA_PRIVATE_KEY_HOMO_PEM ?? null,
-  certificateBase64: isProduction
-    ? process.env.ARCA_CERTIFICATE_BASE64 ?? null
-    : process.env.ARCA_CERTIFICATE_HOMO_BASE64 ?? null,
-  privateKeyBase64: isProduction
-    ? process.env.ARCA_PRIVATE_KEY_BASE64 ?? null
-    : process.env.ARCA_PRIVATE_KEY_HOMO_BASE64 ?? null,
-
-  wsaaUrl: isProduction
-    ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
-    : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
-
-  wscpeUrl: isProduction
-    ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"
-    : "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
+type ArcaConfig = {
+  cuit: string;
+  environment: "PRODUCCION" | "HOMOLOGACION";
+  certificatePath: string;
+  privateKeyPath: string;
+  certificatePem: string | null;
+  privateKeyPem: string | null;
+  certificateBase64: string | null;
+  privateKeyBase64: string | null;
+  wsaaUrl: string;
+  wscpeUrl: string;
 };
+
+/**
+ * Cloudflare Workers may initialize a module before request-scoped runtime
+ * bindings are exposed through process.env. Resolve every setting lazily,
+ * when a request actually reads it, instead of snapshotting secrets at import.
+ */
+function readArcaConfig(): ArcaConfig {
+  const environment = (process.env.ARCA_ENVIRONMENT ?? "HOMOLOGACION").trim().toUpperCase();
+  const isProduction = ["PRODUCCION", "PRODUCTION", "PROD"].includes(environment);
+  const arcaDir = path.join(process.cwd(), ".secrets", "arca");
+
+  return {
+    cuit: (process.env.ARCA_CUIT ?? "").trim(),
+    environment: isProduction ? "PRODUCCION" : "HOMOLOGACION",
+    certificatePath: path.join(
+      arcaDir,
+      isProduction ? "agrobrokeria-wscpe.crt" : "agrobrokeria-wscpe-homo.crt"
+    ),
+    privateKeyPath: path.join(
+      arcaDir,
+      isProduction ? "agrobrokeria-wscpe.key" : "agrobrokeria-wscpe-homo.key"
+    ),
+    certificatePem: isProduction
+      ? process.env.ARCA_CERTIFICATE_PEM ?? null
+      : process.env.ARCA_CERTIFICATE_HOMO_PEM ?? null,
+    privateKeyPem: isProduction
+      ? process.env.ARCA_PRIVATE_KEY_PEM ?? null
+      : process.env.ARCA_PRIVATE_KEY_HOMO_PEM ?? null,
+    certificateBase64: isProduction
+      ? process.env.ARCA_CERTIFICATE_BASE64 ?? null
+      : process.env.ARCA_CERTIFICATE_HOMO_BASE64 ?? null,
+    privateKeyBase64: isProduction
+      ? process.env.ARCA_PRIVATE_KEY_BASE64 ?? null
+      : process.env.ARCA_PRIVATE_KEY_HOMO_BASE64 ?? null,
+    wsaaUrl: isProduction
+      ? "https://wsaa.afip.gov.ar/ws/services/LoginCms"
+      : "https://wsaahomo.afip.gov.ar/ws/services/LoginCms",
+    wscpeUrl: isProduction
+      ? "https://cpea-ws.afip.gob.ar/wscpe/services/soap"
+      : "https://cpea-ws-qaext.afip.gob.ar/wscpe/services/soap",
+  };
+}
+
+export const arcaConfig = new Proxy({} as ArcaConfig, {
+  get(_target, property: string | symbol) {
+    if (typeof property !== "string" || !(property in readArcaConfig())) {
+      return undefined;
+    }
+    return readArcaConfig()[property as keyof ArcaConfig];
+  },
+});
 
 export function getArcaCertificateMaterial() {
   const certificate = arcaConfig.certificateBase64
@@ -53,8 +76,6 @@ export function getArcaCertificateMaterial() {
   if (certificate && privateKey) {
     return { certificate, privateKey, source: "environment" as const };
   }
-
-
 
   throw new Error(
     "Faltan las credenciales X.509 de ARCA. Configurá ARCA_CERTIFICATE_BASE64 y ARCA_PRIVATE_KEY_BASE64 en el servidor."
