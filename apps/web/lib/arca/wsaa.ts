@@ -128,7 +128,7 @@ export async function solicitarTicketServicio(servicio: string) {
     });
 
     const responseText = await response.text();
-    if (/coe\\.notAuthorized|computador no autorizado a acceder al servicio/i.test(responseText)) {
+    if (/coe\.notAuthorized|computador no autorizado a acceder al servicio/i.test(responseText)) {
       throw new Error("ARCA_WSAA_SERVICE_NOT_AUTHORIZED");
     }
     if (!response.ok) {
