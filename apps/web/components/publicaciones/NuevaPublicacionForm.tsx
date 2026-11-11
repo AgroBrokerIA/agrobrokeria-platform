@@ -177,9 +177,42 @@ export default function NuevaPublicacionForm() {
 
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
-        const { data: perfil } = await supabase.from("profiles").select("tipo_usuario").eq("id", user.id).maybeSingle();
-        const rol = String(perfil?.tipo_usuario ?? "").toLowerCase();
-        setEsIntermediario(rol.includes("intermediario") || rol.includes("comisionista") || rol.includes("corredor"));
+        const { data: perfil } = await supabase
+          .from("profiles")
+          .select("tipo_usuario,active_company_id")
+          .eq("id", user.id)
+          .maybeSingle();
+
+        const rol = String(perfil?.tipo_usuario ?? "").trim().toLocaleLowerCase("es");
+        let intermediario = ["intermediario", "comisionista", "corredor"].some((tipo) => rol.includes(tipo));
+
+        // Respaldo para perfiles cuyo rol no se haya sincronizado, pero cuya
+        // empresa activa tenga una vinculación verificada como broker/intermediario.
+        if (!intermediario && perfil?.active_company_id) {
+          const { data: vinculacion } = await supabase
+            .from("company_empresa_map")
+            .select("empresa_id")
+            .eq("company_id", perfil.active_company_id)
+            .eq("verified", true)
+            .limit(1)
+            .maybeSingle();
+
+          if (vinculacion?.empresa_id) {
+            const { data: empresa } = await supabase
+              .from("empresas")
+              .select("tipo_empresa,tipo_operador")
+              .eq("id", vinculacion.empresa_id)
+              .maybeSingle();
+
+            const tipoEmpresa = String(empresa?.tipo_empresa ?? "").trim().toUpperCase();
+            const tipoOperador = String(empresa?.tipo_operador ?? "").trim().toLowerCase();
+            intermediario =
+              ["BROKER", "INTERMEDIARIO"].includes(tipoEmpresa) ||
+              ["corredor_oficial", "comisionista_intermediario"].includes(tipoOperador);
+          }
+        }
+
+        setEsIntermediario(intermediario);
       }
 
       const parametros = new URLSearchParams(window.location.search);
