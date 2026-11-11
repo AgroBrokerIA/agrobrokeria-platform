@@ -5,7 +5,7 @@ import Link from "next/link";
 import {supabase} from "@/lib/supabase/client";
 
 type Opportunity={id:string;publicacion_id:string;empresa_id:string;indice_compatibilidad:number;estado:string;creada_en:string;distancia_km:number|null;contactPublicationId?:string;detalles?:Record<string,unknown>|null;publicacion?:Publication};
-type Publication={id:string;empresa_id:string|null;intermediario_empresa_id?:string|null;publicador_profile_id?:string|null;creada_en?:string|null;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null;representado_razon_social?:string|null;representado_cuit?:string|null;representado_sisa_categoria?:string|null;intermediario_razon_social?:string|null;intermediario_cuit?:string|null;publicador_nombre?:string|null;publicador_tipo_usuario?:string|null}|null};
+type Publication={id:string;empresa_id:string|null;intermediario_empresa_id?:string|null;publicador_profile_id?:string|null;creada_en?:string|null;tipo:string;cantidad_tn:number;precio_tn:number|null;moneda_id:number;provincia?:string|null;localidad?:string|null;puerto?:string|null;incoterms?:{codigo?:string|null}|null;productos?:{nombre?:string|null}|null;paises?:{nombre?:string|null;codigo_iso?:string|null}|null;empresas?:{razon_social?:string|null;intermediario_empresa_id?:string|null;tipo_empresa?:string|null;verificada?:boolean|null;reputacion_score?:number|null;operaciones_realizadas?:number|null;toneladas_operadas?:number|null;representado_razon_social?:string|null;representado_cuit?:string|null;representado_sisa_categoria?:string|null;intermediario_razon_social?:string|null;intermediario_cuit?:string|null;publicador_nombre?:string|null;publicador_tipo_usuario?:string|null}|null};
 
 const flag=(iso?:string|null)=>iso&&iso.length===2?iso.toUpperCase().split("").map(c=>String.fromCodePoint(127397+c.charCodeAt(0))).join(""):"🌎";
 const roleColor=(type?:string|null)=>({ACOPIO:"#15803D",COOPERATIVA:"#15803D",BROKER:"#2563EB",CORREDOR:"#2563EB",INTERMEDIARIO:"#EA580C",PRODUCTOR:"#CA8A04",COMPRADOR:"#CA8A04",EXPORTADOR:"#7C3AED",INDUSTRIA:"#7C3AED",MOLINO:"#7C3AED",LABORATORIO:"#475569",LOGISTICA:"#475569"} as Record<string,string>)[String(type||"").toUpperCase()]||"#475569";
@@ -47,10 +47,14 @@ export default function OportunidadesPage(){
     if(ownPublicationIds.has(other.id))return false;
     if(own.id===other.id)return false;
     if(ownIsBuy?!isSell(other.tipo):!isBuy(other.tipo))return false;
-    return candidates.some(candidate=>candidate.empresa_id===other.empresa_id||candidate.empresa_id===other.intermediario_empresa_id);
+    if(norm(own.productos?.nombre)!==norm(other.productos?.nombre))return false;
+    if(own.moneda_id&&other.moneda_id&&own.moneda_id!==other.moneda_id)return false;
+    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id].filter((value):value is string=>Boolean(value));
+    return candidates.some(candidate=>counterpartCompanyIds.includes(candidate.empresa_id));
    });
    return counterparts.flatMap(other=>{
-    const candidate=candidates.find(x=>x.empresa_id===other.empresa_id||x.empresa_id===other.intermediario_empresa_id);
+    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id].filter((value):value is string=>Boolean(value));
+    const candidate=candidates.find(x=>counterpartCompanyIds.includes(x.empresa_id));
     if(!candidate||!candidate.recomendada)return [];
     const buy=ownIsBuy?own:other, sell=ownIsBuy?other:own;
     const score=Math.max(0,Math.min(100,Number(candidate.puntaje_total)||0));
