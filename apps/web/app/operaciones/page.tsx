@@ -1794,7 +1794,7 @@ El VENDEDOR se obliga a transferir y entregar al COMPRADOR, quien se obliga a re
 
 CLÁUSULA 2 — PRECIO Y LIQUIDACIÓN
 
-El precio pactado es de ${moneda} ${formatoNumero(operacion.precio_tn)} por tonelada métrica. El importe total estimado, sujeto a pesaje, calidad y liquidación definitiva, asciende a ${moneda} ${formatoNumero(monto)}. La liquidación se realizará conforme a la documentación comercial y fiscal aplicable y a las condiciones expresamente aceptadas por las partes. Los pagos entre comprador y vendedor se efectuarán por los canales bancarios acordados, fuera de cualquier custodia de fondos que no haya sido expresamente habilitada.
+El precio pactado es de ${moneda} ${formatoNumero(operacion.precio_tn)} por tonelada métrica. El importe total estimado, sujeto a pesaje, calidad y liquidación definitiva, asciende a ${moneda} ${formatoNumero(monto)}. La liquidación se realizará conforme a la documentación comercial y fiscal aplicable y a las condiciones expresamente aceptadas por las partes. Los pagos entre comprador y vendedor se efectuarán según la forma de pago y el plazo consignados en la Cláusula 3, sin presumir custodia de fondos por parte de la plataforma.
 
 CLÁUSULA 3 — CONDICIONES DE LOGÍSTICA Y ENTREGA
 
