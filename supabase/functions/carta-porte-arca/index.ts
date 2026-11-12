@@ -81,8 +81,14 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
       const diagnostic=[faultCode,faultText].filter(Boolean).join(" ");
       throw new Error("ARCA_WSAA_HTTP_"+r.status+(diagnostic?":"+diagnostic.slice(0,240):""));
     }
-    const token=nodeText(xml,"token"), sign=nodeText(xml,"sign"), exp=nodeText(xml,"expirationTime");
-    if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");
+    // WSAA devuelve LoginTicketResponse dentro de loginCmsReturn (XML escapado o CDATA).
+    const returned=nodeText(xml,"loginCmsReturn")||nodeText(xml,"return")||nodeText(xml,"loginCmsResult")||"";
+    const ticket=returned.includes("<") ? returned : decodeXmlText(returned);
+    const token=nodeText(ticket,"token"), sign=nodeText(ticket,"sign"), exp=nodeText(ticket,"expirationTime");
+    if(!token||!sign){
+      const rootNames=[...xml.matchAll(/<(?:(?:[\\w.-]+):)?([A-Za-z_][\\w.-]*)(?:\\s[^>]*)?>/g)].map(m=>m[1]).slice(-12);
+      throw new Error("ARCA_WSAA_INVALID_RESPONSE_RETURN_"+(returned?"PRESENT":"MISSING")+"_ROOTS_"+rootNames.join(","));
+    }
     const out={token,sign,expiresAt:exp?Date.parse(exp):Date.now()+10*60*60*1000}; cache.set(k,out); return out;
   })().finally(()=>inflight.delete(k));
   inflight.set(k,promise); return promise;
