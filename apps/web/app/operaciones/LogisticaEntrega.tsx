@@ -607,6 +607,9 @@ export default function LogisticaEntrega({
           <div style={{ fontSize: 15, fontWeight: 800 }}>Asignar un camión</div>
           <div style={{ fontSize: 12, color: "#64748b", marginTop: 3 }}>Solo aparecen transportistas verificados. Al seleccionarlos, se muestran únicamente los dominios registrados a su nombre y se completan automáticamente.</div>
         </div>
+        <div style={{ padding: 10, borderRadius: 9, background: "#fff7ed", border: "1px solid #fed7aa", color: "#9a3412", fontSize: 12 }}>Para asignar un camión deben existir un cierre formal de logística aprobado por Administración y un camión habilitado registrado a nombre del transportista. La aprobación de la comisión logística es un requisito previo; no se genera automáticamente al abrir esta pantalla.</div>
+        {transportistas.length===0&&<div style={{ padding: 10, borderRadius: 9, background: "#fff1f2", border: "1px solid #fecaca", color: "#9f1239", fontSize: 12 }}>No hay transportistas verificados y habilitados para esta operación. Administración debe completar la verificación correspondiente.</div>}
+        {transportistaId&&vehiculosDisponibles.filter(v=>String(v.tipo).toUpperCase()==="CAMION").length===0&&<div style={{ padding: 10, borderRadius: 9, background: "#fff1f2", border: "1px solid #fecaca", color: "#9f1239", fontSize: 12 }}>El transportista seleccionado no tiene un camión habilitado registrado. Debe registrar el vehículo y completar su habilitación antes de asignarlo.</div>}
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2,minmax(0,1fr))", gap: 10 }}>
           <label style={{ display: "grid", gap: 5, fontSize: 12, fontWeight: 700 }}>Transportista
             <select value={transportistaId} onChange={(e) => void seleccionarTransportista(e.target.value)} style={input}>
