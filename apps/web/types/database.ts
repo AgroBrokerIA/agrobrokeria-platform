@@ -13246,6 +13246,27 @@ export type Database = {
           propuesta_anterior_id: string
         }[]
       }
+      listar_publicaciones_para_nueva_operacion: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          empresa_id: string | null
+          intermediario_empresa_id: string | null
+          publicador_profile_id: string | null
+          tipo: string
+          producto_id: number
+          cantidad_tn: number
+          precio_tn: number | null
+          moneda_id: number | null
+          provincia: string | null
+          localidad: string | null
+          estado: string | null
+          producto_nombre: string | null
+          moneda_codigo: string | null
+          empresa_nombre: string | null
+          empresa_efectiva_id: string | null
+        }[]
+      }
       listar_publicaciones_activas_oportunidades: {
         Args: never
         Returns: {
