@@ -26,18 +26,21 @@ function envPem(name:string,b64Name:string){
   return "";
 }
 function esc(v:unknown){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function decodeXmlText(value:string){
+  return value.replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g,"$1")
+    .replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"')
+    .replace(/&apos;/g,"'").replace(/&amp;/g,"&").trim();
+}
 function nodeText(xml:string,name:string){
-  const d=new DOMParser().parseFromString(xml,"text/xml");
-  const n=d?.getElementsByTagName(name)[0]||d?.getElementsByTagNameNS("*",name)[0];
-  return n?.textContent?.trim()||null;
+  const re=new RegExp("<(?:[\\w.-]+:)?"+name+"(?:\\s[^>]*)?>([\\s\\S]*?)</(?:[\\w.-]+:)?"+name+"\\s*>","i");
+  const match=xml.match(re);
+  return match ? decodeXmlText(match[1].replace(/<[^>]+>/g,"")) || null : null;
 }
 function allErrors(xml:string){
-  const d=new DOMParser().parseFromString(xml,"text/xml");
-  return Array.from(d?.getElementsByTagName("error")||[]).map(x=>({
-    code:x.getElementsByTagName("codigo")[0]?.textContent?.trim()||"",
-    description:x.getElementsByTagName("descripcion")[0]?.textContent?.trim()||""
-  }));
+  const matches=xml.match(/<(?:[\w.-]+:)?error(?:\s[^>]*)?>[\s\S]*?<\/(?:[\w.-]+:)?error\s*>/gi)||[];
+  return matches.map(block=>({code:nodeText(block,"codigo")||"",description:nodeText(block,"descripcion")||""}));
 }
+
 function hasFault(xml:string){return !!nodeText(xml,"faultstring")||!!nodeText(xml,"Fault")}
 
 function makeCms(certPem:string,keyPem:string){
