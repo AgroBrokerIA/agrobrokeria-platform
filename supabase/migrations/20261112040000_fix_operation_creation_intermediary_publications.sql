@@ -31,3 +31,48 @@ BEGIN
  IF NOT EXISTS(SELECT 1 FROM public.workflow_historial WHERE operacion_workflow_id=v_ow AND etapa_id=v_stage) THEN INSERT INTO public.workflow_historial(operacion_workflow_id,etapa_id,fecha_inicio,usuario_id,observaciones) VALUES(v_ow,v_stage,now(),NULL,'Operación iniciada desde el cruce de publicaciones; continuar negociación y acuerdo comercial.'); END IF;
  RETURN v_operacion;
 END; $function$;
+-- Return only active public listings plus their resolved legal company.
+-- Profile company links are resolved server-side because profiles are private under RLS.
+CREATE OR REPLACE FUNCTION public.listar_publicaciones_para_nueva_operacion()
+RETURNS TABLE(
+ id uuid,
+ empresa_id uuid,
+ intermediario_empresa_id uuid,
+ publicador_profile_id uuid,
+ tipo text,
+ producto_id integer,
+ cantidad_tn numeric,
+ precio_tn numeric,
+ moneda_id integer,
+ provincia text,
+ localidad text,
+ estado text,
+ producto_nombre text,
+ moneda_codigo text,
+ empresa_nombre text,
+ empresa_efectiva_id uuid
+)
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path TO 'public','pg_temp'
+AS $function$
+BEGIN
+ IF auth.uid() IS NULL THEN RAISE EXCEPTION 'AUTH_REQUIRED'; END IF;
+ RETURN QUERY
+ SELECT p.id,p.empresa_id,p.intermediario_empresa_id,p.publicador_profile_id,
+   p.tipo::text,p.producto_id,p.cantidad_tn,p.precio_tn,p.moneda_id,
+   p.provincia::text,p.localidad::text,p.estado::text,pr.nombre::text,m.codigo::text,
+   e.razon_social::text,
+   coalesce(p.empresa_id,p.intermediario_empresa_id,cem.empresa_id)
+ FROM public.publicaciones p
+ LEFT JOIN public.productos pr ON pr.id=p.producto_id
+ LEFT JOIN public.monedas m ON m.id=p.moneda_id
+ LEFT JOIN public.profiles pub ON pub.id=p.publicador_profile_id
+ LEFT JOIN public.company_empresa_map cem ON cem.company_id=pub.active_company_id
+ LEFT JOIN public.empresas e ON e.id=coalesce(p.empresa_id,p.intermediario_empresa_id,cem.empresa_id)
+ WHERE p.estado IN ('PUBLICADA','ACTIVA')
+ ORDER BY p.creada_en DESC;
+END;
+$function$;
+REVOKE ALL ON FUNCTION public.listar_publicaciones_para_nueva_operacion() FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.listar_publicaciones_para_nueva_operacion() TO authenticated;
