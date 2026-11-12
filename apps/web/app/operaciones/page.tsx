@@ -1970,12 +1970,12 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         return;
       }
       const normalizarDestino = (valor: string) =>
-        valor.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
+        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
       const destinoAcuerdoNormalizado = normalizarDestino(acuerdoDB.destino || "");
       const nombreDestinoNormalizado = normalizarDestino(destinoSeleccionado.nombre_establecimiento);
       const localidadDestinoNormalizada = normalizarDestino(destinoSeleccionado.localidad);
-      const aliasACA = /\\bACA\\b/.test(nombreDestinoNormalizado)
-        && /\\bACA\\b/.test(destinoAcuerdoNormalizado);
+      const aliasACA = /\bACA\b/.test(nombreDestinoNormalizado)
+        && /\bACA\b/.test(destinoAcuerdoNormalizado);
       const nombreCoincide = nombreDestinoNormalizado
         .split(" ")
         .filter((token) => token.length >= 4 && !["ASOCIACION", "COOPERATIVAS", "ARGENTINAS", "PLANTA"].includes(token))
