@@ -31,6 +31,7 @@ type Operacion = {
 };
 
 type OperacionMeta = { producto: string; origen: string; destino: string; contraparte: string; };
+type DestinoHomologado = { id_destino: number; tipo: string; nombre_establecimiento: string; localidad: string; provincia: string; activo: boolean; verificado: boolean; };
 
 type Workflow = {
   id: string;
@@ -327,6 +328,9 @@ export default function OperacionesPage() {
   const [cuitVendedorContrato, setCuitVendedorContrato] = useState("");
   const [cuitCompradorContrato, setCuitCompradorContrato] = useState("");
   const [calidadContrato, setCalidadContrato] = useState("");
+  const [destinosHomologados, setDestinosHomologados] = useState<DestinoHomologado[]>([]);
+  const [destinoHomologadoId, setDestinoHomologadoId] = useState("");
+  const [categoriaDestino, setCategoriaDestino] = useState("puerto_exportacion");
 
 
   const [contrato, setContrato] = useState<Contrato>({
@@ -1220,6 +1224,18 @@ export default function OperacionesPage() {
   async function abrirContrato(operacion: Operacion) {
     setMensaje("");
     setError("");
+    setDestinoHomologadoId("");
+    const { data: destinosData, error: destinosError } = await supabase
+      .from("destinos_homologados")
+      .select("id_destino,tipo,nombre_establecimiento,localidad,provincia,activo,verificado")
+      .eq("activo", true)
+      .order("provincia", { ascending: true })
+      .order("localidad", { ascending: true });
+    if (destinosError) {
+      setError(`No se pudo cargar el catálogo homologado de destinos: ${destinosError.message}`);
+      return;
+    }
+    setDestinosHomologados((destinosData || []) as DestinoHomologado[]);
 
     // ---------------------------------------------------------
     // Cargar contrato
@@ -1240,6 +1256,8 @@ export default function OperacionesPage() {
     }
 
     if (contratoData) {
+      setDestinoHomologadoId(contratoData.destino_homologado_id ? String(contratoData.destino_homologado_id) : "");
+      setCategoriaDestino(contratoData.categoria_destino || "puerto_exportacion");
       setContrato({
         id: contratoData.id,
         operacion_id: operacion.id,
@@ -1934,6 +1952,11 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         }
       }
 
+      if (!destinoHomologadoId) {
+        setMensaje("");
+        setError("Seleccioná el establecimiento real de destino en el catálogo homologado antes de guardar el contrato.");
+        return;
+      }
       const { data: contratoGuardado, error: errorContrato } = await supabase.rpc("guardar_contrato_comercial", {
         p_operacion_id: operacion.id,
         p_datos: {
@@ -1952,6 +1975,8 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
           calidad: acuerdoDB.calidad || null,
           observaciones: acuerdoDB.observaciones || null,
           contenido: contenidoContrato,
+          destino_homologado_id: Number(destinoHomologadoId),
+          categoria_destino: categoriaDestino,
         },
       });
 
@@ -2971,6 +2996,23 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
               }} style={{padding:"9px 12px",border:"1px solid #047857",borderRadius:8,background:"#ecfdf5",color:"#065f46",fontWeight:700,cursor:"pointer"}}>Regenerar plantilla oficial F1</button>
             </div>
             {contactos.length === 0 && <p style={{marginTop:8,color:"#b45309"}}>No hay contactos comerciales disponibles. Revisá permisos o registrá primero los contactos de vendedor y comprador.</p>}
+            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(220px,1fr))",gap:12,marginTop:16,padding:14,border:"1px solid #bfdbfe",borderRadius:10,background:"#eff6ff"}}>
+              <label style={{display:"block",fontWeight:700}}>Tipo de destino homologado
+                <select style={inputContrato} value={categoriaDestino} onChange={e=>{setCategoriaDestino(e.target.value);setDestinoHomologadoId("");}}>
+                  <option value="puerto_exportacion">Puerto de exportación</option>
+                  <option value="molino_industrial">Molino industrial</option>
+                  <option value="acopio_cooperativa">Acopio / cooperativa</option>
+                  <option value="consumo_feedlot">Consumo / feedlot</option>
+                </select>
+              </label>
+              <label style={{display:"block",fontWeight:700}}>Establecimiento de destino (obligatorio)
+                <select style={inputContrato} value={destinoHomologadoId} onChange={e=>setDestinoHomologadoId(e.target.value)}>
+                  <option value="">Seleccionar establecimiento homologado…</option>
+                  {destinosHomologados.filter(d=>d.tipo===categoriaDestino).map(d=><option key={d.id_destino} value={d.id_destino}>{d.nombre_establecimiento} — {d.localidad}, {d.provincia}{d.verificado?" · Verificado":" · Pendiente de verificación"}</option>)}
+                </select>
+                <small style={{display:"block",marginTop:5,color:"#475569"}}>El destino debe corresponder al lugar real de descarga. Los establecimientos pendientes de verificación solo permiten guardar borrador; Administración debe verificarlos antes de confirmar.</small>
+              </label>
+            </div>
             <label style={{display:"block",marginTop:16}}>Contenido del contrato (editable)
               <textarea style={{...inputContrato,minHeight:260,marginTop:6,fontFamily:"inherit",resize:"vertical"}} value={contrato.contenido} onChange={e=>setContrato(v=>({...v,contenido:e.target.value}))} placeholder="El contenido contractual se completará con los datos del Acuerdo Comercial guardado. Revisá y completá los campos antes de guardar."/>
             </label>
