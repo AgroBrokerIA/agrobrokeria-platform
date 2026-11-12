@@ -50,7 +50,7 @@ function makeCms(certPem:string,keyPem:string){
   p7.addSigner({key,certificate:cert,digestAlgorithm:forge.pki.oids.sha1,authenticatedAttributes:[
     {type:forge.pki.oids.contentType,value:forge.pki.oids.data},{type:forge.pki.oids.messageDigest},{type:forge.pki.oids.signingTime,value:now}
   ]});
-  p7.sign({detached:true});
+  p7.sign({detached:false});
   return forge.util.encode64(forge.asn1.toDer(p7.toAsn1()).getBytes());
 }
 
@@ -71,7 +71,13 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
     try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8"},body,signal:ac.signal})}
     catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSAA_TIMEOUT");throw e}
     finally{clearTimeout(timer)}
-    const xml=await r.text(); if(!r.ok)throw new Error("ARCA_WSAA_HTTP_"+r.status);
+    const xml=await r.text();
+    if(!r.ok){
+      const faultCode=nodeText(xml,"faultcode")||nodeText(xml,"Code")||"";
+      const faultText=nodeText(xml,"faultstring")||nodeText(xml,"Reason")||"";
+      const diagnostic=[faultCode,faultText].filter(Boolean).join(" ");
+      throw new Error("ARCA_WSAA_HTTP_"+r.status+(diagnostic?":"+diagnostic.slice(0,240):""));
+    }
     const token=nodeText(xml,"token"), sign=nodeText(xml,"sign"), exp=nodeText(xml,"expirationTime");
     if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE");
     const out={token,sign,expiresAt:exp?Date.parse(exp):Date.now()+10*60*60*1000}; cache.set(k,out); return out;
