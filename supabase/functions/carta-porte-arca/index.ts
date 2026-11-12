@@ -61,37 +61,61 @@ const cache=new Map<string,{token:string,sign:string,expiresAt:number}>();
 const inflight=new Map<string,Promise<{token:string,sign:string,expiresAt:number}>>();
 
 async function getToken(environment:string,cuit:string,cert:string,key:string){
-  const k=environment+"|"+cuit+"|"+cert.slice(0,64), now=Date.now();
-  const hit=cache.get(k); if(hit&&hit.expiresAt>now+60000)return hit;
-  const p=inflight.get(k); if(p)return p;
+  const ambiente=environment==="production"?"PRODUCCION":"HOMOLOGACION";
+  const servicio="wscpe";
+  const k=ambiente+"|"+cuit+"|"+servicio;
+  const now=Date.now();
+  const hit=cache.get(k);
+  if(hit&&hit.expiresAt>now+60000)return hit;
+  const p=inflight.get(k);
+  if(p)return p;
   const promise=(async()=>{
+    // Persistencia compartida: las instancias de Edge Functions son efímeras
+    // y el Map local no garantiza reutilización entre invocaciones.
+    const {data:stored,error:readError}=await db.from("arca_tickets_acceso")
+      .select("token,sign,expiration_time")
+      .eq("cuit",cuit).eq("ambiente",ambiente).eq("servicio",servicio)
+      .gt("expiration_time",new Date(now+60000).toISOString()).maybeSingle();
+    if(readError)throw new Error("ARCA_TA_STORAGE_READ_FAILED");
+    if(stored?.token&&stored?.sign){
+      const saved={token:stored.token,sign:stored.sign,expiresAt:Date.parse(stored.expiration_time)};
+      if(Number.isFinite(saved.expiresAt)&&saved.expiresAt>now+60000){cache.set(k,saved);return saved;}
+    }
     const homo=environment!=="production";
     const url=homo?"https://wsaahomo.afip.gov.ar/ws/services/LoginCms":"https://wsaa.afip.gov.ar/ws/services/LoginCms";
     const cms=makeCms(cert,key);
-  const body='<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>'+cms+'</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>';
-    const ac=new AbortController(), timer=setTimeout(()=>ac.abort(),30000);
+    const body='<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>'+cms+'</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>';
+    const ac=new AbortController(),timer=setTimeout(()=>ac.abort(),30000);
     let r:Response;
-    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"urn:LoginCms"},body,signal:ac.signal})}
-    catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSAA_TIMEOUT");throw e}
-    finally{clearTimeout(timer)}
+    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"urn:LoginCms"},body,signal:ac.signal});}
+    catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSAA_TIMEOUT");throw e;}
+    finally{clearTimeout(timer);}
     const xml=await r.text();
     if(!r.ok){
       const faultCode=nodeText(xml,"faultcode")||nodeText(xml,"Code")||"";
       const faultText=nodeText(xml,"faultstring")||nodeText(xml,"Reason")||"";
       const diagnostic=[faultCode,faultText].filter(Boolean).join(" ");
+      if(/alreadyAuthenticated/i.test(diagnostic))throw new Error("ARCA_WSAA_ALREADY_AUTHENTICATED_TA_NOT_PERSISTED_WAIT_FOR_EXPIRATION");
       throw new Error("ARCA_WSAA_HTTP_"+r.status+(diagnostic?":"+diagnostic.slice(0,240):""));
     }
-    // WSAA devuelve LoginTicketResponse dentro de loginCmsReturn (XML escapado o CDATA).
     const returned=nodeText(xml,"loginCmsReturn")||nodeText(xml,"return")||nodeText(xml,"loginCmsResult")||"";
-    const ticket=returned.includes("<") ? returned : decodeXmlText(returned);
-    const token=nodeText(ticket,"token"), sign=nodeText(ticket,"sign"), exp=nodeText(ticket,"expirationTime");
-    if(!token||!sign){
-      const rootNames=[...xml.matchAll(/<(?:(?:[\\w.-]+):)?([A-Za-z_][\\w.-]*)(?:\\s[^>]*)?>/g)].map(m=>m[1]).slice(-12);
-      throw new Error("ARCA_WSAA_INVALID_RESPONSE_RETURN_"+(returned?"PRESENT":"MISSING")+"_ROOTS_"+rootNames.join(","));
-    }
-    const out={token,sign,expiresAt:exp?Date.parse(exp):Date.now()+10*60*60*1000}; cache.set(k,out); return out;
+    const ticket=returned.includes("<")?returned:decodeXmlText(returned);
+    const token=nodeText(ticket,"token"),sign=nodeText(ticket,"sign"),exp=nodeText(ticket,"expirationTime");
+    if(!token||!sign)throw new Error("ARCA_WSAA_INVALID_RESPONSE_RETURN_"+(returned?"PRESENT":"MISSING"));
+    const parsedExpiration=exp?Date.parse(exp):NaN;
+    if(!Number.isFinite(parsedExpiration)||parsedExpiration<=Date.now())throw new Error("ARCA_WSAA_INVALID_TICKET_EXPIRATION");
+    const out={token,sign,expiresAt:parsedExpiration};
+    const {error:saveError}=await db.from("arca_tickets_acceso").upsert({
+      cuit,ambiente,servicio,token,sign,
+      expiration_time:new Date(parsedExpiration).toISOString(),
+      updated_at:new Date().toISOString()
+    },{onConflict:"cuit,ambiente,servicio"});
+    if(saveError)throw new Error("ARCA_TA_STORAGE_WRITE_FAILED");
+    cache.set(k,out);
+    return out;
   })().finally(()=>inflight.delete(k));
-  inflight.set(k,promise); return promise;
+  inflight.set(k,promise);
+  return promise;
 }
 
 async function soap(environment:string,method:string,inner:string,auth:{token:string,sign:string,cuit:string}){
