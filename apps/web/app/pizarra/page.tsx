@@ -42,13 +42,28 @@ export default function PizarraPage(){
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
  const codeFor=(q:Quote)=>codes[q.commodity_id||""]||productNames[String(q.product_id||"")]||q.product_id?.toString()||q.commodity_id||"OTRO";
- const categoryFor=(q:Quote)=>productCategories[String(q.product_id||"")]||"";
- const inTab=(q:Quote)=>{if(boardTab==="Granos"){const cat=categoryFor(q).toLowerCase();const code=codeFor(q).toUpperCase();return !cat&&!q.product_id&&!q.commodity_id||["cereal","oleaginosa","legumbre","pseudocereal y nicho","especialidad","semilla de cobertura","semilla forrajera"].includes(cat)||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO"].includes(code);}const n=productNames[String(q.product_id||"")]?.toLowerCase()||"";if(boardTab==="Aceites")return n.includes("aceite");if(boardTab==="Harinas")return n.includes("harina")||categoryFor(q)==="Harina";if(boardTab==="Subproductos")return categoryFor(q)==="Subproducto"||["pellet","expeller","afrechillo","subproducto"].some(x=>n.includes(x));return true;};
+ const categoryFor=(q:Quote)=>(productCategories[String(q.product_id||"")]||"").trim().toLowerCase();
+ const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||"").trim().toUpperCase();
+ const productLabelFor=(q:Quote)=>productNames[String(q.product_id||"")]||({
+  ACEITE_SOJA:"Aceite de soja",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja",
+  HARINA_GIRASOL:"Harina de girasol",PELLETS_SOJA:"Pellets de soja",EXPELLER_SOJA:"Expeller de soja",
+  AFRECHILLO_TRIGO:"Afrechillo de trigo",SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol",SORGO:"Sorgo"
+ } as Record<string,string>)[commodityCodeFor(q)]||codeFor(q);
+ const inTab=(q:Quote)=>{
+  const code=commodityCodeFor(q)||String(codeFor(q)).toUpperCase();
+  const category=categoryFor(q);
+  const name=(productNames[String(q.product_id||"")]||"").toLowerCase();
+  if(boardTab==="Granos")return ["cereal","oleaginosa","legumbre","pseudocereal y nicho","especialidad","semilla de cobertura","semilla forrajera"].includes(category)||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO","CEBADA","AVENA","MANI","ARROZ"].includes(code);
+  if(boardTab==="Aceites")return category.includes("aceite")||code.startsWith("ACEITE_")||name.includes("aceite");
+  if(boardTab==="Harinas")return category.includes("harina")||code.startsWith("HARINA_")||name.includes("harina");
+  if(boardTab==="Subproductos")return category.includes("subproducto")||["PELLET","EXPELLER","AFRECHILLO","SUBPRODUCTO","CAScarilla"].some(x=>code.includes(x.toUpperCase()))||["pellet","expeller","afrechillo","subproducto","cascarilla"].some(x=>name.includes(x));
+  return true;
+ };
  const selectedMarket=MARKET_OPTIONS.find(x=>x.value===market)||MARKET_OPTIONS[0];
  const filteredQuotes=useMemo(()=>quotes.filter(q=>{const marketText=[q.market,q.port,(q.payload as any)?.market,(q.payload as any)?.bolsa].filter(Boolean).join(" ").toLocaleUpperCase("es");const matchMarket=selectedMarket.aliases.some(a=>marketText.includes(a.toLocaleUpperCase("es")));const matchPriceType=priceType==="ALL"||(priceType==="FUTURES"?String(q.price_type||"").toUpperCase().includes("FUT"):q.price_type===priceType);return q.price!=null&&matchMarket&&matchPriceType&&(productFilter==="ALL"||codeFor(q)===productFilter)&&inTab(q)}),[quotes,codes,productNames,productCategories,priceType,productFilter,boardTab,market]);
  const latest=useMemo(()=>{const m=new Map<string,Quote>();for(const q of filteredQuotes){const code=codeFor(q);if(!m.has(code))m.set(code,q)}return m},[filteredQuotes,codes,productNames]);
  const wanted=useMemo(()=>Array.from(new Set(filteredQuotes.map(codeFor))),[filteredQuotes,codes,productNames]);
- const rows:Row[]=wanted.map(code=>({code,name:productNames[String(filteredQuotes.find(q=>codeFor(q)===code)?.product_id||"")]||((latest.get(code)?.product_id==null&&latest.get(code)?.commodity_id==null)?"Cotización BCR/CAC (producto no informado)":code),q:latest.get(code)}));
+ const rows:Row[]=wanted.map(code=>({code,name:latest.get(code)?productLabelFor(latest.get(code)!):code,q:latest.get(code)}));
  const up=rows.filter(r=>(r.q?.variation||0)>0).length,down=rows.filter(r=>(r.q?.variation||0)<0).length,flat=rows.filter(r=>r.q?.variation===0).length,volume=filteredQuotes.length; const statsFor=(code:string)=>{const hs=filteredQuotes.filter(q=>codeFor(q)===code&&q.price!=null);const prices=hs.map(q=>Number(q.price));const latestDate=hs[0]?.market_date;const day=latestDate?hs.filter(q=>q.market_date===latestDate):hs;const dayPrices=day.map(q=>Number(q.price)).filter(Number.isFinite);return {open:day.at(-1)?.price??null,min:dayPrices.length?Math.min(...dayPrices):null,max:dayPrices.length?Math.max(...dayPrices):null};};
  const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
  const compareCodes=wanted.slice(0,4); const compareSelectedCode=compareCodes.includes(productFilter)?productFilter:(compareCodes[0]||""); const soja=filteredQuotes.filter(q=>codeFor(q)===compareSelectedCode&&q.price!=null).slice(0,rangeSize[range]||30).reverse(); const compareSeries=compareCodes.map(code=>({code,points:filteredQuotes.filter(q=>codeFor(q)===code&&q.price!=null).slice(0,20).reverse()}));
