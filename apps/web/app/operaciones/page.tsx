@@ -1794,7 +1794,7 @@ El VENDEDOR se obliga a transferir y entregar al COMPRADOR, quien se obliga a re
 
 CLÁUSULA 2 — PRECIO Y LIQUIDACIÓN
 
-El precio pactado es de ${moneda} ${formatoNumero(operacion.precio_tn)} por tonelada métrica. El importe total estimado, sujeto a pesaje, calidad y liquidación definitiva, asciende a ${moneda} ${formatoNumero(monto)}. La liquidación se realizará conforme a la documentación comercial y fiscal aplicable y a las condiciones expresamente aceptadas por las partes. Los pagos entre comprador y vendedor se efectuarán por los canales bancarios acordados, fuera de cualquier custodia de fondos que no haya sido expresamente habilitada.
+El precio pactado es de ${moneda} ${formatoNumero(operacion.precio_tn)} por tonelada métrica. El importe total estimado, sujeto a pesaje, calidad y liquidación definitiva, asciende a ${moneda} ${formatoNumero(monto)}. La liquidación se realizará conforme a la documentación comercial y fiscal aplicable y a las condiciones expresamente aceptadas por las partes. Los pagos entre comprador y vendedor se efectuarán según la forma de pago y el plazo consignados en la Cláusula 3, sin presumir custodia de fondos por parte de la plataforma.
 
 CLÁUSULA 3 — CONDICIONES DE LOGÍSTICA Y ENTREGA
 
@@ -1957,6 +1957,39 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         setError("Seleccioná el establecimiento real de destino en el catálogo homologado antes de guardar el contrato.");
         return;
       }
+
+      // El establecimiento homologado y el destino aceptado en el Acuerdo Comercial
+      // deben representar el mismo lugar físico de descarga. No corregirlo en silencio:
+      // el acuerdo debe actualizarse y volver a confirmarse por las partes.
+      const destinoSeleccionado = destinosHomologados.find(
+        (item) => String(item.id_destino) === String(destinoHomologadoId)
+      );
+      if (!destinoSeleccionado) {
+        setMensaje("");
+        setError("El establecimiento seleccionado ya no está disponible en el catálogo. Volvé a cargarlo.");
+        return;
+      }
+      const normalizarDestino = (valor: string) =>
+        valor.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+      const destinoAcuerdoNormalizado = normalizarDestino(acuerdoDB.destino || "");
+      const nombreDestinoNormalizado = normalizarDestino(destinoSeleccionado.nombre_establecimiento);
+      const localidadDestinoNormalizada = normalizarDestino(destinoSeleccionado.localidad);
+      const aliasACA = /\bACA\b/.test(nombreDestinoNormalizado)
+        && /\bACA\b/.test(destinoAcuerdoNormalizado);
+      const nombreCoincide = nombreDestinoNormalizado
+        .split(" ")
+        .filter((token) => token.length >= 4 && !["ASOCIACION", "COOPERATIVAS", "ARGENTINAS", "PLANTA"].includes(token))
+        .some((token) => destinoAcuerdoNormalizado.includes(token));
+      const localidadCoincide = localidadDestinoNormalizada.length > 0
+        && destinoAcuerdoNormalizado.includes(localidadDestinoNormalizada);
+      if (!localidadCoincide || (!nombreCoincide && !aliasACA)) {
+        setMensaje("");
+        setError(
+          `El destino del Acuerdo Comercial (“${acuerdoDB.destino || "sin informar"}”) no coincide con el establecimiento seleccionado (“${destinoSeleccionado.nombre_establecimiento} — ${destinoSeleccionado.localidad}, ${destinoSeleccionado.provincia}”). Actualizá el Acuerdo Comercial al lugar real de descarga y volvé a confirmarlo antes de confirmar el contrato.`
+        );
+        return;
+      }
+
       const { data: contratoGuardado, error: errorContrato } = await supabase.rpc("guardar_contrato_comercial", {
         p_operacion_id: operacion.id,
         p_datos: {
