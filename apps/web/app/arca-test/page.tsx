@@ -23,7 +23,20 @@ export default function ArcaTestPage() {
 
     try {
       const {data,error}=await supabase.functions.invoke("carta-porte-arca",{body:{action:"health"}});
-      setResultado(JSON.stringify(error?{ok:false,error:error.message,detalle:data}:data,null,2));
+      if (error) {
+        let detalle: unknown = data;
+        const contexto = (error as { context?: unknown }).context;
+        if (contexto instanceof Response) {
+          try {
+            detalle = await contexto.clone().json();
+          } catch {
+            try { detalle = await contexto.clone().text(); } catch { detalle = null; }
+          }
+        }
+        setResultado(JSON.stringify({ok:false,error:error.message,status:contexto instanceof Response ? contexto.status : null,detalle},null,2));
+      } else {
+        setResultado(JSON.stringify(data,null,2));
+      }
     } catch (error) {
       setResultado(error instanceof Error?error.message:"Error de conexión con ARCA.");
     } finally {
