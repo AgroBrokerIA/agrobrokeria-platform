@@ -68,10 +68,10 @@ async function getToken(environment:string,cuit:string,cert:string,key:string){
     const homo=environment!=="production";
     const url=homo?"https://wsaahomo.afip.gov.ar/ws/services/LoginCms":"https://wsaa.afip.gov.ar/ws/services/LoginCms";
     const cms=makeCms(cert,key);
-  const body='<?xml version="1.0"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"><soapenv:Body><loginCms xmlns="http://wsaa.afip.gov.ar/ws/services/LoginCms"><in0>'+cms+'</in0></loginCms></soapenv:Body></soapenv:Envelope>';
+  const body='<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:wsaa="http://wsaa.view.sua.dvadac.desein.afip.gov"><soapenv:Header/><soapenv:Body><wsaa:loginCms><wsaa:in0>'+cms+'</wsaa:in0></wsaa:loginCms></soapenv:Body></soapenv:Envelope>';
     const ac=new AbortController(), timer=setTimeout(()=>ac.abort(),30000);
     let r:Response;
-    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8"},body,signal:ac.signal})}
+    try{r=await fetch(url,{method:"POST",headers:{"content-type":"text/xml; charset=utf-8","SOAPAction":"urn:LoginCms"},body,signal:ac.signal})}
     catch(e){if((e as any)?.name==="AbortError")throw new Error("ARCA_WSAA_TIMEOUT");throw e}
     finally{clearTimeout(timer)}
     const xml=await r.text();
