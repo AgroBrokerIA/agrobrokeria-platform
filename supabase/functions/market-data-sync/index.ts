@@ -4,11 +4,11 @@ const URL=Deno.env.get("SUPABASE_URL")!,ANON=Deno.env.get("SUPABASE_ANON_KEY")!,
 const BCR_LOCAL="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0",BCR_FOB="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",BCR_AVAILABLE="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-2",SOURCE="BCR/CAC";
 const norm=(s:string)=>s.replace(/\s+/g," ").trim();
 function num(s:string){const r=norm(s).replace(/[$u\$s\/tn]/gi,"").trim();if(!r||/^(S\/C|—|-)$/.test(r))return null;const m=r.match(/-?\d[\d.]*,?\d*/);if(!m)return null;const t=m[0],n=t.includes(",")?Number(t.replace(/\./g,"").replace(",",".")):Number(t.replace(/,/g,""));return Number.isFinite(n)?n:null}
-function dateFromText(s:string){const m=norm(s).match(/(\d{2})\/(\d{2})\/(\d{4})/);return m?m[3]+"-"+m[2]+"-"+m[1]:null}
+function dateFromText(s:string){const m=norm(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):null}
 function code(s:string){return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()}
 async function commodityId(name:string){const {data}=await db.from("commodities").select("id").eq("codigo",code(name)).maybeSingle();return data?.id??null}
 async function save(q:any){const stable={source:q.source,source_reference:q.source_reference,market_date:q.market_date,commodity_id:q.commodity_id,product_id:q.product_id,variety:q.variety,position:q.position,market:q.market,port:q.port,price_type:q.price_type,price:q.price,currency:q.currency,unit:q.unit};const fp=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(stable)));q.fingerprint=Array.from(new Uint8Array(fp)).map(b=>b.toString(16).padStart(2,"0")).join("");const {error}=await db.from("market_quotes").upsert(q,{onConflict:"fingerprint",ignoreDuplicates:true});if(error)throw error;return 1}
-async function html(url:string){const r=await fetch(url,{headers:{"user-agent":"AgroBrokerIA MarketDataService/2.0"}});if(!r.ok)throw new Error("BCR_HTTP_"+r.status);return await r.text()}
+async function html(url:string){const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","accept-language":"es-AR,es;q=0.9,en;q=0.8","referer":"https://www.bolsadecereales.com/"}});if(!r.ok)throw new Error("SOURCE_HTTP_"+r.status);return await r.text()}
 async function authorized(req:Request){
  const cron=Deno.env.get("CRON_SECRET"),a=req.headers.get("authorization")||"";
  if(cron&&a==="Bearer "+cron)return true;
@@ -44,9 +44,9 @@ async function parseAvailable(body:string,runId:string){
  return saved
 }
 
-const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BCP_ORIENTATIVOS="https://bcp.org.ar/cotizaciones/precios-orientativos.asp",BCBA_QUOTES="https://www.bolsadecereales.com/cotizaciones",BCCBA_HOME="https://bccba.org.ar/";
+const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BCP_ORIENTATIVOS="https://bcp.org.ar/cotizaciones/precios-orientativos.asp",BCBA_QUOTES="https://www.bolsadecereales.com/precios-oficiales",BCCBA_HOME="https://bccba.org.ar/";
 function commodityCode(label:string){const n=code(label);if(n.includes("ACEITE")&&n.includes("GIRASOL"))return "ACEITE_GIRASOL";if(n.includes("ACEITE")&&n.includes("SOJA"))return "ACEITE_SOJA";if(n.includes("PELLET"))return "PELLETS_SOJA";if(n.includes("HARINA"))return "HARINA_SOJA";if(n.includes("EXPeller".toUpperCase()))return "EXPELLER_SOJA";if(n.includes("MANI"))return "MANI";if(n.includes("CEBADA"))return "CEBADA";if(n.includes("GIRASOL"))return "GIRASOL";if(n.includes("SOJA"))return "SOJA";if(n.includes("MAIZ"))return "MAIZ";if(n.includes("TRIGO"))return "TRIGO";if(n.includes("SORGO"))return "SORGO";return n.replace(/[^A-Z0-9]+/g,"_");}
-function pageDate(text:string){const matches=[...text.matchAll(/(\d{2})\/(\d{2})\/(\d{4})/g)];const m=matches[0];if(!m)throw new Error("SOURCE_MARKET_DATE_NOT_FOUND");return m[3]+"-"+m[2]+"-"+m[1]}
+function pageDate(text:string){const matches=[...text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)];const m=matches[0];if(!m)throw new Error("SOURCE_MARKET_DATE_NOT_FOUND");return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")}
 async function parseBahiaBlanca(body:string,runId:string,orientative=false){
  const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
  for(const tr of Array.from(d.querySelectorAll("tr"))){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(cells.length<2)continue;
@@ -57,16 +57,40 @@ async function parseBahiaBlanca(body:string,runId:string,orientative=false){
  }return saved;
 }
 async function parseBuenosAires(body:string,runId:string){
- const d=parseHTML(body).document;if(!d)throw new Error("BCBA_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const defaultDate=pageDate(text);let product="",saved=0;
- for(const tr of Array.from(d.querySelectorAll("tr"))){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(!cells.length)continue;
-  if(cells.length===1&&/^(Trigo|Ma[ií]z|Soja|Girasol|Sorgo|Cebada)$/i.test(cells[0])){product=cells[0];continue;}
-  if(!product||cells.length<2)continue;const row=cells.join(" ");const marketLabel=cells[0]||"";let market="BUENOS_AIRES",type="PIZARRA_CAC",currency=/US\$|USD|u\$s/i.test(row)?"USD":"ARS";
-  if(/CBOT/i.test(marketLabel)){market="CHICAGO";type="FUTURES";currency="USD";}
-  else if(/FOB/i.test(marketLabel)){type="FOB_OFFER";currency="USD";}
-  else if(/FAS/i.test(marketLabel)){type="FAS_THEORETICAL";}
-  const value=num(cells[cells.length-1]);if(value==null)continue;const date=pageDate(row)||defaultDate;const id=await commodityId(commodityCode(product));
-  saved+=await save({source:"Bolsa de Cereales de Buenos Aires",source_reference:BCBA_QUOTES,market_date:date,commodity_id:id,product_id:null,variety:null,position:cells[1]||"SPOT",market,port:null,price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,market_label:marketLabel,raw_cells:cells,run_id:runId}});
- }return saved;
+ const d=parseHTML(body).document;if(!d)throw new Error("BCBA_HTML_PARSE_ERROR");
+ const text=norm(d.body?.textContent||"");const marketDate=pageDate(text);let saved=0;
+ const products=["Aceite de Girasol","Aceite de Soja","Cebada","Girasol","Maiz","Pellets de Soja","Soja","Sorgo","Trigo Pan"];
+ const productFor=(cell:string)=>{const n=code(cell);return products.find(p=>n.includes(code(p)))||null;};
+ const tables=Array.from(d.querySelectorAll("table"));
+ for(const table of tables){
+  const rows=Array.from(table.querySelectorAll("tr")).map(tr=>Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""))).filter(row=>row.length);
+  if(!rows.length)continue;
+  const fobHeaderIndex=rows.findIndex(row=>row.some(x=>/^Posici[oó]n$/i.test(x))&&row.some(x=>!!productFor(x)));
+  if(fobHeaderIndex>=0){
+   const header=rows[fobHeaderIndex];const productColumns=header.map(productFor);
+   for(const cells of rows.slice(fobHeaderIndex+1)){
+    const position=cells[0]||"";if(!/^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)\d{2}$/i.test(position))continue;
+    for(let i=1;i<Math.min(cells.length,productColumns.length);i++){
+     const product=productColumns[i],value=num(cells[i]);if(!product||value===null)continue;
+     const id=await commodityId(commodityCode(product));
+     saved+=await save({source:"Bolsa de Cereales de Buenos Aires",source_reference:BCBA_QUOTES,market_date:marketDate,commodity_id:id,product_id:null,variety:null,position,market:"BUENOS_AIRES",port:null,price_type:"FOB_MINAGRI",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,position,table:"FOB_LEY_21453",raw_cells:cells,run_id:runId}});
+    }
+   }
+  }
+  const fasHeaderIndex=rows.findIndex(row=>row.some(x=>/^Producto$/i.test(x))&&row.some(x=>/^Actual$/i.test(x))&&row.some(x=>/^Anterior$/i.test(x)));
+  if(fasHeaderIndex>=0){
+   for(const cells of rows.slice(fasHeaderIndex+1)){
+    const productCell=cells.find(x=>!!productFor(x));if(!productCell)continue;
+    const product=productFor(productCell)!;const productIndex=cells.indexOf(productCell);
+    const values=cells.slice(productIndex+1).map(num).filter((v):v is number=>v!==null);
+    const value=values[0];if(value===undefined)continue;
+    const id=await commodityId(commodityCode(product));
+    saved+=await save({source:"Bolsa de Cereales de Buenos Aires",source_reference:BCBA_QUOTES,market_date:marketDate,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BUENOS_AIRES",port:null,price_type:"FAS_THEORETICAL",price:value,currency:"ARS",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:values[1]??null,variation:values[1]!==undefined?value-values[1]:null,payload:{product,table:"FAS_RES_42_2007",raw_cells:cells,run_id:runId}});
+   }
+  }
+ }
+ if(saved===0)throw new Error("BCBA_OFFICIAL_QUOTES_NOT_PARSED");
+ return saved;
 }
 async function parseCordoba(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
