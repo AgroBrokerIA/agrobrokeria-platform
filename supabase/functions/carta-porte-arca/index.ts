@@ -8,9 +8,22 @@ const corsHeaders={"Access-Control-Allow-Origin":"*","Access-Control-Allow-Heade
 const json=(b:unknown,s=200)=>new Response(JSON.stringify(b),{status:s,headers:{"content-type":"application/json",...corsHeaders}});
 
 function envPem(name:string,b64Name:string){
-  const p=Deno.env.get(name)||""; if(p)return p;
-  const b=Deno.env.get(b64Name)||""; if(!b)return "";
-  try{return new TextDecoder().decode(Uint8Array.from(atob(b.replace(/\s/g,"")),c=>c.charCodeAt(0)))}catch{return ""}
+  const decodePem=(value:string):string=>{
+    const raw=value.trim();
+    if(raw.includes("-----BEGIN "))return raw;
+    try{
+      const decoded=new TextDecoder().decode(Uint8Array.from(atob(raw.replace(/\s/g,"")),c=>c.charCodeAt(0))).trim();
+      return decoded.includes("-----BEGIN ") ? decoded : "";
+    }catch{return ""}
+  };
+  const direct=Deno.env.get(name)||"";
+  const pem=decodePem(direct);
+  if(pem)return pem;
+  if(b64Name!==name){
+    const encoded=Deno.env.get(b64Name)||"";
+    return encoded ? decodePem(encoded) : "";
+  }
+  return "";
 }
 function esc(v:unknown){return String(v??"").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
 function nodeText(xml:string,name:string){
