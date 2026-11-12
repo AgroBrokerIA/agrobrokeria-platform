@@ -1957,6 +1957,39 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
         setError("Seleccioná el establecimiento real de destino en el catálogo homologado antes de guardar el contrato.");
         return;
       }
+
+      // El establecimiento homologado y el destino aceptado en el Acuerdo Comercial
+      // deben representar el mismo lugar físico de descarga. No corregirlo en silencio:
+      // el acuerdo debe actualizarse y volver a confirmarse por las partes.
+      const destinoSeleccionado = destinosHomologados.find(
+        (item) => String(item.id_destino) === String(destinoHomologadoId)
+      );
+      if (!destinoSeleccionado) {
+        setMensaje("");
+        setError("El establecimiento seleccionado ya no está disponible en el catálogo. Volvé a cargarlo.");
+        return;
+      }
+      const normalizarDestino = (valor: string) =>
+        valor.normalize("NFD").replace(/[\\u0300-\\u036f]/g, "").toUpperCase().replace(/[^A-Z0-9 ]/g, " ").replace(/\\s+/g, " ").trim();
+      const destinoAcuerdoNormalizado = normalizarDestino(acuerdoDB.destino || "");
+      const nombreDestinoNormalizado = normalizarDestino(destinoSeleccionado.nombre_establecimiento);
+      const localidadDestinoNormalizada = normalizarDestino(destinoSeleccionado.localidad);
+      const aliasACA = /\\bACA\\b/.test(nombreDestinoNormalizado)
+        && /\\bACA\\b/.test(destinoAcuerdoNormalizado);
+      const nombreCoincide = nombreDestinoNormalizado
+        .split(" ")
+        .filter((token) => token.length >= 4 && !["ASOCIACION", "COOPERATIVAS", "ARGENTINAS", "PLANTA"].includes(token))
+        .some((token) => destinoAcuerdoNormalizado.includes(token));
+      const localidadCoincide = localidadDestinoNormalizada.length > 0
+        && destinoAcuerdoNormalizado.includes(localidadDestinoNormalizada);
+      if (!localidadCoincide || (!nombreCoincide && !aliasACA)) {
+        setMensaje("");
+        setError(
+          `El destino del Acuerdo Comercial (“${acuerdoDB.destino || "sin informar"}”) no coincide con el establecimiento seleccionado (“${destinoSeleccionado.nombre_establecimiento} — ${destinoSeleccionado.localidad}, ${destinoSeleccionado.provincia}”). Actualizá el Acuerdo Comercial al lugar real de descarga y volvé a confirmarlo antes de confirmar el contrato.`
+        );
+        return;
+      }
+
       const { data: contratoGuardado, error: errorContrato } = await supabase.rpc("guardar_contrato_comercial", {
         p_operacion_id: operacion.id,
         p_datos: {
