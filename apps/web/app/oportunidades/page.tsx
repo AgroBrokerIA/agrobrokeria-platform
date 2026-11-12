@@ -58,7 +58,7 @@ export default function OportunidadesPage(){
     return candidates.some(candidate=>counterpartCompanyIds.includes(candidate.empresa_id));
    });
    return counterparts.flatMap(other=>{
-    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id].filter((value):value is string=>Boolean(value));
+    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id].filter((value):value is string=>Boolean(value));
     const candidate=candidates.find(x=>counterpartCompanyIds.includes(x.empresa_id));
     if(!candidate||!candidate.recomendada)return [];
     const buy=ownIsBuy?own:other, sell=ownIsBuy?other:own;
