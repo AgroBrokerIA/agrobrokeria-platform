@@ -39,9 +39,14 @@ export default function OportunidadesPage(){
   const isSell=(v:string)=>["VENTA","OFERTA","SELL","SELLING"].includes(norm(v).toUpperCase());
   const ownPublications=pubs.filter(p=>ownPublicationIds.has(p.id));
   const scored=await Promise.all(ownPublications.map(async own=>{
-   const {data:ranked,error:rankError}=await supabase.rpc("calcular_smart_matches",{p_publicacion_id:own.id});
-   if(rankError){console.warn("No se pudo calcular el matching del servidor",own.id,rankError.message);return [] as Opportunity[];}
-   const candidates=(ranked||[]) as Array<{empresa_id:string;empresa:string;puntaje_total:number;recomendada:boolean}>;
+   const {data:ranked,error:rankError}=await supabase.rpc("procesar_smart_match_publicacion",{p_publicacion_id:own.id});
+   if(rankError){console.warn("No se pudo persistir el matching del servidor",own.id,rankError.message);return [] as Opportunity[];}
+   const candidates=(ranked||[]).map((row:any)=>({
+    empresa_id:String(row.buyer_company_id||""),
+    empresa:String(row.comprador||""),
+    puntaje_total:Number(row.match_score)||0,
+    recomendada:true
+   })).filter((row:any)=>row.empresa_id);
    const ownIsBuy=isBuy(own.tipo);
    const counterparts=pubs.filter(other=>{
     if(ownPublicationIds.has(other.id))return false;
