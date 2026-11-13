@@ -96,6 +96,7 @@ export default function DestinosAdminPage() {
   }, [rows, query, typeFilter, statusFilter]);
 
   function startEdit(row: Destino) {
+    setFormOpen(true);
     setEditing(row);
     setForm({
       tipo: row.tipo,
@@ -113,6 +114,7 @@ export default function DestinosAdminPage() {
   }
 
   function startNew() {
+    setFormOpen(true);
     setEditing(null);
     setForm(EMPTY);
     setReviewNote("");
@@ -144,6 +146,7 @@ export default function DestinosAdminPage() {
     } else {
       setNotice(editing ? "Datos del establecimiento actualizados." : "Destino incorporado al catálogo como pendiente de verificación.");
       setEditing(null);
+      setFormOpen(false);
       setForm(EMPTY);
       await load();
     }
