@@ -24,7 +24,7 @@ export default function PizarraPage(){
  async function load(){
   setLoading(true);setError("");
   const[q,c,catalog]=await Promise.all([
-   supabase.from("market_quotes").select("id,price,currency,unit,price_type,market_date,obtained_at,variation,previous_value,position,freshness,commodity_id,product_id,market,port,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300),
+   supabase.from("market_quotes").select("id,price,currency,unit,price_type,market_date,obtained_at,variation,previous_value,position,freshness,commodity_id,product_id,market,port,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(2000),
    supabase.from("commodities").select("id,codigo"),
    supabase.from("productos").select("id,codigo,nombre,categoria").eq("activo",true)
   ]);
