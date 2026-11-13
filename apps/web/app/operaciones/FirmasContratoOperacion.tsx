@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 
 type Copy = {
