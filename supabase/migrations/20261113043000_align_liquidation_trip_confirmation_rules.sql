@@ -40,17 +40,25 @@ BEGIN
          OR productor_recepcion_confirmada_at IS NULL
          OR estado<>'ENTREGADO_CONFIRMADO'
          OR productor_recepcion_observada_at IS NOT NULL
+         OR transportista_kilos_entregados IS NULL
+         OR productor_kilos_recibidos IS NULL
+         OR transportista_kilos_entregados < 0
+         OR productor_kilos_recibidos < 0
          OR transportista_kilos_entregados IS DISTINCT FROM productor_kilos_recibidos
        )
    ) THEN RAISE EXCEPTION 'DUAL_DELIVERY_CONFIRMATION_REQUIRED'; END IF;
 
-   SELECT coalesce(sum(kilos_entregados),0) INTO v_kilos
+   SELECT coalesce(sum(productor_kilos_recibidos),0) INTO v_kilos
    FROM public.viajes
    WHERE operacion_id=p_operacion_id
      AND estado='ENTREGADO_CONFIRMADO'
      AND transportista_entrega_confirmada_at IS NOT NULL
      AND productor_recepcion_confirmada_at IS NOT NULL
      AND productor_recepcion_observada_at IS NULL
+     AND transportista_kilos_entregados IS NOT NULL
+     AND productor_kilos_recibidos IS NOT NULL
+     AND transportista_kilos_entregados >= 0
+     AND productor_kilos_recibidos >= 0
      AND transportista_kilos_entregados IS NOT DISTINCT FROM productor_kilos_recibidos;
  ELSE
    RAISE EXCEPTION 'DELIVERY_TRIP_REQUIRED';
