@@ -151,7 +151,8 @@ export default function Liquidacion({
       viaje.estado === "ENTREGADO_CONFIRMADO" &&
       viaje.transportista_entrega_confirmada_at &&
       viaje.productor_recepcion_confirmada_at &&
-      !viaje.productor_recepcion_observada_at
+      !viaje.productor_recepcion_observada_at &&
+      Number(viaje.transportista_kilos_entregados) === Number(viaje.productor_kilos_recibidos)
     );
     // Mantener exactamente la misma fuente y filtro que usa
     // guardar_liquidacion_operacion en PostgreSQL.
