@@ -35,48 +35,17 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
     try {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Iniciá sesión para gestionar las copias firmadas.");
-      const [{ data: profile }, { data: admin }] = await Promise.all([
-        supabase.from("profiles").select("active_company_id").eq("id", auth.user.id).maybeSingle(),
-        supabase.from("platform_admins").select("user_id").eq("user_id", auth.user.id).maybeSingle()
-      ]);
-      setIsAdmin(Boolean(admin));
-      const { data: contract, error: contractError } = await supabase
-        .from("contratos").select("*").eq("operacion_id", operacionId)
-        .eq("estado", "CONFIRMADO").order("confirmado_at", { ascending: false }).limit(1).maybeSingle();
-      if (contractError) throw contractError;
-      if (!contract?.id) throw new Error("Todavía no existe un contrato definitivo confirmado para esta operación.");
-      setContractId(contract.id);
-      setContractNumber(String(contract.numero_contrato || "Contrato"));
-      let savedContent = String(contract.contenido || "").trim();
-      if (!savedContent) {
-        const { data: refreshedContent, error: contentError } = await supabase
-          .from("contratos").select("contenido").eq("id", contract.id).maybeSingle();
-        if (contentError) throw contentError;
-        savedContent = String(refreshedContent?.contenido || "").trim();
-      }
-      setContractContent(savedContent);
-
-      let companyIds: string[] = [];
-      if (profile?.active_company_id) {
-        const { data: mapped } = await supabase.from("company_empresa_map")
-          .select("empresa_id").eq("company_id", profile.active_company_id);
-        companyIds = (mapped || []).map((x: any) => x.empresa_id);
-        companyIds.push(profile.active_company_id);
-      }
-      let participantRows: any[] = [];
-      if (companyIds.length) {
-        const { data, error: participantError } = await supabase.from("operacion_participantes")
-          .select("empresa_id,rol").eq("operacion_id", operacionId).in("empresa_id", [...new Set(companyIds)]);
-        if (participantError) throw participantError;
-        participantRows = data || [];
-      }
-      const allowed = participantRows.map((p) => {
-        const role = String(p.rol || "").toUpperCase();
-        if (["VENDEDOR", "PRODUCTOR", "SELLER"].includes(role)) return "VENDEDOR";
-        if (["COMPRADOR", "BUYER"].includes(role)) return "COMPRADOR";
-        return "";
-      }).filter(Boolean);
-      setRoles([...new Set(allowed)]);
+      const { data: signatureData, error: signatureDataError } = await supabase.rpc(
+        "obtener_datos_firma_contrato",
+        { p_operacion_id: operacionId }
+      );
+      if (signatureDataError) throw signatureDataError;
+      if (!signatureData?.contract_id) throw new Error("No se encontró el contrato definitivo confirmado.");
+      setIsAdmin(Boolean(signatureData.is_admin));
+      setContractId(String(signatureData.contract_id));
+      setContractNumber(String(signatureData.contract_number || "Contrato"));
+      setContractContent(String(signatureData.contract_content || "").trim());
+      setRoles(Array.isArray(signatureData.roles) ? signatureData.roles : []);
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
         .select("id,rol,version_contrato,estado,nombre_archivo,storage_path,subido_at,observaciones")
