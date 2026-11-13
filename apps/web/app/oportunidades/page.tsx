@@ -49,7 +49,7 @@ export default function OportunidadesPage(){
     empresa_ids:[] as string[]
    })).filter((row:any)=>row.company_id);
    // La RPC devuelve los IDs de companies y la RPC de publicaciones incluye sus equivalencias verificadas.
-   for(const candidate of candidates)candidate.empresa_ids=[candidate.company_id];
+   for(const candidate of candidates)candidate.company_ids=[candidate.company_id];
    const ownIsBuy=isBuy(own.tipo);
    const counterparts=pubs.filter(other=>{
     if(ownPublicationIds.has(other.id))return false;
@@ -58,7 +58,7 @@ export default function OportunidadesPage(){
     if(norm(own.productos?.nombre)!==norm(other.productos?.nombre))return false;
     if(own.moneda_id&&other.moneda_id&&own.moneda_id!==other.moneda_id)return false;
     const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
-    return candidates.some(candidate=>counterpartCompanyIds.some(id=>candidate.empresa_ids.includes(id)));
+    return candidates.some(candidate=>counterpartCompanyIds.some(id=>candidate.company_ids.includes(id)));
    });
    return counterparts.flatMap(other=>{
     const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
@@ -66,7 +66,7 @@ export default function OportunidadesPage(){
     if(!candidate||!candidate.recomendada)return [];
     const buy=ownIsBuy?own:other, sell=ownIsBuy?other:own;
     const score=Math.max(0,Math.min(100,Number(candidate.puntaje_total)||0));
-    return [{id:[buy.id,sell.id].sort().join(":"),publicacion_id:other.id,contactPublicationId:other.id,empresa_id:other.empresa_id||candidate.empresa_id,indice_compatibilidad:score,estado:"ACTIVA",creada_en:own.creada_en||other.creada_en||"",distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,publicacion_propia_id:own.id,cantidad_lote_venta:sell.cantidad_tn,compra_empresa:buy.empresas?.representado_razon_social||buy.empresas?.razon_social||"Publicador no identificado",venta_empresa:sell.empresas?.representado_razon_social||sell.empresas?.razon_social||"Publicador no identificado",compra_intermediario:buy.empresas?.intermediario_razon_social||null,venta_intermediario:sell.empresas?.intermediario_razon_social||null,compra_representado_cuit:buy.empresas?.representado_cuit||null,venta_representado_cuit:sell.empresas?.representado_cuit||null,compra_publicador_id:buy.publicador_profile_id,venta_publicador_id:sell.publicador_profile_id,producto:buy.productos?.nombre,compra_pais:buy.paises?.nombre,venta_pais:sell.paises?.nombre,precio_compra:buy.precio_tn,precio_venta:sell.precio_tn,explicacion:"Puntaje calculado por el motor de compatibilidad del servidor",empresa_match:candidate.empresa},publicacion:other} as Opportunity];
+    return [{id:[buy.id,sell.id].sort().join(":"),publicacion_id:other.id,contactPublicationId:other.id,empresa_id:other.empresa_id||candidate.company_id,indice_compatibilidad:score,estado:"ACTIVA",creada_en:own.creada_en||other.creada_en||"",distancia_km:null,detalles:{compra_id:buy.id,venta_id:sell.id,publicacion_propia_id:own.id,cantidad_lote_venta:sell.cantidad_tn,compra_empresa:buy.empresas?.representado_razon_social||buy.empresas?.razon_social||"Publicador no identificado",venta_empresa:sell.empresas?.representado_razon_social||sell.empresas?.razon_social||"Publicador no identificado",compra_intermediario:buy.empresas?.intermediario_razon_social||null,venta_intermediario:sell.empresas?.intermediario_razon_social||null,compra_representado_cuit:buy.empresas?.representado_cuit||null,venta_representado_cuit:sell.empresas?.representado_cuit||null,compra_publicador_id:buy.publicador_profile_id,venta_publicador_id:sell.publicador_profile_id,producto:buy.productos?.nombre,compra_pais:buy.paises?.nombre,venta_pais:sell.paises?.nombre,precio_compra:buy.precio_tn,precio_venta:sell.precio_tn,explicacion:"Puntaje calculado por el motor de compatibilidad del servidor",empresa_match:candidate.empresa},publicacion:other} as Opportunity];
    });
   }));
   const matches=Array.from(new Map(scored.flat().map(x=>[x.id,x])).values());
