@@ -49,7 +49,7 @@ export default function OportunidadesPage(){
     empresa_ids:[] as string[]
    })).filter((row:any)=>row.company_id);
    // La RPC devuelve los IDs de companies y la RPC de publicaciones incluye sus equivalencias verificadas.
-   for(const candidate of candidates)candidate.company_ids=[candidate.company_id];
+   for(const candidate of candidates)candidate.empresa_ids=[candidate.company_id];
    const ownIsBuy=isBuy(own.tipo);
    const counterparts=pubs.filter(other=>{
     if(ownPublicationIds.has(other.id))return false;
@@ -58,7 +58,7 @@ export default function OportunidadesPage(){
     if(norm(own.productos?.nombre)!==norm(other.productos?.nombre))return false;
     if(own.moneda_id&&other.moneda_id&&own.moneda_id!==other.moneda_id)return false;
     const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
-    return candidates.some(candidate=>counterpartCompanyIds.some(id=>candidate.company_ids.includes(id)));
+    return candidates.some(candidate=>counterpartCompanyIds.some(id=>candidate.empresa_ids.includes(id)));
    });
    return counterparts.flatMap(other=>{
     const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
