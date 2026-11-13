@@ -35,7 +35,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
     try {
       const { data: auth } = await supabase.auth.getUser();
       if (!auth.user) throw new Error("Iniciá sesión para gestionar las copias firmadas.");
-      const { data: signatureData, error: signatureDataError } = await supabase.rpc(
+      const { data: signatureData, error: signatureDataError } = await (supabase.rpc as any)(
         "obtener_datos_firma_contrato",
         { p_operacion_id: operacionId }
       );
@@ -49,7 +49,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
         .select("id,rol,version_contrato,estado,nombre_archivo,storage_path,subido_at,observaciones")
-        .eq("contrato_id", contract.id).order("version_contrato", { ascending: false }).order("subido_at", { ascending: false });
+        .eq("contrato_id", contractId).order("version_contrato", { ascending: false }).order("subido_at", { ascending: false });
       if (copyError) throw copyError;
       setCopies((copyRows || []) as Copy[]);
     } catch (e) {
