@@ -48,22 +48,8 @@ export default function OportunidadesPage(){
     recomendada:true,
     empresa_ids:[] as string[]
    })).filter((row:any)=>row.company_id);
-   // El motor devuelve companies.id; las publicaciones guardan empresas.id.
-   // Resolver la tabla puente antes de comparar contrapartes para no descartar matches válidos.
-   const candidateCompanyIds=Array.from(new Set(candidates.map((row:any)=>row.company_id)));
-   if(candidateCompanyIds.length){
-    const {data:mappings,error:mappingError}=await supabase.from("company_empresa_map")
-     .select("company_id,empresa_id").in("company_id",candidateCompanyIds);
-    if(mappingError)throw mappingError;
-    const empresaIdsByCompany=new Map<string,string[]>();
-    for(const mapping of mappings||[]){
-     const key=String((mapping as any).company_id);
-     const values=empresaIdsByCompany.get(key)||[];
-     values.push(String((mapping as any).empresa_id));
-     empresaIdsByCompany.set(key,values);
-    }
-    for(const candidate of candidates)candidate.empresa_ids=empresaIdsByCompany.get(candidate.company_id)||[];
-   }
+   // La RPC devuelve los IDs de companies y la RPC de publicaciones incluye sus equivalencias verificadas.
+   for(const candidate of candidates)candidate.empresa_ids=[candidate.company_id];
    const ownIsBuy=isBuy(own.tipo);
    const counterparts=pubs.filter(other=>{
     if(ownPublicationIds.has(other.id))return false;
@@ -71,11 +57,11 @@ export default function OportunidadesPage(){
     if(ownIsBuy?!isSell(other.tipo):!isBuy(other.tipo))return false;
     if(norm(own.productos?.nombre)!==norm(other.productos?.nombre))return false;
     if(own.moneda_id&&other.moneda_id&&own.moneda_id!==other.moneda_id)return false;
-    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id].filter((value):value is string=>Boolean(value));
+    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
     return candidates.some(candidate=>counterpartCompanyIds.some(id=>candidate.empresa_ids.includes(id)));
    });
    return counterparts.flatMap(other=>{
-    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id].filter((value):value is string=>Boolean(value));
+    const counterpartCompanyIds=[other.empresa_id,other.intermediario_empresa_id,other.empresas?.intermediario_empresa_id,other.empresas?.publicador_company_id,other.empresas?.empresa_company_id,other.empresas?.intermediario_company_id].filter((value):value is string=>Boolean(value));
     const candidate=candidates.find(x=>counterpartCompanyIds.some(id=>x.empresa_ids.includes(id)));
     if(!candidate||!candidate.recomendada)return [];
     const buy=ownIsBuy?own:other, sell=ownIsBuy?other:own;
