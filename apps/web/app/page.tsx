@@ -158,7 +158,7 @@ export default function Home(){
     ["IA Matching","Cruce inteligente de oportunidades, preferencias y condiciones."],
     ["Empresas y Verificación","Identidad empresarial, KYC, cumplimiento y trazabilidad."],
     ["Negociación","Ofertas, contraofertas, aceptación y registro de cada etapa."],
-    ["Contratos Digitales Homologados","Objetivo: modelos F1 oficiales de la Bolsa de Comercio, contratos de compraventa y abastecimiento legal con firma digital integrada. Hoy AgroBrokerIA genera borradores F1; la homologación y firma digital oficial requieren habilitación e integración con el servicio correspondiente."],
+    ["Modelos F1","Modelos F1 para contratos de compraventa y abastecimiento."],
     ["Documentación","Gestión centralizada de archivos, versiones, evidencias y estados."],
     ["Logística","Transporte, entregas, cartas de porte y coordinación operativa."],
     ["Integración nativa con ARCA","Diseñada para automatizar Liquidaciones Primarias de Granos (LPG), Factura de Crédito Electrónica MiPyMEs y retenciones en tiempo real, sujeto a habilitación de servicios, credenciales y validación oficial de cada proceso."],
