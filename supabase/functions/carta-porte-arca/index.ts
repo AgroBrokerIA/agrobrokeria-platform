@@ -198,7 +198,7 @@ Deno.serve(async req=>{
       if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
       const environment=cfg.environment==="production"?"production":"homologacion";
       if(environment==="production"&&!cfg.production_enabled)return json({error:"ARCA_PRODUCTION_LOCKED_UNTIL_EXPLICIT_APPROVAL"},423);
-      const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
+      const cuit=cuitDigits(Deno.env.get("ARCA_CUIT_REPRESENTADO")||(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
       const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):(cfg.cert_homologacion_secret_name||"ARCA_CERTIFICATE_HOMO_BASE64");
       const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):(cfg.private_key_homologacion_secret_name||"ARCA_PRIVATE_KEY_HOMO_BASE64");
       const cert=envPem(certSecretName,certSecretName),key=envPem(keySecretName,keySecretName);
@@ -245,7 +245,7 @@ Deno.serve(async req=>{
       if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
       const environment=viaje.carta_porte_environment==="production"?"production":(cfg.environment==="production"?"production":"homologacion");
       if(environment==="production"&&!cfg.production_enabled)return json({error:"ARCA_PRODUCTION_LOCKED_UNTIL_EXPLICIT_APPROVAL"},423);
-      const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
+      const cuit=cuitDigits(Deno.env.get("ARCA_CUIT_REPRESENTADO")||(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
       const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):"ARCA_CERTIFICATE_HOMO_BASE64";
       const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):"ARCA_PRIVATE_KEY_HOMO_BASE64";
       const cert=envPem(certSecretName,certSecretName),key=envPem(keySecretName,keySecretName);
@@ -338,7 +338,7 @@ Deno.serve(async req=>{
     if(!cfg?.enabled)return json({error:"ARCA_WSCPE_COMPANY_NOT_CONFIGURED"},409);
     const environment=cfg.environment==="production"?"production":"homologacion";
     if(environment==="production"&&!cfg.production_enabled)return json({error:"ARCA_PRODUCTION_LOCKED_UNTIL_EXPLICIT_APPROVAL"},423);
-    const cuit=cuitDigits((cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
+    const cuit=cuitDigits(Deno.env.get("ARCA_CUIT_REPRESENTADO")||(cfg.cuit_secret_name?Deno.env.get(cfg.cuit_secret_name):"")||company.cuit,"REPRESENTADA");
     // Homologation and production credentials are deliberately isolated.
     const certSecretName=environment==="production"?(cfg.cert_secret_name||"ARCA_CERTIFICATE_BASE64"):"ARCA_CERTIFICATE_HOMO_BASE64";
     const keySecretName=environment==="production"?(cfg.private_key_secret_name||"ARCA_PRIVATE_KEY_BASE64"):"ARCA_PRIVATE_KEY_HOMO_BASE64";
