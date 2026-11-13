@@ -57,7 +57,8 @@ export default function DestinosAdminPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState("pendientes");
-  const [editing, setEditing] = useState<Destino | null>(null);\n  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Destino | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [reviewNote, setReviewNote] = useState("");
 
