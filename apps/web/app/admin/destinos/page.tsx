@@ -57,7 +57,8 @@ export default function DestinosAdminPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState("pendientes");
-  const [editing, setEditing] = useState<Destino | null>(null);\n  const [formOpen, setFormOpen] = useState(false);
+  const [editing, setEditing] = useState<Destino | null>(null);
+  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [reviewNote, setReviewNote] = useState("");
 
@@ -96,6 +97,7 @@ export default function DestinosAdminPage() {
   }, [rows, query, typeFilter, statusFilter]);
 
   function startEdit(row: Destino) {
+    setFormOpen(true);
     setEditing(row);
     setForm({
       tipo: row.tipo,
@@ -113,6 +115,7 @@ export default function DestinosAdminPage() {
   }
 
   function startNew() {
+    setFormOpen(true);
     setEditing(null);
     setForm(EMPTY);
     setReviewNote("");
@@ -144,6 +147,7 @@ export default function DestinosAdminPage() {
     } else {
       setNotice(editing ? "Datos del establecimiento actualizados." : "Destino incorporado al catálogo como pendiente de verificación.");
       setEditing(null);
+      setFormOpen(false);
       setForm(EMPTY);
       await load();
     }
