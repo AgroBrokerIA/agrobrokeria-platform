@@ -49,7 +49,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
 
       const { data: copyRows, error: copyError } = await supabase.from("contrato_copias_firmadas")
         .select("id,rol,version_contrato,estado,nombre_archivo,storage_path,subido_at,observaciones")
-        .eq("contrato_id", contractId).order("version_contrato", { ascending: false }).order("subido_at", { ascending: false });
+        .eq("contrato_id", String(signatureData.contract_id)).order("version_contrato", { ascending: false }).order("subido_at", { ascending: false });
       if (copyError) throw copyError;
       setCopies((copyRows || []) as Copy[]);
     } catch (e) {
