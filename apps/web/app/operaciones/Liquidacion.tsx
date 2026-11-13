@@ -152,12 +152,16 @@ export default function Liquidacion({
       viaje.transportista_entrega_confirmada_at &&
       viaje.productor_recepcion_confirmada_at &&
       !viaje.productor_recepcion_observada_at &&
+      viaje.transportista_kilos_entregados != null &&
+      viaje.productor_kilos_recibidos != null &&
+      Number(viaje.transportista_kilos_entregados) >= 0 &&
+      Number(viaje.productor_kilos_recibidos) >= 0 &&
       Number(viaje.transportista_kilos_entregados) === Number(viaje.productor_kilos_recibidos)
     );
-    // Mantener exactamente la misma fuente y filtro que usa
-    // guardar_liquidacion_operacion en PostgreSQL.
+    // La cantidad de referencia es la recepción confirmada por el productor,
+    // igual que en guardar_liquidacion_operacion en PostgreSQL.
     const kilos = viajesConfirmados.reduce(
-      (total, viaje) => total + Number(viaje.kilos_entregados || 0),
+      (total, viaje) => total + Number(viaje.productor_kilos_recibidos),
       0
     );
     const entregadaTn = kilos / 1000;
