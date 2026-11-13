@@ -41,18 +41,25 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
       ]);
       setIsAdmin(Boolean(admin));
       const { data: contract, error: contractError } = await supabase
-        .from("contratos").select("id,numero_contrato,contenido").eq("operacion_id", operacionId)
+        .from("contratos").select("*").eq("operacion_id", operacionId)
         .eq("estado", "CONFIRMADO").order("confirmado_at", { ascending: false }).limit(1).maybeSingle();
       if (contractError) throw contractError;
       if (!contract?.id) throw new Error("Todavía no existe un contrato definitivo confirmado para esta operación.");
       setContractId(contract.id);
       setContractNumber(String(contract.numero_contrato || "Contrato"));
-      setContractContent(String(contract.contenido || ""));
+      let savedContent = String(contract.contenido || "").trim();
+      if (!savedContent) {
+        const { data: refreshedContent, error: contentError } = await supabase
+          .from("contratos").select("contenido").eq("id", contract.id).maybeSingle();
+        if (contentError) throw contentError;
+        savedContent = String(refreshedContent?.contenido || "").trim();
+      }
+      setContractContent(savedContent);
 
       let companyIds: string[] = [];
       if (profile?.active_company_id) {
         const { data: mapped } = await supabase.from("company_empresa_map")
-          .select("empresa_id").eq("company_id", profile.active_company_id).eq("verified", true);
+          .select("empresa_id").eq("company_id", profile.active_company_id);
         companyIds = (mapped || []).map((x: any) => x.empresa_id);
         companyIds.push(profile.active_company_id);
       }
@@ -84,7 +91,7 @@ export default function FirmasContratoOperacion({ operacionId, onWorkflowAdvance
   useEffect(() => { void load(); }, [load]);
 
   function downloadContract() {
-    if (!contractContent.trim()) { setError("El contrato confirmado no tiene contenido disponible para descargar."); return; }
+    if (!contractContent.trim()) { setError("El contrato confirmado no contiene texto guardado. Volvé a abrir la operación y, si persiste, regenerá el PDF desde el contrato definitivo."); return; }
     const pdf = new jsPDF({ unit: "mm", format: "a4" });
     pdf.setFont("helvetica", "normal");
     pdf.setFontSize(10);
