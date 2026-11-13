@@ -57,7 +57,7 @@ export default function DestinosAdminPage() {
   const [query, setQuery] = useState("");
   const [typeFilter, setTypeFilter] = useState("todos");
   const [statusFilter, setStatusFilter] = useState("pendientes");
-  const [editing, setEditing] = useState<Destino | null>(null);
+  const [editing, setEditing] = useState<Destino | null>(null);\n  const [formOpen, setFormOpen] = useState(false);
   const [form, setForm] = useState<FormState>(EMPTY);
   const [reviewNote, setReviewNote] = useState("");
 
@@ -226,14 +226,14 @@ export default function DestinosAdminPage() {
               <td style={{ padding: 11, borderBottom: "1px solid #e2e8f0" }}>{r.localidad}, {r.provincia}</td>
               <td style={{ padding: 11, borderBottom: "1px solid #e2e8f0" }}>{r.cuit_operador || "Pendiente"}</td>
               <td style={{ padding: 11, borderBottom: "1px solid #e2e8f0" }}><span style={{ color: r.verificado ? "#166534" : "#92400e", background: r.verificado ? "#dcfce7" : "#fef3c7", borderRadius: 20, padding: "4px 8px", fontWeight: 700 }}>{r.verificado ? "Homologado" : "Pendiente"}</span><div style={{ color: "#64748b", marginTop: 5 }}>{r.activo ? "Activo" : "Inactivo"}</div></td>
-              <td style={{ padding: 11, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}><button onClick={() => startEdit(r)} style={{ padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 7, marginRight: 6 }}>Editar</button><button onClick={() => { setEditing(r); setReviewNote(""); setError(""); setNotice(""); }} style={{ padding: "7px 10px", border: "1px solid #0f766e", color: "#0f766e", borderRadius: 7 }}>{r.verificado ? "Revisar estado" : "Homologar"}</button></td>
+              <td style={{ padding: 11, borderBottom: "1px solid #e2e8f0", whiteSpace: "nowrap" }}><button onClick={() => startEdit(r)} style={{ padding: "7px 10px", border: "1px solid #cbd5e1", borderRadius: 7, marginRight: 6 }}>Editar</button><button onClick={() => startEdit(r)} style={{ padding: "7px 10px", border: "1px solid #0f766e", color: "#0f766e", borderRadius: 7 }}>{r.verificado ? "Revisar estado" : "Homologar"}</button></td>
             </tr>)}</tbody>
           </table>
         </div>}
       </section>
 
-      {editing && <section style={{ background: "#fff", border: "1px solid #cbd5e1", borderRadius: 14, padding: 18, marginBottom: 20 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><h2 style={{ fontSize: 18, fontWeight: 800 }}>{editing.id_destino ? "Editar / revisar establecimiento" : "Nuevo destino"}</h2><button onClick={() => setEditing(null)} aria-label="Cerrar">✕</button></div>
+      {formOpen && <section style={{ background: "#fff", border: "1px solid #cbd5e1", borderRadius: 14, padding: 18, marginBottom: 20 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}><h2 style={{ fontSize: 18, fontWeight: 800 }}>{editing ? "Editar / revisar establecimiento" : "Nuevo destino"}</h2><button onClick={() => { setEditing(null); setFormOpen(false); }} aria-label="Cerrar">✕</button></div>
         <form onSubmit={save}>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit,minmax(220px,1fr))", gap: 12, marginTop: 12 }}>
             <label>Tipo<select required value={form.tipo} onChange={(e) => setForm({ ...form, tipo: e.target.value as TipoDestino })} style={inputStyle}>{TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}</select></label>
@@ -247,7 +247,7 @@ export default function DestinosAdminPage() {
           <label style={{ display: "flex", alignItems: "center", gap: 8, marginTop: 12 }}><input type="checkbox" checked={form.activo} onChange={(e) => setForm({ ...form, activo: e.target.checked })} /> Destino activo en el catálogo</label>
           <button disabled={saving} style={{ marginTop: 14, padding: "10px 16px", borderRadius: 8, background: "#047857", color: "white", fontWeight: 750 }}>{saving ? "Guardando…" : "Guardar datos"}</button>
         </form>
-        {editing.id_destino && <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 18, paddingTop: 16 }}>
+        {editing && <div style={{ borderTop: "1px solid #e2e8f0", marginTop: 18, paddingTop: 16 }}>
           <h3 style={{ fontWeight: 800 }}>Control de homologación</h3>
           <p style={{ color: "#64748b", fontSize: 13, margin: "6px 0 10px" }}>La aprobación es manual. Antes de marcar como verificado, contrastá razón social, CUIT, domicilio y planta con documentación oficial. No existe una validación automática de ACA en esta pantalla.</p>
           <label>Constancia de revisión administrativa<textarea rows={3} value={reviewNote} onChange={(e) => setReviewNote(e.target.value)} placeholder="Ej.: constancia oficial consultada, fecha, organismo o documento y resultado." style={inputStyle} /></label>
