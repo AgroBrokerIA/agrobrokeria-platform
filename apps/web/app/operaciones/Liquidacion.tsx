@@ -358,12 +358,9 @@ export default function Liquidacion({
         />
 
         <Campo
-          label="Kilos entregados"
+          label="Kilos entregados (viajes con doble conformidad)"
           value={datos.kilos_entregados}
-          type="number"
-          onChange={(v) =>
-            cambiar("kilos_entregados", Number(v) || 0)
-          }
+          readOnly
         />
 
         <Campo
