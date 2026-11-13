@@ -32,6 +32,8 @@ export default function PizarraPage(){
   setQuotes((q.data||[]) as Quote[]);setCodes(Object.fromEntries((c.data||[]).map((x:any)=>[x.id,String(x.codigo).toUpperCase()])));setProductNames(Object.fromEntries((catalog.data||[]).map((x:any)=>[String(x.id),x.nombre] )));setProductCategories(Object.fromEntries((catalog.data||[]).map((x:any)=>[String(x.id),x.categoria||""])));setLoading(false);
  }
  useEffect(()=>{void load()},[]);
+ const [clockNow,setClockNow]=useState<number|null>(null);
+ useEffect(()=>{const tick=()=>setClockNow(Date.now());tick();const timer=window.setInterval(tick,60000);return()=>window.clearInterval(timer)},[]);
  async function sync(){
   setSyncing(true);setSyncMsg("");setError("");
   try{const{data:{session}}=await supabase.auth.getSession();if(!session)throw new Error("Necesitás iniciar sesión.");
@@ -68,12 +70,12 @@ export default function PizarraPage(){
  const compareCodes=wanted.slice(0,4);
  const compareSelectedCode=compareCodes.includes(compare)?compare:(compareCodes.includes(productFilter)?productFilter:(compareCodes[0]||""));
  const rangeDays:Record<string,number>={"1D":1,"1S":7,"1M":30,"3M":90,"1A":365};
- const cutoff=range==="Todo"?null:new Date(Date.now()-((rangeDays[range]||1)*24*60*60*1000)).toISOString().slice(0,10);
+ const cutoff=range==="Todo"||clockNow===null?null:new Date(clockNow-((rangeDays[range]||1)*24*60*60*1000)).toISOString().slice(0,10);
  const chartHistory=filteredQuotes.filter(q=>q.price!=null&&(!cutoff||q.market_date>=cutoff));
  const soja=chartHistory.filter(q=>codeFor(q)===compareSelectedCode).slice().sort((a,b)=>a.market_date.localeCompare(b.market_date)||a.obtained_at.localeCompare(b.obtained_at));
  const compareSeries=compareCodes.map(code=>({code,points:chartHistory.filter(q=>codeFor(q)===code).slice().sort((a,b)=>a.market_date.localeCompare(b.market_date)||a.obtained_at.localeCompare(b.obtained_at)).slice(-20)}));
  return <main className="board-reference">
-  <header className="board-head"><div><h1>Pizarra de granos</h1><p>Cotizaciones de bolsas locales e internacionales · histórico conservado</p></div><div className="board-head-right"><span><i/> Datos de mercado</span><span>◷ {new Date().toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})} (GMT-3)</span><small>{selectedMarket.label}</small><a className="board-source" href={selectedMarket.url} target="_blank" rel="noreferrer">↗ &nbsp; Ver fuente oficial</a></div></header>
+  <header className="board-head"><div><h1>Pizarra de granos</h1><p>Cotizaciones de bolsas locales e internacionales · histórico conservado</p></div><div className="board-head-right"><span><i/> Datos de mercado</span><span>◷ {clockNow===null?"—":new Date(clockNow).toLocaleTimeString("es-AR",{hour:"2-digit",minute:"2-digit"})} (GMT-3)</span><small>{selectedMarket.label}</small><a className="board-source" href={selectedMarket.url} target="_blank" rel="noreferrer">↗ &nbsp; Ver fuente oficial</a></div></header>
   {error&&<div className="module-alert module-alert-error">{error}</div>}{syncMsg&&<div className="module-alert">{syncMsg}</div>}
   <div className="board-toolbar"><nav>{["Granos","Aceites","Harinas","Subproductos"].map(x=><button className={boardTab===x?"active":""} onClick={()=>setBoardTab(x)} key={x}>{x}</button>)}</nav><span>Última actualización: {filteredQuotes[0]?.obtained_at?new Date(filteredQuotes[0].obtained_at).toLocaleString("es-AR",{dateStyle:"short",timeStyle:"short"}):"Sin sincronización"}</span><button className="board-refresh" onClick={sync} disabled={syncing}>⟳ &nbsp;{syncing?"Actualizando…":"Actualizar"}</button></div>
   <section className="board-layout">
