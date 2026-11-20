@@ -111,15 +111,18 @@ async function parseBahiaOrientatives(body:string,runId:string){
    const currencyMatches=[...detail.matchAll(/u\s*\$?\s*s?\s*(\d{2,6}(?:[.,]\d{1,2})?(?:\s*-\s*\d{2,6}(?:[.,]\d{1,2})?)?)/gi)];
    if(!currencyMatches.length)continue;
    const id=await commodityId(commodity);
+   let previousMatchEnd=0;
    for(let q=0;q<currencyMatches.length;q++){
-    const raw=currencyMatches[q][1].replace(/\s/g,"");const first=raw.split("-")[0].replace(/\./g,"").replace(",",".");const value=Number(first);
+    const match=currencyMatches[q],raw=match[1].replace(/\s/g,"");const first=raw.split("-")[0].replace(/\./g,"").replace(",",".");const value=Number(first);
+    const segmentBefore=detail.slice(previousMatchEnd,match.index!).trim();
+    const nextStart=q+1<currencyMatches.length?currencyMatches[q+1].index!:detail.length;
+    const deliveryTerms=detail.slice(match.index!+match[0].length,nextStart).trim();
+    previousMatchEnd=match.index!+match[0].length;
     if(!Number.isFinite(value)||value<=0)continue;
-    const after=detail.slice(currencyMatches[q].index!+currencyMatches[q][0].length).trim();
-    const previous=detail.slice(0,currencyMatches[q].index).trim();
-    const future=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|futuro)\b/i.test(previous);
-    const available=/\b(disp|disponible)\b/i.test(previous);
+    const future=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|futuro)\b/i.test(segmentBefore);
+    const available=/\b(disp|disponible)\b/i.test(segmentBefore);
     const position=available?"DISPONIBLE":future?"FUTURO":"DISPONIBLE";
-    saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca - Precios Orientativos",source_reference:pdfUrl,market_date:pageDate(line+" "+lines.slice(0,8).map(x=>x.text).join(" ")),published_at:null,commodity_id:id,product_id:null,variety:null,position,market:"BAHIA_BLANCA",port:localityName,price_type:"PRECIO_ORIENTATIVO",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:commodity,locality:localityName,position,raw_value:raw,raw_line:line,raw_detail:detail,range_high:raw.includes("-")?Number(raw.split("-")[1].replace(/\./g,"").replace(",",".")):null,delivery_terms:after.slice(0,80),report_pdf:pdfUrl,run_id:runId,secondary_source:false}});
+    saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca - Precios Orientativos",source_reference:pdfUrl,market_date:pageDate(line+" "+lines.slice(0,8).map(x=>x.text).join(" ")),published_at:null,commodity_id:id,product_id:null,variety:null,position,market:"BAHIA_BLANCA",port:localityName,price_type:"PRECIO_ORIENTATIVO",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:commodity,locality:localityName,position,raw_value:raw,raw_line:line,raw_detail:detail,range_high:raw.includes("-")?Number(raw.split("-")[1].replace(/\./g,"").replace(",",".")):null,delivery_terms:deliveryTerms.slice(0,80),report_pdf:pdfUrl,run_id:runId,secondary_source:false}});
    }
   }
   reportLines.push(...lines.map(x=>x.text));
