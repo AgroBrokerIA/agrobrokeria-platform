@@ -100,6 +100,7 @@ export default function ConfidencialidadOperacion({ operacionId }: { operacionId
   }
 
   const pendientes = estados.filter((item) => item.requerido && !item.aceptado).length;
+  const documentoIncompleto = Boolean(documento?.contenido && /_{5,}/.test(documento.contenido));
 
   return (
     <section style={{ marginTop: 18, padding: 16, border: "1px solid #cbd5e1", borderRadius: 12, background: "#fff", display: "grid", gap: 12 }}>
@@ -116,6 +117,12 @@ export default function ConfidencialidadOperacion({ operacionId }: { operacionId
           La cuenta activa no tiene una membresía habilitada en esta operación para aceptar por un rol participante. Ingresá con la cuenta de la empresa correspondiente.
         </p>
       ) : null}
+
+      {documentoIncompleto && (
+        <p role="alert" style={{ margin: 0, padding: 12, borderRadius: 8, background: "#fff7ed", color: "#9a3412", fontSize: 13 }}>
+          Aceptación bloqueada: el documento vigente contiene campos contractuales sin completar. Administración debe publicar una versión completa y revisada antes de que las partes puedan aceptarla.
+        </p>
+      )}
 
       {documento && estados.length > 0 && (
         <>
@@ -137,7 +144,7 @@ export default function ConfidencialidadOperacion({ operacionId }: { operacionId
                 <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", gap: 10, flexWrap: "wrap" }}>
                   <strong>{nombresRol[item.rol] || item.rol}</strong>
                   <span style={{ fontSize: 12, fontWeight: 700, color: item.aceptado ? "#166534" : "#92400e" }}>
-                    {item.aceptado ? "ACEPTADO" : "PENDIENTE"}
+                    {item.aceptado ? "ACEPTADO" : documentoIncompleto ? "BLOQUEADO · DOCUMENTO INCOMPLETO" : "PENDIENTE"}
                   </span>
                 </div>
                 {item.aceptado ? (
@@ -149,6 +156,7 @@ export default function ConfidencialidadOperacion({ operacionId }: { operacionId
                     <label style={{ display: "flex", alignItems: "flex-start", gap: 8, marginTop: 10, fontSize: 13, lineHeight: 1.45 }}>
                       <input
                         type="checkbox"
+                        disabled={documentoIncompleto}
                         checked={Boolean(consentimientos[item.rol])}
                         onChange={(event) => setConsentimientos((actual) => ({ ...actual, [item.rol]: event.target.checked }))}
                       />
@@ -156,9 +164,9 @@ export default function ConfidencialidadOperacion({ operacionId }: { operacionId
                     </label>
                     <button
                       type="button"
-                      disabled={aceptando !== null || !consentimientos[item.rol]}
+                      disabled={aceptando !== null || documentoIncompleto || !consentimientos[item.rol]}
                       onClick={() => void aceptar(item.rol)}
-                      style={{ marginTop: 10, padding: "9px 13px", border: 0, borderRadius: 8, background: consentimientos[item.rol] ? "#0f766e" : "#94a3b8", color: "#fff", fontWeight: 700, cursor: consentimientos[item.rol] ? "pointer" : "not-allowed" }}
+                      style={{ marginTop: 10, padding: "9px 13px", border: 0, borderRadius: 8, background: consentimientos[item.rol] && !documentoIncompleto ? "#0f766e" : "#94a3b8", color: "#fff", fontWeight: 700, cursor: consentimientos[item.rol] && !documentoIncompleto ? "pointer" : "not-allowed" }}
                     >
                       {aceptando === item.rol ? "Registrando…" : "Aceptar documento para este rol"}
                     </button>
