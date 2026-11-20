@@ -1,4 +1,5 @@
 import { parseHTML } from "npm:linkedom@0.18.12";
+import * as pdfjsLib from "https://esm.sh/pdfjs-dist@4.10.38/legacy/build/pdf.mjs";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.1";
 const URL=Deno.env.get("SUPABASE_URL")!,ANON=Deno.env.get("SUPABASE_ANON_KEY")!,SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,db=createClient(URL,SERVICE);
 const BCR_LOCAL="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0",BCR_FOB="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",BCR_AVAILABLE="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-2",SOURCE="BCR/CAC";
@@ -64,6 +65,58 @@ async function parseBahiaBlanca(body:string,runId:string,orientative=false){
   saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca",source_reference:orientative?BCP_ORIENTATIVOS:BCP_FAS_FOB,market_date:rowDate||date,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BAHIA_BLANCA",port:"BAHIA BLANCA",price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,raw_cells:cells,secondary_source:false,run_id:runId}});
  }
  if(saved===0)throw new Error(orientative?"BCP_ORIENTATIVOS_NO_VALID_ROWS":"BCP_FAS_FOB_NO_VALID_ROWS");
+ return saved;
+}
+async function parseBahiaOrientatives(body:string,runId:string){
+ const d=parseHTML(body).document;if(!d)throw new Error("BCP_ORIENTATIVOS_HTML_ERROR");
+ const link=Array.from(d.querySelectorAll("a")).find((a:any)=>/Precios Orientativos al/i.test(norm(a.textContent||"")));
+ const href=link?.getAttribute("href");if(!href)throw new Error("BCP_ORIENTATIVES_PDF_LINK_NOT_FOUND");
+ const pdfUrl=new URL(href,BCP_ORIENTATIVOS).toString();
+ const response=await fetch(pdfUrl,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/pdf,*/*"}});
+ if(!response.ok)throw new Error("BCP_ORIENTATIVES_PDF_HTTP_"+response.status);
+ const bytes=new Uint8Array(await response.arrayBuffer());
+ const task=(pdfjsLib as any).getDocument({data:bytes,useSystemFonts:true,disableFontFace:true,isEvalSupported:false,verbosity:0});
+ const pdf=await task.promise;let saved=0;const reportLines:string[]=[];
+ for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+  const page=await pdf.getPage(pageNo);const content=await page.getTextContent();
+  const grouped=new Map<number,{x:number,text:string}[]>();
+  for(const item of content.items as any[]){
+   if(!item.str||!item.str.trim())continue;
+   const y=Math.round(item.transform?.[5]||0);const x=Number(item.transform?.[4]||0);
+   const arr=grouped.get(y)||[];arr.push({x,text:item.str});grouped.set(y,arr);
+  }
+  const lines=[...grouped.entries()].sort((a,b)=>b[0]-a[0]).map(([y,items])=>({y,text:items.sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim()})).filter(x=>x.text);
+  let commodity="";
+  const productMap:[RegExp,string][]=[
+   [/^TRIGO\b/i,"TRIGO"],[/^CEBADA\b/i,"CEBADA"],[/^MA[IÍ]Z\b/i,"MAIZ"],[/^SOJA\b/i,"SOJA"],[/^GIRASOL\b/i,"GIRASOL"],[/^SORGO\b/i,"SORGO"]
+  ];
+  for(let idx=0;idx<lines.length;idx++){
+   const line=lines[idx].text;
+   const heading=productMap.find(([re])=>re.test(line));
+   if(heading){commodity=heading[1];continue;}
+   if(!commodity)continue;
+   const locality=line.match(/^(Bah[ií]a Blanca|Necochea|Tres Arroyos|Pig[uü][eé]|Tandil|San Cayetano|Daireaux|Dorrego|Gral\.?\s*Pico(?:\/Villegas)?)(?:\s+[-*])?\s*(.*)$/i);
+   if(!locality)continue;
+   const localityName=locality[1].toUpperCase().replace(/\s+/g," ").replace("BAHIA BLANCA","BAHIA BLANCA");
+   let detail=locality[2]||"";
+   if(!detail&&lines[idx+1]&&!/^(Bah[ií]a Blanca|Necochea|Tres Arroyos|Pig[uü][eé]|Tandil|San Cayetano|Daireaux|Dorrego|Gral\.?\s*Pico)/i.test(lines[idx+1].text))detail=lines[idx+1].text;
+   if(!detail||/^[-–—]+$/.test(detail))continue;
+   const currencyMatches=[...detail.matchAll(/u\s*\$?\s*s?\s*(\d{2,6}(?:[.,]\d{1,2})?(?:\s*-\s*\d{2,6}(?:[.,]\d{1,2})?)?)/gi)];
+   if(!currencyMatches.length)continue;
+   const id=await commodityId(commodity);
+   for(let q=0;q<currencyMatches.length;q++){
+    const raw=currencyMatches[q][1].replace(/\s/g,"");const first=raw.split("-")[0].replace(/\./g,"").replace(",",".");const value=Number(first);
+    if(!Number.isFinite(value)||value<=0)continue;
+    const after=detail.slice(currencyMatches[q].index!+currencyMatches[q][0].length).trim();
+    const previous=detail.slice(0,currencyMatches[q].index).trim();
+    const future=/\b(futuro|ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic)\b/i.test(after);
+    const position=future?"FUTURO":"DISPONIBLE";
+    saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca - Precios Orientativos",source_reference:pdfUrl,market_date:pageDate(line+" "+lines.slice(0,8).map(x=>x.text).join(" ")),published_at:null,commodity_id:id,product_id:null,variety:null,position,market:"BAHIA_BLANCA",port:localityName,price_type:"PRECIO_ORIENTATIVO",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:commodity,locality:localityName,position,raw_value:raw,raw_line:line,raw_detail:detail,range_high:raw.includes("-")?Number(raw.split("-")[1].replace(/\./g,"").replace(",",".")):null,delivery_terms:after.slice(0,80),report_pdf:pdfUrl,run_id:runId,secondary_source:false}});
+   }
+  }
+  reportLines.push(...lines.map(x=>x.text));
+ }
+ if(saved===0)throw new Error("BCP_ORIENTATIVES_PDF_NO_VALID_QUOTES");
  return saved;
 }
 async function parseBuenosAires(body:string,runId:string){
@@ -218,6 +271,6 @@ function jsonResponse(req:Request,body:unknown,status=200){
  const headers=corsHeaders(req);headers.set("content-type","application/json");
  return new Response(JSON.stringify(body),{status,headers});
 }
-Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const [local,fob,available]=await Promise.all([html(BCR_LOCAL),html(BCR_FOB),html(BCR_AVAILABLE)]),[a,b,c]=await Promise.all([parseLocal(local,runId),parseFob(fob,runId),parseAvailable(available,runId)]);const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{const count=await task();if(count===0)sourceWarnings.push(label+":NO_QUOTES_PARSED");return count}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [bahia,orient,bsas,bsasChamber,cordoba]=await Promise.all([safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaBlanca(await html(BCP_ORIENTATIVOS),runId,true)),safeSource("BCBA_OFICIAL",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCBA_CAMARA_ARBITRAL",async()=>parseBuenosAiresChamber(await html(BCBA_CHAMBER),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId))]);const chicago=await syncChicago(runId),total=a+b+c+bahia+orient+bsas+bsasChamber+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
+Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const [local,fob,available]=await Promise.all([html(BCR_LOCAL),html(BCR_FOB),html(BCR_AVAILABLE)]),[a,b,c]=await Promise.all([parseLocal(local,runId),parseFob(fob,runId),parseAvailable(available,runId)]);const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{const count=await task();if(count===0)sourceWarnings.push(label+":NO_QUOTES_PARSED");return count}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [bahia,orient,bsas,bsasChamber,cordoba]=await Promise.all([safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaOrientatives(await html(BCP_ORIENTATIVOS),runId)),safeSource("BCBA_OFICIAL",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCBA_CAMARA_ARBITRAL",async()=>parseBuenosAiresChamber(await html(BCBA_CHAMBER),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId))]);const chicago=await syncChicago(runId),total=a+b+c+bahia+orient+bsas+bsasChamber+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
     const { error: refreshError } = await db.rpc("refresh_market_public_summary_data");
     if (refreshError) throw refreshError;return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,status:syncStatus,records_saved:total,chicago_records_saved:chicago.saved,bahia_blanca_records_saved:bahia+orient,buenos_aires_records_saved:bsas+bsasChamber,cordoba_records_saved:cordoba,chicago_warnings:chicago.errors,source_warnings:sourceWarnings})}catch(e){const msg=e instanceof Error?e.message:"MARKET_SYNC_ERROR";if(runId)await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"ERROR",error_code:msg.slice(0,80),error_message:msg}).eq("id",runId);return jsonResponse(req,{ok:false,error:msg,run_id:runId},502)}});
