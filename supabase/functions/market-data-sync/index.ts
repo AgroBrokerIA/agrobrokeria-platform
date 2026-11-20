@@ -162,14 +162,15 @@ async function syncChicago(runId:string){
    const response=await fetch(endpoint,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/json"}});
    if(!response.ok)throw new Error("QUOTE_HTTP_"+response.status);
    const json=await response.json();const result=json?.chart?.result?.[0];if(!result)throw new Error("QUOTE_NOT_AVAILABLE");
-   const meta=result.meta||{},timestamps=result.timestamp||[],closes=result.indicators?.quote?.[0]?.close||[];
-   const valid=closes.map((v:number|null,i:number)=>({value:v,time:timestamps[i]})).filter((x:any)=>typeof x.value==="number"&&Number.isFinite(x.value));
+   const meta=result.meta||{},timestamps=result.timestamp||[],quote=result.indicators?.quote?.[0]||{},closes=quote.close||[];
+   const valid=closes.map((v:number|null,i:number)=>({value:v,time:timestamps[i],index:i})).filter((x:any)=>typeof x.value==="number"&&Number.isFinite(x.value));
    const last=valid[valid.length-1];if(!last)throw new Error("QUOTE_WITHOUT_PRICE");
+   const candle=(key:string)=>{const value=quote[key]?.[last.index];return typeof value==="number"&&Number.isFinite(value)?value:null;};
    const previous=valid.length>1?valid[valid.length-2].value:(typeof meta.chartPreviousClose==="number"?meta.chartPreviousClose:null);
    const date=new Date((last.time||meta.regularMarketTime||Date.now())*1000).toISOString().slice(0,10);
    const id=await commodityId(item.code);
    const label=String(meta.shortName||meta.longName||item.symbol);
-   saved+=await save({source:"Yahoo Finance / CBOT",source_reference:endpoint,market_date:date,published_at:null,commodity_id:id,product_id:null,variety:null,position:String(meta.contractSymbol||label),market:"CHICAGO",port:null,price_type:"FUTURES",price:last.value,currency:"USD",unit:item.unit,status:"VALID",freshness:"UPDATED",previous_value:previous,variation:previous==null?null:last.value-previous,payload:{symbol:item.symbol,contract:meta.contractSymbol||null,exchange:"CBOT",quote_time:new Date((last.time||Date.now())*1000).toISOString(),run_id:runId,delayed:true}});
+   saved+=await save({source:"Yahoo Finance / CBOT",source_reference:endpoint,market_date:date,published_at:null,commodity_id:id,product_id:null,variety:null,position:String(meta.contractSymbol||label),market:"CHICAGO",port:null,price_type:"FUTURES",price:last.value,currency:"USD",unit:item.unit,status:"VALID",freshness:"UPDATED",previous_value:previous,variation:previous==null?null:last.value-previous,payload:{symbol:item.symbol,contract:meta.contractSymbol||null,exchange:"CBOT",quote_time:new Date((last.time||Date.now())*1000).toISOString(),open:candle("open"),high:candle("high"),low:candle("low"),volume:candle("volume"),run_id:runId,delayed:true}});
   }catch(error){errors.push(item.symbol+":"+(error instanceof Error?error.message:"QUOTE_ERROR"))}
  }));
  return {saved,errors};
