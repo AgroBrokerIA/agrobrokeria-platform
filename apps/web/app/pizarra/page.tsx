@@ -20,7 +20,7 @@ const MARKET_OPTIONS=[
 
 
 export default function PizarraPage(){
- const[quotes,setQuotes]=useState<Quote[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[productNames,setProductNames]=useState<Record<string,string>>({}),[productCategories,setProductCategories]=useState<Record<string,string>>({}),[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[boardTab,setBoardTab]=useState("Granos"),[range,setRange]=useState("1D"),[compare,setCompare]=useState("SOJA"),[detail,setDetail]=useState<Quote|null>(null),[market,setMarket]=useState("ROSARIO"),[productFilter,setProductFilter]=useState("ALL"),[priceType,setPriceType]=useState("PIZARRA_CAC");
+ const[quotes,setQuotes]=useState<Quote[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[productNames,setProductNames]=useState<Record<string,string>>({}),[productCategories,setProductCategories]=useState<Record<string,string>>({}),[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[boardTab,setBoardTab]=useState("Granos"),[range,setRange]=useState("1D"),[compare,setCompare]=useState("SOJA"),[detail,setDetail]=useState<Quote|null>(null),[market,setMarket]=useState("ROSARIO"),[productFilter,setProductFilter]=useState("ALL"),[priceType,setPriceType]=useState("ALL");
  async function load(marketValue=market){
   setLoading(true);setError("");
   const[q,c,catalog]=await Promise.all([
