@@ -16,6 +16,7 @@ async function save(q:any){const stable={source:q.source,source_reference:q.sour
 async function html(url:string){const origin=new globalThis.URL(url).origin;const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","accept-language":"es-AR,es;q=0.9,en;q=0.8","referer":origin+"/","origin":origin}});if(!r.ok)throw new Error("SOURCE_HTTP_"+r.status);return await r.text()}
 async function authorized(req:Request){
  const cron=Deno.env.get("CRON_SECRET"),a=req.headers.get("authorization")||"";
+ if(cron&&req.headers.get("x-cron-secret")===cron)return true;
  if(cron&&a==="Bearer "+cron)return true;
  if(SERVICE&&a==="Bearer "+SERVICE)return true;
  const token=a.match(/^Bearer\s+(.+)$/i)?.[1];
