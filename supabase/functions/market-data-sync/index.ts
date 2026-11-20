@@ -131,40 +131,6 @@ async function parseBahiaOrientatives(body:string,runId:string){
  if(saved===0)throw new Error("BCP_ORIENTATIVES_PDF_NO_VALID_QUOTES");
  return saved;
 }
-const CAC_PIZARRA="https://www.cac.bcr.com.ar/es/precios-de-pizarra";
-async function parseCACPizarra(body:string,runId:string){
- const d=parseHTML(body).document;if(!d)throw new Error("CAC_HTML_PARSE_ERROR");
- const text=norm(d.body?.textContent||"");
- const monthMap:Record<string,string>={enero:"01",febrero:"02",marzo:"03",abril:"04",mayo:"05",junio:"06",julio:"07",agosto:"08",septiembre:"09",octubre:"10",noviembre:"11",diciembre:"12"};
- const titleDate=text.match(/Precios Pizarra del d[ií]a\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
- let marketDate=titleDate?titleDate[3]+"-"+titleDate[2].padStart(2,"0")+"-"+titleDate[1].padStart(2,"0"):null;
- if(!marketDate){
-  const closing=text.match(/Rosario,\s*(\d{1,2})\s+de\s+([a-záéíóú]+)\s+del\s+(\d{4})/i);
-  if(closing){const month=monthMap[code(closing[2]).toLowerCase()];if(month)marketDate=closing[3]+"-"+month+"-"+closing[1].padStart(2,"0");}
- }
- if(!marketDate)throw new Error("CAC_MARKET_DATE_NOT_FOUND");
- const products=[{label:"Trigo",code:"TRIGO"},{label:"Maíz",code:"MAIZ"},{label:"Girasol",code:"GIRASOL"},{label:"Soja",code:"SOJA"},{label:"Sorgo",code:"SORGO"}];
- let saved=0;
- for(let i=0;i<products.length;i++){
-  const item=products[i];
-  const heading=new RegExp("(?:^|\\\\s)"+item.label.replace("í","[ií]")+"(?=\\\\s|$)","i");
-  const match=heading.exec(text);if(!match)continue;
-  const start=match.index+match[0].length;
-  const next=products.slice(i+1).map(p=>{const re=new RegExp("(?:^|\\\\s)"+p.label.replace("í","[ií]")+"(?=\\\\s|$)","i");const m=re.exec(text.slice(start));return m?start+m.index:null}).filter((x):x is number=>x!==null);
-  const end=next.length?Math.min(...next):text.length;
-  const block=text.slice(start,end);
-  const ars=block.match(/(?:S\/C\s*\(E\)\s*)?\$\s*([\d.]+(?:,\d{1,2})?)/i);
-  const usd=block.match(/(?:US\$\s*\(E\)\s*|US\$\s*)([\d.]+(?:,\d{1,2})?)/i);
-  const commodity=await commodityId(item.code);
-  for(const [currency,raw,estimated] of [["ARS",ars?.[1]||null,/S\/C\s*\(E\)/i.test(block)],["USD",usd?.[1]||null,/US\$\s*\(E\)/i.test(block)]] as const){
-   if(!raw)continue;const value=num(raw);if(value===null)continue;
-   saved+=await save({source:"BCR/CAC - Cámara Arbitral de Cereales de Rosario",source_reference:CAC_PIZARRA,market_date:marketDate,published_at:null,commodity_id:commodity,product_id:null,variety:null,position:"SPOT",market:"ROSARIO",port:"ROSARIO",price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:item.code,estimated,delivery_terms:"Entrega inmediata · pago contado · puesto sobre camión/vagón zona Rosario",raw_excerpt:block.slice(0,400),run_id:runId}});
-  }
- }
- if(saved===0)throw new Error("CAC_PIZARRA_NO_VALID_QUOTES");
- return saved;
-}
-
 async function parseBuenosAires(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCBA_HTML_PARSE_ERROR");
  const text=norm(d.body?.textContent||"");const marketDate=pageDate(text);let saved=0;
@@ -317,6 +283,6 @@ function jsonResponse(req:Request,body:unknown,status=200){
  const headers=corsHeaders(req);headers.set("content-type","application/json");
  return new Response(JSON.stringify(body),{status,headers});
 }
-Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const [local,fob,available]=await Promise.all([html(BCR_LOCAL),html(BCR_FOB),html(BCR_AVAILABLE)]),[a,b,c]=await Promise.all([parseLocal(local,runId),parseFob(fob,runId),parseAvailable(available,runId)]);const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{const count=await task();if(count===0)sourceWarnings.push(label+":NO_QUOTES_PARSED");return count}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [bahia,orient,bsas,bsasChamber,cordoba,cac]=await Promise.all([safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaOrientatives(await html(BCP_ORIENTATIVOS),runId)),safeSource("BCBA_OFICIAL",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCBA_CAMARA_ARBITRAL",async()=>parseBuenosAiresChamber(await html(BCBA_CHAMBER),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId)),safeSource("CAC_PIZARRA",async()=>parseCACPizarra(await html(CAC_PIZARRA),runId))]);const chicago=await syncChicago(runId),total=a+b+c+bahia+orient+bsas+bsasChamber+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
+Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const [local,fob,available]=await Promise.all([html(BCR_LOCAL),html(BCR_FOB),html(BCR_AVAILABLE)]),[a,b,c]=await Promise.all([parseLocal(local,runId),parseFob(fob,runId),parseAvailable(available,runId)]);const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{const count=await task();if(count===0)sourceWarnings.push(label+":NO_QUOTES_PARSED");return count}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [bahia,orient,bsas,bsasChamber,cordoba]=await Promise.all([safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaOrientatives(await html(BCP_ORIENTATIVOS),runId)),safeSource("BCBA_OFICIAL",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCBA_CAMARA_ARBITRAL",async()=>parseBuenosAiresChamber(await html(BCBA_CHAMBER),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId))]);const chicago=await syncChicago(runId),total=a+b+c+bahia+orient+bsas+bsasChamber+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
     const { error: refreshError } = await db.rpc("refresh_market_public_summary_data");
     if (refreshError) throw refreshError;return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,status:syncStatus,records_saved:total,chicago_records_saved:chicago.saved,bahia_blanca_records_saved:bahia+orient,buenos_aires_records_saved:bsas+bsasChamber,cordoba_records_saved:cordoba,chicago_warnings:chicago.errors,source_warnings:sourceWarnings})}catch(e){const msg=e instanceof Error?e.message:"MARKET_SYNC_ERROR";if(runId)await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"ERROR",error_code:msg.slice(0,80),error_message:msg}).eq("id",runId);return jsonResponse(req,{ok:false,error:msg,run_id:runId},502)}});
