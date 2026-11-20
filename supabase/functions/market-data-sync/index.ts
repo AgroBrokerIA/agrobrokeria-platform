@@ -75,7 +75,7 @@ async function parseBahiaOrientatives(body:string,runId:string){
  const response=await fetch(pdfUrl,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/pdf,*/*"}});
  if(!response.ok)throw new Error("BCP_ORIENTATIVES_PDF_HTTP_"+response.status);
  const bytes=new Uint8Array(await response.arrayBuffer());
- const task=(pdfjsLib as any).getDocument({data:bytes,useSystemFonts:true,disableFontFace:true,isEvalSupported:false,verbosity:0});
+ const task=(pdfjsLib as any).getDocument({data:bytes,useSystemFonts:true,disableFontFace:true,disableWorker:true,isEvalSupported:false,verbosity:0});
  const pdf=await task.promise;let saved=0;const reportLines:string[]=[];
  for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
   const page=await pdf.getPage(pageNo);const content=await page.getTextContent();
