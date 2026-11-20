@@ -3,7 +3,7 @@ import DOMMatrixPolyfill from "npm:@thednp/dommatrix@2.0.12";
 (globalThis as any).DOMMatrix=DOMMatrixPolyfill;
 (globalThis as any).process=undefined;
 Object.defineProperty(navigator,"platform",{value:"Linux",configurable:true});
-import * as pdfjsLib from "npm:pdfjs-dist@5.4.149";
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.1";
 const URL=Deno.env.get("SUPABASE_URL")!,ANON=Deno.env.get("SUPABASE_ANON_KEY")!,SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,db=createClient(URL,SERVICE);
 const BCR_LOCAL="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0",BCR_FOB="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",BCR_AVAILABLE="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-2",SOURCE="BCR/CAC";
@@ -80,7 +80,8 @@ async function parseBahiaOrientatives(body:string,runId:string){
  const response=await fetch(pdfUrl,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/pdf,*/*"}});
  if(!response.ok)throw new Error("BCP_ORIENTATIVES_PDF_HTTP_"+response.status);
  const bytes=new Uint8Array(await response.arrayBuffer());
- (pdfjsLib as any).GlobalWorkerOptions.workerSrc=import.meta.resolve("npm:pdfjs-dist@5.4.149/build/pdf.worker.mjs");
+ const pdfjsLib=await import("npm:pdfjs-dist@5.4.149/legacy/build/pdf.mjs");
+ (pdfjsLib as any).GlobalWorkerOptions.workerSrc=import.meta.resolve("npm:pdfjs-dist@5.4.149/legacy/build/pdf.worker.mjs");
  const task=(pdfjsLib as any).getDocument({data:bytes,useSystemFonts:true,disableFontFace:true,isEvalSupported:false,verbosity:0});
  const pdf=await task.promise;let saved=0;const reportLines:string[]=[];
  for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
