@@ -124,7 +124,8 @@ async function parseBuenosAiresChamber(body:string,runId:string){
  return saved;
 }
 async function parseCordoba(body:string,runId:string){
- const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
+ const htmlWithAlt=body.replace(/<img\b([^>]*?)\balt=(["'])(.*?)\2([^>]*)>/gi," $3 ");
+ const d=parseHTML(htmlWithAlt).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
  const text=norm(d.body?.textContent||"");let saved=0;
  const sections=[
   {pattern:/Precios Pizarra Buenos Aires - Quequ[eé]n[^]*?(?=Precios Pizarra Buenos Aires - D[aá]rsena|Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
