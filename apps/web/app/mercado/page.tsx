@@ -28,7 +28,7 @@ export default function MercadoPage(){
   ]);
   const quoteError=quoteResults.find(result=>result.error)?.error;
   if(quoteError||cr.error||pr.error||prod.error)setError(quoteError?.message||cr.error?.message||pr.error?.message||prod.error?.message||"No se pudo cargar mercado.");
-  setQuotes(quoteResults.flatMap(result=>result.data||[]) as Quote[]);
+  setQuotes(quoteResults.flatMap(result=>result.data||[]).sort((a,b)=>String(b.market_date).localeCompare(String(a.market_date))||String(b.obtained_at).localeCompare(String(a.obtained_at))) as Quote[]);
   setCommodities(Object.fromEntries((cr.data||[]).map((x:any)=>[x.id,x.codigo])));
   setProducts(Object.fromEntries((prod.data||[]).map((x:any)=>[String(x.id),x as ProductMeta])));
   const pubs=(pr.data||[]) as Pub[];setOffers(pubs.filter(x=>x.tipo!=="DEMANDA").slice(0,5));setDemands(pubs.filter(x=>x.tipo==="DEMANDA").slice(0,5));setLoading(false);
