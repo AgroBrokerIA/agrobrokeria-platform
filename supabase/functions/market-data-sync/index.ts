@@ -127,15 +127,20 @@ async function parseCordoba(body:string,runId:string){
  const htmlWithAlt=body.replace(/<img\b([^>]*?)\balt=(["'])(.*?)\2([^>]*)>/gi," $3 ");
  const d=parseHTML(htmlWithAlt).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
  const text=norm(d.body?.textContent||"");let saved=0;
- const sections=[
-  {pattern:/Precios Pizarra Buenos Aires - Quequ[eé]n[^]*?(?=Precios Pizarra Buenos Aires - D[aá]rsena|Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
-  {pattern:/Precios Pizarra Buenos Aires - D[aá]rsena[^]*?(?=Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"DARSENA"},
-  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=Expeller de Soja|MERCADOS|$)/i,market:"CORDOBA",port:"CORDOBA"}
+ const defs=[
+  {title:/Precios Pizarra Buenos Aires - Quequ[eé]n/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
+  {title:/Precios Pizarra Buenos Aires - D[aá]rsena/i,market:"BUENOS_AIRES",port:"DARSENA"},
+  {title:/Precios Pizarra C[oó]rdoba/i,market:"CORDOBA",port:"CORDOBA"}
  ];
+ const headings=defs.map(def=>{const matches=[...text.matchAll(new RegExp(def.title.source,"gi"))];return {...def,start:matches.length?matches[matches.length-1].index!:-1};}).filter(x=>x.start>=0).sort((a,b)=>a.start-b.start);
  const productPattern=/^(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)$/i;
- for(const sectionConfig of sections){
-  const match=text.match(sectionConfig.pattern);if(!match)continue;
-  const section=match[0];const dateMatch=section.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+ for(let h=0;h<headings.length;h++){
+  const sectionConfig=headings[h];const start=sectionConfig.start;
+  const nextHeading=headings[h+1]?.start??text.length;
+  const expellerIndex=text.toLowerCase().indexOf("expeller de soja",start);
+  const end=Math.min(nextHeading,expellerIndex>=start?expellerIndex:text.length);
+  const section=text.slice(start,end);
+  const dateMatch=section.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
   if(!dateMatch)continue;const marketDate=dateFromText(dateMatch[1]);if(!marketDate)continue;
   const labels=[...section.matchAll(/(?:^|\s)(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)(?=\s|$)/gi)];
   for(let i=0;i<labels.length;i++){
