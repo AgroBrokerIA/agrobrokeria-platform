@@ -119,9 +119,10 @@ async function parseBahiaOrientatives(body:string,runId:string){
     const deliveryTerms=detail.slice(match.index!+match[0].length,nextStart).trim();
     previousMatchEnd=match.index!+match[0].length;
     if(!Number.isFinite(value)||value<=0)continue;
-    const future=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|futuro)\b/i.test(segmentBefore);
-    const available=/\b(disp|disponible)\b/i.test(segmentBefore);
-    const position=available?"DISPONIBLE":future?"FUTURO":"DISPONIBLE";
+    const positionContext=segmentBefore+" "+deliveryTerms;
+    const future=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|futuro)\b|\b\d{1,2}\/\d{1,2}\b/i.test(positionContext);
+    const available=/\b(disp|disponible)\b/i.test(positionContext);
+    const position=available?"DISPONIBLE":future?"FUTURO":"SIN_POSICION";
     saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca - Precios Orientativos",source_reference:pdfUrl,market_date:pageDate(line+" "+lines.slice(0,8).map(x=>x.text).join(" ")),published_at:null,commodity_id:id,product_id:null,variety:null,position,market:"BAHIA_BLANCA",port:localityName,price_type:"PRECIO_ORIENTATIVO",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:commodity,locality:localityName,position,raw_value:raw,raw_line:line,raw_detail:detail,range_high:raw.includes("-")?Number(raw.split("-")[1].replace(/\./g,"").replace(",",".")):null,delivery_terms:deliveryTerms.slice(0,80),report_pdf:pdfUrl,run_id:runId,secondary_source:false}});
    }
   }
