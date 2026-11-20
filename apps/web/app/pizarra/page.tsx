@@ -90,7 +90,8 @@ export default function PizarraPage(){
  const compareCodes=wanted.slice(0,4);
  const compareSelectedCode=compareCodes.includes(compare)?compare:(compareCodes.includes(productFilter)?productFilter:(compareCodes[0]||""));
  const rangeDays:Record<string,number>={"1D":1,"1S":7,"1M":30,"3M":90,"1A":365};
- const cutoff=range==="Todo"?null:new Date(Date.now()-((rangeDays[range]||1)*24*60*60*1000)).toISOString().slice(0,10);
+ const latestMarketDate=filteredQuotes[0]?.market_date;
+ const cutoff=range==="Todo"||!latestMarketDate?null:new Date(Date.parse(`${latestMarketDate}T00:00:00Z`)-((rangeDays[range]||1)*24*60*60*1000)).toISOString().slice(0,10);
  const chartHistory=filteredQuotes.filter(q=>q.price!=null&&(!cutoff||q.market_date>=cutoff));
  const soja=chartHistory.filter(q=>codeFor(q)===compareSelectedCode).slice().sort((a,b)=>a.market_date.localeCompare(b.market_date)||a.obtained_at.localeCompare(b.obtained_at));
  const compareSeries=compareCodes.map(code=>({code,points:chartHistory.filter(q=>codeFor(q)===code).slice().sort((a,b)=>a.market_date.localeCompare(b.market_date)||a.obtained_at.localeCompare(b.obtained_at)).slice(-20)}));
