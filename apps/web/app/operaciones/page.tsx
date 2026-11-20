@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase/client";
 import jsPDF from "jspdf";
 import LogisticaEntrega from "./LogisticaEntrega";
 import FirmasContratoOperacion from "./FirmasContratoOperacion";
+import ConfidencialidadOperacion from "./ConfidencialidadOperacion";
 import Liquidacion from "./Liquidacion";
 import PanelMensajes from "@/components/mensajes/PanelMensajes";
 import { notificarParticipantesOperacion } from "@/lib/notificaciones/notificarParticipantesOperacion";
@@ -2845,6 +2846,7 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
             <p><strong>Destino:</strong> {metaDetalle.destino}</p>
             <p><strong>Contraparte:</strong> {metaDetalle.contraparte}</p>
             <p><strong>Estado:</strong> {workflowDetalle?.etapa_actual || detalleOperacion.estado}</p>
+            <ConfidencialidadOperacion operacionId={detalleOperacion.id} />
             <section aria-label="Progreso de la operación" style={{marginTop:18,padding:16,border:"1px solid #dbe3ee",borderRadius:12,background:"#f8fafc"}}>
               <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",gap:12,marginBottom:10,flexWrap:"wrap"}}>
                 <h3 style={{margin:0,fontSize:16}}>Etapas de la operación</h3>
