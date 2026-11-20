@@ -13368,7 +13368,13 @@ export type Database = {
       }
       obtener_datos_firma_contrato: {
         Args: { p_operacion_id: string }
-        Returns: Json
+        Returns: {
+          contract_id: string
+          contract_number: string
+          contract_content: string
+          roles: string[]
+          is_admin: boolean
+        }
       }
       obtener_billetera_comisiones: {
         Args: { p_empresa_id: string; p_moneda_id: number }
