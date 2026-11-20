@@ -81,6 +81,7 @@ type ComisionViaje = {
 };
 type Corredor = { profile_id: string; nombre: string | null; email: string | null };
 type Autorizacion = { id: string; corredor_profile_id: string; autorizado_at: string; revocado_at: string | null; motivo: string | null };
+type CierreLogistica = { id: string; codigo_operacion: string | null; cantidad_camiones: number; estado_cierre: string | null; estado_pago_comision_logistica: string | null; empresa_transportista_id: string; fecha_cierre: string | null };
 
 const ETAPAS = [
   ["CAMION_ASIGNADO", "Camión asignado"],
@@ -175,6 +176,7 @@ export default function LogisticaEntrega({
   const [comisiones, setComisiones] = useState<ComisionViaje[]>([]);
   const [corredores, setCorredores] = useState<Corredor[]>([]);
   const [autorizaciones, setAutorizaciones] = useState<Autorizacion[]>([]);
+  const [cierresLogistica, setCierresLogistica] = useState<CierreLogistica[]>([]);
   const [busquedaCorredor, setBusquedaCorredor] = useState("");
   const [corredorSeleccionado, setCorredorSeleccionado] = useState("");
   const [loading, setLoading] = useState(true);
@@ -199,13 +201,14 @@ export default function LogisticaEntrega({
   const cargar = useCallback(async () => {
     setLoading(true);
     setError("");
-    const [v, t, c, e, m, a] = await Promise.all([
+    const [v, t, c, e, m, a, cierres] = await Promise.all([
       supabase.from("viajes").select("*").eq("operacion_id", operacionId).order("creado_en", { ascending: true }),
       supabase.rpc("listar_transportistas_verificados", { p_operacion_id: operacionId }),
       supabase.from("viaje_cartas_porte").select("*").eq("operacion_id", operacionId).order("creada_at", { ascending: false }),
       supabase.from("viaje_eventos").select("*").eq("operacion_id", operacionId).order("registrado_at", { ascending: true }),
       supabase.from("operacion_comision_viajes").select("*").eq("operacion_id", operacionId),
       supabase.from("operacion_carta_porte_autorizaciones").select("*").eq("operacion_id", operacionId).order("autorizado_at", { ascending: false }),
+      supabase.from("cierres_logistica").select("id,codigo_operacion,cantidad_camiones,estado_cierre,estado_pago_comision_logistica,empresa_transportista_id,fecha_cierre").eq("operacion_id", operacionId).order("fecha_cierre", { ascending: false }),
     ]);
     if (v.error) setError("No se pudieron cargar los viajes: " + v.error.message);
     else setViajes((v.data || []) as Viaje[]);
@@ -220,6 +223,8 @@ export default function LogisticaEntrega({
     else setComisiones((m.data || []) as ComisionViaje[]);
     if (a.error) setError((actual) => actual || "No se pudieron cargar las autorizaciones: " + a.error.message);
     else setAutorizaciones((a.data || []) as Autorizacion[]);
+    if (cierres.error) setError((actual) => actual || "No se pudo consultar el estado de los cierres de flete: " + cierres.error.message);
+    else setCierresLogistica((cierres.data || []) as CierreLogistica[]);
     setLoading(false);
   }, [operacionId]);
 
@@ -581,6 +586,27 @@ export default function LogisticaEntrega({
         </div>
       </section>
 
+      {!esTransportista && <section style={panel}>
+        <div style={{ display: "grid", gap: 6 }}>
+          <div style={{ fontSize: 15, fontWeight: 800 }}>Estado del cierre de flete</div>
+          {cierresLogistica.length === 0 ? (
+            <div role="status" style={{ padding: 11, borderRadius: 9, border: "1px solid #fcd34d", background: "#fffbeb", color: "#92400e", fontSize: 13 }}>
+              No hay un cierre de flete registrado para esta operación. Antes de asignar camiones, el dador debe cerrar una oferta con una demanda logística vinculada a esta operación. La asignación queda bloqueada hasta que Administración verifique y apruebe el pago bancario de la comisión logística.
+            </div>
+          ) : (
+            <div style={{ display: "grid", gap: 7 }}>
+              {cierresLogistica.map((cierre) => {
+                const aprobado = cierre.estado_cierre === "cerrado_formal" && cierre.estado_pago_comision_logistica === "aprobado";
+                return <div key={cierre.id} style={{ padding: 10, borderRadius: 9, border: "1px solid " + (aprobado ? "#86efac" : "#fcd34d"), background: aprobado ? "#f0fdf4" : "#fffbeb", color: aprobado ? "#166534" : "#92400e", fontSize: 13 }}>
+                  <strong>{cierre.codigo_operacion || "Cierre de flete"}</strong> · {cierre.cantidad_camiones} camión(es) · Cierre: {cierre.estado_cierre || "sin estado"} · Pago de comisión: {cierre.estado_pago_comision_logistica || "pendiente"}
+                  {!aprobado && <div style={{ marginTop: 4 }}>Pendiente de aprobación bancaria por Administración. No se puede asignar un vehículo con este cierre.</div>}
+                </div>;
+              })}
+              <small style={{ color: "#64748b" }}>La autorización final también verifica que el cierre corresponda a la empresa transportista seleccionada y que conserve cupos disponibles.</small>
+            </div>
+          )}
+        </div>
+      </section>}
       {!esTransportista && <section style={panel}>
         <div>
           <div style={{ fontSize: 15, fontWeight: 800 }}>Acceso documental para corredores</div>
