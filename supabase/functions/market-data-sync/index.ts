@@ -269,6 +269,7 @@ async function parseFob(body:string,runId:string){const d=parseHTML(body).docume
 function corsHeaders(req:Request){
  const origin=req.headers.get("origin")||"";
  const allowed=/^https:\/\/([a-z0-9-]+\.)?agrobrokeria\.com\.ar$/i.test(origin)
+   || /^https:\/\/[a-z0-9-]+-agrobroker\.vercel\.app$/i.test(origin)
    || /^http:\/\/localhost(:\d+)?$/i.test(origin);
  const headers=new Headers({
   "Vary":"Origin",
