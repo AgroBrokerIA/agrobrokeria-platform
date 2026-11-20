@@ -64,7 +64,7 @@ export default function PizarraPage(){
  const categoryFor=(q:Quote)=>(productCategories[String(q.product_id||"")]||"").trim().toLowerCase();
  const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||symbolCodeFor(q)).trim().toUpperCase();
  const productLabelFor=(q:Quote)=>productNames[String(q.product_id||"")]||({
-  ACEITE_SOJA:"Aceite de soja (CBOT)",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja (CBOT)",
+  ACEITE_SOJA:"Aceite de soja (CBOT)",AVENA:"Avena (CBOT)",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja (CBOT)",
   HARINA_GIRASOL:"Harina de girasol",PELLETS_SOJA:"Pellets de soja",EXPELLER_SOJA:"Expeller de soja",
   AFRECHILLO_TRIGO:"Afrechillo de trigo",SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol",SORGO:"Sorgo"
  } as Record<string,string>)[commodityCodeFor(q)]||codeFor(q);
