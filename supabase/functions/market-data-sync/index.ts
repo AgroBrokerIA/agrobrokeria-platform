@@ -1,4 +1,9 @@
 import { parseHTML } from "npm:linkedom@0.18.12";
+import DOMMatrixPolyfill from "npm:@thednp/dommatrix@2.0.12";
+(globalThis as any).DOMMatrix=DOMMatrixPolyfill;
+(globalThis as any).process=undefined;
+Object.defineProperty(navigator,"platform",{value:"Linux",configurable:true});
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.112.1";
 const URL=Deno.env.get("SUPABASE_URL")!,ANON=Deno.env.get("SUPABASE_ANON_KEY")!,SERVICE=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,db=createClient(URL,SERVICE);
 const BCR_LOCAL="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-0",BCR_FOB="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",BCR_AVAILABLE="https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-2",SOURCE="BCR/CAC";
@@ -7,10 +12,11 @@ function num(s:string){const r=norm(s).replace(/[$u\$s\/tn]/gi,"").trim();if(!r|
 function dateFromText(s:string){const m=norm(s).match(/(\d{1,2})\/(\d{1,2})\/(\d{4})/);return m?m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0"):null}
 function code(s:string){return s.normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase()}
 async function commodityId(name:string){const {data}=await db.from("commodities").select("id").eq("codigo",code(name)).maybeSingle();return data?.id??null}
-async function save(q:any){const stable={source:q.source,source_reference:q.source_reference,market_date:q.market_date,commodity_id:q.commodity_id,product_id:q.product_id,variety:q.variety,position:q.position,market:q.market,port:q.port,price_type:q.price_type,price:q.price,currency:q.currency,unit:q.unit};const fp=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(stable)));q.fingerprint=Array.from(new Uint8Array(fp)).map(b=>b.toString(16).padStart(2,"0")).join("");const {error}=await db.from("market_quotes").upsert(q,{onConflict:"fingerprint",ignoreDuplicates:true});if(error)throw error;return 1}
-async function html(url:string){const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","accept-language":"es-AR,es;q=0.9,en;q=0.8","referer":"https://www.bolsadecereales.com/"}});if(!r.ok)throw new Error("SOURCE_HTTP_"+r.status);return await r.text()}
+async function save(q:any){const stable={source:q.source,source_reference:q.source_reference,market_date:q.market_date,commodity_id:q.commodity_id,product_id:q.product_id,variety:q.variety,position:q.position,market:q.market,port:q.port,price_type:q.price_type,price:q.price,currency:q.currency,unit:q.unit,orientative_terms:q.price_type==="PRECIO_ORIENTATIVO"?{raw_value:q.payload?.raw_value??null,delivery_terms:q.payload?.delivery_terms??null}:null};const fp=await crypto.subtle.digest("SHA-256",new TextEncoder().encode(JSON.stringify(stable)));q.fingerprint=Array.from(new Uint8Array(fp)).map(b=>b.toString(16).padStart(2,"0")).join("");const {error}=await db.from("market_quotes").upsert(q,{onConflict:"fingerprint",ignoreDuplicates:true});if(error)throw error;return 1}
+async function html(url:string){const origin=new globalThis.URL(url).origin;const r=await fetch(url,{headers:{"user-agent":"Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36","accept":"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8","accept-language":"es-AR,es;q=0.9,en;q=0.8","referer":origin+"/","origin":origin}});if(!r.ok)throw new Error("SOURCE_HTTP_"+r.status);return await r.text()}
 async function authorized(req:Request){
  const cron=Deno.env.get("CRON_SECRET"),a=req.headers.get("authorization")||"";
+ if(cron&&req.headers.get("x-cron-secret")===cron)return true;
  if(cron&&a==="Bearer "+cron)return true;
  if(SERVICE&&a==="Bearer "+SERVICE)return true;
  const token=a.match(/^Bearer\s+(.+)$/i)?.[1];
@@ -44,17 +50,86 @@ async function parseAvailable(body:string,runId:string){
  return saved
 }
 
-const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BCP_ORIENTATIVOS="https://bcp.org.ar/cotizaciones/precios-orientativos.asp",BCBA_QUOTES="https://www.bolsadecereales.com/precios-oficiales",BCCBA_HOME="https://bccba.org.ar/";
+const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BCP_ORIENTATIVOS="https://www.bcp.org.ar/precios_orientativos.asp",BCBA_QUOTES="https://www.bolsadecereales.com/precios-oficiales",BCCBA_HOME="https://bccba.org.ar/";
 function commodityCode(label:string){const n=code(label);if(n.includes("ACEITE")&&n.includes("GIRASOL"))return "ACEITE_GIRASOL";if(n.includes("ACEITE")&&n.includes("SOJA"))return "ACEITE_SOJA";if(n.includes("PELLET"))return "PELLETS_SOJA";if(n.includes("HARINA"))return "HARINA_SOJA";if(n.includes("EXPeller".toUpperCase()))return "EXPELLER_SOJA";if(n.includes("MANI"))return "MANI";if(n.includes("CEBADA"))return "CEBADA";if(n.includes("GIRASOL"))return "GIRASOL";if(n.includes("SOJA"))return "SOJA";if(n.includes("MAIZ"))return "MAIZ";if(n.includes("TRIGO"))return "TRIGO";if(n.includes("SORGO"))return "SORGO";return n.replace(/[^A-Z0-9]+/g,"_");}
 function pageDate(text:string){const matches=[...text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)];const m=matches[0];if(!m)throw new Error("SOURCE_MARKET_DATE_NOT_FOUND");return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")}
 async function parseBahiaBlanca(body:string,runId:string,orientative=false){
- const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
- for(const tr of Array.from(d.querySelectorAll("tr"))){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(cells.length<2)continue;
-  const product=cells[0];if(!/^(Cebada|Girasol|Ma[ií]z|Soja|Sorgo|Trigo|Aceite de soja|Aceite de girasol|Pellets de soja)$/i.test(product))continue;
-  const raw=cells.slice(1).join(" ");const value=num(raw);if(value==null)continue;const currency=/u\s?\$\s?s|us\$|usd/i.test(raw)?"USD":"ARS";const type=orientative?"PRECIO_ORIENTATIVO":currency==="USD"?"FOB_MINAGRI":"FAS_THEORETICAL";const marketDate=pageDate(cells.join(" ")+" "+text);
+ const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");
+ const cellText=(cell:any)=>norm((cell.textContent||"")+" "+Array.from(cell.querySelectorAll("img[alt]")).map((img:any)=>img.getAttribute("alt")||"").join(" "));
+ const pageText=norm(d.body?.textContent||"")+" "+Array.from(d.querySelectorAll("img[alt]")).map((img:any)=>img.getAttribute("alt")||"").join(" ");
+ const date=pageDate(pageText);let saved=0;
+ const productPattern=/^(Cebada|Girasol|Ma[ií]z|Soja|Sorgo|Trigo|Aceite de soja|Aceite de girasol|Pellets de soja)$/i;
+ for(const tr of Array.from(d.querySelectorAll("tr"))){
+  const cells=Array.from(tr.querySelectorAll("th,td")).map(cellText);if(cells.length<2)continue;
+  const product=cells[0];if(!productPattern.test(product))continue;
+  const raw=cells.slice(1).join(" ");const value=num(raw);if(value===null)continue;
+  const currency=/u\s?\$\s?s|us\$|usd/i.test(raw)?"USD":"ARS";
+  const type=orientative?"PRECIO_ORIENTATIVO":currency==="USD"?"FOB_MINAGRI":"FAS_THEORETICAL";
+  const rowDate=pageDate(cells.join(" ")+ " "+pageText);
   const id=await commodityId(commodityCode(product));
-  saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca",source_reference:orientative?BCP_ORIENTATIVOS:BCP_FAS_FOB,market_date:marketDate||date,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BAHIA_BLANCA",port:"BAHIA BLANCA",price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,raw_cells:cells,run_id:runId}});
- }return saved;
+  saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca",source_reference:orientative?BCP_ORIENTATIVOS:BCP_FAS_FOB,market_date:rowDate||date,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BAHIA_BLANCA",port:"BAHIA BLANCA",price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,raw_cells:cells,secondary_source:false,run_id:runId}});
+ }
+ if(saved===0)throw new Error(orientative?"BCP_ORIENTATIVOS_NO_VALID_ROWS":"BCP_FAS_FOB_NO_VALID_ROWS");
+ return saved;
+}
+async function parseBahiaOrientatives(body:string,runId:string){
+ const d=parseHTML(body).document;if(!d)throw new Error("BCP_ORIENTATIVOS_HTML_ERROR");
+ const link=Array.from(d.querySelectorAll("a")).find((a:any)=>/Precios Orientativos al/i.test(norm(a.textContent||"")));
+ const href=link?.getAttribute("href");if(!href)throw new Error("BCP_ORIENTATIVES_PDF_LINK_NOT_FOUND");
+ const pdfUrl=new globalThis.URL(href,BCP_ORIENTATIVOS).toString();
+ const response=await fetch(pdfUrl,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/pdf,*/*"}});
+ if(!response.ok)throw new Error("BCP_ORIENTATIVES_PDF_HTTP_"+response.status);
+ const bytes=new Uint8Array(await response.arrayBuffer());
+ const pdfjsLib=await import("npm:pdfjs-dist@5.4.149/legacy/build/pdf.mjs");
+ (pdfjsLib as any).GlobalWorkerOptions.workerSrc=import.meta.resolve("npm:pdfjs-dist@5.4.149/legacy/build/pdf.worker.mjs");
+ const task=(pdfjsLib as any).getDocument({data:bytes,useSystemFonts:true,disableFontFace:true,isEvalSupported:false,verbosity:0});
+ const pdf=await task.promise;let saved=0;const reportLines:string[]=[];
+ for(let pageNo=1;pageNo<=pdf.numPages;pageNo++){
+  const page=await pdf.getPage(pageNo);const content=await page.getTextContent();
+  const grouped=new Map<number,{x:number,text:string}[]>();
+  for(const item of content.items as any[]){
+   if(!item.str||!item.str.trim())continue;
+   const y=Math.round(item.transform?.[5]||0);const x=Number(item.transform?.[4]||0);
+   const arr=grouped.get(y)||[];arr.push({x,text:item.str});grouped.set(y,arr);
+  }
+  const lines=[...grouped.entries()].sort((a,b)=>b[0]-a[0]).map(([y,items])=>({y,text:items.sort((a,b)=>a.x-b.x).map(x=>x.text).join(" ").replace(/\s+/g," ").trim()})).filter(x=>x.text);
+  let commodity="";
+  const productMap:[RegExp,string][]=[
+   [/^TRIGO\b/i,"TRIGO"],[/^CEBADA\b/i,"CEBADA"],[/^MA[IÍ]Z\b/i,"MAIZ"],[/^SOJA\b/i,"SOJA"],[/^GIRASOL\b/i,"GIRASOL"],[/^SORGO\b/i,"SORGO"]
+  ];
+  for(let idx=0;idx<lines.length;idx++){
+   const line=lines[idx].text;
+   const heading=productMap.find(([re])=>re.test(line));
+   if(heading){commodity=heading[1];continue;}
+   if(!commodity)continue;
+   const locality=line.match(/^(Bah[ií]a Blanca|Necochea|Tres Arroyos|Pig[uü][eé]|Tandil|San Cayetano|Daireaux|Dorrego|Gral\.?\s*Pico(?:\/Villegas)?)(?:\s+[-*])?\s*(.*)$/i);
+   if(!locality)continue;
+   const localityName=locality[1].toUpperCase().replace(/\s+/g," ").replace("BAHIA BLANCA","BAHIA BLANCA");
+   let detail=locality[2]||"";
+   if(!detail&&lines[idx+1]&&!/^(Bah[ií]a Blanca|Necochea|Tres Arroyos|Pig[uü][eé]|Tandil|San Cayetano|Daireaux|Dorrego|Gral\.?\s*Pico)/i.test(lines[idx+1].text))detail=lines[idx+1].text;
+   if(!detail||/^[-–—]+$/.test(detail))continue;
+   const currencyMatches=[...detail.matchAll(/u\s*\$?\s*s?\s*(\d{2,6}(?:[.,]\d{1,2})?(?:\s*-\s*\d{2,6}(?:[.,]\d{1,2})?)?)/gi)];
+   if(!currencyMatches.length)continue;
+   const id=await commodityId(commodity);
+   let previousMatchEnd=0;
+   for(let q=0;q<currencyMatches.length;q++){
+    const match=currencyMatches[q],raw=match[1].replace(/\s/g,"");const first=raw.split("-")[0].replace(/\./g,"").replace(",",".");const value=Number(first);
+    const segmentBefore=detail.slice(previousMatchEnd,match.index!).trim();
+    const nextStart=q+1<currencyMatches.length?currencyMatches[q+1].index!:detail.length;
+    const deliveryTerms=detail.slice(match.index!+match[0].length,nextStart).trim();
+    previousMatchEnd=match.index!+match[0].length;
+    if(!Number.isFinite(value)||value<=0)continue;
+    const positionContext=segmentBefore+" "+deliveryTerms;
+    const future=/\b(ene|feb|mar|abr|may|jun|jul|ago|sep|oct|nov|dic|futuro)\b|\b\d{1,2}\/\d{1,2}\b/i.test(positionContext);
+    const available=/\b(disp|disponible)\b/i.test(positionContext);
+    const position=available?"DISPONIBLE":future?"FUTURO":"SIN_POSICION";
+    saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca - Precios Orientativos",source_reference:pdfUrl,market_date:pageDate(line+" "+lines.slice(0,8).map(x=>x.text).join(" ")),published_at:null,commodity_id:id,product_id:null,variety:null,position,market:"BAHIA_BLANCA",port:localityName,price_type:"PRECIO_ORIENTATIVO",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:commodity,locality:localityName,position,raw_value:raw,raw_line:line,raw_detail:detail,range_high:raw.includes("-")?Number(raw.split("-")[1].replace(/\./g,"").replace(",",".")):null,delivery_terms:deliveryTerms.slice(0,80),report_pdf:pdfUrl,run_id:runId,secondary_source:false}});
+   }
+  }
+  reportLines.push(...lines.map(x=>x.text));
+ }
+ if(saved===0)throw new Error("BCP_ORIENTATIVES_PDF_NO_VALID_QUOTES");
+ return saved;
 }
 async function parseBuenosAires(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCBA_HTML_PARSE_ERROR");
@@ -92,27 +167,73 @@ async function parseBuenosAires(body:string,runId:string){
  if(saved===0)throw new Error("BCBA_OFFICIAL_QUOTES_NOT_PARSED");
  return saved;
 }
-async function parseCordoba(body:string,runId:string){
- const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
- const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
- const sections:[RegExp,string][]=[
-  [/Precios Pizarra Córdoba[^]*?(?=Precios Pizarra|Expeller de Soja|DATOS DE HOY)/i,"CORDOBA"],
-  [/Expeller de Soja[^]*?(?=MERCADOS|DATOS DE HOY)/i,"CORDOBA"]
+const BCBA_CHAMBER="https://www.bolsadecereales.com/camara-arbitral";
+async function parseBuenosAiresChamber(body:string,runId:string){
+ const d=parseHTML(body).document;if(!d)throw new Error("BCBA_CHAMBER_HTML_PARSE_ERROR");
+ const text=norm(d.body?.textContent||"");const marketDate=pageDate(text);let saved=0;
+ const configs=[
+  {market:"BUENOS_AIRES",port:"DARSENA",currency:"ARS"},
+  {market:"BUENOS_AIRES",port:"DARSENA",currency:"USD"},
+  {market:"BUENOS_AIRES",port:"QUEQUEN",currency:"ARS"},
+  {market:"BUENOS_AIRES",port:"QUEQUEN",currency:"USD"},
+  {market:"ROSARIO",port:"ROSARIO",currency:"ARS"},
+  {market:"BAHIA_BLANCA",port:"BAHIA BLANCA",currency:"ARS"},
+  {market:"BAHIA_BLANCA",port:"BAHIA BLANCA",currency:"USD"},
+  {market:"CORDOBA",port:"CORDOBA",currency:"ARS"}
  ];
- const products=["Trigo duro","Maní Industria","Maní Runner","Expeller de soja"];
- for(const [pattern,market] of sections){
-  const match=text.match(pattern);if(!match)continue;const section=match[0];
-  const occurrences=products.map(product=>({product,index:section.toLowerCase().indexOf(product.toLowerCase())})).filter(x=>x.index>=0).sort((a,b)=>a.index-b.index);
-  for(let i=0;i<occurrences.length;i++){
-   const current=occurrences[i];const next=occurrences[i+1];const snippet=section.slice(current.index,next?next.index:Math.min(section.length,current.index+240));
-   const moneyMatch=snippet.match(/(?:U\$S\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)/i);
-   if(!moneyMatch)continue;
-   const value=num(moneyMatch[0]);if(value==null)continue;
-   const currency=/U\$S/i.test(moneyMatch[0])?"USD":"ARS";
-   const id=await commodityId(commodityCode(current.product));
-   saved+=await save({source:"Bolsa de Cereales de Córdoba",source_reference:BCCBA_HOME,market_date:date,commodity_id:id,product_id:null,variety:null,position:"SPOT",market,port:"CORDOBA",price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:current.product,excerpt:snippet,estimated:snippet.toLowerCase().includes("estimado")||snippet.toLowerCase().includes("s/n"),run_id:runId}});
+ const tables=Array.from(d.querySelectorAll("table")).map(table=>Array.from(table.querySelectorAll("tr")).map(tr=>Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""))).filter(row=>row.length));
+ const quoteTables=tables.filter(rows=>rows.some(row=>row.some(x=>/^Actual$/i.test(x))&&row.some(x=>/^Anterior$/i.test(x))&&row.some(x=>/^Var$/i.test(x))));
+ if(!quoteTables.length)throw new Error("BCBA_CHAMBER_TABLES_NOT_FOUND");
+ for(let index=0;index<quoteTables.length;index++){
+  const config=configs[index];if(!config)continue;
+  for(const cells of quoteTables[index]){
+   const label=cells[0]||"";
+   if(!/^(Trigo(?: Art 12)?|Ma[ií]z|Soja|Girasol|Cebada(?: Forrajera)?|Sorgo|Man[ií] Industria)$/i.test(label))continue;
+   const value=num(cells[1]||"");if(value===null)continue;
+   const previous=num(cells[2]||"");
+   const id=await commodityId(commodityCode(label));
+   saved+=await save({source:"Bolsa de Cereales de Buenos Aires - Cámara Arbitral",source_reference:BCBA_CHAMBER,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:config.market,port:config.port,price_type:"PIZARRA_CAC",price:value,currency:config.currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:previous,variation:previous!==null?value-previous:null,payload:{product:label,market:config.market,port:config.port,raw_cells:cells,run_id:runId}});
   }
  }
+ if(saved===0)throw new Error("BCBA_CHAMBER_NO_VALID_QUOTES");
+ return saved;
+}
+async function parseCordoba(body:string,runId:string){
+ const htmlWithAlt=body.replace(/<img\b([^>]*?)\balt=(["'])(.*?)\2([^>]*)>/gi," $3 ");
+ const d=parseHTML(htmlWithAlt).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
+ const text=norm(d.body?.textContent||"");let saved=0;
+ const defs=[
+  {title:/Precios Pizarra Buenos Aires - Quequ[eé]n/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
+  {title:/Precios Pizarra Buenos Aires - D[aá]rsena/i,market:"BUENOS_AIRES",port:"DARSENA"},
+  {title:/Precios Pizarra C[oó]rdoba/i,market:"CORDOBA",port:"CORDOBA"}
+ ];
+ const headings=defs.map(def=>{const matches=[...text.matchAll(new RegExp(def.title.source,"gi"))];return {...def,start:matches.length?matches[matches.length-1].index!:-1};}).filter(x=>x.start>=0).sort((a,b)=>a.start-b.start);
+ const productPattern=/^(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)$/i;
+ for(let h=0;h<headings.length;h++){
+  const sectionConfig=headings[h];const start=sectionConfig.start;
+  const nextHeading=headings[h+1]?.start??text.length;
+  const expellerIndex=text.toLowerCase().indexOf("expeller de soja",start);
+  const end=Math.min(nextHeading,expellerIndex>=start?expellerIndex:text.length);
+  const section=text.slice(start,end);
+  const dateMatch=section.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
+  if(!dateMatch)continue;const marketDate=dateFromText(dateMatch[1]);if(!marketDate)continue;
+  const labels=[...section.matchAll(/(?:^|\s)(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)(?=\s|$)/gi)];
+  for(let i=0;i<labels.length;i++){
+   const label=labels[i][1];if(!productPattern.test(label))continue;
+   const from=(labels[i].index||0)+labels[i][0].lastIndexOf(label)+label.length;
+   const to=i+1<labels.length?(labels[i+1].index||section.length):section.length;
+   const snippet=section.slice(from,to);
+   const prices=[...snippet.matchAll(/(U\$S|USD|\$)\s*([\d.]+(?:,\d+)?)/gi)];
+   if(!prices.length)continue;
+   const local=prices.find(x=>x[1]==="$");
+   const selected=local||prices[0];const value=num(selected[2]);if(value===null)continue;
+   const currency=selected[1]==="$"?"ARS":"USD";
+   const id=await commodityId(commodityCode(label));
+   const estimated=/S\/N|S\/C|estimad/i.test(snippet);
+   saved+=await save({source:"Bolsa de Cereales de Córdoba (referencia secundaria)",source_reference:BCCBA_HOME,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:sectionConfig.market,port:sectionConfig.port,price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:label,raw_excerpt:snippet.slice(0,500),secondary_source:true,estimated,source_disclaimer:"Referencia secundaria publicada por BCCBA; verificar con la bolsa de origen.",run_id:runId}});
+  }
+ }
+ if(saved===0)throw new Error("BCCBA_REGIONAL_QUOTES_NOT_PARSED");
  return saved;
 }
 async function syncChicago(runId:string){
@@ -131,14 +252,15 @@ async function syncChicago(runId:string){
    const response=await fetch(endpoint,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/json"}});
    if(!response.ok)throw new Error("QUOTE_HTTP_"+response.status);
    const json=await response.json();const result=json?.chart?.result?.[0];if(!result)throw new Error("QUOTE_NOT_AVAILABLE");
-   const meta=result.meta||{},timestamps=result.timestamp||[],closes=result.indicators?.quote?.[0]?.close||[];
-   const valid=closes.map((v:number|null,i:number)=>({value:v,time:timestamps[i]})).filter((x:any)=>typeof x.value==="number"&&Number.isFinite(x.value));
+   const meta=result.meta||{},timestamps=result.timestamp||[],quote=result.indicators?.quote?.[0]||{},closes=quote.close||[];
+   const valid=closes.map((v:number|null,i:number)=>({value:v,time:timestamps[i],index:i})).filter((x:any)=>typeof x.value==="number"&&Number.isFinite(x.value));
    const last=valid[valid.length-1];if(!last)throw new Error("QUOTE_WITHOUT_PRICE");
+   const candle=(key:string)=>{const value=quote[key]?.[last.index];return typeof value==="number"&&Number.isFinite(value)?value:null;};
    const previous=valid.length>1?valid[valid.length-2].value:(typeof meta.chartPreviousClose==="number"?meta.chartPreviousClose:null);
    const date=new Date((last.time||meta.regularMarketTime||Date.now())*1000).toISOString().slice(0,10);
    const id=await commodityId(item.code);
    const label=String(meta.shortName||meta.longName||item.symbol);
-   saved+=await save({source:"Yahoo Finance / CBOT",source_reference:endpoint,market_date:date,published_at:null,commodity_id:id,product_id:null,variety:null,position:String(meta.contractSymbol||label),market:"CHICAGO",port:null,price_type:"FUTURES",price:last.value,currency:"USD",unit:item.unit,status:"VALID",freshness:"UPDATED",previous_value:previous,variation:previous==null?null:last.value-previous,payload:{symbol:item.symbol,contract:meta.contractSymbol||null,exchange:"CBOT",quote_time:new Date((last.time||Date.now())*1000).toISOString(),run_id:runId,delayed:true}});
+   saved+=await save({source:"Yahoo Finance / CBOT",source_reference:endpoint,market_date:date,published_at:null,commodity_id:id,product_id:null,variety:null,position:String(meta.contractSymbol||label),market:"CHICAGO",port:null,price_type:"FUTURES",price:last.value,currency:"USD",unit:item.unit,status:"VALID",freshness:"UPDATED",previous_value:previous,variation:previous==null?null:last.value-previous,payload:{symbol:item.symbol,contract:meta.contractSymbol||null,exchange:"CBOT",quote_time:new Date((last.time||Date.now())*1000).toISOString(),open:candle("open"),high:candle("high"),low:candle("low"),volume:candle("volume"),run_id:runId,delayed:true}});
   }catch(error){errors.push(item.symbol+":"+(error instanceof Error?error.message:"QUOTE_ERROR"))}
  }));
  return {saved,errors};
@@ -146,7 +268,8 @@ async function syncChicago(runId:string){
 async function parseFob(body:string,runId:string){const d=parseHTML(body).document;if(!d)throw new Error("BCR_HTML_PARSE_ERROR");const rows=Array.from(d.querySelectorAll("tr"));let commodity="",delivery:string[]=[],marketDate:string|null=null,saved=0;for(const tr of rows){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(!cells.length)continue;const text=cells.join(" | "),ds=text.match(/\d{2}\/\d{2}\/\d{4}/);if(ds)marketDate=dateFromText(ds[0])||marketDate;const cm=cells.find(x=>/^(Trigo|Ma[ií]z|Soja|Girasol|Sorgo)$/i.test(x));if(cm){commodity=cm;delivery=[];continue}if(/^Fecha Embarque\/Delivery date/i.test(cells[0]||"")){delivery=cells.slice(1);continue}if(!commodity||!marketDate)continue;const metric=cells[0]||"";if(/^FOB ACEITE/i.test(metric)||/^FOB PELLETS/i.test(metric)){const specialCode=/^FOB ACEITE/i.test(metric)?"ACEITE_SOJA":"PELLETS_SOJA";const id=await commodityId(specialCode);let emitted=0;for(let i=1;i<cells.length&&emitted<2;i++){const value=num(cells[i]);if(value==null)continue;emitted++;saved+=await save({source:SOURCE,source_reference:BCR_FOB,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:delivery[i-1]||"SPOT",market:"ARGENTINA",port:"Up River",price_type:/^FOB ACEITE/i.test(metric)?"FOB_OIL":"FOB_MEAL",price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{commodity:specialCode,metric,delivery:delivery[i-1]||null,raw_cells:cells,run_id:runId}})}continue;}let type:string|null=null;if(/^FOB comprador/i.test(metric))type="FOB_BID";else if(/^FOB vendedor/i.test(metric))type="FOB_OFFER";else if(/^a\) Impuestos/i.test(metric))type="EXPORT_DUTIES";else if(/^b\) Gastos en puertos/i.test(metric))type="PORT_COST";else if(/^c\) Gtos/i.test(metric))type="MARKETING_COST";else if(/^Total USD/i.test(metric))type="TOTAL_COST";else if(/^FAS Te[oó]rico/i.test(metric))type="FAS_THEORETICAL";if(!type)continue;const id=await commodityId(commodity);for(let i=1;i<cells.length;i++){const value=num(cells[i]);if(value==null)continue;saved+=await save({source:SOURCE,source_reference:BCR_FOB,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:delivery[i-1]||"SPOT",market:"ARGENTINA",port:"SAGyP/UP RIVER",price_type:type,price:value,currency:"USD",unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{commodity,metric:type,delivery:delivery[i-1]||null,raw_cells:cells,run_id:runId}})}}return saved}
 function corsHeaders(req:Request){
  const origin=req.headers.get("origin")||"";
- const allowed=/^https:\/\/(([a-z0-9-]+\.)?agrobrokeria\.online|([a-z0-9-]+\.)?agrobrokeria\.com\.ar)$/i.test(origin)
+ const allowed=/^https:\/\/([a-z0-9-]+\.)?agrobrokeria\.com\.ar$/i.test(origin)
+   || /^https:\/\/[a-z0-9-]+-agrobroker\.vercel\.app$/i.test(origin)
    || /^http:\/\/localhost(:\d+)?$/i.test(origin);
  const headers=new Headers({
   "Vary":"Origin",
@@ -161,6 +284,6 @@ function jsonResponse(req:Request,body:unknown,status=200){
  const headers=corsHeaders(req);headers.set("content-type","application/json");
  return new Response(JSON.stringify(body),{status,headers});
 }
-Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const [local,fob,available]=await Promise.all([html(BCR_LOCAL),html(BCR_FOB),html(BCR_AVAILABLE)]),[a,b,c]=await Promise.all([parseLocal(local,runId),parseFob(fob,runId),parseAvailable(available,runId)]);const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{return await task()}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [bahia,orient,bsas,cordoba]=await Promise.all([safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaBlanca(await html(BCP_ORIENTATIVOS),runId,true)),safeSource("BCBA",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId))]);const chicago=await syncChicago(runId),total=a+b+c+bahia+orient+bsas+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
+Deno.serve(async req=>{let runId:string|null=null;try{if(req.method==="OPTIONS")return new Response(null,{status:204,headers:corsHeaders(req)});if(req.method!=="POST")return jsonResponse(req,{error:"METHOD_NOT_ALLOWED"},405);if(!(await authorized(req)))return jsonResponse(req,{error:"AUTH_REQUIRED"},401);const {data:run,error:re}=await db.from("market_sync_runs").insert({source:SOURCE,status:"RUNNING"}).select("id").single();if(re)throw re;runId=run.id;const sourceWarnings:string[]=[];const safeSource=async(label:string,task:()=>Promise<number>)=>{try{const count=await task();if(count===0)sourceWarnings.push(label+":NO_QUOTES_PARSED");return count}catch(error){sourceWarnings.push(label+":"+(error instanceof Error?error.message:"SOURCE_ERROR"));return 0}};const [a,b,c,bahia,orient,bsas,bsasChamber,cordoba]=await Promise.all([safeSource("BCR_PIZARRA_CAC",async()=>parseLocal(await html(BCR_LOCAL),runId)),safeSource("BCR_FOB_FAS",async()=>parseFob(await html(BCR_FOB),runId)),safeSource("BCR_DISPONIBLE",async()=>parseAvailable(await html(BCR_AVAILABLE),runId)),safeSource("BCP_FAS_FOB",async()=>parseBahiaBlanca(await html(BCP_FAS_FOB),runId,false)),safeSource("BCP_ORIENTATIVOS",async()=>parseBahiaOrientatives(await html(BCP_ORIENTATIVOS),runId)),safeSource("BCBA_OFICIAL",async()=>parseBuenosAires(await html(BCBA_QUOTES),runId)),safeSource("BCBA_CAMARA_ARBITRAL",async()=>parseBuenosAiresChamber(await html(BCBA_CHAMBER),runId)),safeSource("BCCBA",async()=>parseCordoba(await html(BCCBA_HOME),runId))]);const chicago=await syncChicago(runId),bcrRecords=a+b+c,total=bcrRecords+bahia+orient+bsas+bsasChamber+cordoba+chicago.saved;if(total===0){await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"NO_DATA",records_seen:0,records_saved:0}).eq("id",runId);return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,records_saved:0,no_data:true})}const warnings=[...sourceWarnings,...chicago.errors];const syncStatus=warnings.length?"PARTIAL":"SUCCESS";await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:syncStatus,records_seen:total,records_saved:total,error_message:warnings.length?warnings.join("; ").slice(0,1000):null}).eq("id",runId);
     const { error: refreshError } = await db.rpc("refresh_market_public_summary_data");
-    if (refreshError) throw refreshError;return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,status:syncStatus,records_saved:total,chicago_records_saved:chicago.saved,bahia_blanca_records_saved:bahia+orient,buenos_aires_records_saved:bsas,cordoba_records_saved:cordoba,chicago_warnings:chicago.errors,source_warnings:sourceWarnings})}catch(e){const msg=e instanceof Error?e.message:"MARKET_SYNC_ERROR";if(runId)await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"ERROR",error_code:msg.slice(0,80),error_message:msg}).eq("id",runId);return jsonResponse(req,{ok:false,error:msg,run_id:runId},502)}});
+    if (refreshError) throw refreshError;return jsonResponse(req,{ok:true,source:SOURCE,run_id:runId,status:syncStatus,records_saved:total,bcr_records_saved:bcrRecords,chicago_records_saved:chicago.saved,bahia_blanca_records_saved:bahia+orient,buenos_aires_records_saved:bsas+bsasChamber,cordoba_records_saved:cordoba,chicago_warnings:chicago.errors,source_warnings:sourceWarnings})}catch(e){const msg=e instanceof Error?e.message:"MARKET_SYNC_ERROR";if(runId)await db.from("market_sync_runs").update({finished_at:new Date().toISOString(),status:"ERROR",error_code:msg.slice(0,80),error_message:msg}).eq("id",runId);return jsonResponse(req,{ok:false,error:msg,run_id:runId},502)}});

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { supabase } from "../../lib/supabase";
+import { supabase } from "@/lib/supabase/client";
 
 type LiquidacionData = {
   id?: string;
@@ -114,8 +114,8 @@ export default function Liquidacion({
     }
 
     if (data) {
-      setDatos({
-        ...datos,
+      setDatos((actual) => ({
+        ...actual,
         ...data,
         cantidad_contractual_tn: Number(data.cantidad_contractual_tn) || 0,
         kilos_entregados: Number(data.kilos_entregados) || 0,
@@ -131,25 +131,39 @@ export default function Liquidacion({
         fecha_liquidacion: data.fecha_liquidacion || "",
         referencia_comprobante: data.referencia_comprobante || "",
         observaciones: data.observaciones || "",
-      });
+      }));
       return;
     }
 
-    const { data: entrega, error: errorEntrega } = await supabase
-      .from("operacion_logistica")
-      .select("kilos_entregados, fecha_entrega")
-      .eq("operacion_id", operacionId)
-      .eq("estado", "ENTREGADA")
-      .order("creado_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    // La fuente operativa de kilos es viajes: el RPC de liquidación calcula
+    // la cantidad desde estos mismos registros y no desde operacion_logistica.
+    const { data: viajes, error: errorViajes } = await supabase
+      .from("viajes")
+      .select("kilos_entregados,transportista_kilos_entregados,productor_kilos_recibidos,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
+      .eq("operacion_id", operacionId);
 
-    if (errorEntrega) {
-      setError(`No se pudo cargar la entrega: ${errorEntrega.message}`);
+    if (errorViajes) {
+      setError(`No se pudieron cargar los kilos de los viajes: ${errorViajes.message}`);
       return;
     }
 
-    const kilos = Number(entrega?.kilos_entregados || 0);
+    const viajesConfirmados = (viajes || []).filter((viaje) =>
+      viaje.estado === "ENTREGADO_CONFIRMADO" &&
+      viaje.transportista_entrega_confirmada_at &&
+      viaje.productor_recepcion_confirmada_at &&
+      !viaje.productor_recepcion_observada_at &&
+      viaje.transportista_kilos_entregados != null &&
+      viaje.productor_kilos_recibidos != null &&
+      Number(viaje.transportista_kilos_entregados) >= 0 &&
+      Number(viaje.productor_kilos_recibidos) >= 0 &&
+      Number(viaje.transportista_kilos_entregados) === Number(viaje.productor_kilos_recibidos)
+    );
+    // La cantidad de referencia es la recepción confirmada por el productor,
+    // igual que en guardar_liquidacion_operacion en PostgreSQL.
+    const kilos = viajesConfirmados.reduce(
+      (total, viaje) => total + Number(viaje.productor_kilos_recibidos),
+      0
+    );
     const entregadaTn = kilos / 1000;
     const bruto = entregadaTn * (precioTn || 0);
 
@@ -161,7 +175,7 @@ export default function Liquidacion({
       importe_bruto_usd: bruto,
       importe_neto_usd: bruto - entregadaTn,
       comision_agrobroker_usd: entregadaTn,
-      fecha_liquidacion: entrega?.fecha_entrega || "",
+      fecha_liquidacion: actual.fecha_liquidacion || "",
     }));
   }
 
@@ -349,12 +363,9 @@ export default function Liquidacion({
         />
 
         <Campo
-          label="Kilos entregados"
+          label="Kilos entregados (viajes con doble conformidad)"
           value={datos.kilos_entregados}
-          type="number"
-          onChange={(v) =>
-            cambiar("kilos_entregados", Number(v) || 0)
-          }
+          readOnly
         />
 
         <Campo
