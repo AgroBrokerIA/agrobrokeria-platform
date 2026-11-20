@@ -125,25 +125,36 @@ async function parseBuenosAiresChamber(body:string,runId:string){
 }
 async function parseCordoba(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCCBA_HTML_PARSE_ERROR");
- const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
- const sections:[RegExp,string][]=[
-  [/Precios Pizarra Córdoba[^]*?(?=Precios Pizarra|Expeller de Soja|DATOS DE HOY)/i,"CORDOBA"],
-  [/Expeller de Soja[^]*?(?=MERCADOS|DATOS DE HOY)/i,"CORDOBA"]
+ const text=norm(d.body?.textContent||"");let saved=0;
+ const sections=[
+  {pattern:/Precios Pizarra Buenos Aires - Quequ[eé]n[^]*?(?=Precios Pizarra Buenos Aires - D[aá]rsena|Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
+  {pattern:/Precios Pizarra Buenos Aires - D[aá]rsena[^]*?(?=Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"DARSENA"},
+  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=\\nMERCADOS|\\n## Expeller|$)/i,market:"CORDOBA",port:"CORDOBA"}
  ];
- const products=["Trigo duro","Maní Industria","Maní Runner","Expeller de soja"];
- for(const [pattern,market] of sections){
-  const match=text.match(pattern);if(!match)continue;const section=match[0];
-  const occurrences=products.map(product=>({product,index:section.toLowerCase().indexOf(product.toLowerCase())})).filter(x=>x.index>=0).sort((a,b)=>a.index-b.index);
-  for(let i=0;i<occurrences.length;i++){
-   const current=occurrences[i];const next=occurrences[i+1];const snippet=section.slice(current.index,next?next.index:Math.min(section.length,current.index+240));
-   const moneyMatch=snippet.match(/(?:U\$S\s?[\d.]+(?:,\d+)?|\$\s?[\d.]+(?:,\d+)?)/i);
-   if(!moneyMatch)continue;
-   const value=num(moneyMatch[0]);if(value==null)continue;
-   const currency=/U\$S/i.test(moneyMatch[0])?"USD":"ARS";
-   const id=await commodityId(commodityCode(current.product));
-   saved+=await save({source:"Bolsa de Cereales de Córdoba",source_reference:BCCBA_HOME,market_date:date,commodity_id:id,product_id:null,variety:null,position:"SPOT",market,port:"CORDOBA",price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:current.product,excerpt:snippet,estimated:snippet.toLowerCase().includes("estimado")||snippet.toLowerCase().includes("s/n"),run_id:runId}});
+ const productPattern=/^(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)$/i;
+ for(const sectionConfig of sections){
+  const match=text.match(sectionConfig.pattern);if(!match)continue;
+  const section=match[0];const dateMatch=section.match(/(\\d{1,2}\\/\\d{1,2}\\/\\d{4})/);
+  if(!dateMatch)continue;const marketDate=dateFromText(dateMatch[1]);if(!marketDate)continue;
+  const labels=[...section.matchAll(/(?:^|\\s)(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)(?=\\s|$)/gi)];
+  for(let i=0;i<labels.length;i++){
+   const label=labels[i][1];if(!productPattern.test(label))continue;
+   const from=(labels[i].index||0)+labels[i][0].lastIndexOf(label)+label.length;
+   const to=i+1<labels.length?(labels[i+1].index||section.length):section.length;
+   const snippet=section.slice(from,to);
+   const prices=[...snippet.matchAll(/(U\\$S|USD|\\$)\\s*([\\d.]+(?:,\\d+)?)/gi)];
+   if(!prices.length)continue;
+   const local=prices.find(x=>x[1]==="$");
+   const selected=local||prices[0];const value=num(selected[2]);if(value===null)continue;
+   const currency=selected[1]==="$"?"ARS":"USD";
+   const id=await commodityId(commodityCode(label));
+   const estimated=/S\\/N|estimad/i.test(snippet);
+   saved+=await save({source:"Bolsa de Cereales de Córdoba (referencia secundaria)",source_reference:BCCBA_HOME,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:sectionConfig.market,port:sectionConfig.port,price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:label,raw_excerpt:snippet.slice(0,500),secondary_source:true,estimated,source_disclaimer:"Referencia secundaria publicada por BCCBA; verificar con la bolsa de origen.",run_id:runId}});
   }
  }
+ // La pizarra propia de Córdoba se conserva mediante el mismo origen secundario,
+ // pero se incorporan los productos que efectivamente tienen valor publicado.
+ if(saved===0)throw new Error("BCCBA_REGIONAL_QUOTES_NOT_PARSED");
  return saved;
 }
 async function syncChicago(runId:string){
