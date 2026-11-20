@@ -129,7 +129,7 @@ async function parseCordoba(body:string,runId:string){
  const sections=[
   {pattern:/Precios Pizarra Buenos Aires - Quequ[eé]n[^]*?(?=Precios Pizarra Buenos Aires - D[aá]rsena|Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
   {pattern:/Precios Pizarra Buenos Aires - D[aá]rsena[^]*?(?=Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"DARSENA"},
-  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=\\nMERCADOS|\\n## Expeller|$)/i,market:"CORDOBA",port:"CORDOBA"}
+  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=MERCADOS|Expeller de Soja|$)/i,market:"CORDOBA",port:"CORDOBA"}
  ];
  const productPattern=/^(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)$/i;
  for(const sectionConfig of sections){
