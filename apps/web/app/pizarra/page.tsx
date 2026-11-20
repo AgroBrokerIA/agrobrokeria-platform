@@ -55,11 +55,16 @@ export default function PizarraPage(){
    setSyncMsg("Pizarra actualizada desde BCR/CAC, Bahía Blanca, Buenos Aires, Córdoba, Chicago y MATba Rofex. El histórico fue conservado.");await load();
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
- const codeFor=(q:Quote)=>codes[q.commodity_id||""]||productNames[String(q.product_id||"")]||q.product_id?.toString()||q.commodity_id||"OTRO";
+ const symbolCodeFor=(q:Quote)=>{
+  const symbol=String((q.payload as any)?.symbol||"").trim().toUpperCase();
+  const symbols:Record<string,string>={"ZS=F":"SOJA","ZW=F":"TRIGO","ZC=F":"MAIZ","ZM=F":"HARINA_SOJA","ZL=F":"ACEITE_SOJA"};
+  return symbols[symbol]||"";
+ };
+ const codeFor=(q:Quote)=>codes[q.commodity_id||""]||productNames[String(q.product_id||"")]||q.product_id?.toString()||symbolCodeFor(q)||q.commodity_id||"OTRO";
  const categoryFor=(q:Quote)=>(productCategories[String(q.product_id||"")]||"").trim().toLowerCase();
- const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||"").trim().toUpperCase();
+ const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||symbolCodeFor(q)).trim().toUpperCase();
  const productLabelFor=(q:Quote)=>productNames[String(q.product_id||"")]||({
-  ACEITE_SOJA:"Aceite de soja",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja",
+  ACEITE_SOJA:"Aceite de soja (CBOT)",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja (CBOT)",
   HARINA_GIRASOL:"Harina de girasol",PELLETS_SOJA:"Pellets de soja",EXPELLER_SOJA:"Expeller de soja",
   AFRECHILLO_TRIGO:"Afrechillo de trigo",SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol",SORGO:"Sorgo"
  } as Record<string,string>)[commodityCodeFor(q)]||codeFor(q);
@@ -68,8 +73,8 @@ export default function PizarraPage(){
   const category=categoryFor(q);
   const name=(productNames[String(q.product_id||"")]||"").toLowerCase();
   if(boardTab==="Granos")return ["cereal","oleaginosa","legumbre","pseudocereal y nicho","especialidad","semilla de cobertura","semilla forrajera"].includes(category)||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO","CEBADA","AVENA","MANI","ARROZ"].includes(code);
-  if(boardTab==="Aceites")return category.includes("aceite")||code.startsWith("ACEITE_")||name.includes("aceite");
-  if(boardTab==="Harinas")return category.includes("harina")||code.startsWith("HARINA_")||name.includes("harina");
+  if(boardTab==="Aceites")return category.includes("aceite")||code.startsWith("ACEITE_")||code==="ACEITE_SOJA"||name.includes("aceite");
+  if(boardTab==="Harinas")return category.includes("harina")||code.startsWith("HARINA_")||code==="HARINA_SOJA"||name.includes("harina");
   if(boardTab==="Subproductos")return category.includes("subproducto")||["PELLET","EXPELLER","AFRECHILLO","SUBPRODUCTO","CAScarilla"].some(x=>code.includes(x.toUpperCase()))||["pellet","expeller","afrechillo","subproducto","cascarilla"].some(x=>name.includes(x));
   return true;
  };
