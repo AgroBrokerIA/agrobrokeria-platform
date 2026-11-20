@@ -136,10 +136,10 @@ async function parseCACPizarra(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("CAC_HTML_PARSE_ERROR");
  const text=norm(d.body?.textContent||"");
  const monthMap:Record<string,string>={enero:"01",febrero:"02",marzo:"03",abril:"04",mayo:"05",junio:"06",julio:"07",agosto:"08",septiembre:"09",octubre:"10",noviembre:"11",diciembre:"12"};
- const titleDate=text.match(/Precios Pizarra del d[ií]a\s+(\\d{1,2})\\/(\\d{1,2})\\/(\\d{4})/i);
+ const titleDate=text.match(/Precios Pizarra del d[ií]a\s+(\d{1,2})\/(\d{1,2})\/(\d{4})/i);
  let marketDate=titleDate?titleDate[3]+"-"+titleDate[2].padStart(2,"0")+"-"+titleDate[1].padStart(2,"0"):null;
  if(!marketDate){
-  const closing=text.match(/Rosario,\\s*(\\d{1,2})\\s+de\\s+([a-záéíóú]+)\\s+del\\s+(\\d{4})/i);
+  const closing=text.match(/Rosario,\s*(\d{1,2})\s+de\s+([a-záéíóú]+)\s+del\s+(\d{4})/i);
   if(closing){const month=monthMap[code(closing[2]).toLowerCase()];if(month)marketDate=closing[3]+"-"+month+"-"+closing[1].padStart(2,"0");}
  }
  if(!marketDate)throw new Error("CAC_MARKET_DATE_NOT_FOUND");
@@ -153,10 +153,10 @@ async function parseCACPizarra(body:string,runId:string){
   const next=products.slice(i+1).map(p=>{const re=new RegExp("(?:^|\\\\s)"+p.label.replace("í","[ií]")+"(?=\\\\s|$)","i");const m=re.exec(text.slice(start));return m?start+m.index:null}).filter((x):x is number=>x!==null);
   const end=next.length?Math.min(...next):text.length;
   const block=text.slice(start,end);
-  const ars=block.match(/(?:S\\/C\\s*\\(E\\)\\s*)?\\$\\s*([\\d.]+(?:,\\d{1,2})?)/i);
-  const usd=block.match(/(?:US\\$\\s*\\(E\\)\\s*|US\\$\\s*)([\\d.]+(?:,\\d{1,2})?)/i);
+  const ars=block.match(/(?:S\/C\s*\(E\)\s*)?\$\s*([\d.]+(?:,\d{1,2})?)/i);
+  const usd=block.match(/(?:US\$\s*\(E\)\s*|US\$\s*)([\d.]+(?:,\d{1,2})?)/i);
   const commodity=await commodityId(item.code);
-  for(const [currency,raw,estimated] of [["ARS",ars?.[1]||null,/S\\/C\\s*\\(E\\)/i.test(block)],["USD",usd?.[1]||null,/US\\$\\s*\\(E\\)/i.test(block)]] as const){
+  for(const [currency,raw,estimated] of [["ARS",ars?.[1]||null,/S\/C\s*\(E\)/i.test(block)],["USD",usd?.[1]||null,/US\$\s*\(E\)/i.test(block)]] as const){
    if(!raw)continue;const value=num(raw);if(value===null)continue;
    saved+=await save({source:"BCR/CAC - Cámara Arbitral de Cereales de Rosario",source_reference:CAC_PIZARRA,market_date:marketDate,published_at:null,commodity_id:commodity,product_id:null,variety:null,position:"SPOT",market:"ROSARIO",port:"ROSARIO",price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:item.code,estimated,delivery_terms:"Entrega inmediata · pago contado · puesto sobre camión/vagón zona Rosario",raw_excerpt:block.slice(0,400),run_id:runId}});
   }
