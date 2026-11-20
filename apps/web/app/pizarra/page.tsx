@@ -41,18 +41,40 @@ export default function PizarraPage(){
    setSyncMsg("Pizarra actualizada desde BCR/CAC, Bahía Blanca, Buenos Aires, Córdoba, Chicago y MATba Rofex. El histórico fue conservado.");await load();
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
- const codeFor=(q:Quote)=>codes[q.commodity_id||""]||productNames[String(q.product_id||"")]||q.product_id?.toString()||q.commodity_id||"OTRO";
+ const payloadCodeFor=(q:Quote)=>{
+  const raw=String(q.payload?.product||q.payload?.commodity||q.payload?.product_name||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toUpperCase();
+  if(raw.includes("ACEITE")&&raw.includes("GIRASOL"))return "ACEITE_GIRASOL";
+  if(raw.includes("ACEITE")&&raw.includes("SOJA"))return "ACEITE_SOJA";
+  if(raw.includes("HARINA")&&raw.includes("GIRASOL"))return "HARINA_GIRASOL";
+  if(raw.includes("HARINA")&&raw.includes("SOJA")&&raw.includes("PELLET"))return "PELLETS_SOJA";
+  if(raw.includes("HARINA")&&raw.includes("SOJA"))return "HARINA_SOJA";
+  if(raw.includes("PELLET"))return "PELLETS_SOJA";
+  if(raw.includes("EXPELLER"))return "EXPELLER_SOJA";
+  if(raw.includes("AFRECHILLO"))return "AFRECHILLO_TRIGO";
+  if(raw.includes("CASCARILLA"))return "CASCARILLA_SOJA";
+  if(raw.includes("MAIZ"))return "MAIZ";
+  if(raw.includes("TRIGO"))return "TRIGO";
+  if(raw.includes("SOJA"))return "SOJA";
+  if(raw.includes("GIRASOL"))return "GIRASOL";
+  if(raw.includes("SORGO"))return "SORGO";
+  if(raw.includes("CEBADA"))return "CEBADA";
+  if(raw.includes("AVENA"))return "AVENA";
+  if(raw.includes("MANI"))return "MANI";
+  if(raw.includes("ARROZ"))return "ARROZ";
+  return "";
+ };
+ const codeFor=(q:Quote)=>codes[q.commodity_id||""]||productNames[String(q.product_id||"")]||payloadCodeFor(q)||q.product_id?.toString()||q.commodity_id||"OTRO";
  const categoryFor=(q:Quote)=>(productCategories[String(q.product_id||"")]||"").trim().toLowerCase();
- const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||"").trim().toUpperCase();
+ const commodityCodeFor=(q:Quote)=>String(codes[q.commodity_id||""]||payloadCodeFor(q)||"").trim().toUpperCase();
  const productLabelFor=(q:Quote)=>productNames[String(q.product_id||"")]||({
   ACEITE_SOJA:"Aceite de soja",ACEITE_GIRASOL:"Aceite de girasol",HARINA_SOJA:"Harina de soja",
   HARINA_GIRASOL:"Harina de girasol",PELLETS_SOJA:"Pellets de soja",EXPELLER_SOJA:"Expeller de soja",
   AFRECHILLO_TRIGO:"Afrechillo de trigo",SOJA:"Soja",MAIZ:"Maíz",TRIGO:"Trigo",GIRASOL:"Girasol",SORGO:"Sorgo"
- } as Record<string,string>)[commodityCodeFor(q)]||codeFor(q);
+ } as Record<string,string>)[commodityCodeFor(q)]||String(q.payload?.product||q.payload?.commodity||codeFor(q));
  const inTab=(q:Quote)=>{
   const code=commodityCodeFor(q)||String(codeFor(q)).toUpperCase();
   const category=categoryFor(q);
-  const name=(productNames[String(q.product_id||"")]||"").toLowerCase();
+  const name=String(productNames[String(q.product_id||"")]||q.payload?.product||q.payload?.commodity||"").toLowerCase();
   if(boardTab==="Granos")return ["cereal","oleaginosa","legumbre","pseudocereal y nicho","especialidad","semilla de cobertura","semilla forrajera"].includes(category)||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO","CEBADA","AVENA","MANI","ARROZ"].includes(code);
   if(boardTab==="Aceites")return category.includes("aceite")||code.startsWith("ACEITE_")||name.includes("aceite");
   if(boardTab==="Harinas")return category.includes("harina")||code.startsWith("HARINA_")||name.includes("harina");
