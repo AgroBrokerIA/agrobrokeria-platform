@@ -2503,7 +2503,7 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
 
     const { data: viajesConfirmacion, error: errorViajes } = await supabase
       .from("viajes")
-      .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,estado,productor_recepcion_observada_at")
+      .select("id,transportista_entrega_confirmada_at,productor_recepcion_confirmada_at,transportista_kilos_entregados,productor_kilos_recibidos,estado,productor_recepcion_observada_at")
       .eq("operacion_id", operacionId);
     if (errorViajes) {
       setError("No se pudo verificar la doble conformidad de los viajes: " + errorViajes.message);
@@ -2513,6 +2513,11 @@ Los datos fiscales, domicilios, calidad, condiciones de entrega, jurisdicción y
       viaje.transportista_entrega_confirmada_at &&
       viaje.productor_recepcion_confirmada_at &&
       viaje.estado === "ENTREGADO_CONFIRMADO" &&
+      viaje.transportista_kilos_entregados !== null &&
+      viaje.transportista_kilos_entregados !== undefined &&
+      viaje.productor_kilos_recibidos !== null &&
+      viaje.productor_kilos_recibidos !== undefined &&
+      Number(viaje.transportista_kilos_entregados) === Number(viaje.productor_kilos_recibidos) &&
       !viaje.productor_recepcion_observada_at
     );
     if (!todosConfirmados) {
