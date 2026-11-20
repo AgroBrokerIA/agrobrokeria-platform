@@ -129,31 +129,29 @@ async function parseCordoba(body:string,runId:string){
  const sections=[
   {pattern:/Precios Pizarra Buenos Aires - Quequ[eé]n[^]*?(?=Precios Pizarra Buenos Aires - D[aá]rsena|Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"QUEQUEN"},
   {pattern:/Precios Pizarra Buenos Aires - D[aá]rsena[^]*?(?=Precios Pizarra C[oó]rdoba)/i,market:"BUENOS_AIRES",port:"DARSENA"},
-  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=MERCADOS|Expeller de Soja|$)/i,market:"CORDOBA",port:"CORDOBA"}
+  {pattern:/Precios Pizarra C[oó]rdoba[^]*?(?=Expeller de Soja|MERCADOS|$)/i,market:"CORDOBA",port:"CORDOBA"}
  ];
  const productPattern=/^(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)$/i;
  for(const sectionConfig of sections){
   const match=text.match(sectionConfig.pattern);if(!match)continue;
-  const section=match[0];const dateMatch=section.match(/(\\d{1,2}\\/\\d{1,2}\\/\\d{4})/);
+  const section=match[0];const dateMatch=section.match(/(\d{1,2}\/\d{1,2}\/\d{4})/);
   if(!dateMatch)continue;const marketDate=dateFromText(dateMatch[1]);if(!marketDate)continue;
-  const labels=[...section.matchAll(/(?:^|\\s)(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)(?=\\s|$)/gi)];
+  const labels=[...section.matchAll(/(?:^|\s)(Trigo(?: duro| art 12)?|Ma[ií]z|Man[ií] Industria|Man[ií] Runner|Girasol|Soja|Sorgo)(?=\s|$)/gi)];
   for(let i=0;i<labels.length;i++){
    const label=labels[i][1];if(!productPattern.test(label))continue;
    const from=(labels[i].index||0)+labels[i][0].lastIndexOf(label)+label.length;
    const to=i+1<labels.length?(labels[i+1].index||section.length):section.length;
    const snippet=section.slice(from,to);
-   const prices=[...snippet.matchAll(/(U\\$S|USD|\\$)\\s*([\\d.]+(?:,\\d+)?)/gi)];
+   const prices=[...snippet.matchAll(/(U\$S|USD|\$)\s*([\d.]+(?:,\d+)?)/gi)];
    if(!prices.length)continue;
    const local=prices.find(x=>x[1]==="$");
    const selected=local||prices[0];const value=num(selected[2]);if(value===null)continue;
    const currency=selected[1]==="$"?"ARS":"USD";
    const id=await commodityId(commodityCode(label));
-   const estimated=/S\\/N|estimad/i.test(snippet);
+   const estimated=/S\/N|S\/C|estimad/i.test(snippet);
    saved+=await save({source:"Bolsa de Cereales de Córdoba (referencia secundaria)",source_reference:BCCBA_HOME,market_date:marketDate,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:sectionConfig.market,port:sectionConfig.port,price_type:"PIZARRA_CAC",price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product:label,raw_excerpt:snippet.slice(0,500),secondary_source:true,estimated,source_disclaimer:"Referencia secundaria publicada por BCCBA; verificar con la bolsa de origen.",run_id:runId}});
   }
  }
- // La pizarra propia de Córdoba se conserva mediante el mismo origen secundario,
- // pero se incorporan los productos que efectivamente tienen valor publicado.
  if(saved===0)throw new Error("BCCBA_REGIONAL_QUOTES_NOT_PARSED");
  return saved;
 }
