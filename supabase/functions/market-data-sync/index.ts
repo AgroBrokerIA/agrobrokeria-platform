@@ -48,13 +48,23 @@ const BCP_FAS_FOB="https://bcp.org.ar/cotizaciones/precios-fas-matba-fob.asp",BC
 function commodityCode(label:string){const n=code(label);if(n.includes("ACEITE")&&n.includes("GIRASOL"))return "ACEITE_GIRASOL";if(n.includes("ACEITE")&&n.includes("SOJA"))return "ACEITE_SOJA";if(n.includes("PELLET"))return "PELLETS_SOJA";if(n.includes("HARINA"))return "HARINA_SOJA";if(n.includes("EXPeller".toUpperCase()))return "EXPELLER_SOJA";if(n.includes("MANI"))return "MANI";if(n.includes("CEBADA"))return "CEBADA";if(n.includes("GIRASOL"))return "GIRASOL";if(n.includes("SOJA"))return "SOJA";if(n.includes("MAIZ"))return "MAIZ";if(n.includes("TRIGO"))return "TRIGO";if(n.includes("SORGO"))return "SORGO";return n.replace(/[^A-Z0-9]+/g,"_");}
 function pageDate(text:string){const matches=[...text.matchAll(/(\d{1,2})\/(\d{1,2})\/(\d{4})/g)];const m=matches[0];if(!m)throw new Error("SOURCE_MARKET_DATE_NOT_FOUND");return m[3]+"-"+m[2].padStart(2,"0")+"-"+m[1].padStart(2,"0")}
 async function parseBahiaBlanca(body:string,runId:string,orientative=false){
- const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");const text=norm(d.body?.textContent||"");const date=pageDate(text);let saved=0;
- for(const tr of Array.from(d.querySelectorAll("tr"))){const cells=Array.from(tr.querySelectorAll("th,td")).map(x=>norm(x.textContent||""));if(cells.length<2)continue;
-  const product=cells[0];if(!/^(Cebada|Girasol|Ma[ií]z|Soja|Sorgo|Trigo|Aceite de soja|Aceite de girasol|Pellets de soja)$/i.test(product))continue;
-  const raw=cells.slice(1).join(" ");const value=num(raw);if(value==null)continue;const currency=/u\s?\$\s?s|us\$|usd/i.test(raw)?"USD":"ARS";const type=orientative?"PRECIO_ORIENTATIVO":currency==="USD"?"FOB_MINAGRI":"FAS_THEORETICAL";const marketDate=pageDate(cells.join(" ")+" "+text);
+ const d=parseHTML(body).document;if(!d)throw new Error("BCP_HTML_PARSE_ERROR");
+ const cellText=(cell:any)=>norm((cell.textContent||"")+" "+Array.from(cell.querySelectorAll("img[alt]")).map((img:any)=>img.getAttribute("alt")||"").join(" "));
+ const pageText=norm(d.body?.textContent||"")+" "+Array.from(d.querySelectorAll("img[alt]")).map((img:any)=>img.getAttribute("alt")||"").join(" ");
+ const date=pageDate(pageText);let saved=0;
+ const productPattern=/^(Cebada|Girasol|Ma[ií]z|Soja|Sorgo|Trigo|Aceite de soja|Aceite de girasol|Pellets de soja)$/i;
+ for(const tr of Array.from(d.querySelectorAll("tr"))){
+  const cells=Array.from(tr.querySelectorAll("th,td")).map(cellText);if(cells.length<2)continue;
+  const product=cells[0];if(!productPattern.test(product))continue;
+  const raw=cells.slice(1).join(" ");const value=num(raw);if(value===null)continue;
+  const currency=/u\s?\$\s?s|us\$|usd/i.test(raw)?"USD":"ARS";
+  const type=orientative?"PRECIO_ORIENTATIVO":currency==="USD"?"FOB_MINAGRI":"FAS_THEORETICAL";
+  const rowDate=pageDate(cells.join(" ")+ " "+pageText);
   const id=await commodityId(commodityCode(product));
-  saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca",source_reference:orientative?BCP_ORIENTATIVOS:BCP_FAS_FOB,market_date:marketDate||date,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BAHIA_BLANCA",port:"BAHIA BLANCA",price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,raw_cells:cells,run_id:runId}});
- }return saved;
+  saved+=await save({source:"Bolsa de Cereales y Productos de Bahía Blanca",source_reference:orientative?BCP_ORIENTATIVOS:BCP_FAS_FOB,market_date:rowDate||date,published_at:null,commodity_id:id,product_id:null,variety:null,position:"SPOT",market:"BAHIA_BLANCA",port:"BAHIA BLANCA",price_type:type,price:value,currency,unit:"T",status:"VALID",freshness:"UPDATED",previous_value:null,variation:null,payload:{product,raw_cells:cells,secondary_source:false,run_id:runId}});
+ }
+ if(saved===0)throw new Error(orientative?"BCP_ORIENTATIVOS_NO_VALID_ROWS":"BCP_FAS_FOB_NO_VALID_ROWS");
+ return saved;
 }
 async function parseBuenosAires(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCBA_HTML_PARSE_ERROR");
