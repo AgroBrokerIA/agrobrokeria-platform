@@ -7,7 +7,7 @@ type Quote={id:string;price:number|null;currency:string|null;unit:string|null;pr
 type Row={code:string;name:string;q?:Quote};
 
 const icon=(code:string)=>code==="SOJA"?"🫘":code==="MAIZ"?"🌽":code==="TRIGO"?"🌾":code==="GIRASOL"?"🌻":code.toLowerCase().includes("aceite")?"🫒":"🌾";
-const money=(q?:Quote)=>q?.price==null?"—":`${q.currency||"Moneda"} ${Number(q.price).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
+const money=(q?:Quote)=>{if(q?.price==null)return "—";const format=(v:number)=>Number(v).toLocaleString("es-AR",{minimumFractionDigits:2,maximumFractionDigits:2});const high=Number((q.payload as any)?.range_high);const base=`${q.currency||"Moneda"} ${format(Number(q.price))}`;return Number.isFinite(high)&&high>Number(q.price)?`${base}–${format(high)}`:base;};
 const formatMarketDate=(value:string)=>{const parts=value.slice(0,10).split("-").map(Number);return parts.length===3?new Date(parts[0],parts[1]-1,parts[2]).toLocaleDateString("es-AR"):value;};
 const MARKET_OPTIONS=[
  {value:"ROSARIO",label:"Bolsa de Comercio de Rosario",url:"https://www.bcr.com.ar/es/mercados/mercado-de-granos/cotizaciones/cotizaciones-locales-1",aliases:["ROSARIO","BCR","BCR/CAC"]},
