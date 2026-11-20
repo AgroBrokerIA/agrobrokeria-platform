@@ -53,7 +53,7 @@ export default function PizarraPage(){
    const{data:j,error:invokeError}=await supabase.functions.invoke("market-data-sync");
    if(invokeError)throw new Error(invokeError.message||"No se pudo actualizar BCR/CAC.");
    if(!j?.ok)throw new Error(j?.error||"No se pudo actualizar BCR/CAC.");
-   setSyncMsg("Pizarra actualizada desde BCR/CAC, Bahía Blanca, Buenos Aires, Córdoba, Chicago y MATba Rofex. El histórico fue conservado.");await load();
+   const warnings=[...(Array.isArray(j?.source_warnings)?j.source_warnings:[]),...(Array.isArray(j?.chicago_warnings)?j.chicago_warnings:[])].filter(Boolean);const partial=j?.status==="PARTIAL"||warnings.length>0;setSyncMsg(partial?`Actualización parcial: ${Number(j?.records_saved||0)} cotizaciones guardadas. Fuentes pendientes: ${warnings.join("; ")||"ver registro de sincronización"}. No se reemplazó el histórico.`:`Actualización completada: ${Number(j?.records_saved||0)} cotizaciones guardadas. Histórico conservado.`);await load();
   }catch(e){setError(e instanceof Error?e.message:"Error de actualización.")}finally{setSyncing(false)}
  }
  const symbolCodeFor=(q:Quote)=>{
