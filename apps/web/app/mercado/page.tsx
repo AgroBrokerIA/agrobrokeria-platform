@@ -19,14 +19,16 @@ export default function MercadoPage(){
  const[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[marketTab,setMarketTab]=useState("Granos"),[range,setRange]=useState("1D"),[internationalMarket,setInternationalMarket]=useState("CHICAGO"),[tradeCondition,setTradeCondition]=useState("FOB");
  async function load(){
   setLoading(true);setError("");
-  const [qr,cr,pr,prod]=await Promise.all([
-   supabase.from("market_quotes").select("id,source,market_date,obtained_at,price,currency,unit,price_type,position,market,port,freshness,commodity_id,product_id,variation,previous_value,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300),
+  const quoteMarkets=["CHICAGO","BAHIA_BLANCA","ROSARIO","CORDOBA","BUENOS_AIRES","ARGENTINA","MATBA_ROFEX","EURONEXT","BRASIL","PARIS"];
+  const [quoteResults,cr,pr,prod]=await Promise.all([
+   Promise.all(quoteMarkets.map(market=>supabase.from("market_quotes").select("id,source,market_date,obtained_at,price,currency,unit,price_type,position,market,port,freshness,commodity_id,product_id,variation,previous_value,payload").eq("market",market).order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(300))),
    supabase.from("commodities").select("id,codigo"),
    supabase.from("publicaciones").select("id,tipo,cantidad_tn,precio_tn,provincia,localidad,puerto,creada_en,productos(nombre)").eq("estado","PUBLICADA").order("creada_en",{ascending:false}).limit(12),
    supabase.from("productos").select("id,codigo,nombre,categoria").eq("activo",true).order("nombre")
   ]);
-  if(qr.error||cr.error||pr.error||prod.error)setError(qr.error?.message||cr.error?.message||pr.error?.message||prod.error?.message||"No se pudo cargar mercado.");
-  setQuotes((qr.data||[]) as Quote[]);
+  const quoteError=quoteResults.find(result=>result.error)?.error;
+  if(quoteError||cr.error||pr.error||prod.error)setError(quoteError?.message||cr.error?.message||pr.error?.message||prod.error?.message||"No se pudo cargar mercado.");
+  setQuotes(quoteResults.flatMap(result=>result.data||[]) as Quote[]);
   setCommodities(Object.fromEntries((cr.data||[]).map((x:any)=>[x.id,x.codigo])));
   setProducts(Object.fromEntries((prod.data||[]).map((x:any)=>[String(x.id),x as ProductMeta])));
   const pubs=(pr.data||[]) as Pub[];setOffers(pubs.filter(x=>x.tipo!=="DEMANDA").slice(0,5));setDemands(pubs.filter(x=>x.tipo==="DEMANDA").slice(0,5));setLoading(false);
@@ -65,13 +67,16 @@ export default function MercadoPage(){
  const cards:Array<{code:string;name:string;q?:Quote}>=Array.from(latestByProduct.values()).filter(q=>q.price!=null).slice(0,8).map(q=>({code:codeFor(q),name:nameFor(q),q}));
  const tabQuotes=quotes.filter(q=>q.price!=null).filter(q=>{
    const p=String(q.price_type||"").toUpperCase();
+   const code=String(codeFor(q)||"").toUpperCase();
+   const name=String(nameFor(q)||"").toLowerCase();
+   const category=categoryFor(q);
    if(marketTab==="Futuros")return p.includes("FUT");
    if(["FOB","FAS","CIF"].includes(marketTab))return p.startsWith(marketTab);
    if(marketTab==="Mercados internacionales")return ["CHICAGO","EURONEXT","BRASIL","PARIS"].includes(String(q.market||"").toUpperCase());
-   if(marketTab==="Aceites")return categoryFor(q).includes("aceite");
-   if(marketTab==="Harinas")return categoryFor(q).includes("harina");
-   if(marketTab==="Subproductos")return categoryFor(q).includes("subproducto");
-   return ["cereal","oleaginosa","legumbre","pseudocereal","especialidad","semilla"].some(x=>categoryFor(q).includes(x));
+   if(marketTab==="Aceites")return category.includes("aceite")||code.startsWith("ACEITE_")||name.includes("aceite");
+   if(marketTab==="Harinas")return category.includes("harina")||code.startsWith("HARINA_")||name.includes("harina");
+   if(marketTab==="Subproductos")return category.includes("subproducto")||["PELLET","EXPELLER","AFRECHILLO","CASCARILLA","SUBPRODUCTO"].some(x=>code.includes(x))||["pellet","expeller","afrechillo","cascarilla","subproducto"].some(x=>name.includes(x));
+   return ["cereal","oleaginosa","legumbre","pseudocereal","especialidad","semilla"].some(x=>category.includes(x))||["SOJA","MAIZ","TRIGO","GIRASOL","SORGO","CEBADA","AVENA","MANI","ARROZ"].includes(code);
  }).slice(0,30);
  const rangeSize:Record<string,number>={"1D":30,"1S":50,"1M":100,"3M":150,"1A":200,"Todo":300};
  const tabQuoteRows=tabQuotes.map(q=>({code:codeFor(q),name:nameFor(q),q}));
