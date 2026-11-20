@@ -21,10 +21,22 @@ const MARKET_OPTIONS=[
 
 export default function PizarraPage(){
  const[quotes,setQuotes]=useState<Quote[]>([]),[codes,setCodes]=useState<Record<string,string>>({}),[productNames,setProductNames]=useState<Record<string,string>>({}),[productCategories,setProductCategories]=useState<Record<string,string>>({}),[loading,setLoading]=useState(true),[syncing,setSyncing]=useState(false),[error,setError]=useState(""),[syncMsg,setSyncMsg]=useState(""),[boardTab,setBoardTab]=useState("Granos"),[range,setRange]=useState("1D"),[compare,setCompare]=useState("SOJA"),[detail,setDetail]=useState<Quote|null>(null),[market,setMarket]=useState("ROSARIO"),[productFilter,setProductFilter]=useState("ALL"),[priceType,setPriceType]=useState("PIZARRA_CAC");
+ async function fetchAllMarketQuotes(){
+  const pageSize=1000;
+  const all:Quote[]=[];
+  for(let from=0;;from+=pageSize){
+   const{data,error}=await supabase.from("market_quotes").select("id,price,currency,unit,price_type,market_date,obtained_at,variation,previous_value,position,freshness,commodity_id,product_id,market,port,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).order("id",{ascending:true}).range(from,from+pageSize-1);
+   if(error)return{data:all,error};
+   const batch=(data||[]) as Quote[];
+   all.push(...batch);
+   if(batch.length<pageSize)break;
+  }
+  return{data:all,error:null};
+ }
  async function load(){
   setLoading(true);setError("");
   const[q,c,catalog]=await Promise.all([
-   supabase.from("market_quotes").select("id,price,currency,unit,price_type,market_date,obtained_at,variation,previous_value,position,freshness,commodity_id,product_id,market,port,payload").order("market_date",{ascending:false}).order("obtained_at",{ascending:false}).limit(2000),
+   fetchAllMarketQuotes(),
    supabase.from("commodities").select("id,codigo"),
    supabase.from("productos").select("id,codigo,nombre,categoria").eq("activo",true)
   ]);
