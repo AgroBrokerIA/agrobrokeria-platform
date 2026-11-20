@@ -76,7 +76,7 @@ export default function LogisticaPage(){
       <option value="">Seleccionar operación participante…</option>
       {(operacionesPorDemanda[d.id]||[]).map(o=><option key={o.id} value={o.id}>{o.codigo} · {o.cantidad_tn.toLocaleString("es-AR")} TN · {o.estado}</option>)}
      </select>
-     <button type="button" disabled={!seleccionOperacion[d.id]||vinculandoDemanda===d.id} onClick={()=>void vincularDemanda(d)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#0f766e",color:"#fff",fontWeight:700,cursor:"pointer",opacity:!seleccionOperacion[d.id]||vinculandoDemanda===d.id?.5:1}}>{vinculandoDemanda===d.id?"Vinculando…":"Vincular operación"}</button>
+     <button type="button" disabled={!seleccionOperacion[d.id]||vinculandoDemanda===d.id} onClick={()=>void vincularDemanda(d)} style={{padding:"10px 14px",border:0,borderRadius:8,background:"#0f766e",color:"#fff",fontWeight:700,cursor:"pointer",opacity:!seleccionOperacion[d.id]||vinculandoDemanda===d.id ? 0.5 : 1}}>{vinculandoDemanda===d.id?"Vinculando…":"Vincular operación"}</button>
      {!(operacionesPorDemanda[d.id]||[]).length&&<p style={{gridColumn:"1 / -1",fontSize:12,color:"#92400e"}}>No hay operaciones visibles en las que participe la empresa dadora. No se permite vincular una operación de otra empresa.</p>}
     </article>)}
    </div>}
