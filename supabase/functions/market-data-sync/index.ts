@@ -71,7 +71,7 @@ async function parseBahiaOrientatives(body:string,runId:string){
  const d=parseHTML(body).document;if(!d)throw new Error("BCP_ORIENTATIVOS_HTML_ERROR");
  const link=Array.from(d.querySelectorAll("a")).find((a:any)=>/Precios Orientativos al/i.test(norm(a.textContent||"")));
  const href=link?.getAttribute("href");if(!href)throw new Error("BCP_ORIENTATIVES_PDF_LINK_NOT_FOUND");
- const pdfUrl=new URL(href,BCP_ORIENTATIVOS).toString();
+ const pdfUrl=new globalThis.URL(href,BCP_ORIENTATIVOS).toString();
  const response=await fetch(pdfUrl,{headers:{"user-agent":"Mozilla/5.0 AgroBrokerIA MarketDataService/1.0","accept":"application/pdf,*/*"}});
  if(!response.ok)throw new Error("BCP_ORIENTATIVES_PDF_HTTP_"+response.status);
  const bytes=new Uint8Array(await response.arrayBuffer());
