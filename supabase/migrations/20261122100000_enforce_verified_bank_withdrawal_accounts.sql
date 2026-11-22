@@ -1,34 +1,6 @@
--- Keep commission withdrawals tied to a verified bank account.
--- This migration is intentionally additive for existing withdrawal records.
-
-alter table public.retiros_comisiones
-  add column if not exists cuenta_retiro_id uuid;
-
-do $$
-begin
-  if not exists (
-    select 1 from pg_constraint
-    where conrelid = 'public.retiros_comisiones'::regclass
-      and conname = 'retiros_comisiones_cuenta_retiro_id_fkey'
-  ) then
-    alter table public.retiros_comisiones
-      add constraint retiros_comisiones_cuenta_retiro_id_fkey
-      foreign key (cuenta_retiro_id)
-      references public.cuentas_financieras_retiro(id)
-      on delete restrict;
-  end if;
-end;
-$$;
-
--- Withdrawals are bank-only. Existing rows are retained; future account
--- records cannot use digital-wallet or other account types.
-alter table public.cuentas_financieras_retiro
-  drop constraint if exists cuentas_financieras_retiro_tipo_chk;
-
-alter table public.cuentas_financieras_retiro
-  add constraint cuentas_financieras_retiro_tipo_chk
-  check (tipo = 'BANCARIA');
-
+-- Commission withdrawals must use the company's existing, validated bank payment method.
+-- Do not create a parallel bank-account registry: the application already manages
+-- bank details and verification in public.medios_cobro.
 create or replace function public.solicitar_retiro_comision(
   p_empresa_id uuid,
   p_profile_id uuid,
@@ -48,7 +20,6 @@ declare
   v_disponible numeric;
   v_bid uuid;
   v_medio uuid;
-  v_cuenta public.cuentas_financieras_retiro%rowtype;
 begin
   if v_uid is null or v_uid <> p_profile_id then
     raise exception 'AUTH_REQUIRED';
@@ -69,55 +40,28 @@ begin
     raise exception 'INVALID_AMOUNT';
   end if;
 
-  if p_cuenta_retiro_id is null then
-    raise exception 'VERIFIED_DEFAULT_BANK_ACCOUNT_REQUIRED';
+  -- p_cuenta_retiro_id remains in the RPC signature for backward compatibility.
+  -- The canonical account is the already-validated medio_cobro row.
+  if p_cuenta_retiro_id is not null then
+    raise exception 'USE_VALIDATED_BANK_PAYMENT_METHOD';
   end if;
 
-  select *
-    into v_cuenta
-  from public.cuentas_financieras_retiro
-  where id = p_cuenta_retiro_id
+  if p_medio_cobro_id is null then
+    raise exception 'VALIDATED_BANK_PAYMENT_METHOD_REQUIRED';
+  end if;
+
+  select id
+    into v_medio
+  from public.medios_cobro
+  where id = p_medio_cobro_id
     and empresa_id = p_empresa_id
-    and estado = 'VERIFICADA'
-    and tipo = 'BANCARIA'
-    and es_predeterminada = true
+    and tipo = 'BANCO'
+    and estado = 'VALIDADO'
     and (moneda_id is null or moneda_id = p_moneda_id)
   for update;
 
   if not found then
-    raise exception 'WITHDRAWAL_ACCOUNT_NOT_VERIFIED_DEFAULT_BANK_ACCOUNT';
-  end if;
-
-  if p_medio_cobro_id is not null then
-    select id into v_medio
-    from public.medios_cobro
-    where id = p_medio_cobro_id
-      and empresa_id = p_empresa_id
-      and estado = 'VALIDADO'
-      and tipo = 'BANCO'
-      and (moneda_id is null or moneda_id = p_moneda_id)
-      and (v_cuenta.medio_cobro_id is null or medio_cobro_id = v_cuenta.medio_cobro_id)
-    for update;
-
-    if v_medio is null then
-      raise exception 'WITHDRAWAL_METHOD_NOT_VERIFIED_BANK';
-    end if;
-  else
-    select id into v_medio
-    from public.medios_cobro
-    where empresa_id = p_empresa_id
-      and estado = 'VALIDADO'
-      and tipo = 'BANCO'
-      and es_predeterminado = true
-      and (moneda_id is null or moneda_id = p_moneda_id)
-      and (v_cuenta.medio_cobro_id is null or id = v_cuenta.medio_cobro_id)
-    order by id desc
-    limit 1
-    for update;
-
-    if v_medio is null then
-      raise exception 'NO_VERIFIED_DEFAULT_BANK_METHOD';
-    end if;
+    raise exception 'WITHDRAWAL_METHOD_NOT_VERIFIED_BANK';
   end if;
 
   perform pg_advisory_xact_lock(
@@ -140,10 +84,10 @@ begin
   end if;
 
   insert into public.retiros_comisiones(
-    empresa_id, profile_id, cuenta_retiro_id, medio_cobro_id, moneda_id, importe
+    empresa_id, profile_id, medio_cobro_id, moneda_id, importe
   )
   values (
-    p_empresa_id, p_profile_id, p_cuenta_retiro_id, v_medio, p_moneda_id, p_importe
+    p_empresa_id, p_profile_id, v_medio, p_moneda_id, p_importe
   )
   returning id into v_id;
 
@@ -169,8 +113,7 @@ begin
     p_empresa_id, p_profile_id, 'RETIRO_COMISION', v_id, 'SOLICITADO',
     jsonb_build_object(
       'importe', p_importe,
-      'medio_cobro_id', v_medio,
-      'cuenta_retiro_id', p_cuenta_retiro_id
+      'medio_cobro_id', v_medio
     )
   );
 
@@ -195,7 +138,7 @@ as $function$
 declare
   v_retiro public.retiros_comisiones%rowtype;
   v_bid uuid;
-  v_cuenta public.cuentas_financieras_retiro%rowtype;
+  v_medio uuid;
 begin
   if auth.uid() is null
      or auth.uid() <> p_profile_id
@@ -224,7 +167,6 @@ begin
     if v_retiro.estado <> 'SOLICITADO' then
       raise exception 'Transición inválida: % -> EN_REVISION', v_retiro.estado;
     end if;
-
     update public.retiros_comisiones
     set estado = 'EN_REVISION',
         observaciones = coalesce(p_observaciones, observaciones),
@@ -237,7 +179,6 @@ begin
     if v_retiro.estado <> 'EN_REVISION' then
       raise exception 'Transición inválida: % -> APROBADO', v_retiro.estado;
     end if;
-
     update public.retiros_comisiones
     set estado = 'APROBADO',
         referencia = coalesce(p_referencia, referencia),
@@ -255,21 +196,17 @@ begin
       raise exception 'Transición inválida: % -> PAGADO', v_retiro.estado;
     end if;
 
-    if v_retiro.cuenta_retiro_id is null then
-      raise exception 'WITHDRAWAL_BANK_ACCOUNT_REQUIRED';
-    end if;
-
-    select *
-      into v_cuenta
-    from public.cuentas_financieras_retiro
-    where id = v_retiro.cuenta_retiro_id
+    select id into v_medio
+    from public.medios_cobro
+    where id = v_retiro.medio_cobro_id
       and empresa_id = v_retiro.empresa_id
-      and estado = 'VERIFICADA'
-      and tipo = 'BANCARIA'
+      and tipo = 'BANCO'
+      and estado = 'VALIDADO'
+      and (moneda_id is null or moneda_id = v_retiro.moneda_id)
     for update;
 
     if not found then
-      raise exception 'WITHDRAWAL_BANK_ACCOUNT_NO_LONGER_VERIFIED';
+      raise exception 'WITHDRAWAL_BANK_METHOD_NO_LONGER_VERIFIED';
     end if;
 
     select id into v_bid
@@ -299,7 +236,7 @@ begin
       jsonb_build_object(
         'referencia', p_referencia,
         'comprobante_url', p_comprobante_url,
-        'cuenta_retiro_id', v_retiro.cuenta_retiro_id
+        'medio_cobro_id', v_retiro.medio_cobro_id
       )
     );
 
