@@ -13883,6 +13883,10 @@ export type Database = {
         }
         Returns: undefined
       }
+      vincular_demanda_logistica_operacion: {
+        Args: { p_demanda_id: string; p_operacion_id: string }
+        Returns: undefined
+      }
       vincular_viaje_cierre_logistica: {
         Args: { p_cierre_id: string; p_viaje_id: string }
         Returns: undefined
